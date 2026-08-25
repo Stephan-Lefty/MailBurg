@@ -3,6 +3,40 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-08-25 abends)
+
+Alles Committete läuft, 232 Tests grün, alles auf GitHub. Unterbrochen
+mitten in einem Arbeitsgang – **angefangen und nicht zu Ende gebracht:**
+
+- **Doku zu Proton und zur Übernahme fehlt noch.** Der Code steht
+  (`konten uebernehmen`, `--proton`, `--bruecke`), aber in
+  `docs/postfaecher-einrichten.md` steht nichts davon. Dort gehört hin: die
+  Bridge muss laufen, sie erzeugt ein eigenes Passwort (das Proton-Kennwort
+  taugt nicht), sie braucht ein bezahltes Abo, und ohne laufende Bridge
+  scheitert jeder Abruf. Ebenso ein Absatz zu `konten uebernehmen` samt der
+  Begründung, warum Passwörter nicht mit übernommen werden.
+- **CHANGELOG.md ist für beides noch nicht nachgezogen** – der Abschnitt
+  „Unveröffentlicht" endet beim laufenden Abruf.
+- **`docs/postfach-entlasten.md` ist verlinkt, aber existiert nicht.**
+  `docs/zeitsteuerung.md` verweist darauf.
+
+**Als Nächstes besprochen, noch nicht angefangen:**
+
+1. **`mailburg abgleich`** – der wichtigste offene Punkt. Er soll belegen,
+   dass alle Mails vor einem Stichtag im Archiv sind, *bevor* der Mailclient
+   sie auf dem Server wegräumt. Ohne ihn ist das Aufräumen in Thunderbird
+   eine Hoffnung. Gedachter Weg: je Ordner `UID SEARCH BEFORE <datum>`, jede
+   gefundene UID gegen die Fundorte im Index halten, Bericht ausgeben.
+   Danach `docs/postfach-entlasten.md` mit dem ganzen Ablauf.
+2. **Erprobung an einem echten Postfach.** Der Abruf ist bisher nur gegen
+   `tests/fake_imap.py` gelaufen. Stephan hat Konten bei Proton (Bridge auf
+   1143), eines auf 993 und sechs auf 143 – gute Gelegenheit.
+
+**Entschieden und nicht mehr zu diskutieren:** kein Passwort beim
+Programmstart. Ohne Archivverschlüsselung wäre es Sicherheitstheater (die
+Mails liegen als Dateien im Ordner) und machte den Abruf im Hintergrund
+unmöglich. Ein Passwort gehört an die Verschlüsselung, und dann pro Archiv.
+
 ## Aufbau
 
 ```
