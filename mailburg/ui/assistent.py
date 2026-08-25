@@ -67,8 +67,8 @@ class WillkommenSeite(QWizardPage):
         super().__init__()
         self.setTitle("Willkommen")
         self.setSubTitle(
-            f"{APP_NAME} sammelt Ihre E-Mail an einem Ort, den Sie bestimmen, "
-            f"und macht sie durchsuchbar."
+            f"{APP_NAME} archiviert Ihre E-Mail an einem Ort, den Sie "
+            f"bestimmen, und macht sie durchsuchbar."
         )
 
         # Das Banner gehört hierher, nicht in eine Ecke: Wer ein Programm
