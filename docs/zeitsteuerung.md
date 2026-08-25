@@ -7,8 +7,36 @@ Der Abruf ist deshalb darauf ausgelegt, in einer Zeitsteuerung zu laufen: Er
 holt nur, was neu ist, und braucht keine Eingabe.
 
 ```bash
-mailburg abrufen ~/Archiv
+mailburg abrufen ~/Archiv --leise
 ```
+
+## Wie oft?
+
+**Alle 30 Minuten ist die Vorgabe.** Wählbar sind 10, 30, 60 oder 90 Minuten.
+
+Der Grund für den kurzen Takt ist nicht Bequemlichkeit, sondern eine echte
+Gefahr: Wer seinem Mailclient aufträgt, alte Post wegzuräumen, löscht sie bei
+einem IMAP-Konto **auf dem Server**. Was MailBurg bis dahin nicht geholt hat,
+ist unwiederbringlich weg. Zwischen „Mail kommt an" und „Mail könnte gelöscht
+werden" darf deshalb kein großes Fenster liegen.
+
+Die Wahl hängt davon ab, wie viele Konten Sie haben:
+
+| Takt | Wofür |
+|------|-------|
+| 10 Minuten | Wenige Konten, eigener Mailserver, oder ein Mailclient, der zügig aufräumt |
+| 30 Minuten | Der Regelfall |
+| 60–90 Minuten | Viele Konten bei großen Anbietern |
+
+**Warum nicht immer zehn Minuten?** Bei dreißig Konten wären das über
+viertausend Anmeldungen am Tag. GMX, Web.de und andere drosseln oder sperren
+Konten, bei denen sich jemand derart häufig anmeldet – aus ihrer Sicht sieht
+das aus wie ein Angriff. Wer viele Postfächer bei großen Anbietern hat, fährt
+mit 60 Minuten besser.
+
+Kein Takt schließt das Fenster ganz. Wirklich sicher wird das Aufräumen erst,
+wenn Sie vorher nachweisen, dass alles Ältere im Archiv liegt – siehe
+[Postfach entlasten](postfach-entlasten.md).
 
 ## Der eine Haken: der Schlüsselbund
 
@@ -16,9 +44,9 @@ Die Passwörter liegen im Schlüsselbund des Betriebssystems, und der ist an die
 angemeldete Sitzung gebunden. **Läuft der Abruf, während niemand angemeldet ist,
 kommt er nicht an die Passwörter.**
 
-Daraus folgt: Der nächtliche Abruf funktioniert auf einem Rechner, der
-durchläuft und an dem der Benutzer angemeldet bleibt. Er funktioniert nicht auf
-einem Server, an dem sich niemand anmeldet.
+Daraus folgt: Der laufende Abruf funktioniert auf einem Rechner, an dem Sie
+angemeldet sind. Er funktioniert nicht auf einem Server, an dem sich niemand
+anmeldet – und er ruht, solange der Rechner aus ist.
 
 Für den Serverfall gibt es zwei Wege, beide mit Nachteilen:
 
@@ -37,12 +65,14 @@ Ein dritter Weg ist in Arbeit: MailBurg als Dienst mit eigenem Schlüssel, siehe
 Der bequeme Weg:
 
 ```bash
-./install.sh --zeitsteuerung ~/Archiv
+./install.sh --zeitsteuerung ~/Archiv           # alle 30 Minuten
+./install.sh --zeitsteuerung ~/Archiv --alle 10 # alle 10 Minuten
 ```
 
-Das legt einen Benutzer-Timer an, der täglich um drei Uhr läuft, mit
-`Persistent=true` – war der Rechner um drei aus, wird der Abruf beim nächsten
-Start nachgeholt. Ohne das fiele er an jedem Wochenende aus.
+Das legt einen Benutzer-Timer an, der fünf Minuten nach dem Hochfahren anläuft
+und sich dann im gewählten Takt wiederholt. Gerechnet wird ab dem *Ende* des
+letzten Laufs (`OnUnitActiveSec`) – so überholt sich der Abruf nie selbst, auch
+wenn ein Durchgang einmal länger dauert als das Intervall.
 
 Nachsehen:
 
@@ -52,8 +82,8 @@ journalctl --user -u mailburg-abruf.service
 systemctl --user start mailburg-abruf.service   # gleich einmal laufen lassen
 ```
 
-Die Uhrzeit steht in `~/.config/systemd/user/mailburg-abruf.timer` unter
-`OnCalendar`. Nach einer Änderung:
+Der Takt steht in `~/.config/systemd/user/mailburg-abruf.timer` unter
+`OnUnitActiveSec`. Nach einer Änderung:
 
 ```bash
 systemctl --user daemon-reload
@@ -63,7 +93,7 @@ systemctl --user restart mailburg-abruf.timer
 ### Ohne systemd: cron
 
 ```cron
-0 3 * * * /home/IHRNAME/.local/bin/mailburg abrufen /home/IHRNAME/Archiv >> /home/IHRNAME/.mailburg-abruf.log 2>&1
+*/30 * * * * /home/IHRNAME/.local/bin/mailburg abrufen --leise /home/IHRNAME/Archiv >> /home/IHRNAME/.mailburg-abruf.log 2>&1
 ```
 
 Der volle Pfad ist nötig: cron kennt den Suchpfad der Anmeldesitzung nicht.
@@ -71,11 +101,14 @@ Der volle Pfad ist nötig: cron kennt den Suchpfad der Anmeldesitzung nicht.
 ## Windows: Aufgabenplanung
 
 ```powershell
-.\install.ps1 -Zeitsteuerung C:\Archiv
+.\install.ps1 -Zeitsteuerung C:\Archiv            # alle 30 Minuten
+.\install.ps1 -Zeitsteuerung C:\Archiv -Alle 10   # alle 10 Minuten
 ```
 
-Das legt die Aufgabe „MailBurg Abruf" an, täglich um drei Uhr, mit
-„Aufgabe so schnell wie möglich nachholen" – dieselbe Überlegung wie oben.
+Das legt die Aufgabe „MailBurg Abruf" an: Sie läuft fünf Minuten nach der
+Anmeldung an und wiederholt sich dann im gewählten Takt. An die Anmeldung
+gebunden, weil die Anmeldeinformationsverwaltung an der Sitzung hängt.
+`MultipleInstances IgnoreNew` verhindert, dass sich zwei Läufe überschneiden.
 
 Nachsehen in der Aufgabenplanung (`taskschd.msc`) unter diesem Namen. Von Hand
 anstoßen:
@@ -102,13 +135,11 @@ Pfad zum Archiv anpassen:
     <array>
         <string>/Users/IHRNAME/.local/bin/mailburg</string>
         <string>abrufen</string>
+        <string>--leise</string>
         <string>/Users/IHRNAME/Archiv</string>
     </array>
-    <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key><integer>3</integer>
-        <key>Minute</key><integer>0</integer>
-    </dict>
+    <key>StartInterval</key>
+    <integer>1800</integer>
     <key>StandardErrorPath</key>
     <string>/Users/IHRNAME/Library/Logs/mailburg-abruf.log</string>
 </dict>
@@ -133,10 +164,13 @@ nächsten Lauf erneut angefordert. Der Lauf meldet, wie viele es waren.
 
 ## Und das Siegel?
 
-In einem Geschäftsarchiv gehört nach jedem Abruf ein Siegel über den Stand:
+In einem Geschäftsarchiv gehört regelmäßig ein Siegel über den Stand – aber
+**nicht nach jedem Abruf**. Bei einem Takt von dreißig Minuten wären das fast
+fünfzig Siegel am Tag; das bläht das Journal auf, ohne die Aussage zu
+verbessern. Einmal täglich genügt, als eigener Eintrag in der Zeitsteuerung:
 
-```bash
-mailburg abrufen ~/Archiv && mailburg siegel ~/Archiv
+```cron
+0 23 * * * /home/IHRNAME/.local/bin/mailburg siegel /home/IHRNAME/Archiv
 ```
 
 Das Siegel hält fest, wie weit die Hash-Kette zu diesem Zeitpunkt reichte. Ein

@@ -15,7 +15,11 @@
     Zstandard.
 
 .PARAMETER Zeitsteuerung
-    Pfad zu einem Archiv. Richtet den täglichen Abruf dafür ein.
+    Pfad zu einem Archiv. Richtet den laufenden Abruf dafür ein.
+
+.PARAMETER Alle
+    Abstand zwischen zwei Abrufen in Minuten: 10, 30, 60 oder 90.
+    Vorgabe ist 30.
 
 .PARAMETER Entfernen
     Baut das Programm wieder ab.
@@ -23,6 +27,7 @@
 .EXAMPLE
     .\install.ps1
     .\install.ps1 -Zeitsteuerung C:\Archiv
+    .\install.ps1 -Zeitsteuerung C:\Archiv -Alle 10
     .\install.ps1 -Entfernen
 
 .NOTES
@@ -34,6 +39,12 @@
 param(
     [switch]$OhneKuer,
     [string]$Zeitsteuerung = "",
+    # Dreißig Minuten sind der Kompromiss: kurz genug, dass eine
+    # Aufräumregel im Mailclient nichts wegräumt, was noch nicht archiviert
+    # ist, und lang genug, dass kein Anbieter die häufigen Anmeldungen für
+    # einen Angriff hält.
+    [ValidateSet(10, 30, 60, 90)]
+    [int]$Alle = 30,
     [switch]$Entfernen
 )
 
@@ -151,7 +162,7 @@ Hinweis "dafuer braucht es Texterkennung."
 # ------------------------------------------------------------ Zeitsteuerung
 
 if ($Zeitsteuerung) {
-    Melde "Naechtlicher Abruf"
+    Melde "Laufender Abruf"
 
     $archiv = (Resolve-Path $Zeitsteuerung -ErrorAction SilentlyContinue)
     if (-not $archiv) { Fehler "Das Verzeichnis $Zeitsteuerung gibt es nicht." }
@@ -160,24 +171,36 @@ if ($Zeitsteuerung) {
     }
 
     $aktion = New-ScheduledTaskAction -Execute $starter `
-        -Argument "abrufen `"$archiv`""
-    $ausloeser = New-ScheduledTaskTrigger -Daily -At 3am
-    # Nachholen, wenn der Rechner um drei Uhr aus war - sonst faellt der
-    # Abruf an jedem Wochenende aus.
+        -Argument "abrufen --leise `"$archiv`""
+
+    # Bei der Anmeldung anlaufen und sich dann in kurzem Takt wiederholen.
+    # An die Anmeldung gebunden, weil die Anmeldeinformationsverwaltung an
+    # der Sitzung haengt - ohne angemeldeten Benutzer kaeme der Abruf gar
+    # nicht erst an die Passwoerter.
+    $ausloeser = New-ScheduledTaskTrigger -AtLogOn
+    $ausloeser.Delay = "PT5M"
+    $ausloeser.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
+        -RepetitionInterval (New-TimeSpan -Minutes $Alle) `
+        -RepetitionDuration ([System.TimeSpan]::MaxValue)).Repetition
+
     $regeln = New-ScheduledTaskSettingsSet `
         -StartWhenAvailable `
         -DontStopIfGoingOnBatteries `
-        -RunOnlyIfNetworkAvailable
+        -AllowStartIfOnBatteries `
+        -RunOnlyIfNetworkAvailable `
+        -MultipleInstances IgnoreNew `
+        -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 
     Register-ScheduledTask -TaskName $Aufgabe -Action $aktion `
         -Trigger $ausloeser -Settings $regeln -Force | Out-Null
 
-    Hinweis "Eingerichtet fuer $archiv, taeglich um 3 Uhr."
-    Hinweis "Nachsehen in der Aufgabenplanung unter '$Aufgabe'."
+    Hinweis "Eingerichtet fuer $archiv, alle $Alle Minuten."
+    Hinweis "Nachsehen in der Aufgabenplanung (taskschd.msc) unter '$Aufgabe'."
+    Hinweis "Jetzt gleich: Start-ScheduledTask -TaskName '$Aufgabe'"
     Hinweis ""
-    Hinweis "Wichtig: Der Abruf kommt nur an die Passwoerter, solange Sie"
-    Hinweis "angemeldet sind – die Anmeldeinformationsverwaltung haengt an"
-    Hinweis "Ihrer Sitzung."
+    Hinweis "Der Abruf laeuft ab der Anmeldung und dann im gewaehlten Takt."
+    Hinweis "Ohne angemeldeten Benutzer kommt er nicht an die Passwoerter -"
+    Hinweis "die Anmeldeinformationsverwaltung haengt an Ihrer Sitzung."
 }
 
 # ------------------------------------------------------------------- Fertig

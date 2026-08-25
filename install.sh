@@ -8,7 +8,9 @@
 #     ./install.sh --ohne-pakete          Systempakete überspringen
 #     ./install.sh --nur-kern             ohne die Kür (IMAP, Anhänge, Packen)
 #     ./install.sh --zeitsteuerung ~/Archiv
-#                                         nächtlichen Abruf einrichten
+#                                         laufenden Abruf einrichten, alle 30 min
+#     ./install.sh --zeitsteuerung ~/Archiv --alle 10
+#                                         ... stattdessen alle 10 Minuten
 #     ./install.sh --entfernen            alles wieder abbauen
 #
 # Nicht als root ausführen – sudo wird nur für die Systempakete gefragt,
@@ -29,16 +31,28 @@ MIT_KUER=1
 ZEITSTEUERUNG=""
 ENTFERNEN=0
 
+#: Wie oft die Postfächer abgefragt werden. Dreißig Minuten sind der
+#: Kompromiss: kurz genug, dass eine Aufräumregel im Mailclient nichts
+#: wegräumt, was noch nicht archiviert ist, und lang genug, dass kein
+#: Anbieter die häufigen Anmeldungen für einen Angriff hält.
+INTERVALL=30
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --ohne-pakete) MIT_PAKETEN=0; shift ;;
         --nur-kern) MIT_KUER=0; shift ;;
         --zeitsteuerung) ZEITSTEUERUNG="${2:-}"; shift 2 ;;
+        --alle) INTERVALL="${2:-}"; shift 2 ;;
         --entfernen) ENTFERNEN=1; shift ;;
-        -h|--help) sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unbekannte Option: $1" >&2; exit 2 ;;
     esac
 done
+
+case "$INTERVALL" in
+    10|30|60|90) ;;
+    *) echo "Fehler: --alle nimmt 10, 30, 60 oder 90 (Minuten), nicht '$INTERVALL'." >&2; exit 2 ;;
+esac
 
 melde()  { printf '\n\033[1m%s\033[0m\n' "$*"; }
 hinweis() { printf '  %s\n' "$*"; }
@@ -146,7 +160,7 @@ fi
 # ----------------------------------------------------------- Zeitsteuerung
 
 if [[ -n "$ZEITSTEUERUNG" ]]; then
-    melde "Nächtlicher Abruf"
+    melde "Laufender Abruf"
 
     ARCHIV="$(cd "$(dirname "$ZEITSTEUERUNG")" 2>/dev/null && pwd)/$(basename "$ZEITSTEUERUNG")" \
         || fehler "Das Verzeichnis $ZEITSTEUERUNG gibt es nicht."
@@ -165,7 +179,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=$BIN/mailburg abrufen "$ARCHIV"
+ExecStart=$BIN/mailburg abrufen --leise "$ARCHIV"
 # Der Schlüsselbund hängt an der angemeldeten Sitzung. Läuft der Abruf,
 # während niemand angemeldet ist, kommt er nicht an die Passwörter.
 Environment=PYTHONUNBUFFERED=1
@@ -173,14 +187,19 @@ EOF
 
     cat > "$DIENSTE/mailburg-abruf.timer" <<EOF
 [Unit]
-Description=MailBurg täglich abrufen
+Description=MailBurg alle $INTERVALL Minuten abrufen
 
 [Timer]
-OnCalendar=*-*-* 03:00:00
-# Nachgeholt, wenn der Rechner um drei Uhr nachts aus war - sonst fiele
-# der Abruf an jedem Wochenende aus.
+# Nicht sofort beim Anmelden: Erst soll der Rechner hochkommen.
+OnBootSec=5min
+# Gerechnet ab dem Ende des letzten Laufs. Damit überholt sich der Abruf
+# nie selbst, auch wenn ein Durchgang einmal länger dauert als das
+# Intervall - systemd startet die Unit nicht neu, solange sie läuft.
+OnUnitActiveSec=${INTERVALL}min
+# Damit nicht dreißig Postfächer auf die Sekunde genau gleichzeitig
+# angefragt werden.
+RandomizedDelaySec=2m
 Persistent=true
-RandomizedDelaySec=15m
 
 [Install]
 WantedBy=timers.target
@@ -188,12 +207,21 @@ EOF
 
     systemctl --user daemon-reload
     systemctl --user enable --now mailburg-abruf.timer
-    hinweis "Eingerichtet für $ARCHIV, täglich um 3 Uhr."
+    hinweis "Eingerichtet für $ARCHIV, alle $INTERVALL Minuten."
     hinweis "Nachsehen:  systemctl --user list-timers mailburg-abruf.timer"
     hinweis "Protokoll:  journalctl --user -u mailburg-abruf.service"
+    hinweis "Jetzt gleich: systemctl --user start mailburg-abruf.service"
     hinweis ""
-    hinweis "Wichtig: Der Abruf kommt nur an die Passwörter, solange Ihr"
-    hinweis "Schlüsselbund entsperrt ist – also während Sie angemeldet sind."
+    hinweis "Zweierlei ist dabei zu wissen:"
+    hinweis ""
+    hinweis "1. Der Abruf kommt nur an die Passwörter, solange Ihr"
+    hinweis "   Schlüsselbund entsperrt ist – also während Sie angemeldet sind."
+    hinweis "   Nach einem Neustart läuft er erst wieder, wenn Sie sich anmelden."
+    hinweis ""
+    hinweis "2. Damit der Rechner das auch nachts tut, darf er nicht in den"
+    hinweis "   Ruhezustand gehen. Sonst holt MailBurg beim Aufwachen nach –"
+    hinweis "   was genügt, solange Ihr Mailclient nicht zwischendurch"
+    hinweis "   aufräumt."
 fi
 
 # ------------------------------------------------------------------ Fertig

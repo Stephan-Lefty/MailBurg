@@ -283,14 +283,24 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
 
     mit_text = not args.ohne_anhangstext
     fehler = 0
+    neu_gesamt = 0
+
+    # Im leisen Betrieb wird nur gemeldet, was von Belang ist. Ein Abruf,
+    # der alle zehn Minuten läuft, würde sonst das Systemprotokoll mit
+    # Meldungen darüber füllen, dass nichts zu tun war.
+    laut = not args.leise
+
+    def sagen(text: str = "") -> None:
+        if laut:
+            print(text)
 
     with Archive.open(Path(args.archiv)) as archive:
         zustand = Abrufzustand(archive.uuid)
         if args.voll:
-            print("Vollabruf: Der bisherige Stand wird nicht berücksichtigt.")
+            sagen("Vollabruf: Der bisherige Stand wird nicht berücksichtigt.")
 
         for konto in konten:
-            print(f"\n{konto.beschreibung()}")
+            sagen(f"\n{konto.beschreibung()}")
             try:
                 quelle = ImapSource(
                     konto,
@@ -310,7 +320,8 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
             started = time.monotonic()
 
             def fortschritt(stat) -> None:
-                print(f"  … {stat.gelesen} geholt, {stat.neu} neu", end="\r", flush=True)
+                if laut:
+                    print(f"  … {stat.gelesen} geholt, {stat.neu} neu", end="\r", flush=True)
 
             def auf_fehler(nachricht, exc: Exception, k=konto) -> None:
                 # Vormerken, damit die Mail beim nächsten Lauf noch einmal
@@ -339,19 +350,31 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
                 zustand.speichern()
                 quelle.close()
 
-            print(" " * 60, end="\r")
+            neu_gesamt += stat.neu
             seconds = time.monotonic() - started
-            print(f"  {stat} ({seconds:.1f} s)")
+
+            if laut:
+                print(" " * 60, end="\r")
+                print(f"  {stat} ({seconds:.1f} s)")
+            elif stat.neu:
+                # Auch leise: dass etwas ins Archiv ging, gehört ins Protokoll.
+                print(f"{konto.name}: {stat.neu} neu ({seconds:.1f} s)")
+
             for warnung in quelle.warnungen:
                 print(f"  Hinweis: {warnung}", file=sys.stderr)
             if stat.fehlgeschlagen:
                 print(
                     f"  {stat.fehlgeschlagen} Mails sind vorgemerkt und werden beim "
-                    f"nächsten Abruf erneut geholt."
+                    f"nächsten Abruf erneut geholt.",
+                    file=sys.stderr if not laut else sys.stdout,
                 )
 
-        print()
-        archive.index.optimize()
+        sagen()
+        # Nur wenn wirklich etwas dazugekommen ist. Das Verdichten geht über
+        # den ganzen Volltextindex; bei einem Abruf alle zehn Minuten wäre
+        # das den halben Tag über Arbeit für nichts.
+        if neu_gesamt:
+            archive.index.optimize()
     return 1 if fehler else 0
 
 
@@ -567,6 +590,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--ohne-anhangstext",
         action="store_true",
         help="Anhänge nicht im Volltext erfassen",
+    )
+    p.add_argument(
+        "--leise",
+        action="store_true",
+        help="nur melden, wenn etwas ankam oder schiefging – für den "
+             "Abruf im Hintergrund, damit das Systemprotokoll lesbar bleibt",
     )
     p.set_defaults(func=cmd_abrufen)
 
