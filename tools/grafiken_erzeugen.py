@@ -27,11 +27,13 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parent.parent
 ASSETS = WURZEL / "assets"
 
-#: 16 bis 48 für Fensterleisten und Startmenüs, 512 und 1024 für
-#: hochauflösende Bildschirme und die Paketformate.
-ICON_GROESSEN = (1024, 512, 256, 128, 64, 48, 32, 16)
+#: 16 bis 48 für Fensterleisten und Startmenüs, 256 bis 1024 für
+#: hochauflösende Bildschirme und die Paketformate, 2048 als Vorrat für
+#: Druck und alles, was später kommt.
+ICON_GROESSEN = (2048, 1024, 512, 256, 128, 64, 48, 32, 16)
 
-BANNER_BREITEN = (1600, 800)
+#: 800 und 1600 für die Einbindung im README, 2800 als große Fassung.
+BANNER_BREITEN = (2800, 1600, 800)
 
 
 def rendern(quelle: Path, ziel: Path, breite: int, hoehe: int | None = None) -> None:
@@ -54,6 +56,8 @@ def main() -> int:
             sys.exit(f"Fehlt: {datei.relative_to(WURZEL)}")
 
     for groesse in ICON_GROESSEN:
+        # icon.png ohne Zahl im Namen ist die übliche Fassung für den
+        # Alltag; die übrigen tragen ihre Kantenlänge im Namen.
         name = "icon.png" if groesse == 1024 else f"icon-{groesse}.png"
         rendern(icon, ASSETS / name, groesse, groesse)
 
