@@ -389,6 +389,9 @@ class KontoZeile(QWidget):
             beschreibung += "   (Brücke auf diesem Rechner)"
         self.beschreibung = QLabel(beschreibung)
         self.beschreibung.setEnabled(False)
+        # Umbrechen statt überstehen: Eine lange Adresse auf einem
+        # Brückenport ist breiter als manches Fenster.
+        self.beschreibung.setWordWrap(True)
         # Nebeneinander bräuchten Name und Beschreibung zusammen mehr
         # Breite, als ein Fenster vernünftigerweise hat – dann steht die
         # Hälfte außerhalb, und man rollt waagerecht.
