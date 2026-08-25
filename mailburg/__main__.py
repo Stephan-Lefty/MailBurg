@@ -9,17 +9,22 @@ ist sie ohnehin das bessere Werkzeug.
 from __future__ import annotations
 
 import argparse
+import getpass
 import sys
 import time
 from pathlib import Path
 
 from mailburg import APP_NAME, __version__
+from mailburg.core import accounts
+from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
 from mailburg.core.importer import importieren
 from mailburg.core.retention import Jurisdiction, describe
+from mailburg.core.sync import Abrufzustand
 from mailburg.extract import pdf
 from mailburg.search.query import QueryError, describe_syntax
 from mailburg.sources import local
+from mailburg.sources.imap import ImapFehler, ImapSource
 
 
 def _human_size(count: int) -> str:
@@ -89,9 +94,9 @@ def cmd_importieren(args: argparse.Namespace) -> int:
         def fortschritt(stat) -> None:
             print(f"  … {stat.gelesen} gelesen, {stat.neu} neu", end="\r", flush=True)
 
-        def auf_fehler(ordner: str, exc: Exception) -> None:
+        def auf_fehler(nachricht, exc: Exception) -> None:
             if args.ausführlich:
-                print(f"  übersprungen ({ordner}): {exc}", file=sys.stderr)
+                print(f"  übersprungen ({nachricht.folder}): {exc}", file=sys.stderr)
 
         stat = importieren(
             archive,
@@ -121,6 +126,233 @@ def cmd_importieren(args: argparse.Namespace) -> int:
 
     source.close()
     return 0
+
+
+# ------------------------------------------------------------------- Konten
+
+
+def _passwort_besorgen(konto: Konto, *, fragen: bool = True) -> str:
+    """Holt das Passwort aus dem Schlüsselbund oder fragt danach."""
+    passwort = accounts.passwort_holen(konto)
+    if passwort:
+        return passwort
+    if not fragen:
+        return ""
+    return getpass.getpass(f"Passwort für {konto.benutzer} auf {konto.server}: ")
+
+
+def cmd_konten_liste(args: argparse.Namespace) -> int:
+    """Zeigt die eingerichteten Postfächer."""
+    liste = Kontenliste()
+    if not len(liste):
+        print("Noch kein Konto eingerichtet. Anlegen mit 'mailburg konten hinzufuegen'.")
+        return 0
+
+    if not accounts.schluesselbund_verfuegbar():
+        print(
+            "Hinweis: Kein Schlüsselbund erreichbar – die Passwörter werden bei\n"
+            "         jedem Abruf neu erfragt. Unter Arch/Manjaro hilft:\n"
+            "         sudo pacman -S gnome-keyring python-keyring\n",
+            file=sys.stderr,
+        )
+
+    for konto in liste.konten:
+        zustand = "aktiv" if konto.aktiv else "stillgelegt"
+        gemerkt = "Passwort gemerkt" if accounts.passwort_holen(konto) else "kein Passwort"
+        print(f"  {konto.beschreibung()}  [{zustand}, {gemerkt}]")
+        if args.ausführlich and konto.ausschluss:
+            print(f"      übergangen: {', '.join(konto.ausschluss)}")
+    return 0
+
+
+def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
+    """Richtet ein Postfach ein und prüft es gleich."""
+    konto = Konto(
+        name=args.name,
+        server=args.server,
+        benutzer=args.benutzer or args.name,
+        port=args.port,
+        ssl=not args.starttls,
+    )
+    passwort = getpass.getpass(f"Passwort für {konto.benutzer} auf {konto.server}: ")
+    if not passwort:
+        print("Ohne Passwort geht es nicht.", file=sys.stderr)
+        return 2
+
+    # Erst prüfen, dann speichern. Ein Konto, das sich nicht anmelden kann,
+    # in der Liste stehen zu haben, führt nur dazu, dass jeder nächtliche
+    # Abruf mit einem Fehler endet.
+    print(f"Verbinde mit {konto.server} …")
+    try:
+        quelle = ImapSource(konto, passwort)
+    except ImapFehler as exc:
+        print(f"Fehler: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        ordner = quelle.folders()
+    finally:
+        quelle.close()
+
+    liste = Kontenliste()
+    try:
+        liste.hinzufuegen(konto)
+    except ValueError as exc:
+        print(f"Fehler: {exc}", file=sys.stderr)
+        return 2
+
+    if accounts.passwort_setzen(konto, passwort):
+        print("Passwort im Schlüsselbund abgelegt.")
+    else:
+        print(
+            "Achtung: Kein Schlüsselbund erreichbar – das Passwort wird bei\n"
+            "         jedem Abruf neu erfragt. In eine Datei geschrieben wird\n"
+            "         es nicht.",
+            file=sys.stderr,
+        )
+
+    print(f"Konto '{konto.name}' eingerichtet. {len(ordner)} Ordner werden archiviert:")
+    for name in ordner[:15]:
+        print(f"    {name}")
+    if len(ordner) > 15:
+        print(f"    … und {len(ordner) - 15} weitere")
+    print()
+    print(f"  Übergangen werden: {', '.join(konto.ausschluss)}")
+    return 0
+
+
+def cmd_konten_entfernen(args: argparse.Namespace) -> int:
+    """Nimmt ein Postfach aus der Liste."""
+    liste = Kontenliste()
+    konto = liste.finden(args.name)
+    if konto is None:
+        print(f"Ein Konto namens '{args.name}' gibt es nicht.", file=sys.stderr)
+        return 2
+
+    accounts.passwort_loeschen(konto)
+    liste.entfernen(args.name)
+    print(f"Konto '{args.name}' entfernt. Die bereits archivierten Mails bleiben.")
+    return 0
+
+
+def cmd_konten_pruefen(args: argparse.Namespace) -> int:
+    """Meldet sich an und zeigt, was archiviert würde."""
+    liste = Kontenliste()
+    konten = [liste.finden(args.name)] if args.name else liste.konten
+    if not konten or konten[0] is None:
+        print("Kein passendes Konto gefunden.", file=sys.stderr)
+        return 2
+
+    fehler = 0
+    for konto in konten:
+        print(f"{konto.beschreibung()}")
+        try:
+            quelle = ImapSource(konto, _passwort_besorgen(konto))
+        except ImapFehler as exc:
+            print(f"  FEHLER: {exc}", file=sys.stderr)
+            fehler += 1
+            continue
+        try:
+            ordner = quelle.folders()
+            print(f"  Anmeldung in Ordnung, {len(ordner)} Ordner zum Archivieren:")
+            for name in ordner:
+                print(f"    {name}")
+        finally:
+            quelle.close()
+    return 1 if fehler else 0
+
+
+def cmd_abrufen(args: argparse.Namespace) -> int:
+    """Holt neue Mails aus den Postfächern ins Archiv."""
+    liste = Kontenliste()
+    if args.konto:
+        konto = liste.finden(args.konto)
+        if konto is None:
+            print(f"Ein Konto namens '{args.konto}' gibt es nicht.", file=sys.stderr)
+            return 2
+        konten = [konto]
+    else:
+        konten = liste.aktive()
+
+    if not konten:
+        print(
+            "Kein aktives Konto. Einrichten mit 'mailburg konten hinzufuegen'.",
+            file=sys.stderr,
+        )
+        return 2
+
+    mit_text = not args.ohne_anhangstext
+    fehler = 0
+
+    with Archive.open(Path(args.archiv)) as archive:
+        zustand = Abrufzustand(archive.uuid)
+        if args.voll:
+            print("Vollabruf: Der bisherige Stand wird nicht berücksichtigt.")
+
+        for konto in konten:
+            print(f"\n{konto.beschreibung()}")
+            try:
+                quelle = ImapSource(
+                    konto,
+                    _passwort_besorgen(konto),
+                    hoechststand=lambda ordner, k=konto: archive.index.max_uid(
+                        k.name, ordner
+                    ),
+                    zustand=zustand,
+                    voll=args.voll,
+                    ordner=args.ordner or None,
+                )
+            except ImapFehler as exc:
+                print(f"  FEHLER: {exc}", file=sys.stderr)
+                fehler += 1
+                continue
+
+            started = time.monotonic()
+
+            def fortschritt(stat) -> None:
+                print(f"  … {stat.gelesen} geholt, {stat.neu} neu", end="\r", flush=True)
+
+            def auf_fehler(nachricht, exc: Exception, k=konto) -> None:
+                # Vormerken, damit die Mail beim nächsten Lauf noch einmal
+                # angefordert wird. Ohne das zöge der Höchststand an ihr
+                # vorbei und sie fehlte für immer.
+                if nachricht.uid is not None:
+                    zustand.vormerken(k.name, nachricht.folder, nachricht.uid)
+                if args.ausführlich:
+                    print(
+                        f"  gescheitert ({nachricht.folder}, UID {nachricht.uid}): {exc}",
+                        file=sys.stderr,
+                    )
+
+            try:
+                stat = importieren(
+                    archive,
+                    quelle,
+                    mit_anhangstext=mit_text,
+                    fortschritt=fortschritt,
+                    auf_fehler=auf_fehler,
+                )
+            finally:
+                # Der Zustand muss auch dann auf die Platte, wenn der Lauf
+                # abbricht: Sonst gehen die Vormerkungen der gescheiterten
+                # Mails verloren.
+                zustand.speichern()
+                quelle.close()
+
+            print(" " * 60, end="\r")
+            seconds = time.monotonic() - started
+            print(f"  {stat} ({seconds:.1f} s)")
+            for warnung in quelle.warnungen:
+                print(f"  Hinweis: {warnung}", file=sys.stderr)
+            if stat.fehlgeschlagen:
+                print(
+                    f"  {stat.fehlgeschlagen} Mails sind vorgemerkt und werden beim "
+                    f"nächsten Abruf erneut geholt."
+                )
+
+        print()
+        archive.index.optimize()
+    return 1 if fehler else 0
 
 
 def cmd_suchen(args: argparse.Namespace) -> int:
@@ -289,6 +521,54 @@ def build_parser() -> argparse.ArgumentParser:
              "dafür sind PDF und Office-Dateien nicht durchsuchbar)",
     )
     p.set_defaults(func=cmd_importieren)
+
+    p = subparsers.add_parser("konten", help="Postfächer einrichten und prüfen")
+    konten_befehle = p.add_subparsers(dest="unterbefehl", required=True)
+
+    k = konten_befehle.add_parser("liste", help="eingerichtete Postfächer zeigen")
+    k.set_defaults(func=cmd_konten_liste)
+
+    k = konten_befehle.add_parser("hinzufuegen", help="ein Postfach einrichten")
+    k.add_argument("name", help="Kurzname, unter dem die Mails im Archiv erscheinen")
+    k.add_argument("--server", required=True, help="IMAP-Server, etwa imap.gmail.com")
+    k.add_argument("--benutzer", help="Anmeldename, meist die Mailadresse")
+    k.add_argument("--port", type=int, default=993, help="Standard: 993 (IMAPS)")
+    k.add_argument(
+        "--starttls",
+        action="store_true",
+        help="unverschlüsselt verbinden und auf TLS hochstufen (Port meist 143)",
+    )
+    k.set_defaults(func=cmd_konten_hinzufuegen)
+
+    k = konten_befehle.add_parser("entfernen", help="ein Postfach aus der Liste nehmen")
+    k.add_argument("name")
+    k.set_defaults(func=cmd_konten_entfernen)
+
+    k = konten_befehle.add_parser("pruefen", help="Anmeldung und Ordner prüfen")
+    k.add_argument("name", nargs="?", help="ohne Angabe werden alle geprüft")
+    k.set_defaults(func=cmd_konten_pruefen)
+
+    p = subparsers.add_parser("abrufen", help="neue Mails aus den Postfächern holen")
+    p.add_argument("archiv", help="Verzeichnis des Archivs")
+    p.add_argument("--konto", help="nur dieses Konto abrufen")
+    p.add_argument(
+        "--ordner",
+        nargs="+",
+        metavar="NAME",
+        help="nur diese Ordner abrufen, mit ihrem angezeigten Namen",
+    )
+    p.add_argument(
+        "--voll",
+        action="store_true",
+        help="alles holen statt nur das Neue. Doppelt abgelegt wird dabei "
+             "nichts – die Ablage erkennt jede Mail an ihrem Inhalt wieder.",
+    )
+    p.add_argument(
+        "--ohne-anhangstext",
+        action="store_true",
+        help="Anhänge nicht im Volltext erfassen",
+    )
+    p.set_defaults(func=cmd_abrufen)
 
     p = subparsers.add_parser("suchen", help="das Archiv durchsuchen")
     p.add_argument("archiv")

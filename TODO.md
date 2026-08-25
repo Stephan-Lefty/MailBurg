@@ -18,12 +18,11 @@ wurde.
   Offen: ob das beim Archivieren laufen soll (langsam) oder später als
   eigener Durchlauf über vorhandene Bestände.
 
-- [ ] **IMAP-Abruf.** Kontenverwaltung für bis zu 30 Adressen, Passwörter im
-  Schlüsselbund des Betriebssystems (`keyring`), niemals in einer
-  Konfigurationsdatei. Inkrementell über `UIDVALIDITY` und die höchste gesehene
-  UID je Ordner, `CONDSTORE` wenn der Server es beherrscht. Für den Anfang mit
-  App-Passwörtern – OAuth2 braucht bei Google ein längeres Prüfverfahren und
-  kommt später.
+- [ ] **Anmeldung per OAuth2.** Der Abruf läuft mit App-Passwörtern. Das
+  genügt, ist aber nicht das, was Gmail und Outlook eigentlich wollen: Dort
+  gehört OAuth2 hin. Bei Google hängt daran ein Prüfverfahren für die
+  Anwendung, das Zeit kostet – deshalb später und nicht als Voraussetzung für
+  den ersten Einsatz.
 
 - [ ] **Grafische Oberfläche mit PySide6.** Dreispaltig: Kontenbaum,
   Trefferliste, Vorschau. Suchleiste mit Ergebnissen schon beim Tippen.
@@ -136,6 +135,20 @@ wurde.
   ob die Suchzeit dann noch unter 200 ms liegt; FTS5 sollte das packen,
   gemessen ist es aber nicht. Dafür braucht es einen Bestand dieser Größe.
 
+- [ ] **Was passiert, wenn jemand einen IMAP-Ordner umbenennt?** MailBurg
+  merkt sich den Fundort unter dem angezeigten Namen. Aus »Kunden« wird
+  »Kunden 2025«, und schon ist der Höchststand für diesen Namen null: Der
+  ganze Ordner wird erneut geholt und als zweiter Fundort ins Journal
+  geschrieben. Verloren geht nichts, doppelt auf der Platte liegt auch
+  nichts – aber das Journal wächst ohne Not, und im Ordnerbaum steht der
+  Ordner zweimal. Ob sich das über die Ordner-Kennung aus RFC 8474
+  (`OBJECTID`) sauber lösen lässt, ist zu prüfen; nicht jeder Server kann das.
+
+- [ ] **Marken bleiben eine Momentaufnahme.** Ob eine Mail gelesen oder
+  beantwortet war, wird beim Archivieren festgehalten und danach nie wieder
+  angefasst. Für ein Archiv ist das vertretbar – die Frage ist, ob jemand
+  das anders erwartet.
+
 - [ ] **Umlaut-Umschreibungen in der Suche.** `von:muller` findet inzwischen
   „Müller", aber `von:mueller` nicht. Die Auffächerung ue→ü müsste die
   Suchanfrage selbst leisten. Lohnt der Aufwand?
@@ -154,3 +167,8 @@ wurde.
 - [x] **Thunderbird-, Maildir- und MBOX-Quellen.** Erledigt am 2026-08-25.
 - [x] **Kommandozeile und 121 Tests.** Erledigt am 2026-08-25.
 - [x] **Rechtslage DE/AT/CH aufgearbeitet.** Erledigt am 2026-08-25.
+- [x] **IMAP-Abruf mit Kontenverwaltung.** Erledigt am 2026-08-25. Passwörter
+  im Schlüsselbund, inkrementell über `UIDVALIDITY` und den Höchststand aus
+  dem Archiv, gescheiterte Mails werden vorgemerkt. `CONDSTORE` blieb außen
+  vor: Es hilft nur beim Nachziehen geänderter Marken, und die archivieren
+  wir ohnehin nur als Momentaufnahme.

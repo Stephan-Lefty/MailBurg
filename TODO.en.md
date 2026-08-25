@@ -9,18 +9,17 @@ down, with the date they were completed.
 
 ### Needed before real-world use
 
-- [ ] **Full-text extraction from attachments.** Only filenames are indexed so
-  far, not contents. Needed: PDF (`pypdf`, with poppler's `pdftotext` as the
-  faster path where available), DOCX, XLSX, PPTX, ODF, RTF. **Not PyMuPDF** —
-  it is AGPL and would infect an MIT project. Extraction must run in a
-  `ProcessPoolExecutor`, since PDF parsing is CPU-bound and would otherwise sit
-  on the GIL.
+- [ ] **Text recognition for scanned PDFs.** The import now counts how many
+  PDFs carry no text layer — those are documents somebody scanned, and they
+  stay unfindable. Only OCR helps, via `ocrmypdf` or `tesseract`. Both are
+  large foreign programs, so this stays optional and only runs where they are
+  present. Open: whether it should run during archiving (slow) or later as a
+  separate pass over existing holdings.
 
-- [ ] **IMAP retrieval.** Account management for up to 30 addresses, passwords
-  in the operating system keyring, never in a config file. Incremental via
-  `UIDVALIDITY` and the highest UID seen per folder, `CONDSTORE` where the
-  server supports it. App passwords first — OAuth2 requires a lengthy review
-  process at Google and comes later.
+- [ ] **OAuth2 login.** Retrieval works with app passwords. That is enough, but
+  it is not what Gmail and Outlook actually want — OAuth2 belongs there. At
+  Google it involves an application review that takes time, so: later, and not
+  a prerequisite for real-world use.
 
 - [ ] **Graphical interface with PySide6.** Three panes: account tree, results,
   preview. Search bar with results as you type. Archive creation wizard.
@@ -100,9 +99,28 @@ down, with the date they were completed.
   touches a file while MailBurg is writing it. To check: whether the
   write-beside-then-rename in `store.py` already covers this.
 
-- [ ] **How fast is search at half a million messages, really?** Only measured
-  on tiny sets so far. Target is under 200 ms. Also unclear how large the index
-  actually grows — the trigram estimate is still just an estimate.
+- [ ] **How fast is search at half a million messages, really?** Measured on
+  2026-08-25 against 5,187 real messages (1.2 GB from a Thunderbird profile):
+  **9 to 13 ms** per query, across free text, field search and attachment type.
+  The index takes 95 MB, 12 % of the archive — the fear that the trigram index
+  would blow it up did not bear out.
+
+  Extrapolated to 500,000 messages that would be roughly 9 GB of index. Whether
+  query time stays under 200 ms at that size is still unmeasured; FTS5 should
+  manage it. That needs holdings of that size to confirm.
+
+- [ ] **What happens when somebody renames an IMAP folder?** MailBurg records
+  the location under the folder's display name. "Customers" becomes
+  "Customers 2025" and the high-water mark for that name is zero: the whole
+  folder is fetched again and journalled as a second location. Nothing is lost
+  and nothing is duplicated on disk, but the journal grows for no reason and
+  the folder shows up twice in the tree. Whether the folder identifier from
+  RFC 8474 (`OBJECTID`) solves this cleanly needs checking — not every server
+  supports it.
+
+- [ ] **Flags are a snapshot.** Whether a message was read or replied to is
+  recorded once at archiving time and never revisited. Defensible for an
+  archive — the question is whether anyone expects otherwise.
 
 - [ ] **Umlaut transliteration in search.** `von:muller` now finds "Müller",
   but `von:mueller` does not. Expanding ue→ü would have to happen in the query
@@ -121,3 +139,10 @@ down, with the date they were completed.
 - [x] **Thunderbird, Maildir and MBOX sources.** Done 2026-08-25.
 - [x] **Command line and 121 tests.** Done 2026-08-25.
 - [x] **Legal position for DE/AT/CH researched.** Done 2026-08-25.
+- [x] **Full-text extraction from attachments** (PDF and office formats).
+  Done 2026-08-25.
+- [x] **IMAP retrieval with account management.** Done 2026-08-25. Passwords in
+  the keyring, incremental via `UIDVALIDITY` and the high-water mark read back
+  out of the archive, failed messages flagged for retry. `CONDSTORE` was left
+  out: it only helps with tracking changed flags, and we archive those as a
+  snapshot anyway.

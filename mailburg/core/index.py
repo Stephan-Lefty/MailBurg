@@ -360,6 +360,19 @@ class Index:
             )
         ]
 
+    def max_uid(self, account: str, folder: str) -> int:
+        """Die höchste UID, die aus diesem Ordner tatsächlich im Archiv liegt.
+
+        Der Anhaltspunkt für den nächsten IMAP-Abruf. Bewusst aus dem Index
+        und nicht aus einer mitgeschriebenen Zahl – siehe
+        ``mailburg.core.sync``.
+        """
+        row = self.db.execute(
+            """SELECT MAX(uid) FROM locations WHERE account = ? AND folder = ?""",
+            (account, folder),
+        ).fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
+
     def statistics(self) -> dict[str, int]:
         """Kennzahlen für die Übersicht."""
         one = lambda sql: self.db.execute(sql).fetchone()[0]  # noqa: E731

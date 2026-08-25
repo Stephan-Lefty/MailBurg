@@ -12,12 +12,16 @@ mailburg/
 │   ├── journal.py     das Protokoll mit der Hash-Kette – das Herzstück
 │   ├── store.py       inhaltsadressierte Ablage der Mails
 │   ├── index.py       SQLite mit FTS5, zwei Volltextindizes
+│   ├── importer.py    der Archivierungslauf, mit Prozesspool für Anhänge
+│   ├── accounts.py    Postfächer und Passwörter (Schlüsselbund)
+│   ├── sync.py        UIDVALIDITY und vorgemerkte Nachzügler je Ordner
 │   ├── retention.py   Aufbewahrungsfristen DE/AT/CH, rein rechnend
 │   ├── compress.py    Zstandard mit Rückfall auf LZMA
 │   └── paths.py       Verzeichnisse je Betriebssystem
-├── extract/message.py Mails zerlegen
+├── extract/message.py Mails zerlegen; pdf.py, office.py, text.py für Anhänge
 ├── search/query.py    Suchausdruck -> SQL
-├── sources/           base.py (Schnittstelle), local.py (Thunderbird/Maildir/MBOX)
+├── sources/           base.py (Schnittstelle), local.py (Thunderbird/Maildir/MBOX),
+│                      imap.py (Postfächer)
 ├── ui/                noch leer – kommt mit PySide6
 └── __main__.py        Kommandozeile
 ```
@@ -51,6 +55,31 @@ Binärpaket verteilt werden. Also PySide6 statt PyQt6, pypdf statt PyMuPDF.
 **`fsync` nicht pro Eintrag.** Bei hunderttausend Mails am Stück ist das der
 Flaschenhals. `journal.flush()` am Ende eines Durchlaufs und vor jedem Siegel.
 
+**Das Postfach wird nur gelesen.** `EXAMINE` statt `SELECT`, `BODY.PEEK[]`
+statt `BODY[]`. Beides zusammen sorgt dafür, dass ungelesene Post ungelesen
+bleibt. Wer eines davon vergisst, macht aus einem Archivprogramm ein Programm,
+das fremde Postfächer verändert.
+
+**Der Höchststand für den nächsten Abruf wird nicht mitgeschrieben.** Er kommt
+aus `index.max_uid()`, also aus dem, was *tatsächlich* im Archiv liegt. Eine
+mitgeschriebene Zahl wäre nach einem Abbruch mitten im Ordner falsch – sie
+stünde auf der zuletzt geholten Mail, nicht auf der zuletzt abgelegten, und
+alles dazwischen fehlte dauerhaft. Deshalb steht in `core/sync.py` nur, was
+der Index nicht wissen kann: `UIDVALIDITY` und die Nachzügler.
+
+**Eine gescheiterte Mail muss vorgemerkt werden.** Sonst zieht der Höchststand
+an ihr vorbei und sie fehlt für immer, ohne Spur. Das ist der Grund, warum
+`importieren()` dem Fehler-Rückruf die ganze `RawMessage` gibt und nicht nur
+den Ordner – ohne die UID lässt sie sich nicht wieder anfordern.
+
+**`UID n:*` liefert immer mindestens eine UID.** Auch wenn die höchste
+vorhandene kleiner als `n` ist; so steht es in RFC 3501. Ohne Nachfiltern holt
+jeder Abruf die zuletzt archivierte Mail erneut.
+
+**Gmails »Alle Nachrichten« gehört nicht ins Archiv.** Der Ordner (`\All` nach
+RFC 6154) enthält sämtliche Mails ein zweites Mal. Auf der Platte gäbe das
+keine doppelte Datei, wohl aber einen zweiten Fundort je Mail im Journal.
+
 ## Lizenzen und Recht
 
 Im README und überall sonst gilt: MailBurg **unterstützt** revisionssicheren
@@ -71,4 +100,9 @@ wer das behauptet, macht sich angreifbar. Die Belege dafür stehen in
 - Verhalten bei einem Archiv auf einem Laufwerk, das während des Betriebs
   verschwindet.
 - Zusammenspiel mit einem laufenden Nextcloud-Client.
-- Große Bestände: gemessen wurde bisher nur an wenigen Mails.
+- Große Bestände: gemessen wurde an 5.187 Mails, nicht an einer halben Million.
+- **Der Abruf gegen einen echten IMAP-Server.** Geprüft ist er gegen den
+  nachgebildeten Server in `tests/fake_imap.py`. Der hält sich an RFC 3501 –
+  echte Server tun das mit Eigenheiten. Besonders zu beobachten: Gmail
+  (Etiketten statt Ordner), Exchange (eigenwillige LIST-Antworten) und Server,
+  die bei zu vielen UIDs in einer Zeile aussteigen.

@@ -35,9 +35,9 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Frühe Fassung.** Der Unterbau steht und ist getestet; die grafische Oberfläche
-und der IMAP-Abruf fehlen noch. Was heute geht, geht über die Kommandozeile.
-Einzelheiten in [TODO.md](TODO.md).
+**Frühe Fassung.** Der Unterbau steht, der Abruf aus IMAP-Postfächern läuft,
+beides ist getestet. Die grafische Oberfläche fehlt noch – was heute geht, geht
+über die Kommandozeile. Einzelheiten in [TODO.md](TODO.md).
 
 ## Wie es funktioniert
 
@@ -126,6 +126,52 @@ python3 -m mailburg pruefen ~/Archiv
 Als Quelle taugt ein Thunderbird-Profil, ein Maildir-Verzeichnis oder eine
 einzelne MBOX-Datei. Bei einem Thunderbird-Profil werden alle Konten und Ordner
 mitsamt ihrer Verschachtelung übernommen.
+
+## Postfächer abrufen
+
+Für die laufende Archivierung holt MailBurg die Post direkt aus dem Postfach:
+
+```bash
+# Postfach einrichten – das Passwort wird abgefragt, nicht als Argument übergeben
+python3 -m mailburg konten hinzufuegen Firma \
+    --server imap.example.org --benutzer post@example.org
+
+# Nachsehen, was eingerichtet ist und welche Ordner archiviert würden
+python3 -m mailburg konten liste
+python3 -m mailburg konten pruefen Firma
+
+# Abrufen – beim ersten Mal alles, danach nur noch das Neue
+python3 -m mailburg abrufen ~/Archiv
+python3 -m mailburg abrufen ~/Archiv --konto Firma
+```
+
+Der Abruf eignet sich für die Zeitsteuerung: `mailburg abrufen ~/Archiv` in
+einem nächtlichen Cron-Auftrag genügt.
+
+**Das Postfach bleibt unangetastet.** MailBurg öffnet jeden Ordner nur lesend
+und holt die Mails mit `BODY.PEEK[]`. Ungelesene Post ist hinterher immer noch
+ungelesen – ein Archivprogramm, das das nicht einhält, ist unbrauchbar.
+
+**Passwörter stehen im Schlüsselbund** des Betriebssystems, nie in einer
+Konfigurationsdatei. Dafür wird das Paket `keyring` gebraucht; fehlt es, läuft
+alles weiter, nur wird das Passwort bei jedem Abruf neu erfragt. In die
+Kontenliste kommt es auch dann nicht.
+
+Bei Gmail, GMX, Web.de und Outlook genügt das Kennwort der Weboberfläche nicht –
+diese Anbieter verlangen für den Zugriff von außen ein eigenes App-Passwort.
+Anmeldung per OAuth2 ist vorgesehen, aber noch nicht gebaut.
+
+**Was übergangen wird:** Papierkorb, Spamverdacht und Entwürfe. Der Anwender hat
+diese Post schon einmal aussortiert; sie ins Archiv zu holen, würde diese
+Entscheidung rückgängig machen. Bei Gmail bleibt zusätzlich »Alle Nachrichten«
+außen vor – dieser Ordner enthält sämtliche Mails ein zweites Mal.
+
+**Nur das Neue.** Woher MailBurg weiß, wo es stehen geblieben ist, ist die
+einzige wirklich heikle Stelle daran: Der Höchststand wird nicht mitgeschrieben,
+sondern aus dem Archiv selbst abgelesen. Bricht ein Abruf mitten im Ordner ab,
+holt der nächste genau den Rest. Und eine einzelne Mail, an der sich MailBurg
+verschluckt hat, wird vorgemerkt und beim nächsten Lauf erneut angefordert –
+sonst fehlte sie für immer, ohne dass es je jemand bemerkte.
 
 ## Zu Nextcloud
 

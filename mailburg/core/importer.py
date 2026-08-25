@@ -95,9 +95,15 @@ def importieren(
     """Liest eine Quelle vollständig ins Archiv.
 
     ``fortschritt`` wird gelegentlich mit der bisherigen Statistik gerufen,
-    ``auf_fehler`` mit Ordner und Ausnahme, wenn eine einzelne Mail
-    scheitert. Ein Fehler bricht den Lauf nie ab – eine unlesbare Nachricht
-    unter zehntausend darf die übrigen nicht kosten.
+    ``auf_fehler`` mit der Nachricht und der Ausnahme, wenn eine einzelne
+    Mail scheitert. Ein Fehler bricht den Lauf nie ab – eine unlesbare
+    Nachricht unter zehntausend darf die übrigen nicht kosten.
+
+    Übergeben wird die ganze ``RawMessage`` und nicht nur ihr Ordner, weil
+    der IMAP-Abruf die UID braucht: Nur mit ihr lässt sich die gescheiterte
+    Mail beim nächsten Lauf noch einmal anfordern. Ohne sie zöge der
+    Höchststand an ihr vorbei, und sie fehlte für immer im Archiv – ohne
+    dass es je jemand bemerkte.
     """
     stat = Statistik()
     kerne = prozesse if prozesse is not None else min(os.cpu_count() or 2, 8)
@@ -140,7 +146,7 @@ def importieren(
             except Exception as exc:  # noqa: BLE001
                 stat.fehlgeschlagen += 1
                 if auf_fehler:
-                    auf_fehler(nachricht.folder, exc)
+                    auf_fehler(nachricht, exc)
             zwischenstand()
         archiv.index.commit()
         archiv.journal.flush()
@@ -159,7 +165,7 @@ def importieren(
             except Exception as exc:  # noqa: BLE001
                 stat.fehlgeschlagen += 1
                 if auf_fehler:
-                    auf_fehler(nachricht.folder, exc)
+                    auf_fehler(nachricht, exc)
 
     with ProcessPoolExecutor(max_workers=kerne) as pool:
         for nachricht in quelle.iter_messages():
@@ -175,7 +181,7 @@ def importieren(
                 except Exception as exc:  # noqa: BLE001
                     stat.fehlgeschlagen += 1
                     if auf_fehler:
-                        auf_fehler(nachricht.folder, exc)
+                        auf_fehler(nachricht, exc)
             else:
                 offen[pool.submit(_verarbeiten, nachricht.raw, True)] = nachricht
                 if len(offen) >= deckel:

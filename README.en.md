@@ -34,9 +34,9 @@ MailBurg does the opposite:
 
 ## Status
 
-**Early.** The foundation is in place and tested; the graphical interface and
-IMAP retrieval are still missing. What works today works from the command line.
-See [TODO.en.md](TODO.en.md).
+**Early.** The foundation is in place, retrieval from IMAP mailboxes works, and
+both are tested. The graphical interface is still missing — what works today
+works from the command line. See [TODO.en.md](TODO.en.md).
 
 ## How it works
 
@@ -111,6 +111,51 @@ python3 -m mailburg pruefen ~/Archive
 Sources can be a Thunderbird profile, a Maildir directory or a single MBOX
 file. Thunderbird profiles are imported with all accounts and their nested
 folder structure.
+
+## Fetching from mailboxes
+
+For ongoing archiving, MailBurg collects mail straight from the mailbox:
+
+```bash
+# Set up a mailbox — the password is prompted for, never passed as an argument
+python3 -m mailburg konten hinzufuegen Firma \
+    --server imap.example.org --benutzer post@example.org
+
+# See what is configured and which folders would be archived
+python3 -m mailburg konten liste
+python3 -m mailburg konten pruefen Firma
+
+# Fetch — everything the first time, only what is new afterwards
+python3 -m mailburg abrufen ~/Archive
+python3 -m mailburg abrufen ~/Archive --konto Firma
+```
+
+This is meant for scheduling: `mailburg abrufen ~/Archive` in a nightly cron job
+is all it takes.
+
+**Your mailbox stays untouched.** Every folder is opened read-only and messages
+are fetched with `BODY.PEEK[]`. Unread mail is still unread afterwards — an
+archiver that gets this wrong is worse than useless.
+
+**Passwords live in the operating system's keyring**, never in a configuration
+file. This needs the `keyring` package; without it everything still runs, the
+password is simply asked for on every fetch. It is not written to the account
+list either way.
+
+Gmail, GMX, Web.de and Outlook do not accept your web password for outside
+access — they require an app-specific password. OAuth2 is planned but not built
+yet.
+
+**What is skipped:** trash, spam and drafts. The user already sorted that mail
+out once; pulling it into the archive would undo that decision. On Gmail, "All
+Mail" is skipped as well — it contains every message a second time.
+
+**Only what is new.** How MailBurg knows where it left off is the genuinely
+delicate part: the high-water mark is not written down, it is read back out of
+the archive itself. If a fetch is interrupted mid-folder, the next one picks up
+exactly the remainder. And a single message MailBurg choked on is flagged and
+requested again next time — otherwise it would be missing forever, with nobody
+any the wiser.
 
 ## On Nextcloud
 
