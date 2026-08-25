@@ -386,22 +386,31 @@ class KontoZeile(QWidget):
 
         beschreibung = f"{konto.benutzer} — {konto.server}:{konto.port}"
         if konto.ist_lokale_bruecke:
-            beschreibung += "  (Brücke auf diesem Rechner)"
+            beschreibung += "   (Brücke auf diesem Rechner)"
         self.beschreibung = QLabel(beschreibung)
         self.beschreibung.setEnabled(False)
+        # Nebeneinander bräuchten Name und Beschreibung zusammen mehr
+        # Breite, als ein Fenster vernünftigerweise hat – dann steht die
+        # Hälfte außerhalb, und man rollt waagerecht.
+        self.beschreibung.setIndent(22)
 
         self.passwort = QLineEdit()
         self.passwort.setEchoMode(QLineEdit.Password)
         self.passwort.setPlaceholderText("Passwort")
         self.passwort.setAccessibleName(f"Passwort für {konto.name}")
+        self.passwort.setMinimumWidth(190)
 
         self.zustand = QLabel("")
-        self.zustand.setMinimumWidth(180)
+        self.zustand.setWordWrap(True)
+        self.zustand.setMinimumWidth(150)
 
-        gitter.addWidget(self.ankreuz, zeile, 0)
-        gitter.addWidget(self.beschreibung, zeile, 1)
-        gitter.addWidget(self.passwort, zeile, 2)
-        gitter.addWidget(self.zustand, zeile, 3)
+        # Zwei Zeilen je Postfach: oben Name, Passwort und Zustand,
+        # darunter eingerückt, worum es sich handelt.
+        oben = zeile * 2
+        gitter.addWidget(self.ankreuz, oben, 0)
+        gitter.addWidget(self.passwort, oben, 1)
+        gitter.addWidget(self.zustand, oben, 2)
+        gitter.addWidget(self.beschreibung, oben + 1, 0, 1, 3)
 
     @property
     def gewaehlt(self) -> bool:
@@ -428,14 +437,19 @@ class KontenSeite(QWizardPage):
         self.herkunft.setWordWrap(True)
 
         self.gitter = QGridLayout()
-        self.gitter.setColumnStretch(1, 1)
+        self.gitter.setColumnStretch(0, 1)   # Name darf wachsen
+        self.gitter.setColumnStretch(1, 0)   # Passwortfeld bleibt, wie es ist
+        self.gitter.setColumnStretch(2, 0)   # Zustand ebenso
+        self.gitter.setVerticalSpacing(2)
 
         inhalt = QWidget()
         inhalt.setLayout(self.gitter)
         rollbereich = QScrollArea()
         rollbereich.setWidget(inhalt)
         rollbereich.setWidgetResizable(True)
-        rollbereich.setMinimumHeight(240)
+        rollbereich.setMinimumHeight(260)
+        # Waagerecht rollen zu müssen ist immer ein Fehler im Aufbau.
+        rollbereich.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         weiteres = QPushButton("Weiteres Postfach von Hand eintragen …")
         weiteres.clicked.connect(self._von_hand)
@@ -797,7 +811,7 @@ class Einrichtungsassistent(QWizard):
         self.setButtonText(QWizard.HelpButton, "Hilfe")
         # Der Anwender soll jederzeit zurück können, ohne etwas zu verlieren.
         self.setOption(QWizard.NoBackButtonOnStartPage, True)
-        self.setMinimumSize(680, 520)
+        self.setMinimumSize(820, 620)
 
         self.addPage(WillkommenSeite())
         self.addPage(ArchivSeite())
