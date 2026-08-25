@@ -10,12 +10,13 @@ wurde.
 
 ### Muss vor dem ersten echten Einsatz passieren
 
-- [ ] **Anhänge im Volltext lesen.** Bisher werden nur die Dateinamen
-  indiziert, nicht der Inhalt. Gebraucht werden PDF (`pypdf`, mit `pdftotext`
-  aus poppler als schnellerem Weg, wenn vorhanden), DOCX, XLSX, PPTX, ODF,
-  RTF. **Kein PyMuPDF** – das steht unter AGPL und würde ein MIT-Projekt
-  anstecken. Die Verarbeitung muss in einen `ProcessPoolExecutor`, weil
-  PDF-Auswertung rechenintensiv ist und sonst am GIL hängen bleibt.
+- [ ] **Texterkennung für eingescannte PDF.** Der Import zählt inzwischen
+  mit, wie viele PDF keine Textebene haben – das sind Dokumente, die jemand
+  eingescannt hat, und die bleiben unauffindbar. Abhilfe schafft nur
+  Texterkennung, etwa über `ocrmypdf` oder `tesseract`. Beides sind große
+  Fremdprogramme, deshalb nur als Kür und nur, wenn sie vorhanden sind.
+  Offen: ob das beim Archivieren laufen soll (langsam) oder später als
+  eigener Durchlauf über vorhandene Bestände.
 
 - [ ] **IMAP-Abruf.** Kontenverwaltung für bis zu 30 Adressen, Passwörter im
   Schlüsselbund des Betriebssystems (`keyring`), niemals in einer
