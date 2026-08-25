@@ -1,7 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="MailBurg">
   <title>MailBurg</title>
   <defs>
-    <linearGradient id="mb-grund" x1="0" y1="0" x2="0" y2="1">
+    <!-- userSpaceOnUse ist hier wesentlich, nicht Geschmackssache: Ohne die
+         Angabe berechnet SVG den Verlauf für jedes Element neu über dessen
+         eigene Bounding-Box. Torbogen und Umschlagklappe bekämen dann jeder
+         einen eigenen Verlauf von hell nach dunkel und träfen die Farbe des
+         Untergrunds an ihrer Stelle nicht. So dagegen greifen alle auf
+         denselben Verlauf über die volle Fläche zu und passen exakt. -->
+    <linearGradient id="mb-grund" gradientUnits="userSpaceOnUse"
+                    x1="0" y1="0" x2="0" y2="512">
       <stop offset="0" stop-color="#0e8af6"/>
       <stop offset="1" stop-color="#0047a7"/>
     </linearGradient>
