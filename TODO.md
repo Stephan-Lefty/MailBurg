@@ -45,20 +45,34 @@ wurde.
 
 ### Danach
 
-- [ ] **Das Archiv selbst als IMAP-Server anbieten.** Statt einer eigenen App
-  fürs Handy: MailBurg stellt sein Archiv als nur lesbares IMAP-Konto bereit.
-  Dann bindet es jedes Mailprogramm ein – Thunderbird, Outlook, Apple Mail,
-  K-9 Mail, FairEmail –, auf jedem Gerät, ohne eine Zeile App-Code und ohne
-  Play Console oder App Store.
+- [ ] **Das Archiv selbst als IMAP-Server anbieten – als abschaltbare
+  Erweiterung, nicht im Kern.** MailBurg stellt sein Archiv als nur lesbares
+  IMAP-Konto bereit. Dann bindet es jedes Mailprogramm ein – Thunderbird,
+  Outlook, Apple Mail, K-9 Mail, FairEmail –, auf jedem Gerät, ohne eine
+  Zeile App-Code und ohne Play Console oder App Store. Wer es nicht braucht,
+  schaltet es nicht ein und hat auch keinen offenen Port.
 
   Nebenbei löst das den Rückweg in den Mailclient von selbst: Wer eine
   archivierte Mail beantworten will, tut das im gewohnten Programm.
 
-  **Sicherheit ist hier der springende Punkt.** Ein IMAP-Dienst, der ins
-  offene Netz zeigt, ist eine Angriffsfläche vor einem Archiv mit
-  jahrzehntealter Post. Standard muss deshalb sein: nur auf `127.0.0.1`
-  lauschen, ausdrücklich freizuschalten fürs Heimnetz, und für unterwegs der
-  Verweis auf VPN oder Tailscale statt einer Portfreigabe.
+  **Zur Erreichbarkeit.** Eine Cloud braucht es dafür nicht – wohl aber ein
+  Gerät, das läuft. Das ist der eigentliche Punkt. Nextcloud ist der
+  *Ablageort der Dateien*; den IMAP-Dienst muss ein laufendes Programm
+  anbieten. Liegt das Archiv in der Cloud, der Rechner ist aber aus, gibt es
+  kein IMAP. Drei sinnvolle Aufstellungen: im Heimnetz vom eingeschalteten
+  PC, von unterwegs per VPN ins Heimnetz, oder dauerhaft von einem NAS
+  beziehungsweise Raspberry Pi.
+
+  Günstig dabei: Der nur lesende Zugriff ist schon vorgesehen –
+  `Archive.open(pfad, exclusive=False)` umgeht die Sperrdatei. Ein
+  IMAP-Dienst auf dem NAS kann das Archiv also ausliefern, während der PC
+  gleichzeitig weiter archiviert.
+
+  **Sicherheit ist der springende Punkt.** Ein IMAP-Dienst, der ins offene
+  Netz zeigt, ist eine Angriffsfläche vor einem Archiv mit jahrzehntealter
+  Post. Standard muss deshalb sein: nur auf `127.0.0.1` lauschen,
+  ausdrücklich freizuschalten fürs Heimnetz, und für unterwegs der Verweis
+  auf VPN oder Tailscale statt einer Portfreigabe im Router.
 
 - [ ] **Aufbewahrungskategorien in der Oberfläche.** Das Rechenwerk steht in
   `core/retention.py` und ist getestet, aber es gibt noch keinen Weg, einer
