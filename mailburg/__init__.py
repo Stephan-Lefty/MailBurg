@@ -11,6 +11,11 @@ __version__ = "0.1.0"
 APP_ID = "de.stephanlefty.MailBurg"
 APP_NAME = "MailBurg"
 
+#: Wo der Quelltext liegt. Steht hier und nicht verstreut im Programm,
+#: weil die Adresse an mehreren Stellen auftaucht – in der Oberfläche, in
+#: der Paketbeschreibung, in der Doku – und nirgends veralten darf.
+QUELLTEXT_URL = "https://github.com/Stephan-Lefty/MailBurg"
+
 # Version des Archivformats auf der Platte. Wird in archive.json geschrieben
 # und beim Öffnen geprüft, damit eine ältere Programmfassung ein neueres
 # Archiv nicht halb versteht und dabei beschädigt.

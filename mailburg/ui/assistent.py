@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
     QWizardPage,
 )
 
-from mailburg import APP_NAME
+from mailburg import APP_NAME, QUELLTEXT_URL
 from mailburg.core import accounts
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, Mode
@@ -118,11 +118,11 @@ class WillkommenSeite(QWizardPage):
             "Programm benutzt – mitsamt Ihrer Internetadresse. MailBurg tut "
             "das nicht. Der Preis dafür: Sie erfahren von neuen Fassungen "
             "nicht von selbst, sondern müssen gelegentlich nachsehen.</p>"
-            "<p><b>Transparenz ist uns wichtig:</b> Der gesamte Quelltext "
-            "ist offen einsehbar – wer nachprüfen möchte, was das Programm "
-            "tut, kann es tun, und wer es selbst nicht kann, kann jemanden "
-            "fragen, der es kann. Das ist der Unterschied zu einem "
-            "Versprechen.</p>"
+            f"<p><b>Transparenz ist uns wichtig:</b> Der gesamte "
+            f"<a href='{QUELLTEXT_URL}'>Quelltext</a> ist offen einsehbar – "
+            f"wer nachprüfen möchte, was das Programm tut, kann es tun, und "
+            f"wer es selbst nicht kann, kann jemanden fragen, der es kann. "
+            f"Das ist der Unterschied zu einem Versprechen.</p>"
 
             "<p style='margin-top:14px'><b>Sie bleiben unabhängig</b></p>"
             "<p>Jede Mail liegt einzeln im Archiv, in dem Format, in dem "
@@ -144,6 +144,12 @@ class WillkommenSeite(QWizardPage):
         )
         text.setWordWrap(True)
         text.setTextFormat(Qt.RichText)
+        # Ohne das wäre der Verweis nur blauer Text: Qt öffnet Adressen im
+        # Browser erst, wenn man es ausdrücklich erlaubt.
+        text.setOpenExternalLinks(True)
+        text.setTextInteractionFlags(
+            Qt.TextBrowserInteraction | Qt.TextSelectableByMouse
+        )
 
         rollbar = QScrollArea()
         rollbar.setWidget(text)
