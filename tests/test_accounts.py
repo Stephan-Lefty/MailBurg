@@ -256,3 +256,64 @@ class ZertifikatsnamenTest(unittest.TestCase):
         from mailburg.core.tlsdiagnose import passt
 
         self.assertTrue(passt("s111.hoster.example.", "*.hoster.example"))
+
+
+class SchluesselbundNameTest(unittest.TestCase):
+    """Der Schlüsselbund muss beim richtigen Namen genannt werden.
+
+    »KDE-Brieftasche« vor einem GNOME-Nutzer ist schlimmer als gar keine
+    Auskunft: Er sucht dann in seinem Menü nach etwas, das es dort nicht
+    gibt.
+    """
+
+    def name_bei(self, modulname: str, dienst: str = "") -> str:
+        from unittest import mock
+
+        from mailburg.core import accounts
+
+        class GefaelschtesBackend:
+            pass
+
+        GefaelschtesBackend.__module__ = modulname
+
+        with mock.patch.object(accounts, "schluesselbund_verfuegbar", return_value=True), \
+             mock.patch.dict("sys.modules", {"keyring": mock.MagicMock()}), \
+             mock.patch.object(accounts, "_secretservice_anbieter", return_value=dienst):
+            import sys
+
+            sys.modules["keyring"].get_keyring.return_value = GefaelschtesBackend()
+            return accounts.schluesselbund_name()
+
+    def test_windows(self):
+        self.assertEqual(
+            self.name_bei("keyring.backends.Windows"), "Anmeldeinformationsverwaltung"
+        )
+
+    def test_macos(self):
+        self.assertEqual(self.name_bei("keyring.backends.macOS"), "Schlüsselbund")
+
+    def test_kde_ueber_kwallet_backend(self):
+        self.assertEqual(self.name_bei("keyring.backends.kwallet"), "KDE-Brieftasche")
+
+    def test_secretservice_fragt_nach_dem_dienst(self):
+        # Dieselbe Schnittstelle bedienen mehrere Programme - wer gerade
+        # antwortet, entscheidet den Namen.
+        self.assertEqual(
+            self.name_bei("keyring.backends.SecretService", "GNOME-Schlüsselbund"),
+            "GNOME-Schlüsselbund",
+        )
+        self.assertEqual(
+            self.name_bei("keyring.backends.SecretService", "KDE-Brieftasche"),
+            "KDE-Brieftasche",
+        )
+
+    def test_unbekanntes_backend_bleibt_neutral(self):
+        self.assertEqual(self.name_bei("keyring.backends.irgendwas"), "Schlüsselbund")
+
+    def test_ohne_schluesselbund_kein_name(self):
+        from unittest import mock
+
+        from mailburg.core import accounts
+
+        with mock.patch.object(accounts, "schluesselbund_verfuegbar", return_value=False):
+            self.assertEqual(accounts.schluesselbund_name(), "")

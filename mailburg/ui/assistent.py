@@ -90,8 +90,8 @@ class WillkommenSeite(QWizardPage):
             "<p>Es liest sie. Mehr nicht. Es löscht dort nichts, verschiebt "
             "nichts und markiert nichts als gelesen. In Ihrem Mailprogramm "
             "sieht hinterher alles aus wie vorher; was ungelesen war, ist es "
-            "weiterhin. Wenn Sie MailBurg morgen wieder abschaffen, hat sich "
-            "an Ihren Postfächern nichts geändert.</p>"
+            "weiterhin. Und sollten Sie MailBurg eines Tages nicht mehr "
+            "verwenden, finden Sie Ihre Postfächer unverändert vor.</p>"
 
             "<p style='margin-top:14px'><b>Wohin Ihre Post geht</b></p>"
             "<p>In einen Ordner auf <i>Ihrem</i> Rechner, den Sie gleich "

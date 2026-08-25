@@ -18,6 +18,12 @@ synchronised by Nextcloud.
 
 Runs on Linux, Windows and macOS.
 
+<p align="center">
+  <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes, mail clients and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Access via the interface or the command line." width="960">
+</p>
+
+<sub>Die Grafik ist auf Deutsch – wie die Oberfläche und die Suchsprache.</sub>
+
 ## Why
 
 Good tools exist for this, but they have limits: Windows only, a cap on the
