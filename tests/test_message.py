@@ -195,6 +195,32 @@ class SignaturgrafikTest(unittest.TestCase):
             "--G--\r\n"
         ).encode("utf-8")
 
+    def test_pdf_gilt_nie_als_beiwerk(self):
+        # Der Fehler des ersten Entwurfs: Apple Mail setzt "inline" auch
+        # für PDF, die im Lesebereich erscheinen sollen. 362 Quittungen und
+        # Schreiben aus einem echten Bestand galten damit als Signaturbild.
+        roh = self.mail(
+            "--G\r\nContent-Type: application/pdf\r\n"
+            'Content-Disposition: inline; filename="Quittung.pdf"\r\n'
+            "Content-ID: <pdf@mail>\r\n\r\n%PDF-1.4\r\n"
+        )
+        zerlegt = parse(roh)
+        self.assertFalse(zerlegt.attachments[0].inline)
+        self.assertTrue(zerlegt.has_attachments)
+
+    def test_grosses_bild_bleibt_ein_anhang(self):
+        # Sonst verschwände das Foto aus der Anhangsliste, bloß weil das
+        # Mailprogramm des Absenders es einzubetten pflegt.
+        from mailburg.extract.message import BEIWERK_HOECHSTGROESSE
+
+        gross = "x" * (BEIWERK_HOECHSTGROESSE + 1000)
+        roh = self.mail(
+            "--G\r\nContent-Type: image/jpeg\r\n"
+            'Content-Disposition: inline; filename="urlaub.jpg"\r\n'
+            f"Content-ID: <bild@mail>\r\n\r\n{gross}\r\n"
+        )
+        self.assertTrue(parse(roh).has_attachments)
+
     def test_eingebettetes_logo_ist_kein_anhang(self):
         roh = self.mail(
             "--G\r\nContent-Type: image/png\r\n"

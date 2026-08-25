@@ -29,6 +29,46 @@ from html.parser import HTMLParser
 MAX_BODY_CHARS = 1_000_000
 
 
+#: Bis zu dieser Größe kann ein eingebundenes Bild Beiwerk sein. Darüber
+#: ist es ein Foto, das jemand bewusst mitgeschickt hat – Logos aus
+#: Signaturen bleiben weit darunter, in einem echten Bestand liegt der
+#: häufigste bei sieben Kilobyte.
+BEIWERK_HOECHSTGROESSE = 512 * 1024
+
+
+def _ist_beiwerk(part, disposition: str) -> bool:
+    """Ob ein Teil zur Darstellung gehört statt zur Sendung.
+
+    Gemeint sind die Logos aus Signaturen, Trennlinien und Symbole
+    sozialer Netze. In einem gewachsenen Postfach sind das drei von fünf
+    »Anhängen« – zählt man sie mit, findet ``hat:anhang`` fast jede
+    Geschäftsmail und ist damit wertlos.
+
+    **Nur Bilder kommen in Frage.** Der erste Entwurf prüfte allein auf
+    ``inline`` und eine Content-ID – und stufte damit 362 PDF aus einem
+    echten Bestand als Beiwerk ein, darunter Quittungen und ein
+    halbmegabytegroßes Schreiben. Der Grund: Apple Mail und andere setzen
+    ``inline`` auch für PDF, die im Lesebereich angezeigt werden sollen.
+    Ein PDF ist aber nie ein Signaturlogo.
+
+    **Und nur kleine Bilder.** Sonst verschwände das Foto, das jemand
+    mitgeschickt hat, aus der Anhangsliste, bloß weil sein Mailprogramm es
+    einzubetten pflegt.
+    """
+    if not part.get_content_maintype() == "image":
+        return False
+
+    eingebunden = "inline" in disposition or bool(part.get("Content-ID"))
+    if not eingebunden:
+        return False
+
+    try:
+        groesse = len(part.get_payload(decode=True) or b"")
+    except Exception:  # noqa: BLE001 – im Zweifel als echten Anhang behandeln
+        return False
+    return groesse <= BEIWERK_HOECHSTGROESSE
+
+
 def _wichtigkeit(message) -> str:
     """Liest die Dringlichkeit aus den Kopfzeilen.
 
@@ -358,17 +398,7 @@ def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
         filename = part.get_filename()
         is_attachment = "attachment" in disposition or bool(filename)
 
-        # Eingebettet heißt: gehört zur Darstellung, nicht zur Sendung. Das
-        # sind die Logos aus Signaturen, die Trennlinien, die Symbole der
-        # sozialen Netze. In einem gewachsenen Postfach sind das drei von
-        # fünf "Anhängen" – wer sie mitzählt, macht "hat:anhang" wertlos,
-        # weil dann fast jede Geschäftsmail einen hat.
-        #
-        # Erkannt an zweierlei: der Angabe "inline" und einer Content-ID,
-        # über die das HTML das Bild einbindet (cid:...). Beides zusammen
-        # trifft die Signaturgrafik und verschont das Foto, das jemand
-        # bewusst mitgeschickt hat.
-        eingebettet = "inline" in disposition or bool(part.get("Content-ID"))
+        eingebettet = _ist_beiwerk(part, disposition)
 
         if is_attachment:
             try:
