@@ -150,6 +150,34 @@ class Kontenliste:
     def finden(self, name: str) -> Konto | None:
         return next((k for k in self.konten if k.name == name), None)
 
+    def finden_nach_postfach(self, benutzer: str, server: str) -> Konto | None:
+        """Sucht ein Konto anhand des Postfachs statt des Namens.
+
+        Der Name ist frei gewählt – dasselbe Postfach kann einmal »Firma«
+        heißen und beim nächsten Mal »kontakt@example.org«. Wer nur nach
+        Namen sucht, richtet es zweimal ein, ruft es zweimal ab und wundert
+        sich über doppelte Fundorte im Archiv.
+
+        **Der Server taugt nicht als Merkmal.** Derselbe Rechner ist oft
+        unter mehreren Namen erreichbar: ``imap.meinefirma.de`` und
+        ``s111.hoster.de`` können dasselbe meinen – bei Massenhostern ist
+        das sogar der Regelfall, weil das Zertifikat auf den Namen des
+        Anbieters lautet.
+
+        Ist der Benutzername eine Mailadresse, meint er das Postfach
+        eindeutig; dann genügt er allein. Nur bei Anmeldenamen ohne ``@``
+        – etwa ``p1234567`` – braucht es den Server dazu, weil dieselbe
+        Kundennummer bei zwei Anbietern vorkommen kann.
+        """
+        gesucht = benutzer.casefold()
+        for konto in self.konten:
+            vorhanden = konto.benutzer.casefold()
+            if vorhanden != gesucht:
+                continue
+            if "@" in gesucht or konto.server.casefold() == server.casefold():
+                return konto
+        return None
+
     def aktive(self) -> list[Konto]:
         return [k for k in self.konten if k.aktiv]
 

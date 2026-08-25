@@ -317,3 +317,62 @@ class SchluesselbundNameTest(unittest.TestCase):
 
         with mock.patch.object(accounts, "schluesselbund_verfuegbar", return_value=False):
             self.assertEqual(accounts.schluesselbund_name(), "")
+
+
+class PostfachErkennenTest(unittest.TestCase):
+    """Dasselbe Postfach darf nicht zweimal eingerichtet werden."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.liste = Kontenliste(Path(self._tmp.name) / "konten.json")
+        self.liste.hinzufuegen(
+            Konto(name="Kontakt", server="s111.hoster.example",
+                  benutzer="kontakt@example.org", port=143, ssl=False)
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_gefunden_trotz_anderem_namen(self):
+        # Genau der Fall: von Hand als "Kontakt" eingerichtet, aus
+        # Thunderbird käme es als "kontakt@example.org" wieder.
+        gefunden = self.liste.finden_nach_postfach(
+            "kontakt@example.org", "s111.hoster.example"
+        )
+        self.assertIsNotNone(gefunden)
+        self.assertEqual(gefunden.name, "Kontakt")
+
+    def test_gross_und_kleinschreibung_egal(self):
+        self.assertIsNotNone(
+            self.liste.finden_nach_postfach("Kontakt@DialOS.org", "S111.GoServer.Host")
+        )
+
+    def test_anderes_postfach_auf_demselben_server(self):
+        # Bei einem Massenhoster liegen dutzende Postfächer auf einer
+        # Maschine - der Server allein sagt gar nichts.
+        self.assertIsNone(
+            self.liste.finden_nach_postfach("service@example.org", "s111.hoster.example")
+        )
+
+    def test_derselbe_server_unter_anderem_namen(self):
+        # Genau Stephans Fall: von Hand über s111.hoster.example
+        # eingerichtet, aus Thunderbird käme es über imap.example.org. Ein
+        # Rechner, zwei Namen - und dasselbe Postfach.
+        gefunden = self.liste.finden_nach_postfach(
+            "kontakt@example.org", "imap.example.org"
+        )
+        self.assertIsNotNone(gefunden)
+        self.assertEqual(gefunden.name, "Kontakt")
+
+    def test_anmeldename_ohne_adresse_braucht_den_server(self):
+        # "p1234567" kann es bei zwei Anbietern geben; dann sagt der
+        # Benutzername allein nichts.
+        self.liste.hinzufuegen(
+            Konto(name="Alt", server="imap.anbieter-a.de", benutzer="p1234567")
+        )
+        self.assertIsNotNone(
+            self.liste.finden_nach_postfach("p1234567", "imap.anbieter-a.de")
+        )
+        self.assertIsNone(
+            self.liste.finden_nach_postfach("p1234567", "imap.anbieter-b.de")
+        )

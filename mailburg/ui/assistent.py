@@ -96,9 +96,14 @@ class WillkommenSeite(QWizardPage):
             "<p style='margin-top:14px'><b>Wohin Ihre Post geht</b></p>"
             "<p>In einen Ordner, den Sie gleich selbst bestimmen: auf die "
             "Platte im Rechner, auf eine externe Platte oder in Ihre eigene "
-            "Nextcloud – das ist ausdrücklich vorgesehen und funktioniert "
-            "gut, weil jede Mail eine eigene Datei ist und alte Monate sich "
-            "nie mehr ändern.</p>"
+            "Nextcloud.</p>"
+            "<p>Die Cloud ist dabei ausdrücklich vorgesehen und keine "
+            "Notlösung: Jede Mail ist eine eigene Datei, die sich nach dem "
+            "Ablegen nie wieder ändert. Ihre Cloud muss sie also genau "
+            "einmal übertragen und danach nie wieder anfassen – anders als "
+            "bei Programmen, die alles in eine einzige große Datei "
+            "schreiben und diese bei jeder neuen Mail komplett neu "
+            "abgleichen müssen.</p>"
             "<p><b>Was nicht passiert:</b> MailBurg baut Verbindungen "
             "ausschließlich zu Ihren eigenen Mailservern auf, um die Post "
             "abzuholen. Sonst zu niemandem. Es gibt keine Anmeldung bei uns, "
@@ -438,6 +443,21 @@ class KontenSeite(QWizardPage):
 
     def _zeile_anlegen(self, konto: Konto) -> None:
         zeile = KontoZeile(konto, self.gitter, len(self.zeilen))
+
+        # Dasselbe Postfach nicht zweimal einrichten. Der Name ist frei
+        # gewählt und sagt darüber nichts aus - wer beim ersten Mal "Firma"
+        # eingetragen hat, bekäme es hier als "post@firma.de" erneut
+        # angeboten und riefe es fortan doppelt ab.
+        schon_da = Kontenliste().finden_nach_postfach(konto.benutzer, konto.server)
+        if schon_da is not None:
+            # Nicht vorangekreuzt, aber auch nicht gesperrt: Es könnte
+            # Gründe geben, dasselbe Postfach ein zweites Mal einzurichten.
+            # Die Entscheidung bleibt beim Anwender, er soll sie nur nicht
+            # aus Versehen treffen.
+            zeile.ankreuz.setChecked(False)
+            zeile.melden(f"schon als »{schon_da.name}« eingerichtet")
+            zeile.bereits_da = True
+
         self.zeilen.append(zeile)
 
     def _von_hand(self) -> None:
@@ -448,6 +468,11 @@ class KontenSeite(QWizardPage):
     def validatePage(self) -> bool:
         zu_pruefen = [z for z in self.zeilen if z.gewaehlt]
         if not zu_pruefen:
+            # Alles schon eingerichtet? Dann ist nichts zu tun, und der
+            # Anwender soll weitergehen dürfen statt ermahnt zu werden.
+            if self.zeilen and all(getattr(z, "bereits_da", False) for z in self.zeilen):
+                self.wizard().konten = [z.konto for z in self.zeilen]
+                return True
             QMessageBox.information(
                 self,
                 "Kein Postfach gewählt",
@@ -560,7 +585,11 @@ class KontenSeite(QWizardPage):
     def _speichern(self) -> None:
         liste = Kontenliste()
         for zeile in self.zeilen:
-            if not zeile.gewaehlt or liste.finden(zeile.konto.name):
+            if not zeile.gewaehlt:
+                continue
+            if liste.finden(zeile.konto.name) or liste.finden_nach_postfach(
+                zeile.konto.benutzer, zeile.konto.server
+            ):
                 continue
             liste.hinzufuegen(zeile.konto)
             accounts.passwort_setzen(zeile.konto, zeile.passwort.text())
