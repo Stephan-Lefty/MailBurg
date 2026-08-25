@@ -157,12 +157,20 @@ def boden_vereinheitlichen(bild: Image.Image) -> Image.Image:
 
     In der Vorlage ist er ein dunkelblauer Bogen mit Verlauf. Der wirkt in
     kleinen Darstellungen unruhig und beißt sich mit dem Grau der Türme.
-    Ein einziger Ton, derselbe wie bei den Türmen, beruhigt das Bild.
 
     Getrennt wird über den Blaustich, nicht über die Helligkeit: Der Boden
     ist dunkelblau (Blau liegt rund 60 Stufen über Rot), die Türme sind
     neutrales Dunkelgrau (rund 14). Die Höhengrenze hält den Torbogen
     heraus, der ähnlich blau ist, aber weiter oben liegt.
+
+    **Warum nur der Boden und nicht auch der Torbogen.** Der Boden grenzt
+    nach außen an Transparenz, seine Kante ist eindeutig – ihn umzufärben
+    geht sauber. Der Torbogen dagegen liegt mitten in der Illustration und
+    geht in weichen Verläufen in die Säulen über. Jede Farbschwelle
+    schneidet dort quer durch den Verlauf, und die Übergangspixel bleiben
+    als blaue Sprenkel liegen. Drei Anläufe haben das bestätigt. Sauber
+    ließe sich das nur an einer Vektorvorlage lösen, nicht am fertigen
+    Pixelbild.
     """
     daten = np.array(bild)
     rgb = daten[:, :, :3].astype(int)
@@ -178,9 +186,8 @@ def boden_vereinheitlichen(bild: Image.Image) -> Image.Image:
 
     # Nur die Farbe ersetzen, die Deckkraft bleibt. So behalten die weich
     # auslaufenden Kanten des Bogens ihre Glättung.
-    daten[:, :, 0] = np.where(boden, BODEN_GRAU[0], daten[:, :, 0])
-    daten[:, :, 1] = np.where(boden, BODEN_GRAU[1], daten[:, :, 1])
-    daten[:, :, 2] = np.where(boden, BODEN_GRAU[2], daten[:, :, 2])
+    for kanal, wert in enumerate(BODEN_GRAU):
+        daten[:, :, kanal] = np.where(boden, wert, daten[:, :, kanal])
     return Image.fromarray(daten, "RGBA")
 
 
