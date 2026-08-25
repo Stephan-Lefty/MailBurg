@@ -62,6 +62,145 @@ def _schluesselbund_satz() -> str:
     return f"in die <b>{name}</b>"
 
 
+def sichtbarkeit_anbieten(feld: QLineEdit) -> None:
+    """Rüstet ein Passwortfeld mit einer Umschaltung auf Klartext aus.
+
+    App-Passwörter sind lange Zeichenfolgen ohne Sinn, die man aus einer
+    Weboberfläche abschreibt. Sie blind einzutippen und danach nur zu
+    erfahren, dass die Anmeldung nicht klappte, ist eine Zumutung –
+    besonders, weil man den Fehler nicht findet.
+
+    Die Umschaltung sitzt im Feld selbst und nicht daneben: So bleibt sie
+    dem Auge nahe an der Stelle, um die es geht, und braucht keinen Platz
+    in einer ohnehin engen Zeile.
+    """
+    from PySide6.QtGui import QIcon
+
+    zeigen = QIcon.fromTheme("view-visible")
+    verbergen = QIcon.fromTheme("view-hidden")
+
+    if zeigen.isNull() or verbergen.isNull():
+        # Ohne Symbolthema – etwa unter Windows – tut es ein Wort. Besser
+        # als eine Schaltfläche, die man nicht sieht.
+        zeigen = QIcon()
+        verbergen = QIcon()
+
+    aktion = feld.addAction(zeigen, QLineEdit.TrailingPosition)
+    aktion.setToolTip("Passwort anzeigen")
+    if zeigen.isNull():
+        aktion.setText("Zeigen")
+
+    def umschalten() -> None:
+        versteckt = feld.echoMode() == QLineEdit.Password
+        feld.setEchoMode(QLineEdit.Normal if versteckt else QLineEdit.Password)
+        aktion.setIcon(verbergen if versteckt else zeigen)
+        aktion.setToolTip("Passwort verbergen" if versteckt else "Passwort anzeigen")
+        if zeigen.isNull():
+            aktion.setText("Verbergen" if versteckt else "Zeigen")
+
+    aktion.triggered.connect(umschalten)
+
+
+class PasswortNachfrage(QDialog):
+    """Fragt nach einem Passwort, wenn die Anmeldung nicht geklappt hat.
+
+    Eine Warnung, die man nur wegklicken kann, lässt den Anwender ratlos
+    zurück: Er weiß, dass es nicht ging, aber der Weg zurück ins Feld ist
+    seine Sache. Hier kann er es gleich richtigstellen – oder das Postfach
+    für diesmal auslassen und später nachholen.
+    """
+
+    def __init__(self, konto: Konto, grund: str, eltern=None) -> None:
+        super().__init__(eltern)
+        self.setWindowTitle("Anmeldung nicht möglich")
+        self.setMinimumWidth(560)
+
+        kopf = QLabel(
+            f"<b>{konto.name}</b> lässt sich nicht abrufen."
+        )
+        kopf.setTextFormat(Qt.RichText)
+
+        erklaerung = QLabel(grund)
+        erklaerung.setWordWrap(True)
+        erklaerung.setEnabled(False)
+
+        rat = QLabel(self._rat(konto, grund))
+        rat.setWordWrap(True)
+        rat.setTextFormat(Qt.RichText)
+        rat.setOpenExternalLinks(True)
+
+        self.passwort = QLineEdit()
+        self.passwort.setEchoMode(QLineEdit.Password)
+        self.passwort.setPlaceholderText("Passwort erneut eingeben")
+        self.passwort.setAccessibleName(f"Passwort für {konto.name}")
+        sichtbarkeit_anbieten(self.passwort)
+        self.passwort.returnPressed.connect(self.accept)
+
+        knoepfe = QDialogButtonBox()
+        self.erneut = knoepfe.addButton(
+            "Erneut versuchen", QDialogButtonBox.AcceptRole
+        )
+        self.ueberspringen = knoepfe.addButton(
+            "Dieses Postfach auslassen", QDialogButtonBox.RejectRole
+        )
+        knoepfe.accepted.connect(self.accept)
+        knoepfe.rejected.connect(self.reject)
+
+        aufbau = QVBoxLayout(self)
+        aufbau.addWidget(kopf)
+        aufbau.addWidget(erklaerung)
+        aufbau.addSpacing(8)
+        aufbau.addWidget(rat)
+        aufbau.addSpacing(8)
+        aufbau.addWidget(self.passwort)
+        aufbau.addWidget(knoepfe)
+
+    @staticmethod
+    def _rat(konto: Konto, grund: str) -> str:
+        """Ein Hinweis, der zum Fehler passt – keine allgemeine Belehrung."""
+        if not grund:
+            return ""
+
+        if "abgelehnt" in grund or "AUTHENTICATIONFAILED" in grund.upper():
+            anbieter = konto.server.lower()
+            if any(
+                name in anbieter
+                for name in ("gmail", "google", "gmx", "web.de", "outlook", "office365")
+            ):
+                return (
+                    "Dieser Anbieter lässt das Kennwort der Weboberfläche für "
+                    "den Zugriff von außen nicht zu. Sie brauchen ein eigens "
+                    "erzeugtes <b>App-Passwort</b> aus den Sicherheits"
+                    "einstellungen Ihres Kontos."
+                )
+            if konto.ist_lokale_bruecke:
+                return (
+                    "Bei einem Brückenprogramm wie der Proton Mail Bridge gilt "
+                    "<b>nicht</b> das Passwort Ihres Kontos beim Anbieter, "
+                    "sondern das, welches die Brücke selbst anzeigt."
+                )
+            return (
+                "Der Server hat Benutzernamen oder Passwort abgelehnt. Prüfen "
+                "Sie beides – mit dem Auge rechts im Feld können Sie das "
+                "Passwort im Klartext sehen."
+            )
+
+        if "Keine Verbindung" in grund:
+            return (
+                "Der Server war nicht erreichbar. Das kann an der "
+                "Internetverbindung liegen, an einem Tippfehler im Servernamen "
+                "– oder daran, dass ein Brückenprogramm gerade nicht läuft."
+            )
+
+        if "Zertifikat" in grund:
+            return (
+                "Das ist kein Passwortproblem. Sie können hier abbrechen und "
+                "das Postfach von Hand mit dem vorgeschlagenen Servernamen "
+                "eintragen."
+            )
+        return ""
+
+
 class WillkommenSeite(QWizardPage):
     def __init__(self) -> None:
         super().__init__()
@@ -408,6 +547,7 @@ class KontoZeile(QWidget):
         self.passwort.setPlaceholderText("Passwort")
         self.passwort.setAccessibleName(f"Passwort für {konto.name}")
         self.passwort.setMinimumWidth(190)
+        sichtbarkeit_anbieten(self.passwort)
 
         self.zustand = QLabel("")
         self.zustand.setWordWrap(True)
@@ -585,13 +725,23 @@ class KontenSeite(QWizardPage):
             return False
 
         ohne_passwort = [z for z in zu_pruefen if not z.passwort.text()]
-        if ohne_passwort:
-            QMessageBox.information(
+        for zeile in ohne_passwort:
+            # Nicht ermahnen, sondern fragen. Wer acht Postfächer vor sich
+            # hat, übersieht leicht eines - ihn dann zurückzuschicken, statt
+            # ihm das Feld hinzuhalten, ist unnötige Arbeit.
+            dialog = PasswortNachfrage(
+                zeile.konto,
+                "Für dieses Postfach fehlt noch das Passwort.",
                 self,
-                "Passwort fehlt",
-                "Für folgende Postfächer fehlt noch das Passwort:\n\n"
-                + "\n".join(f"• {z.konto.name}" for z in ohne_passwort),
             )
+            if dialog.exec() and dialog.passwort.text():
+                zeile.passwort.setText(dialog.passwort.text())
+            else:
+                zeile.ankreuz.setChecked(False)
+                zeile.melden("ausgelassen")
+
+        zu_pruefen = [z for z in self.zeilen if z.gewaehlt and z.passwort.text()]
+        if not zu_pruefen:
             return False
 
         # Anmeldungen laufen nebenläufig; die Seite gibt erst frei, wenn
@@ -673,14 +823,35 @@ class KontenSeite(QWizardPage):
         gescheitert = [z for z in self.zeilen if z.gewaehlt and getattr(z, "fehler", "")]
 
         if gescheitert:
-            QMessageBox.warning(
-                self,
-                "Nicht alle Anmeldungen haben geklappt",
-                "Bei folgenden Postfächern hat die Anmeldung nicht "
-                "funktioniert:\n\n"
-                + "\n\n".join(f"{z.konto.name}:\n{z.fehler}" for z in gescheitert),
-            )
-            return
+            nochmal = []
+            for zeile in gescheitert:
+                dialog = PasswortNachfrage(zeile.konto, zeile.fehler, self)
+                if dialog.exec() and dialog.passwort.text():
+                    zeile.passwort.setText(dialog.passwort.text())
+                    zeile.fehler = ""
+                    nochmal.append(zeile)
+                else:
+                    # Ausgelassen heißt ausgelassen - nicht abgewählt und
+                    # damit stillschweigend vergessen, sondern sichtbar.
+                    zeile.ankreuz.setChecked(False)
+                    zeile.fehler = ""
+                    zeile.melden("ausgelassen")
+
+            if nochmal:
+                self._offen = len(nochmal)
+                self.wizard().button(QWizard.NextButton).setEnabled(False)
+                for zeile in nochmal:
+                    self._pruefen(zeile)
+                return
+
+            if not any(z.gewaehlt for z in self.zeilen):
+                QMessageBox.information(
+                    self,
+                    "Kein Postfach eingerichtet",
+                    "Es wurde kein Postfach eingerichtet. Sie können später "
+                    "jederzeit welche hinzufügen.",
+                )
+                return
 
         self._speichern()
         self.wizard().next()
@@ -712,6 +883,15 @@ class KontoDialog(QDialog):
         self.benutzer.setPlaceholderText("post@example.org")
         self.server = QLineEdit()
         self.server.setPlaceholderText("imap.example.org")
+        self.passwort = QLineEdit()
+        self.passwort.setEchoMode(QLineEdit.Password)
+        self.passwort.setPlaceholderText("wird gleich abgefragt")
+        self.passwort.setEnabled(False)
+        self.passwort.setToolTip(
+            "Das Passwort geben Sie in der Übersicht ein, zusammen mit den "
+            "übrigen Postfächern."
+        )
+
         self.port = QSpinBox()
         self.port.setRange(1, 65535)
         self.port.setValue(993)

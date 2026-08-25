@@ -61,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    _fehler_zeigen_statt_sterben()
+
     anwendung = QApplication(argv)
     # Muss am Objekt hängen bleiben: Ein Übersetzer, auf den niemand mehr
     # zeigt, wird weggeräumt – und die Knöpfe stehen wieder auf Englisch.
@@ -99,6 +101,56 @@ def main(argv: list[str] | None = None) -> int:
     merken(archiv)
     fenster.show()
     return anwendung.exec()
+
+
+def _fehler_zeigen_statt_sterben() -> None:
+    """Sorgt dafür, dass ein Programmfehler sichtbar wird.
+
+    Qt bricht das Programm ab, wenn in einem Signalempfänger eine Ausnahme
+    hochkommt – ohne Meldung, ohne Spur. Für den Anwender sieht das aus,
+    als sei das Fenster einfach verschwunden. Bei einem Programm, dem er
+    seine Post anvertraut, ist das der denkbar schlechteste Eindruck: Er
+    weiß nicht, ob dabei etwas kaputtgegangen ist.
+
+    Der Haken hier fängt das ab und zeigt, was passiert ist. Am Archiv
+    kann dabei nichts zu Schaden kommen – es wird nur beim Aufnehmen
+    beschrieben, und dort sichert die Reihenfolge Ablage-Journal-Index
+    ohnehin gegen Abbrüche ab.
+    """
+    import traceback
+
+    def haken(art, wert, spur):
+        if issubclass(art, KeyboardInterrupt):
+            sys.__excepthook__(art, wert, spur)
+            return
+
+        text = "".join(traceback.format_exception(art, wert, spur))
+        print(text, file=sys.stderr)
+
+        try:
+            from PySide6.QtWidgets import QApplication, QMessageBox
+
+            if QApplication.instance() is None:
+                return
+            fenster = QMessageBox()
+            fenster.setIcon(QMessageBox.Critical)
+            fenster.setWindowTitle("Da ist etwas schiefgegangen")
+            fenster.setText(
+                f"In MailBurg ist ein Fehler aufgetreten:\n\n{art.__name__}: {wert}"
+            )
+            fenster.setInformativeText(
+                "Ihr Archiv ist davon nicht betroffen – es wird nur beim "
+                "Aufnehmen von Post beschrieben, und dabei ist gegen "
+                "Abbrüche vorgesorgt.\n\n"
+                "Sie können weiterarbeiten. Wenn der Fehler wiederkehrt, "
+                "helfen die Einzelheiten unten beim Beheben."
+            )
+            fenster.setDetailedText(text)
+            fenster.exec()
+        except Exception:  # noqa: BLE001 – im Fehlerfall nicht noch mehr Fehler
+            pass
+
+    sys.excepthook = haken
 
 
 def _deutsch(anwendung):

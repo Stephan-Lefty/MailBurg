@@ -347,3 +347,141 @@ class OrteTest(unittest.TestCase):
                    frei=50 * 1024**3, gesamt=100 * 1024**3)
         self.assertTrue(eng.eng)
         self.assertFalse(weit.eng)
+
+
+class PasswortSichtbarkeitTest(OberflaechenTest):
+    """Die Umschaltung zwischen Punkten und Klartext."""
+
+    def feld(self):
+        from PySide6.QtWidgets import QLineEdit
+        from mailburg.ui.assistent import sichtbarkeit_anbieten
+
+        feld = QLineEdit()
+        feld.setEchoMode(QLineEdit.Password)
+        sichtbarkeit_anbieten(feld)
+        return feld
+
+    def test_beginnt_versteckt(self):
+        from PySide6.QtWidgets import QLineEdit
+
+        self.assertEqual(self.feld().echoMode(), QLineEdit.Password)
+
+    def test_umschalten_und_zurueck(self):
+        from PySide6.QtWidgets import QLineEdit
+
+        feld = self.feld()
+        aktion = feld.actions()[0]
+
+        aktion.trigger()
+        self.assertEqual(feld.echoMode(), QLineEdit.Normal)
+        self.assertIn("verbergen", aktion.toolTip().lower())
+
+        aktion.trigger()
+        self.assertEqual(feld.echoMode(), QLineEdit.Password)
+        self.assertIn("anzeigen", aktion.toolTip().lower())
+
+    def test_der_inhalt_bleibt_erhalten(self):
+        feld = self.feld()
+        feld.setText("geheim123")
+        feld.actions()[0].trigger()
+        self.assertEqual(feld.text(), "geheim123")
+
+    def test_kontozeile_hat_die_umschaltung(self):
+        from PySide6.QtWidgets import QGridLayout, QWidget
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.assistent import KontoZeile
+
+        halter = QWidget()
+        zeile = KontoZeile(
+            Konto(name="A", server="imap.example.org", benutzer="post"),
+            QGridLayout(halter), 0,
+        )
+        self.assertTrue(zeile.passwort.actions())
+
+
+class PasswortNachfrageTest(OberflaechenTest):
+    """Was bei einer gescheiterten Anmeldung angeboten wird."""
+
+    def konto(self, **abweichend):
+        from mailburg.core.accounts import Konto
+
+        werte = {"name": "Firma", "server": "imap.example.org", "benutzer": "post"}
+        werte.update(abweichend)
+        return Konto(**werte)
+
+    def test_bietet_ein_passwortfeld_an(self):
+        # Der Kern: nicht nur melden, sondern gleich richtigstellen lassen.
+        from PySide6.QtWidgets import QLineEdit
+        from mailburg.ui.assistent import PasswortNachfrage
+
+        dialog = PasswortNachfrage(self.konto(), "Anmeldung abgelehnt")
+        self.assertEqual(dialog.passwort.echoMode(), QLineEdit.Password)
+        self.assertTrue(dialog.passwort.actions(), "Klartext muss umschaltbar sein")
+
+    def test_rat_bei_grossen_anbietern(self):
+        from mailburg.ui.assistent import PasswortNachfrage
+
+        rat = PasswortNachfrage._rat(
+            self.konto(server="imap.gmail.com"), "Anmeldung abgelehnt"
+        )
+        self.assertIn("App-Passwort", rat)
+
+    def test_rat_bei_einer_bruecke(self):
+        from mailburg.ui.assistent import PasswortNachfrage
+
+        rat = PasswortNachfrage._rat(
+            self.konto(server="127.0.0.1", bruecke=True, ssl=False, port=1143),
+            "Anmeldung abgelehnt",
+        )
+        self.assertIn("Brücke", rat)
+
+    def test_rat_bei_fehlender_verbindung(self):
+        from mailburg.ui.assistent import PasswortNachfrage
+
+        rat = PasswortNachfrage._rat(self.konto(), "Keine Verbindung zu …")
+        self.assertIn("erreichbar", rat)
+
+    def test_zertifikatsfehler_ist_kein_passwortproblem(self):
+        from mailburg.ui.assistent import PasswortNachfrage
+
+        rat = PasswortNachfrage._rat(
+            self.konto(), "Das Zertifikat gilt nicht für imap.example.org"
+        )
+        self.assertIn("kein Passwortproblem", rat)
+
+    def test_ohne_erkannten_grund_kein_geschwaetz(self):
+        from mailburg.ui.assistent import PasswortNachfrage
+
+        self.assertEqual(PasswortNachfrage._rat(self.konto(), ""), "")
+
+
+class FehleranzeigeTest(unittest.TestCase):
+    """Die Oberfläche darf nicht stumm verschwinden."""
+
+    def test_haken_wird_gesetzt(self):
+        import sys
+
+        from mailburg.ui.app import _fehler_zeigen_statt_sterben
+
+        vorher = sys.excepthook
+        try:
+            _fehler_zeigen_statt_sterben()
+            self.assertIsNot(sys.excepthook, vorher)
+        finally:
+            sys.excepthook = vorher
+
+    def test_abbruch_durch_den_anwender_bleibt_unangetastet(self):
+        # Strg+C soll weiterhin einfach beenden, ohne Fehlerfenster.
+        import sys
+
+        from mailburg.ui.app import _fehler_zeigen_statt_sterben
+
+        vorher = sys.excepthook
+        try:
+            _fehler_zeigen_statt_sterben()
+            gerufen = []
+            sys.__excepthook__ = lambda *a: gerufen.append(a)
+            sys.excepthook(KeyboardInterrupt, KeyboardInterrupt(), None)
+            self.assertTrue(gerufen)
+        finally:
+            sys.excepthook = vorher
