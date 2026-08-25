@@ -29,6 +29,46 @@ from html.parser import HTMLParser
 MAX_BODY_CHARS = 1_000_000
 
 
+def _wichtigkeit(message) -> str:
+    """Liest die Dringlichkeit aus den Kopfzeilen.
+
+    Drei Schreibweisen für dieselbe Sache, historisch gewachsen:
+
+    * ``Importance: high | normal | low`` – Outlook und Exchange
+    * ``X-Priority: 1..5`` – Thunderbird und die meisten übrigen, wobei
+      1 die höchste Stufe ist. Verbreitet ist auch ``1 (Highest)``.
+    * ``Priority: urgent | normal | non-urgent`` – RFC 2156
+
+    Zurück kommt eine von drei deutschen Stufen. Alles Unbekannte gilt als
+    normal: Eine erfundene Angabe darf nicht dazu führen, dass eine Mail
+    bei der Suche nach wichtiger Post auftaucht.
+    """
+    wert = str(message.get("Importance", "")).strip().lower()
+    if wert.startswith("high"):
+        return "hoch"
+    if wert.startswith("low"):
+        return "niedrig"
+
+    roh = str(message.get("X-Priority", "")).strip()
+    if roh:
+        # "1 (Highest)" ebenso wie "1" – die Ziffer vorn zählt.
+        ziffer = roh[0]
+        if ziffer in "12":
+            return "hoch"
+        if ziffer in "45":
+            return "niedrig"
+        if ziffer == "3":
+            return "normal"
+
+    wert = str(message.get("Priority", "")).strip().lower()
+    if wert.startswith("urgent"):
+        return "hoch"
+    if wert.startswith("non-urgent"):
+        return "niedrig"
+
+    return "normal"
+
+
 @dataclass(frozen=True)
 class Attachment:
     """Ein Anhang, so wie er in der Mail steckt."""
@@ -91,8 +131,26 @@ class ParsedMessage:
     from_name: str = ""
     to_addrs: list[str] = field(default_factory=list)
     cc_addrs: list[str] = field(default_factory=list)
+    bcc_addrs: list[str] = field(default_factory=list)
+    """Blindkopie – steht nur in der Ausfertigung des Absenders.
+
+    In der Kopie, die ein Empfänger bekommt, fehlt dieses Feld
+    naturgemäß. Im eigenen Ordner »Gesendet« ist es aber vorhanden, und
+    dort ist es die einzige Auskunft darüber, wer eine Nachricht noch
+    bekommen hat.
+    """
+
     date: datetime | None = None
     message_id: str = ""
+    wichtigkeit: str = "normal"
+    """``hoch``, ``normal`` oder ``niedrig``.
+
+    Drei Kopfzeilen bedeuten dasselbe, je nach Mailprogramm:
+    ``Importance`` (Outlook), ``X-Priority`` (Thunderbird und die meisten
+    anderen) und ``Priority`` (RFC 2156). Wer nach wichtiger Post sucht,
+    soll sie alle drei finden, ohne zu wissen, womit sie geschrieben wurde.
+    """
+
     body: str = ""
     attachments: list[Attachment] = field(default_factory=list)
     defects: list[str] = field(default_factory=list)
@@ -276,6 +334,8 @@ def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
         message_id=_header(message, "Message-ID"),
         to_addrs=_addresses(message, "To"),
         cc_addrs=_addresses(message, "Cc"),
+        bcc_addrs=_addresses(message, "Bcc"),
+        wichtigkeit=_wichtigkeit(message),
         defects=defects,
     )
 

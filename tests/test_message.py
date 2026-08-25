@@ -247,3 +247,63 @@ class SignaturgrafikTest(unittest.TestCase):
         self.assertTrue(zerlegt.has_attachments)
         self.assertEqual(len(zerlegt.attachments), 2)
         self.assertEqual(len(zerlegt.nutzanhaenge), 1)
+
+
+class WichtigkeitTest(unittest.TestCase):
+    """Drei Kopfzeilen bedeuten dasselbe, je nach Mailprogramm."""
+
+    def mail(self, *kopfzeilen: str) -> bytes:
+        zeilen = "".join(f"{z}\r\n" for z in kopfzeilen)
+        return (
+            f"From: a@example.org\r\nTo: b@example.org\r\n"
+            f"Subject: Test\r\n{zeilen}\r\nText\r\n"
+        ).encode("utf-8")
+
+    def test_ohne_angabe_normal(self):
+        self.assertEqual(parse(self.mail()).wichtigkeit, "normal")
+
+    def test_outlook_schreibweise(self):
+        self.assertEqual(parse(self.mail("Importance: high")).wichtigkeit, "hoch")
+        self.assertEqual(parse(self.mail("Importance: Low")).wichtigkeit, "niedrig")
+
+    def test_x_priority_mit_ziffer(self):
+        self.assertEqual(parse(self.mail("X-Priority: 1")).wichtigkeit, "hoch")
+        self.assertEqual(parse(self.mail("X-Priority: 5")).wichtigkeit, "niedrig")
+        self.assertEqual(parse(self.mail("X-Priority: 3")).wichtigkeit, "normal")
+
+    def test_x_priority_mit_klammerzusatz(self):
+        # "1 (Highest)" ist die verbreitetste Schreibweise überhaupt.
+        self.assertEqual(parse(self.mail("X-Priority: 1 (Highest)")).wichtigkeit, "hoch")
+
+    def test_rfc_2156_schreibweise(self):
+        self.assertEqual(parse(self.mail("Priority: urgent")).wichtigkeit, "hoch")
+        self.assertEqual(parse(self.mail("Priority: non-urgent")).wichtigkeit, "niedrig")
+
+    def test_unsinn_gilt_als_normal(self):
+        # Eine erfundene Angabe darf nicht dazu führen, dass eine Mail bei
+        # der Suche nach wichtiger Post auftaucht.
+        self.assertEqual(parse(self.mail("Importance: sehr dringend!!")).wichtigkeit,
+                         "normal")
+
+    def test_importance_geht_vor(self):
+        roh = self.mail("Importance: high", "X-Priority: 5")
+        self.assertEqual(parse(roh).wichtigkeit, "hoch")
+
+
+class BlindkopieTest(unittest.TestCase):
+    def test_bcc_wird_gelesen(self):
+        # In der eigenen Ausfertigung im Ordner "Gesendet" steht das Feld -
+        # und dort ist es die einzige Auskunft, wer noch mitgelesen hat.
+        roh = (
+            "From: a@example.org\r\nTo: b@example.org\r\n"
+            "Cc: c@example.org\r\nBcc: heimlich@example.org\r\n"
+            "Subject: Test\r\n\r\nText\r\n"
+        ).encode("utf-8")
+        zerlegt = parse(roh)
+        self.assertEqual(zerlegt.to_addrs, ["b@example.org"])
+        self.assertEqual(zerlegt.cc_addrs, ["c@example.org"])
+        self.assertEqual(zerlegt.bcc_addrs, ["heimlich@example.org"])
+
+    def test_ohne_bcc_leer(self):
+        roh = b"From: a@example.org\r\nTo: b@example.org\r\n\r\nText\r\n"
+        self.assertEqual(parse(roh).bcc_addrs, [])

@@ -467,6 +467,12 @@ class Archive:
                     folder=entry.get("folder", ""),
                     uid=entry.get("uid"),
                     attachment_text=anhangstext,
+                    # Aus dem Journal, nicht von der Uhr: Sonst stünde nach
+                    # einem Neuaufbau überall der heutige Tag, und die
+                    # Auskunft "wann kam das ins Archiv" wäre gefälscht -
+                    # ausgerechnet die, die eine Verfahrensdokumentation
+                    # braucht.
+                    archiviert=entry.get("ts"),
                 )
             count += 1
             if progress and count % 500 == 0:

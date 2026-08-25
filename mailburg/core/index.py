@@ -49,13 +49,33 @@ CREATE TABLE IF NOT EXISTS messages (
     size            INTEGER NOT NULL DEFAULT 0,
     has_attachments INTEGER NOT NULL DEFAULT 0,
     category        TEXT    NOT NULL DEFAULT 'unbestimmt',
-    message_id      TEXT
+    message_id      TEXT,
+    -- Wann die Mail ins Archiv kam, nicht wann sie geschrieben wurde.
+    -- "Was ist diese Woche hereingekommen?" ist die Frage nach jedem
+    -- Abruf - und für eine Verfahrensdokumentation gehört sie
+    -- beantwortbar. Steht im Journal, hier für die Suche.
+    archiviert      TEXT,
+    -- hoch, normal oder niedrig; aus Importance, X-Priority oder Priority.
+    wichtigkeit     TEXT NOT NULL DEFAULT 'normal'
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_date  ON messages(date);
 CREATE INDEX IF NOT EXISTS idx_messages_year  ON messages(year);
 CREATE INDEX IF NOT EXISTS idx_messages_from  ON messages(from_addr);
 CREATE INDEX IF NOT EXISTS idx_messages_msgid ON messages(message_id);
+CREATE INDEX IF NOT EXISTS idx_messages_arch  ON messages(archiviert);
+
+-- Empfänger einzeln, nach Art getrennt. Der Volltextindex wirft An und
+-- Kopie in ein Feld; wer wissen will, ob er direkt angeschrieben war oder
+-- nur im Verteiler stand, kann das dort nicht unterscheiden.
+CREATE TABLE IF NOT EXISTS recipients (
+    msg_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    addr   TEXT    NOT NULL,
+    art    TEXT    NOT NULL          -- to, cc oder bcc
+);
+
+CREATE INDEX IF NOT EXISTS idx_recipients_msg  ON recipients(msg_id);
+CREATE INDEX IF NOT EXISTS idx_recipients_addr ON recipients(addr, art);
 
 -- Wo dieselbe Mail überall lag. Eine Mail kann in mehreren Konten und
 -- Ordnern stecken, deshalb eine eigene Tabelle statt Spalten in messages.
@@ -173,8 +193,12 @@ class Index:
                 f"{SCHEMA_VERSION}. Er muss neu aufgebaut werden – die Mails "
                 f"sind davon nicht betroffen."
             )
-        self.db.executescript(_SCHEMA)
+        # Erst nachrüsten, dann das Schema anwenden: Zum Schema gehören auch
+        # Indizes über die neuen Spalten, und die ließen sich sonst nicht
+        # anlegen. Bei einer noch leeren Datenbank tut das Nachrüsten
+        # nichts – dort entstehen die Tabellen gleich vollständig.
         self._spalten_ergaenzen()
+        self.db.executescript(_SCHEMA)
         self.db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.db.commit()
 
@@ -199,12 +223,21 @@ class Index:
                 "text_zeichen": "INTEGER NOT NULL DEFAULT -1",
                 "inline": "INTEGER NOT NULL DEFAULT 0",
             },
+            "messages": {
+                "archiviert": "TEXT",
+                "wichtigkeit": "TEXT NOT NULL DEFAULT 'normal'",
+            },
         }
         for tabelle, spalten in nachzuruesten.items():
             vorhanden = {
                 zeile[1]
                 for zeile in self.db.execute(f"PRAGMA table_info({tabelle})")
             }
+            if not vorhanden:
+                # Die Tabelle gibt es noch gar nicht – gleich darauf legt
+                # das Schema sie vollständig an. Hier nachrüsten zu wollen
+                # hieße, in eine leere Datenbank hineinzuändern.
+                continue
             for name, art in spalten.items():
                 if name not in vorhanden:
                     self.db.execute(
@@ -225,6 +258,7 @@ class Index:
         uid: int | None = None,
         flags: str = "",
         attachment_text: str = "",
+        archiviert: str | None = None,
     ) -> bool:
         """Nimmt eine Mail in den Index auf.
 
@@ -243,8 +277,8 @@ class Index:
         cursor = self.db.execute(
             """INSERT INTO messages
                (hash, bucket, date, year, from_addr, from_name, subject,
-                size, has_attachments, message_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                size, has_attachments, message_id, archiviert, wichtigkeit)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 digest,
                 bucket,
@@ -256,10 +290,27 @@ class Index:
                 size,
                 int(parsed.has_attachments),
                 parsed.message_id,
+                # Ohne Angabe der Zeitpunkt jetzt. Beim Neuaufbau reicht der
+                # Aufrufer den Zeitpunkt aus dem Journal nach - sonst stünde
+                # dort der Tag des Neuaufbaus, und die Auskunft "wann kam
+                # das ins Archiv" wäre falsch.
+                archiviert or datetime.now().astimezone().isoformat(timespec="seconds"),
+                getattr(parsed, "wichtigkeit", "normal"),
             ),
         )
         msg_id = cursor.lastrowid
         self._add_location(msg_id, account, folder, uid, flags)
+
+        for art, adressen in (
+            ("to", parsed.to_addrs),
+            ("cc", parsed.cc_addrs),
+            ("bcc", getattr(parsed, "bcc_addrs", [])),
+        ):
+            for adresse in adressen:
+                self.db.execute(
+                    "INSERT INTO recipients (msg_id, addr, art) VALUES (?, ?, ?)",
+                    (msg_id, adresse.lower(), art),
+                )
 
         names = []
         for att in parsed.attachments:

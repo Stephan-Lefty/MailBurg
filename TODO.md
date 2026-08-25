@@ -63,23 +63,10 @@ wurde.
 
   Dazu gehören **gespeicherte Suchen** (»Öffnen…«, »Speichern unter…«).
 
-- [ ] **Suchsprache erweitern.** Was die MailStore-Maske kann und MailBurg
-  noch nicht:
-
-  - `datei:*.jpg`, `datei:Müller*.doc` – Muster auf Anhangsnamen. Über
-    `GLOB` auf `attachments.filename`, das ist genauer als der Volltext
-    über Dateinamen: `*.doc` trifft dann nicht »dokumentation.pdf«.
-  - `archiviert:2026-08` – **wann die Mail ins Archiv kam**, nicht wann sie
-    geschrieben wurde. Steht im Journal, fehlt aber im Index; dort müsste
-    eine Spalte dazu. »Was kam diese Woche herein?« ist die Frage nach
-    jedem Abruf, und für die Verfahrensdokumentation gehört sie
-    beantwortbar.
-  - `groesse:>5MB`
-  - `wichtigkeit:hoch` – der `Importance`-Kopf wird bisher gar nicht
-    ausgewertet.
-  - An/Cc/Bcc getrennt. Heute landen alle Empfänger in einem Feld `an:`;
-    ob jemand direkt angeschrieben war oder im Verteiler stand, lässt sich
-    nicht unterscheiden.
+- [ ] **Gespeicherte Suchen.** In der MailStore-Maske »Öffnen…« und
+  »Speichern unter…«. Wer denselben Auszug regelmäßig braucht – etwa alle
+  Rechnungen eines Lieferanten –, soll ihn nicht jedes Mal neu
+  zusammensetzen müssen.
 
 - [ ] **Der Rückweg in den Mailclient.** Drei Wege, weil unterschiedliche
   Situationen unterschiedliche brauchen: „In Mailprogramm öffnen" über eine
@@ -218,6 +205,11 @@ wurde.
 - [x] **Thunderbird-, Maildir- und MBOX-Quellen.** Erledigt am 2026-08-25.
 - [x] **Kommandozeile und 121 Tests.** Erledigt am 2026-08-25.
 - [x] **Rechtslage DE/AT/CH aufgearbeitet.** Erledigt am 2026-08-25.
+- [x] **Suchsprache erweitert.** Erledigt am 2026-08-25: `datei:*.jpg` mit
+  Platzhaltern über GLOB, `archiviert:` für den Zeitpunkt der Aufnahme ins
+  Archiv (aus dem Journal, nicht von der Uhr), `groesse:>5MB`,
+  `wichtigkeit:hoch` aus allen drei gebräuchlichen Kopfzeilen, sowie `cc:`,
+  `bcc:` und `direkt:` über eine eigene Empfängertabelle.
 - [x] **IMAP-Abruf mit Kontenverwaltung.** Erledigt am 2026-08-25. Passwörter
   im Schlüsselbund, inkrementell über `UIDVALIDITY` und den Höchststand aus
   dem Archiv, gescheiterte Mails werden vorgemerkt. `CONDSTORE` blieb außen

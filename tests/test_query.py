@@ -149,3 +149,112 @@ class TestGegenEchteDatenbank(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NeueFelderTest(unittest.TestCase):
+    """Die Felder, die aus der MailStore-Suchmaske übernommen wurden."""
+
+    def bedingung(self, ausdruck: str) -> tuple[str, list]:
+        return build(ausdruck)
+
+    # ------------------------------------------------------------- Dateien
+
+    def test_dateimuster_bleibt_wie_getippt(self):
+        # Der Sinn der Übung: *.doc darf nicht "dokumentation.pdf" treffen.
+        _, params = self.bedingung("datei:*.doc")
+        self.assertEqual(params, ["*.doc"])
+
+    def test_dateimuster_ohne_platzhalter_sucht_enthalten(self):
+        # Wer "datei:rechnung" tippt, meint "kommt im Namen vor".
+        _, params = self.bedingung("datei:rechnung")
+        self.assertEqual(params, ["*rechnung*"])
+
+    def test_dateimuster_nutzt_glob(self):
+        klausel, _ = self.bedingung("datei:*.jpg")
+        self.assertIn("GLOB", klausel)
+        self.assertIn("attachments", klausel)
+
+    # -------------------------------------------------------------- Größe
+
+    def test_groessenangaben(self):
+        for ausdruck, erwartet in [
+            ("groesse:>5MB", (">", 5 * 1024**2)),
+            ("groesse:<100KB", ("<", 100 * 1024)),
+            ("groesse:>=2GB", (">=", 2 * 1024**3)),
+            ("groesse:500", (">=", 500)),
+        ]:
+            with self.subTest(ausdruck=ausdruck):
+                klausel, params = self.bedingung(ausdruck)
+                self.assertIn(erwartet[0], klausel)
+                self.assertEqual(params, [erwartet[1]])
+
+    def test_groesse_ohne_zeichen_heisst_mindestens(self):
+        # "groesse:5MB" meint große Mails, nicht solche mit exakt 5242880 B.
+        klausel, _ = self.bedingung("groesse:5MB")
+        self.assertIn(">=", klausel)
+
+    def test_komma_als_dezimalzeichen(self):
+        _, params = self.bedingung("groesse:>1,5MB")
+        self.assertEqual(params, [int(1.5 * 1024**2)])
+
+    def test_unsinnige_groesse_wird_erklaert(self):
+        with self.assertRaises(QueryError) as fehler:
+            self.bedingung("groesse:riesig")
+        self.assertIn("Größenangabe", str(fehler.exception))
+
+    def test_unbekannte_einheit_wird_erklaert(self):
+        with self.assertRaises(QueryError):
+            self.bedingung("groesse:>5PB")
+
+    # -------------------------------------------------------- Wichtigkeit
+
+    def test_wichtigkeit_deutsch_und_englisch(self):
+        for wort in ("hoch", "high", "wichtig", "dringend"):
+            with self.subTest(wort=wort):
+                _, params = self.bedingung(f"wichtigkeit:{wort}")
+                self.assertEqual(params, ["hoch"])
+
+    def test_unbekannte_wichtigkeit_wird_erklaert(self):
+        with self.assertRaises(QueryError):
+            self.bedingung("wichtigkeit:mittelprächtig")
+
+    # --------------------------------------------------- Archivierungsdatum
+
+    def test_archiviert_trifft_jahr_monat_und_tag(self):
+        for wert in ("2026", "2026-08", "2026-08-25"):
+            with self.subTest(wert=wert):
+                klausel, params = self.bedingung(f"archiviert:{wert}")
+                self.assertIn("m.archiviert LIKE", klausel)
+                self.assertEqual(params, [f"{wert}%"])
+
+    def test_archiviert_ist_nicht_das_maildatum(self):
+        # Zwei verschiedene Fragen: wann geschrieben, wann archiviert.
+        archiv_klausel, _ = self.bedingung("archiviert:2026")
+        jahr_klausel, _ = self.bedingung("jahr:2026")
+        self.assertNotEqual(archiv_klausel, jahr_klausel)
+
+    # ----------------------------------------------------------- Empfänger
+
+    def test_kopie_und_blindkopie_getrennt(self):
+        for feld, art in (("cc", "cc"), ("bcc", "bcc"), ("direkt", "to")):
+            with self.subTest(feld=feld):
+                klausel, _ = self.bedingung(f"{feld}:chef@example.org")
+                self.assertIn(f"r.art = '{art}'", klausel)
+
+    def test_empfaenger_wird_kleingeschrieben_verglichen(self):
+        _, params = self.bedingung("cc:Chef@Example.ORG")
+        self.assertEqual(params, ["%chef@example.org%"])
+
+    # ------------------------------------------------------- Zusammenspiel
+
+    def test_mehrere_neue_felder_zusammen(self):
+        klausel, params = self.bedingung("datei:*.pdf groesse:>1MB wichtigkeit:hoch")
+        # Nicht die AND zählen - die stecken auch in den Teilbedingungen.
+        self.assertIn("GLOB", klausel)
+        self.assertIn("m.size >", klausel)
+        self.assertIn("m.wichtigkeit", klausel)
+        self.assertEqual(params, ["*.pdf", 1024**2, "hoch"])
+
+    def test_ausschluss_wirkt_auch_auf_neue_felder(self):
+        klausel, _ = self.bedingung("-datei:*.jpg")
+        self.assertTrue(klausel.startswith("NOT ("))

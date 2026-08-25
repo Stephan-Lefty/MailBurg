@@ -190,7 +190,96 @@ def _field_clause(field: str, value: str) -> tuple[str | None, list[object]]:
     if field in ("kategorie", "category"):
         return "m.category = ?", [value.lower()]
 
+    if field in ("datei", "file"):
+        # GLOB statt Volltext: Nur so bedeutet ``*.doc`` wirklich "endet
+        # auf .doc" und trifft nicht "dokumentation.pdf". Wer gar keinen
+        # Platzhalter tippt, meint erfahrungsgemäß "kommt darin vor".
+        muster = value if any(z in value for z in "*?[") else f"*{value}*"
+        return (
+            "EXISTS (SELECT 1 FROM attachments a WHERE a.msg_id = m.id "
+            "AND lower(a.filename) GLOB lower(?))",
+            [muster],
+        )
+
+    if field in ("groesse", "größe", "size"):
+        vergleich, bytes_wert = _groesse_lesen(value)
+        return f"m.size {vergleich} ?", [bytes_wert]
+
+    if field in ("wichtigkeit", "prioritaet", "priorität", "priority"):
+        stufe = _WICHTIGKEIT.get(value.lower())
+        if stufe is None:
+            raise QueryError(
+                f"'{value}' ist keine Wichtigkeit. Erwartet: hoch, normal oder niedrig."
+            )
+        return "m.wichtigkeit = ?", [stufe]
+
+    if field in ("archiviert", "aufgenommen"):
+        # Präfixvergleich auf der ISO-Schreibweise: "2026" trifft das Jahr,
+        # "2026-08" den Monat, "2026-08-25" den Tag. Ein einziger Vergleich
+        # für alle drei Fälle.
+        return "m.archiviert LIKE ?", [f"{value}%"]
+
+    if field in ("cc", "kopie"):
+        return (
+            "EXISTS (SELECT 1 FROM recipients r WHERE r.msg_id = m.id "
+            "AND r.art = 'cc' AND r.addr LIKE ?)",
+            [f"%{value.lower()}%"],
+        )
+
+    if field in ("bcc", "blindkopie"):
+        return (
+            "EXISTS (SELECT 1 FROM recipients r WHERE r.msg_id = m.id "
+            "AND r.art = 'bcc' AND r.addr LIKE ?)",
+            [f"%{value.lower()}%"],
+        )
+
+    if field in ("direkt", "nur-an"):
+        # Direkt angeschrieben, nicht bloß in Kopie - die Frage, mit der
+        # sich Wichtiges von Mitgelesenem trennen lässt.
+        return (
+            "EXISTS (SELECT 1 FROM recipients r WHERE r.msg_id = m.id "
+            "AND r.art = 'to' AND r.addr LIKE ?)",
+            [f"%{value.lower()}%"],
+        )
+
     return None, []
+
+
+#: Was der Anwender schreiben darf, und was davon im Index steht.
+_WICHTIGKEIT = {
+    "hoch": "hoch", "high": "hoch", "wichtig": "hoch", "dringend": "hoch",
+    "normal": "normal", "mittel": "normal",
+    "niedrig": "niedrig", "low": "niedrig", "gering": "niedrig",
+}
+
+_EINHEITEN = {"": 1, "b": 1, "k": 1024, "kb": 1024, "m": 1024**2,
+              "mb": 1024**2, "g": 1024**3, "gb": 1024**3}
+
+_GROESSE_RE = re.compile(
+    r"^(?P<op>>=|<=|>|<)?\s*(?P<zahl>\d+(?:[.,]\d+)?)\s*(?P<einheit>[a-z]*)$",
+    re.IGNORECASE,
+)
+
+
+def _groesse_lesen(value: str) -> tuple[str, int]:
+    """Übersetzt ``>5MB`` in Vergleich und Bytezahl."""
+    treffer = _GROESSE_RE.match(value.strip())
+    if not treffer:
+        raise QueryError(
+            f"'{value}' ist keine Größenangabe. Erwartet: groesse:>5MB, "
+            f"groesse:<100KB oder groesse:2GB"
+        )
+
+    einheit = treffer.group("einheit").lower()
+    if einheit not in _EINHEITEN:
+        raise QueryError(
+            f"'{einheit}' ist keine bekannte Einheit. Erwartet: B, KB, MB oder GB."
+        )
+
+    zahl = float(treffer.group("zahl").replace(",", "."))
+    # Ohne Vergleichszeichen "mindestens" - wer groesse:5MB sucht, meint
+    # große Mails und nicht solche mit exakt 5242880 Bytes.
+    return (treffer.group("op") or ">="), int(zahl * _EINHEITEN[einheit])
 
 
 def describe_syntax() -> str:
@@ -199,13 +288,26 @@ def describe_syntax() -> str:
 
   rechnung                  irgendwo in Text, Betreff oder Anhang
   von:müller                Absender enthält "müller"
-  an:info@example.com       Empfänger
+  an:info@example.com       Empfänger (An, Kopie und Blindkopie)
+  direkt:info@example.com   nur wer im An-Feld stand, nicht in Kopie
+  cc:chef@example.com       nur in Kopie · bcc: für Blindkopie
   betreff:"offene posten"   mehrere Wörter in Anführungszeichen
   text:vertrag              nur im Mailtext
   inhalt:vertrag            nur im Text der Anhänge
   anhang:vertrag.pdf        Dateiname eines Anhangs
   hat:anhang                nur Mails mit Anhang
+
+  datei:*.jpg               Muster auf Dateinamen; * und ? sind Platzhalter
+  datei:Müller*.doc         beginnt mit Müller, endet auf .doc
   typ:pdf                   Anhang mit dieser Endung
+
   jahr:2025 · jahr:2020-2025
+  archiviert:2026-08        wann die Mail ins Archiv kam
+  archiviert:2026-08-25     auch tagesgenau
+  groesse:>5MB              auch <100KB, >=2GB; ohne Zeichen: mindestens
+  wichtigkeit:hoch          hoch, normal oder niedrig
+
   konto:firma · ordner:Gesendet
-  -werbung                  schließt Treffer aus"""
+  -werbung                  schließt Treffer aus
+
+Signaturgrafiken und Unterschriftsdateien gelten nicht als Anhang."""
