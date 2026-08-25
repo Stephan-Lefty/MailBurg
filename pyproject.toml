@@ -44,7 +44,11 @@ anhaenge = ["pypdf>=4"]
 # bibliothek, davor braucht es das Paket. Fehlt beides, wird LZMA benutzt.
 packen = ["zstandard>=0.22"]
 
-alles = ["mailburg[imap,anhaenge,packen]"]
+# Die grafische Oberfläche. Bewusst nicht im Kern: PySide6 sind über
+# hundert Megabyte, und die Kommandozeile läuft ohne.
+oberflaeche = ["PySide6-Essentials>=6.6"]
+
+alles = ["mailburg[imap,anhaenge,packen,oberflaeche]"]
 
 [project.urls]
 Quelltext = "https://github.com/Stephan-Lefty/MailBurg"
@@ -54,6 +58,9 @@ Fehler = "https://github.com/Stephan-Lefty/MailBurg/issues"
 
 [project.scripts]
 mailburg = "mailburg.__main__:main"
+
+[project.gui-scripts]
+mailburg-gui = "mailburg.ui.app:main"
 
 [tool.setuptools.packages.find]
 include = ["mailburg*"]

@@ -186,3 +186,126 @@ class ArbeitTest(OberflaechenTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TrefferlisteTest(OberflaechenTest):
+    """Das Datenmodell hinter der Trefferliste."""
+
+    def modell(self, anzahl: int = 0):
+        from mailburg.ui.modelle import Trefferliste
+
+        class GefaelschterIndex:
+            def __init__(self, gesamt):
+                self.gesamt = gesamt
+                self.abfragen = 0
+
+            def count(self, ausdruck):
+                return self.gesamt
+
+            def search(self, ausdruck, limit=200, offset=0):
+                self.abfragen += 1
+                from mailburg.core.index import Hit
+
+                return [
+                    Hit(hash=f"h{i}", bucket="b", subject=f"Betreff {i}",
+                        from_addr="a@example.org", from_name="Absender",
+                        date="2026-08-25T10:00:00", size=1024,
+                        has_attachments=bool(i % 2))
+                    for i in range(offset, min(offset + limit, self.gesamt))
+                ]
+
+        return Trefferliste(GefaelschterIndex(anzahl))
+
+    def test_attribut_verdeckt_nicht_qts_index(self):
+        # Der Fehler, der mich Zeit gekostet hat: index() ist eine
+        # Kernmethode von QAbstractItemModel. Ein gleichnamiges Attribut
+        # legt jede Anzeige lahm - und zwar erst zur Laufzeit, tief in Qt.
+        modell = self.modell(3)
+        modell.suchen("")
+        self.assertTrue(callable(modell.index))
+        self.assertTrue(modell.index(0, 0).isValid())
+
+    def test_erster_block_wird_geladen(self):
+        from mailburg.ui.modelle import BLOCK
+
+        modell = self.modell(1000)
+        modell.suchen("")
+        self.assertEqual(modell.gesamt, 1000)
+        self.assertEqual(modell.rowCount(), BLOCK)
+
+    def test_nachladen_beim_rollen(self):
+        from mailburg.ui.modelle import BLOCK
+
+        modell = self.modell(1000)
+        modell.suchen("")
+        self.assertTrue(modell.canFetchMore())
+        modell.fetchMore()
+        self.assertEqual(modell.rowCount(), 2 * BLOCK)
+
+    def test_am_ende_wird_nicht_weiter_gefragt(self):
+        modell = self.modell(5)
+        modell.suchen("")
+        self.assertFalse(modell.canFetchMore())
+
+    def test_anhangszeichen_nur_bei_anhang(self):
+        from PySide6.QtCore import Qt
+
+        modell = self.modell(2)
+        modell.suchen("")
+        self.assertEqual(modell.data(modell.index(0, 0), Qt.DisplayRole), "")
+        self.assertEqual(modell.data(modell.index(1, 0), Qt.DisplayRole), "📎")
+
+    def test_ohne_betreff_steht_ein_hinweis(self):
+        from PySide6.QtCore import Qt
+        from mailburg.core.index import Hit
+
+        modell = self.modell(1)
+        modell.suchen("")
+        modell.treffer[0] = Hit(
+            hash="h", bucket="b", subject="", from_addr="a@example.org",
+            from_name="", date=None, size=0, has_attachments=False,
+        )
+        self.assertEqual(
+            modell.data(modell.index(0, 3), Qt.DisplayRole), "(kein Betreff)"
+        )
+
+
+class VorschauTest(OberflaechenTest):
+    def test_auszeichnung_im_betreff_wird_entschaerft(self):
+        # Ein Betreff mit spitzen Klammern darf die Anzeige nicht
+        # durcheinanderbringen - und schon gar nicht formatieren.
+        from mailburg.ui.vorschau import _sicher
+
+        self.assertEqual(_sicher("<b>Angebot</b>"), "&lt;b&gt;Angebot&lt;/b&gt;")
+        self.assertEqual(_sicher("Meier & Söhne"), "Meier &amp; Söhne")
+
+    def test_leere_vorschau_bleibt_ansprechbar(self):
+        from mailburg.ui.vorschau import Mailvorschau
+
+        vorschau = Mailvorschau()
+        vorschau.leeren()
+        self.assertIn("aus", vorschau.text.toPlainText())
+
+    def test_anhang_ohne_bild_bekommt_keine_vorschau(self):
+        from mailburg.extract.message import Attachment
+        from mailburg.ui.vorschau import Anhangszeile
+
+        zeile = Anhangszeile(
+            Attachment(filename="brief.pdf", mime_type="application/pdf",
+                       size=9, payload=b"%PDF-1.4\n")
+        )
+        self.assertIsNone(zeile._bild())
+
+    def test_pfadanteile_im_dateinamen_werden_abgeschnitten(self):
+        # Ein Anhang namens "../../.bashrc" darf beim Öffnen nirgendwo
+        # landen außer im Wegwerfordner.
+        from mailburg.extract.message import Attachment
+        from mailburg.ui.vorschau import Anhangszeile
+
+        zeile = Anhangszeile(
+            Attachment(filename="../../.bashrc", mime_type="text/plain",
+                       size=4, payload="böse".encode("utf-8"))
+        )
+        ziel = zeile._ablegen()
+        self.assertEqual(ziel.name, ".bashrc")
+        self.assertNotIn("..", str(ziel))

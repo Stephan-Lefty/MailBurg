@@ -74,7 +74,9 @@ if [[ $ENTFERNEN -eq 1 ]]; then
         systemctl --user disable --now mailburg-abruf.timer 2>/dev/null || true
     fi
     rm -f "$DIENSTE/mailburg-abruf.service" "$DIENSTE/mailburg-abruf.timer"
-    rm -f "$BIN/mailburg"
+    rm -f "$BIN/mailburg" "$BIN/mailburg-gui"
+    rm -f "$HOME/.local/share/applications/de.stephanlefty.MailBurg.desktop"
+    rm -f "$HOME/.local/share/icons/hicolor/scalable/apps/mailburg.svg"
     rm -rf "$VENV"
     hinweis "Programm entfernt."
     hinweis "Geblieben sind: Ihr Archiv, die Kontenliste und der Suchindex."
@@ -199,6 +201,34 @@ mkdir -p "$BIN"
 ln -sf "$VENV/bin/mailburg" "$BIN/mailburg"
 hinweis "Befehl 'mailburg' liegt in $BIN"
 
+if [[ -x "$VENV/bin/mailburg-gui" ]]; then
+    ln -sf "$VENV/bin/mailburg-gui" "$BIN/mailburg-gui"
+
+    # Ein Menüeintrag, damit MailBurg dort auftaucht, wo Anwender
+    # Programme suchen - und nicht nur in der Eingabeaufforderung.
+    ANWENDUNGEN="$HOME/.local/share/applications"
+    SYMBOLE="$HOME/.local/share/icons/hicolor/scalable/apps"
+    mkdir -p "$ANWENDUNGEN" "$SYMBOLE"
+    [[ -f "$QUELLE/assets/icon.svg" ]] && cp "$QUELLE/assets/icon.svg" "$SYMBOLE/mailburg.svg"
+
+    cat > "$ANWENDUNGEN/de.stephanlefty.MailBurg.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=MailBurg
+GenericName=E-Mail-Archiv
+Comment=E-Mails sammeln, aufbewahren und durchsuchen
+Exec=$BIN/mailburg-gui %f
+Icon=mailburg
+Terminal=false
+Categories=Office;Email;Utility;
+Keywords=Mail;E-Mail;Archiv;Suche;IMAP;
+StartupNotify=true
+EOF
+    command -v update-desktop-database >/dev/null 2>&1 \
+        && update-desktop-database "$ANWENDUNGEN" 2>/dev/null || true
+    hinweis "Menüeintrag angelegt – MailBurg steht im Anwendungsmenü."
+fi
+
 if [[ ":$PATH:" != *":$BIN:"* ]]; then
     hinweis ""
     hinweis "Achtung: $BIN steht nicht im Suchpfad. Diese Zeile hilft:"
@@ -275,7 +305,11 @@ fi
 # ------------------------------------------------------------------ Fertig
 
 melde "Fertig"
-hinweis "Erste Schritte:"
+hinweis "Am einfachsten über die Oberfläche:"
+hinweis "    mailburg-gui"
+hinweis "Sie führt beim ersten Start durch die Einrichtung."
+hinweis ""
+hinweis "Oder auf der Kommandozeile:"
 hinweis "    mailburg anlegen ~/Archiv --modus privat"
 hinweis "    mailburg konten hinzufuegen Firma --server imap.example.org --benutzer post@example.org"
 hinweis "    mailburg abrufen ~/Archiv"
