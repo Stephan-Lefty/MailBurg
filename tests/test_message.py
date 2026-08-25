@@ -174,3 +174,76 @@ class TestHtmlUmwandlung(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SignaturgrafikTest(unittest.TestCase):
+    """Was als Anhang gilt – und was nur zur Darstellung gehört.
+
+    In einem gewachsenen Postfach sind drei von fünf »Anhängen« Logos aus
+    Signaturen. Zählt man sie mit, findet `hat:anhang` fast jede
+    Geschäftsmail und ist damit wertlos.
+    """
+
+    def mail(self, teil: str) -> bytes:
+        return (
+            "From: Absender <a@example.org>\r\n"
+            "To: b@example.org\r\n"
+            "Subject: Mit Signatur\r\n"
+            'Content-Type: multipart/mixed; boundary="G"\r\n\r\n'
+            "--G\r\nContent-Type: text/plain\r\n\r\nText\r\n"
+            f"{teil}"
+            "--G--\r\n"
+        ).encode("utf-8")
+
+    def test_eingebettetes_logo_ist_kein_anhang(self):
+        roh = self.mail(
+            "--G\r\nContent-Type: image/png\r\n"
+            'Content-Disposition: inline; filename="logo.png"\r\n'
+            "Content-ID: <logo@firma>\r\n\r\nPNGDATEN\r\n"
+        )
+        zerlegt = parse(roh)
+        self.assertEqual(len(zerlegt.attachments), 1, "archiviert wird es trotzdem")
+        self.assertTrue(zerlegt.attachments[0].inline)
+        self.assertFalse(zerlegt.attachments[0].ist_nutzanhang)
+        self.assertFalse(zerlegt.has_attachments)
+
+    def test_content_id_allein_genuegt(self):
+        # Outlook setzt gern "attachment" und trotzdem eine Content-ID.
+        roh = self.mail(
+            "--G\r\nContent-Type: image/jpeg\r\n"
+            'Content-Disposition: attachment; filename="image001.jpg"\r\n'
+            "Content-ID: <image001@01DA>\r\n\r\nJPEGDATEN\r\n"
+        )
+        self.assertFalse(parse(roh).has_attachments)
+
+    def test_echter_anhang_bleibt_einer(self):
+        roh = self.mail(
+            "--G\r\nContent-Type: application/pdf\r\n"
+            'Content-Disposition: attachment; filename="Rechnung.pdf"\r\n\r\n'
+            "%PDF-1.4\r\n"
+        )
+        zerlegt = parse(roh)
+        self.assertTrue(zerlegt.has_attachments)
+        self.assertEqual([a.filename for a in zerlegt.nutzanhaenge], ["Rechnung.pdf"])
+
+    def test_unterschriftsdatei_zaehlt_nicht(self):
+        roh = self.mail(
+            "--G\r\nContent-Type: application/pkcs7-signature\r\n"
+            'Content-Disposition: attachment; filename="smime.p7s"\r\n\r\nXX\r\n'
+        )
+        self.assertFalse(parse(roh).has_attachments)
+
+    def test_rechnung_neben_logo_zaehlt(self):
+        # Der häufigste Fall überhaupt: echte Anlage plus Signaturbild.
+        roh = self.mail(
+            "--G\r\nContent-Type: application/pdf\r\n"
+            'Content-Disposition: attachment; filename="Rechnung.pdf"\r\n\r\n'
+            "%PDF-1.4\r\n"
+            "--G\r\nContent-Type: image/png\r\n"
+            'Content-Disposition: inline; filename="logo.png"\r\n'
+            "Content-ID: <logo@firma>\r\n\r\nPNG\r\n"
+        )
+        zerlegt = parse(roh)
+        self.assertTrue(zerlegt.has_attachments)
+        self.assertEqual(len(zerlegt.attachments), 2)
+        self.assertEqual(len(zerlegt.nutzanhaenge), 1)

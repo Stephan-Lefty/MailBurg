@@ -135,15 +135,31 @@ def aus_mail(parsed) -> tuple[str, dict[str, int]]:
     zusammengefassten Text und eine Zählung nach Art zurück – letztere für
     das Protokoll, damit man hinterher weiß, wie viel eingescanntes Material
     im Archiv liegt.
+
+    Nebenbei wird an jedem Anhang vermerkt, wie viel Text aus *ihm* kam.
+    Die Anhangsliste der Nachricht wird dafür ersetzt; die Anhänge selbst
+    sind unveränderlich. Ohne diesen Vermerk ließe sich später nicht mehr
+    sagen, *welcher* Anhang einer Mail die Texterkennung braucht.
     """
+    from dataclasses import replace
+
     teile: list[str] = []
     zaehlung: dict[str, int] = {}
+    vermerkt: list = []
     laenge = 0
+    abgebrochen = False
 
     for anhang in parsed.attachments:
+        if abgebrochen:
+            # Über der Obergrenze wird nicht mehr gelesen – dann bleibt der
+            # Anhang auch ohne Vermerk, statt fälschlich als leer zu gelten.
+            vermerkt.append(anhang)
+            continue
+
         ergebnis = aus_anhang(anhang.filename, anhang.mime_type, anhang.payload)
         schluessel = ergebnis.art if not ergebnis.hinweis else f"{ergebnis.art}:eingescannt"
         zaehlung[schluessel] = zaehlung.get(schluessel, 0) + 1
+        vermerkt.append(replace(anhang, text_zeichen=len(ergebnis.text)))
 
         if ergebnis.hat_text:
             # Der Dateiname wandert mit in den Text: Wer nach "Rechnung
@@ -151,6 +167,7 @@ def aus_mail(parsed) -> tuple[str, dict[str, int]]:
             teile.append(f"{anhang.filename}\n{ergebnis.text}")
             laenge += len(ergebnis.text)
             if laenge > MAX_JE_MAIL:
-                break
+                abgebrochen = True
 
+    parsed.attachments = vermerkt
     return "\n\n".join(teile)[:MAX_JE_MAIL], zaehlung

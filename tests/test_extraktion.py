@@ -204,3 +204,56 @@ class TestGanzeMail(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AnhangsvermerkTest(unittest.TestCase):
+    """Je Anhang festhalten, wie viel Text er hergab.
+
+    Ohne diesen Vermerk ließe sich später nicht sagen, *welcher* Anhang
+    einer Mail die Texterkennung braucht – eine Nachricht mit lesbarem
+    Angebot und eingescanntem Lieferschein gälte als erledigt.
+    """
+
+    def zerlegt(self, *anhaenge):
+        from mailburg.extract.message import Attachment, ParsedMessage
+
+        nachricht = ParsedMessage()
+        nachricht.attachments = [
+            Attachment(filename=n, mime_type=m, size=len(d), payload=d)
+            for n, m, d in anhaenge
+        ]
+        return nachricht
+
+    def test_zeichenzahl_wird_je_anhang_vermerkt(self):
+        from mailburg.extract import text
+
+        nachricht = self.zerlegt(
+            ("notiz.txt", "text/plain", b"Hier steht Text drin."),
+            ("bild.png", "image/png", b"\x89PNG" + b"x" * 500),
+        )
+        text.aus_mail(nachricht)
+
+        self.assertGreater(nachricht.attachments[0].text_zeichen, 0)
+        self.assertEqual(nachricht.attachments[1].text_zeichen, 0)
+
+    def test_gescanntes_pdf_bekommt_null(self):
+        # Genau daran erkennt die Warteschlange später ihre Kandidaten.
+        from mailburg.extract import text
+
+        gescannt = b"%PDF-1.4\n" + b"\x00\xff" * 60_000
+        nachricht = self.zerlegt(("scan.pdf", "application/pdf", gescannt))
+        text.aus_mail(nachricht)
+        self.assertEqual(nachricht.attachments[0].text_zeichen, 0)
+
+    def test_die_anhaenge_bleiben_vollzaehlig(self):
+        from mailburg.extract import text
+
+        nachricht = self.zerlegt(
+            ("a.txt", "text/plain", b"eins"),
+            ("b.txt", "text/plain", b"zwei"),
+            ("c.png", "image/png", b"\x89PNG"),
+        )
+        text.aus_mail(nachricht)
+        self.assertEqual(
+            [a.filename for a in nachricht.attachments], ["a.txt", "b.txt", "c.png"]
+        )

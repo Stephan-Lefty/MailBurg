@@ -10,13 +10,28 @@ wurde.
 
 ### Muss vor dem ersten echten Einsatz passieren
 
-- [ ] **Texterkennung: Warteschlange auf Anhangsebene umstellen.** Der Kern
-  steht (`core/erkennung.py`, `extract/ocr.py`), aber die Warteschlange
-  fragt je *Mail*: »umfangreiches PDF dabei, wenig Anhangstext?« Hat eine
-  Mail ein lesbares PDF **und** einen Scan, gilt sie als erledigt – der
-  Scan fällt durchs Raster. An Stephans Bestand fällt das auf: Der Import
-  zählte 748 PDF ohne Textebene, die Warteschlange findet 138 Mails.
-  Gebraucht wird ein Vermerk je Anhang, nicht je Mail.
+- [ ] **Was als Anhang gilt, soll der Anwender festlegen können.** Nicht
+  als Endungsliste zum Tippen, sondern als Gruppen zum Ankreuzen in der
+  Einrichtung: Dokumente (PDF, Office, ODF, RTF), Tabellen und Daten (CSV,
+  XML, JSON), Bilder, Archive, Kalender und Kontakte, alles übrige.
+
+  **Gespeichert wird trotzdem alles.** Die Auswahl steuert nur, was als
+  Anhang *gilt* – ob `hat:anhang` anschlägt, was in der Anhangsliste steht,
+  was durchsucht wird. Die Datei bleibt in der Mail; alles andere bräche
+  die Bytegenauigkeit und damit die Hash-Kette.
+
+  Die Festlegung gehört in `archive.json` und bei einer Änderung ins
+  Journal, nicht in die Programmeinstellungen: Für ein Geschäftsarchiv ist
+  »was haben wir als Anhang behandelt« Teil der Verfahrensdokumentation.
+  Wer später erklären muss, warum eine Datei nicht auffindbar war, will das
+  belegen können.
+
+- [ ] **Bestehende Archive einmal neu indizieren.** Wer von einer Fassung
+  vor dem Anhangsvermerk kommt, hat in `attachments.text_zeichen` überall
+  `-1` stehen; für diese Zeilen greift weiter die grobe Schätzung je Mail.
+  An Stephans Bestand: 156 statt der erwarteten rund 700 Dokumente in der
+  Warteschlange. `mailburg neuaufbau` richtet das. Offen ist, ob das
+  Programm von selbst darauf hinweisen sollte.
 
 - [ ] **Anmeldung per OAuth2.** Der Abruf läuft mit App-Passwörtern. Das
   genügt, ist aber nicht das, was Gmail und Outlook eigentlich wollen: Dort

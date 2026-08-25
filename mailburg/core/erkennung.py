@@ -57,12 +57,21 @@ TEXTSCHWELLE = 200
 GROESSENSCHWELLE = 100_000
 
 _SCHEMA = """
+-- Je Anhang, nicht je Mail. Eine Nachricht mit einem lesbaren Angebot und
+-- einem eingescannten Lieferschein gälte sonst als erledigt, und der
+-- Lieferschein bliebe für immer unsichtbar. Am echten Bestand gemessen
+-- macht das den Unterschied zwischen 138 und rund 700 Dokumenten.
+--
+-- Als Kennung Hash und Dateiname statt der Zeilennummer aus der
+-- Anhangstabelle: Die ändert sich beim Neuaufbau des Index, der Hash nie.
 CREATE TABLE IF NOT EXISTS ocr_vermerk (
-    hash      TEXT PRIMARY KEY,
+    hash      TEXT NOT NULL,
+    dateiname TEXT NOT NULL,
     zustand   TEXT NOT NULL,
     grund     TEXT,
     seiten    INTEGER NOT NULL DEFAULT 0,
-    zeitpunkt TEXT
+    zeitpunkt TEXT,
+    PRIMARY KEY (hash, dateiname)
 );
 """
 
@@ -148,22 +157,58 @@ class Warteschlange:
 
     def __init__(self, index) -> None:
         self.index = index
+        self._schema_herrichten()
+
+    def _schema_herrichten(self) -> None:
+        """Legt die Vermerktabelle an – und erneuert sie, falls sie alt ist.
+
+        Die erste Fassung merkte sich je Mail statt je Anhang; ihr fehlt
+        die Spalte ``dateiname``, und der Primärschlüssel lässt sich nicht
+        nachträglich ändern. Nachrüsten geht also nicht.
+
+        Das ist hier aber unbedenklich: Die Tabelle hält nur fest, was
+        schon gelesen wurde. Geht sie verloren, werden ein paar Dokumente
+        ein zweites Mal erkannt – Rechenzeit, sonst nichts. Der erkannte
+        Text liegt ohnehin im Nebenspeicher.
+        """
+        vorhanden = {
+            zeile[1]
+            for zeile in self.index.db.execute("PRAGMA table_info(ocr_vermerk)")
+        }
+        if vorhanden and "dateiname" not in vorhanden:
+            self.index.db.execute("DROP TABLE ocr_vermerk")
         self.index.db.executescript(_SCHEMA)
 
-    def offen(self, grenze: int = 100) -> list[tuple[str, str]]:
-        """Die nächsten Kandidaten als Paare aus Hash und Ablagefach."""
+    #: Der gemeinsame Teil beider Abfragen: ein umfangreiches PDF, aus dem
+    #: kein Text kam, ohne bereits vorliegenden Vermerk.
+    _BEDINGUNG = """
+          FROM messages a_m
+          JOIN attachments a ON a.msg_id = a_m.id
+         WHERE a.extension = 'pdf'
+           AND a.size > ?
+           AND (a.text_zeichen = 0
+                OR (a.text_zeichen < 0 AND NOT EXISTS (
+                        SELECT 1 FROM search s
+                         WHERE s.rowid = a_m.id
+                           AND LENGTH(COALESCE(s.attachment_text, '')) >= ?)))
+           AND NOT EXISTS (SELECT 1 FROM ocr_vermerk v
+                            WHERE v.hash = a_m.hash AND v.dateiname = a.filename)
+    """
+
+    def offen(self, grenze: int = 100) -> list[tuple[str, str, str]]:
+        """Die nächsten Kandidaten: Hash, Ablagefach und Dateiname.
+
+        Zwei Fälle stecken in der Bedingung. Neue Indizes wissen je Anhang,
+        wie viel Text er hergab – dann ist ``text_zeichen = 0`` das klare
+        Zeichen. Ältere Indizes wissen das nicht (``-1``); für die bleibt
+        nur die alte Schätzung über den Anhangstext der ganzen Mail.
+        """
         return [
-            (r["hash"], r["bucket"])
+            (r["hash"], r["bucket"], r["filename"])
             for r in self.index.db.execute(
-                """SELECT DISTINCT m.hash, m.bucket
-                     FROM messages m
-                     JOIN attachments a ON a.msg_id = m.id
-                     JOIN search s      ON s.rowid  = m.id
-                    WHERE a.extension = 'pdf'
-                      AND a.size > ?
-                      AND LENGTH(COALESCE(s.attachment_text, '')) < ?
-                      AND m.hash NOT IN (SELECT hash FROM ocr_vermerk)
-                 ORDER BY m.date DESC
+                f"""SELECT a_m.hash, a_m.bucket, a.filename
+                    {self._BEDINGUNG}
+                    ORDER BY a_m.date DESC
                     LIMIT ?""",
                 (GROESSENSCHWELLE, TEXTSCHWELLE, grenze),
             )
@@ -172,38 +217,50 @@ class Warteschlange:
     def anzahl(self) -> int:
         """Wie viele Dokumente noch warten."""
         return self.index.db.execute(
-            """SELECT COUNT(DISTINCT m.hash)
-                 FROM messages m
-                 JOIN attachments a ON a.msg_id = m.id
-                 JOIN search s      ON s.rowid  = m.id
-                WHERE a.extension = 'pdf'
-                  AND a.size > ?
-                  AND LENGTH(COALESCE(s.attachment_text, '')) < ?
-                  AND m.hash NOT IN (SELECT hash FROM ocr_vermerk)""",
+            f"SELECT COUNT(*) {self._BEDINGUNG}",
             (GROESSENSCHWELLE, TEXTSCHWELLE),
         ).fetchone()[0]
 
-    def vermerken(self, digest: str, zustand: str, *, grund: str = "",
-                  seiten: int = 0) -> None:
+    def vermerken(self, digest: str, dateiname: str, zustand: str, *,
+                  grund: str = "", seiten: int = 0) -> None:
         self.index.db.execute(
             """INSERT OR REPLACE INTO ocr_vermerk
-                   (hash, zustand, grund, seiten, zeitpunkt)
-               VALUES (?, ?, ?, ?, ?)""",
-            (digest, zustand, grund, seiten,
+                   (hash, dateiname, zustand, grund, seiten, zeitpunkt)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (digest, dateiname, zustand, grund, seiten,
              datetime.now(timezone.utc).isoformat(timespec="seconds")),
         )
 
-    def vergessen(self, digest: str) -> None:
-        """Nimmt einen Vermerk zurück – für einen erneuten Versuch."""
-        self.index.db.execute("DELETE FROM ocr_vermerk WHERE hash = ?", (digest,))
+    def vergessen(self, digest: str, dateiname: str | None = None) -> None:
+        """Nimmt Vermerke zurück – für einen erneuten Versuch."""
+        if dateiname is None:
+            self.index.db.execute("DELETE FROM ocr_vermerk WHERE hash = ?", (digest,))
+        else:
+            self.index.db.execute(
+                "DELETE FROM ocr_vermerk WHERE hash = ? AND dateiname = ?",
+                (digest, dateiname),
+            )
 
-    def gescheiterte(self) -> list[tuple[str, str]]:
+    def gescheiterte(self) -> list[tuple[str, str, str]]:
         return [
-            (r["hash"], r["grund"] or "")
+            (r["hash"], r["dateiname"], r["grund"] or "")
             for r in self.index.db.execute(
-                "SELECT hash, grund FROM ocr_vermerk WHERE zustand = 'gescheitert'"
+                "SELECT hash, dateiname, grund FROM ocr_vermerk "
+                "WHERE zustand = 'gescheitert'"
             )
         ]
+
+
+def _kennung(dateiname: str) -> str:
+    """Macht aus einem Dateinamen etwas, das als Dateiname taugt.
+
+    Anhänge heißen »Rechnung 3/2025.pdf« oder tragen Umlaute; als Teil
+    eines Pfades im Nebenspeicher wäre das unbrauchbar. Der Kurz-Hash ist
+    eindeutig genug und überall gültig.
+    """
+    import hashlib
+
+    return hashlib.sha256(dateiname.encode("utf-8")).hexdigest()[:12]
 
 
 def _nachrang() -> None:
@@ -249,50 +306,67 @@ def durchlauf(
     def zeit_um() -> bool:
         return bool(budget_sekunden) and (time.monotonic() - beginn) >= budget_sekunden
 
-    for digest, bucket in warteschlange.offen(grenze=max(budget_dokumente * 4, 20)):
-        if zeit_um() or (budget_dokumente and stat.gelesen + stat.gescheitert >= budget_dokumente):
+    # Die Rohdaten einer Mail werden nur einmal geholt und zerlegt, auch
+    # wenn mehrere ihrer Anhänge in der Warteschlange stehen.
+    zwischenspeicher: dict[str, object] = {}
+
+    for digest, bucket, dateiname in warteschlange.offen(
+        grenze=max(budget_dokumente * 4, 40)
+    ):
+        if zeit_um() or (
+            budget_dokumente and stat.gelesen + stat.gescheitert >= budget_dokumente
+        ):
             stat.abgebrochen = True
             break
 
-        try:
-            roh = archiv.store.get(digest, bucket)
-        except (FileNotFoundError, ValueError, OSError) as exc:
-            warteschlange.vermerken(digest, "gescheitert", grund=f"nicht lesbar: {exc}")
+        if digest not in zwischenspeicher:
+            try:
+                roh = archiv.store.get(digest, bucket)
+                zwischenspeicher = {
+                    digest: message_modul.parse(roh, with_payloads=True)
+                }
+            except (FileNotFoundError, ValueError, OSError) as exc:
+                warteschlange.vermerken(
+                    digest, dateiname, "gescheitert", grund=f"nicht lesbar: {exc}"
+                )
+                stat.gescheitert += 1
+                continue
+
+        zerlegt = zwischenspeicher[digest]
+        anhang = next(
+            (a for a in zerlegt.attachments if a.filename == dateiname and a.payload),
+            None,
+        )
+        if anhang is None:
+            warteschlange.vermerken(
+                digest, dateiname, "gescheitert", grund="Anhang nicht gefunden"
+            )
             stat.gescheitert += 1
             continue
 
-        zerlegt = message_modul.parse(roh, with_payloads=True)
-        texte: list[str] = []
-        seiten = 0
-        abgebrochen = False
+        ergebnis = ocr.text_aus_pdf(anhang.payload, abbruch=zeit_um)
 
-        for anhang in zerlegt.attachments:
-            if not (anhang.filename or "").lower().endswith(".pdf"):
-                continue
-            if not anhang.payload:
-                continue
-
-            ergebnis = ocr.text_aus_pdf(anhang.payload, abbruch=zeit_um)
-            seiten += ergebnis.seiten
-            abgebrochen = abgebrochen or ergebnis.abgebrochen
-            if ergebnis.text:
-                texte.append(f"{anhang.filename}\n{ergebnis.text}")
-
-        if abgebrochen and not texte:
-            # Nichts geschafft, kein Vermerk – beim nächsten Mal von vorn.
+        if ergebnis.abgebrochen and not ergebnis.text:
+            # Nichts geschafft – ohne Vermerk, damit es beim nächsten Mal
+            # von vorn versucht wird.
             stat.abgebrochen = True
             break
 
-        if texte:
-            gesamt = "\n\n".join(texte)
-            speicher.schreiben(digest, gesamt)
-            _in_index_schreiben(archiv.index, digest, gesamt)
-            warteschlange.vermerken(digest, "erledigt", seiten=seiten)
+        if ergebnis.text:
+            speicher.schreiben(f"{digest}-{_kennung(dateiname)}", ergebnis.text)
+            _in_index_schreiben(
+                archiv.index, digest, f"{dateiname}\n{ergebnis.text}"
+            )
+            warteschlange.vermerken(
+                digest, dateiname, "erledigt", seiten=ergebnis.seiten
+            )
             stat.gelesen += 1
-            stat.seiten += seiten
+            stat.seiten += ergebnis.seiten
         else:
             warteschlange.vermerken(
-                digest, "gescheitert", grund="kein Text erkannt", seiten=seiten
+                digest, dateiname, "gescheitert",
+                grund=ergebnis.fehler or "kein Text erkannt",
+                seiten=ergebnis.seiten,
             )
             stat.gescheitert += 1
 
@@ -300,7 +374,7 @@ def durchlauf(
         if fortschritt:
             fortschritt(stat)
 
-        if abgebrochen:
+        if ergebnis.abgebrochen:
             stat.abgebrochen = True
             break
 

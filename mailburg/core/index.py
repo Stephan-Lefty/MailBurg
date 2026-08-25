@@ -77,7 +77,14 @@ CREATE TABLE IF NOT EXISTS attachments (
     filename  TEXT    NOT NULL,
     extension TEXT,
     mime_type TEXT,
-    size      INTEGER NOT NULL DEFAULT 0
+    size      INTEGER NOT NULL DEFAULT 0,
+    -- Wie viele Zeichen Text aus diesem Anhang kamen. -1 heißt: nicht
+    -- nachgesehen (so stehen alte Indizes da). Ein umfangreiches PDF mit 0
+    -- ist ein Scan und braucht Texterkennung.
+    text_zeichen INTEGER NOT NULL DEFAULT -1,
+    -- Gehört zur Darstellung statt zur Sendung: Signaturlogos und
+    -- Ähnliches. Wird archiviert, gilt aber nicht als Anhang.
+    inline INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_attachments_msg ON attachments(msg_id);
@@ -167,8 +174,42 @@ class Index:
                 f"sind davon nicht betroffen."
             )
         self.db.executescript(_SCHEMA)
+        self._spalten_ergaenzen()
         self.db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.db.commit()
+
+    def _spalten_ergaenzen(self) -> None:
+        """Rüstet Spalten nach, die es in älteren Indizes noch nicht gab.
+
+        ``CREATE TABLE IF NOT EXISTS`` lässt eine vorhandene Tabelle in
+        Ruhe – auch wenn ihr Spalten fehlen. Ohne das Nachrüsten liefe
+        jedes Einfügen in einen älteren Index auf einen Fehler, und ein
+        gewachsenes Archiv wäre nach einer Programmaktualisierung nicht
+        mehr zu benutzen.
+
+        Den Index einfach zu verwerfen wäre die Alternative – er ist ja
+        wegwerfbar. Aber sein Neuaufbau dauert bei zehntausend Mails
+        Minuten und bei einer halben Million Stunden; dafür sind zwei
+        Spalten kein Anlass. Neue Zeilen bekommen den richtigen Wert, alte
+        stehen auf dem Vorgabewert, und wer das genauer braucht, baut den
+        Index bei Gelegenheit neu.
+        """
+        nachzuruesten = {
+            "attachments": {
+                "text_zeichen": "INTEGER NOT NULL DEFAULT -1",
+                "inline": "INTEGER NOT NULL DEFAULT 0",
+            },
+        }
+        for tabelle, spalten in nachzuruesten.items():
+            vorhanden = {
+                zeile[1]
+                for zeile in self.db.execute(f"PRAGMA table_info({tabelle})")
+            }
+            for name, art in spalten.items():
+                if name not in vorhanden:
+                    self.db.execute(
+                        f"ALTER TABLE {tabelle} ADD COLUMN {name} {art}"
+                    )
 
     # --------------------------------------------------------------- Füllen
 
@@ -223,11 +264,16 @@ class Index:
         names = []
         for att in parsed.attachments:
             self.db.execute(
-                """INSERT INTO attachments (msg_id, filename, extension, mime_type, size)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (msg_id, att.filename, att.extension, att.mime_type, att.size),
+                """INSERT INTO attachments
+                       (msg_id, filename, extension, mime_type, size,
+                        text_zeichen, inline)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (msg_id, att.filename, att.extension, att.mime_type, att.size,
+                 getattr(att, "text_zeichen", -1),
+                 int(getattr(att, "inline", False))),
             )
-            names.append(att.filename)
+            if getattr(att, "ist_nutzanhang", True):
+                names.append(att.filename)
 
         sender = f"{parsed.from_name} {parsed.from_addr}".strip()
         joined_names = " ".join(names)

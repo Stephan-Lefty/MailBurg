@@ -38,6 +38,43 @@ class Attachment:
     size: int
     payload: bytes = field(repr=False, default=b"")
 
+    text_zeichen: int = -1
+    """Wie viele Zeichen Text aus diesem Anhang zu holen waren.
+
+    ``-1`` heißt: noch nicht nachgesehen. ``0`` bei einem umfangreichen PDF
+    heißt dagegen, dass jemand Papier eingescannt hat – das Dokument liegt
+    dann im Archiv, ist aber nicht auffindbar und braucht Texterkennung.
+
+    Die Angabe gehört je Anhang und nicht je Mail: Eine Nachricht mit einem
+    lesbaren Angebot und einem eingescannten Lieferschein gälte sonst als
+    erledigt, und der Lieferschein bliebe für immer unsichtbar.
+    """
+
+    inline: bool = False
+    """Ob der Anhang zur Darstellung gehört statt zur Sendung.
+
+    Signaturlogos, Trennlinien, Symbole sozialer Netze. In einem
+    gewachsenen Postfach sind das drei von fünf »Anhängen«. Sie werden
+    archiviert wie alles andere – die Mail liegt ja bytegenau –, gelten
+    aber nicht als Anhang im Sinne der Suche und tauchen in der
+    Anhangsliste nicht auf.
+    """
+
+    #: Dateien, die zwar angehängt sind, aber niemandem etwas sagen:
+    #: kryptografische Unterschriften und Verschlüsselungsbeiwerk.
+    BEIWERK = frozenset({"smime.p7s", "smime.p7m", "signature.asc", "winmail.dat"})
+
+    @property
+    def ist_nutzanhang(self) -> bool:
+        """Ob das etwas ist, das jemand bewusst mitgeschickt hat.
+
+        Danach richtet sich, ob eine Mail als »hat Anhang« gilt. Wer nach
+        Anhängen sucht, meint die Rechnung – nicht das Firmenlogo aus der
+        Signatur und nicht die Datei, in der das Mailprogramm seine
+        Unterschrift ablegt.
+        """
+        return not self.inline and self.filename.lower() not in self.BEIWERK
+
     @property
     def extension(self) -> str:
         """Endung in Kleinbuchstaben, ohne Punkt – für die Suche nach ``typ:pdf``."""
@@ -63,7 +100,19 @@ class ParsedMessage:
 
     @property
     def has_attachments(self) -> bool:
-        return bool(self.attachments)
+        """Ob etwas dranhängt, das jemand bewusst mitgeschickt hat.
+
+        Nicht einfach ``bool(self.attachments)``: Signaturlogos und
+        Unterschriftsdateien zählen nicht. In einem gewachsenen Postfach
+        träge sonst fast jede Geschäftsmail einen »Anhang«, und die Suche
+        danach fände alles.
+        """
+        return any(a.ist_nutzanhang for a in self.attachments)
+
+    @property
+    def nutzanhaenge(self) -> list:
+        """Die Anhänge, die in einer Anhangsliste stehen sollen."""
+        return [a for a in self.attachments if a.ist_nutzanhang]
 
     @property
     def all_recipients(self) -> str:
@@ -249,6 +298,18 @@ def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
         filename = part.get_filename()
         is_attachment = "attachment" in disposition or bool(filename)
 
+        # Eingebettet heißt: gehört zur Darstellung, nicht zur Sendung. Das
+        # sind die Logos aus Signaturen, die Trennlinien, die Symbole der
+        # sozialen Netze. In einem gewachsenen Postfach sind das drei von
+        # fünf "Anhängen" – wer sie mitzählt, macht "hat:anhang" wertlos,
+        # weil dann fast jede Geschäftsmail einen hat.
+        #
+        # Erkannt an zweierlei: der Angabe "inline" und einer Content-ID,
+        # über die das HTML das Bild einbindet (cid:...). Beides zusammen
+        # trifft die Signaturgrafik und verschont das Foto, das jemand
+        # bewusst mitgeschickt hat.
+        eingebettet = "inline" in disposition or bool(part.get("Content-ID"))
+
         if is_attachment:
             try:
                 payload = part.get_payload(decode=True) or b""
@@ -271,6 +332,7 @@ def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
                     mime_type=part.get_content_type(),
                     size=len(payload),
                     payload=payload if with_payloads else b"",
+                    inline=eingebettet,
                 )
             )
             continue
