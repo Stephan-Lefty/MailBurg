@@ -215,7 +215,7 @@ def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
         return 2
 
     if accounts.passwort_setzen(konto, passwort):
-        print("Passwort im Schlüsselbund abgelegt.")
+        print(f"Passwort abgelegt in: {accounts.schluesselbund_name()}")
     else:
         print(
             "Achtung: Kein Schlüsselbund erreichbar – das Passwort wird bei\n"

@@ -172,6 +172,56 @@ def schluesselbund_verfuegbar() -> bool:
     return not isinstance(keyring.get_keyring(), fail.Keyring)
 
 
+def schluesselbund_name() -> str:
+    """Wie der Schlüsselbund auf diesem Rechner heißt.
+
+    »Der Schlüsselbund Ihres Systems« ist eine Auskunft, mit der niemand
+    etwas anfangen kann. Wer wissen will, wo sein Passwort gelandet ist,
+    braucht den Namen des Programms, in dem er nachsehen kann.
+    """
+    if not schluesselbund_verfuegbar():
+        return ""
+
+    import keyring
+
+    kennung = type(keyring.get_keyring()).__module__.lower()
+    if "windows" in kennung:
+        return "Anmeldeinformationsverwaltung"
+    if "macos" in kennung or "osx" in kennung:
+        return "Schlüsselbund"
+    if "kwallet" in kennung:
+        return "KDE-Brieftasche"
+    if "secretservice" in kennung:
+        # Dieselbe Schnittstelle bedienen mehrere. Wer sie gerade
+        # bereitstellt, verrät der laufende Dienst - und genau danach
+        # sucht der Anwender später in seinem Menü.
+        return _secretservice_anbieter()
+    return "Schlüsselbund"
+
+
+def _secretservice_anbieter() -> str:
+    """Fragt nach, welches Programm org.freedesktop.secrets bedient."""
+    import shutil
+    import subprocess
+
+    if shutil.which("busctl"):
+        try:
+            ergebnis = subprocess.run(
+                ["busctl", "--user", "list", "--no-legend"],
+                capture_output=True, text=True, timeout=5,
+            )
+            for zeile in ergebnis.stdout.splitlines():
+                if zeile.startswith("org.freedesktop.secrets"):
+                    dienst = zeile.split()[2] if len(zeile.split()) > 2 else ""
+                    if "ksecret" in dienst or "kwallet" in dienst:
+                        return "KDE-Brieftasche"
+                    if "gnome" in dienst:
+                        return "GNOME-Schlüsselbund"
+        except (OSError, subprocess.TimeoutExpired, IndexError):
+            pass
+    return "Schlüsselbund"
+
+
 def passwort_holen(konto: Konto) -> str | None:
     """Holt das Passwort aus dem Schlüsselbund."""
     if not schluesselbund_verfuegbar():

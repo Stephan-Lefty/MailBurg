@@ -62,6 +62,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     anwendung = QApplication(argv)
+    # Muss am Objekt hängen bleiben: Ein Übersetzer, auf den niemand mehr
+    # zeigt, wird weggeräumt – und die Knöpfe stehen wieder auf Englisch.
+    anwendung._uebersetzer = _deutsch(anwendung)
     anwendung.setApplicationName(APP_NAME)
     anwendung.setApplicationDisplayName(APP_NAME)
     anwendung.setApplicationVersion(__version__)
@@ -96,6 +99,27 @@ def main(argv: list[str] | None = None) -> int:
     merken(archiv)
     fenster.show()
     return anwendung.exec()
+
+
+def _deutsch(anwendung):
+    """Stellt Qts eigene Beschriftungen auf Deutsch.
+
+    »Next«, »Cancel«, »Yes«, »No«, die Dateiauswahl – all das kommt aus Qt
+    und wäre sonst englisch, während MailBurg selbst deutsch spricht. Diese
+    Mischung ist das Unangenehmste von beidem.
+
+    Fest auf Deutsch und nicht nach Systemsprache: Das Programm ist von
+    Grund auf deutsch, seine Meldungen sind es und die Suchsprache auch.
+    Englische Knöpfe daneben wären kein Entgegenkommen, sondern ein Bruch.
+    """
+    from PySide6.QtCore import QLibraryInfo, QTranslator
+
+    uebersetzer = QTranslator()
+    ort = QLibraryInfo.path(QLibraryInfo.TranslationsPath)
+    if uebersetzer.load("qtbase_de", ort):
+        anwendung.installTranslator(uebersetzer)
+        return uebersetzer
+    return None
 
 
 def _symbol():

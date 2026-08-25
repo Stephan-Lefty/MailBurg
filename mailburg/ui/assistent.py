@@ -42,7 +42,24 @@ from mailburg.core import accounts
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, Mode
 from mailburg.core.retention import Jurisdiction
+from mailburg.ui import bilder
 from mailburg.ui.arbeit import Anmeldeprobe, Läufer
+
+
+def _schluesselbund_satz() -> str:
+    """Benennt den Schlüsselbund beim Namen, statt ihn zu umschreiben.
+
+    Wer wissen will, wo sein Passwort gelandet ist, sucht nach einem
+    Programm in seinem Menü – nicht nach »dem Schlüsselbund des Systems«.
+    """
+    name = accounts.schluesselbund_name()
+    if not name:
+        return (
+            "<b>nirgends</b>: Auf diesem Rechner ist kein Schlüsselbund "
+            "erreichbar, deshalb wird das Passwort bei jedem Abruf neu "
+            "erfragt"
+        )
+    return f"in die <b>{name}</b>"
 
 
 class WillkommenSeite(QWizardPage):
@@ -54,20 +71,64 @@ class WillkommenSeite(QWizardPage):
             f"und macht sie durchsuchbar."
         )
 
+        # Das Banner gehört hierher, nicht in eine Ecke: Wer ein Programm
+        # zum ersten Mal startet, soll sehen, dass er beim richtigen ist.
+        self.banner = QLabel()
+        self.banner.setAlignment(Qt.AlignCenter)
+        bild = bilder.banner(520)
+        if bild is not None:
+            self.banner.setPixmap(bild)
+        else:
+            self.banner.hide()
+
         text = QLabel(
-            "<p>In den nächsten Schritten legen wir fest, <b>wohin</b> Ihr "
+            "<p>In zwei Schritten ist alles eingerichtet: <b>wohin</b> Ihr "
             "Archiv kommt und <b>welche Postfächer</b> hinein sollen.</p>"
-            "<p>Ihre Postfächer werden dabei nur gelesen. Gelöscht wird dort "
-            "nichts, und ungelesene Post bleibt ungelesen.</p>"
-            "<p>Die Passwörter kommen in den Schlüsselbund Ihres Systems – "
-            "nicht in eine Datei.</p>"
+
+            "<p style='margin-top:14px'><b>Was MailBurg mit Ihren Postfächern "
+            "macht – und was nicht</b></p>"
+            "<p>Es liest sie. Mehr nicht. Es löscht dort nichts, verschiebt "
+            "nichts und markiert nichts als gelesen. In Ihrem Mailprogramm "
+            "sieht hinterher alles aus wie vorher; was ungelesen war, ist es "
+            "weiterhin. Wenn Sie MailBurg morgen wieder abschaffen, hat sich "
+            "an Ihren Postfächern nichts geändert.</p>"
+
+            "<p style='margin-top:14px'><b>Wohin Ihre Post geht</b></p>"
+            "<p>In einen Ordner auf <i>Ihrem</i> Rechner, den Sie gleich "
+            "selbst bestimmen. Nicht in eine Cloud, nicht zu uns – MailBurg "
+            "verschickt nichts und meldet nichts nach Hause. Die einzigen "
+            "Verbindungen, die es aufbaut, gehen zu Ihren eigenen "
+            "Mailservern, um die Post abzuholen.</p>"
+
+            "<p style='margin-top:14px'><b>Sie bleiben unabhängig</b></p>"
+            "<p>Jede Mail liegt einzeln im Archiv, in dem Format, in dem "
+            "Mails nun einmal gespeichert werden. Auch ohne MailBurg kommen "
+            "Sie an jede einzelne heran – mit jedem Mailprogramm, das "
+            "<i>.eml</i>-Dateien öffnen kann. Sie sind an dieses Programm "
+            "nicht gebunden.</p>"
+
+            f"<p style='margin-top:14px'><b>Ihre Passwörter</b></p>"
+            f"<p>Die brauchen wir, um Ihre Postfächer abzurufen – sonst "
+            f"nichts. Sie kommen {_schluesselbund_satz()}, also dorthin, wo "
+            f"auch Ihr Mailprogramm seine Passwörter aufbewahrt. In keine "
+            f"Datei, die man kopieren könnte, und schon gar nicht ins "
+            f"Internet.</p>"
+
+            "<p style='margin-top:14px'><i>Sie haben schon ein Archiv? Geben "
+            "Sie im nächsten Schritt dessen Ordner an – MailBurg erkennt es "
+            "und verwendet es weiter.</i></p>"
         )
         text.setWordWrap(True)
         text.setTextFormat(Qt.RichText)
 
+        rollbar = QScrollArea()
+        rollbar.setWidget(text)
+        rollbar.setWidgetResizable(True)
+        rollbar.setFrameShape(QScrollArea.NoFrame)
+
         aufbau = QVBoxLayout(self)
-        aufbau.addWidget(text)
-        aufbau.addStretch()
+        aufbau.addWidget(self.banner)
+        aufbau.addWidget(rollbar, 1)
 
 
 class ArchivSeite(QWizardPage):
@@ -92,25 +153,39 @@ class ArchivSeite(QWizardPage):
         zeile.addWidget(blaettern)
 
         hinweis = QLabel(
-            "Eine interne Platte, eine externe Platte oder ein Ordner, den "
-            "Nextcloud abgleicht – alles möglich. Der Suchindex wird "
-            "getrennt davon abgelegt und kann jederzeit neu entstehen."
+            "<p>Eine interne Platte, eine externe Platte oder ein Ordner, den "
+            "Nextcloud abgleicht – alles möglich. Sie können das Archiv "
+            "später auch verschieben; MailBurg findet es wieder.</p>"
+            "<p><b>Was in diesem Ordner entsteht:</b> ein Unterordner "
+            "<i>mail</i> mit Ihren Nachrichten, nach Monaten sortiert, und "
+            "ein Unterordner <i>meta</i> mit dem Protokoll darüber, was wann "
+            "aufgenommen wurde. Sonst nichts.</p>"
+            "<p><b>Sichern sollten Sie diesen Ordner</b> wie alle wichtigen "
+            "Daten. Der Suchindex gehört nicht dazu – der liegt getrennt "
+            "davon und lässt sich jederzeit aus dem Archiv neu erzeugen.</p>"
         )
         hinweis.setWordWrap(True)
+        hinweis.setTextFormat(Qt.RichText)
 
         self.privat = QRadioButton("Privatarchiv")
         self.privat.setChecked(True)
         self.geschaeftlich = QRadioButton("Geschäftsarchiv")
 
         privat_text = QLabel(
-            "Keine Fristen, löschen jederzeit. Wer ausschließlich eigene "
-            "Post archiviert, unterliegt der DSGVO gar nicht."
+            "Für Ihre eigene Post. Keine Aufbewahrungsfristen, löschen "
+            "können Sie jederzeit. Das entspricht der Rechtslage: Wer "
+            "ausschließlich eigene Mails archiviert, unterliegt der DSGVO "
+            "gar nicht."
         )
         geschaeft_text = QLabel(
-            "Mit Hash-Kette, Grabsteinen und Aufbewahrungsfristen. "
-            "Unterstützt einen revisionssicheren Betrieb – herstellen kann "
-            "ihn keine Software allein, dazu gehört auch eine "
-            "Verfahrensdokumentation."
+            "Für geschäftliche Post. Jeder Vorgang wird protokolliert und "
+            "die Kette der Einträge gegen nachträgliche Änderungen "
+            "gesichert; gelöscht wird nur mit Vermerk, und "
+            "Aufbewahrungsfristen bremsen zu frühes Löschen.\n\n"
+            "MailBurg unterstützt damit einen revisionssicheren Betrieb – "
+            "herstellen kann ihn keine Software allein. Dazu gehören eine "
+            "Verfahrensdokumentation und geregelte Abläufe bei Ihnen im "
+            "Betrieb. Wer etwas anderes verspricht, macht Sie angreifbar."
         )
         for beschriftung in (privat_text, geschaeft_text):
             beschriftung.setWordWrap(True)
@@ -298,24 +373,52 @@ class KontenSeite(QWizardPage):
             uebernahme.namen_entzerren(brauchbar, vergeben)
             gefunden += [f.konto for f in brauchbar]
 
+        bund = accounts.schluesselbund_name()
+        ablage = (
+            f"Ihre Passwörter kommen in die <b>{bund}</b>"
+            if bund
+            else "<b>Achtung:</b> Auf diesem Rechner ist kein Schlüsselbund "
+                 "erreichbar. Die Passwörter werden dann bei jedem Abruf neu "
+                 "erfragt – gespeichert werden sie nicht"
+        )
+
         if gefunden:
             text = (
-                f"<b>{len(gefunden)} Postfächer aus Thunderbird übernommen.</b> "
-                f"Server und Benutzernamen sind bereits eingetragen – bitte nur "
-                f"noch die Passwörter ergänzen.<br>"
-                f"<i>Die Passwörter selbst werden aus Thunderbird nicht "
-                f"ausgelesen. Ein Programm, das die Passwörter anderer Programme "
-                f"abgreift, hat in einem Archiv nichts zu suchen.</i>"
+                f"<p><b>{len(gefunden)} Postfächer aus Thunderbird "
+                f"übernommen.</b> Server, Benutzername und Verschlüsselung "
+                f"sind bereits eingetragen – ergänzen Sie bitte nur noch die "
+                f"Passwörter.</p>"
+
+                f"<p><b>Warum müssen Sie die Passwörter noch einmal "
+                f"eingeben?</b> Weil MailBurg sie aus Thunderbird nicht "
+                f"ausliest. Technisch ginge das – aber ein Programm, das die "
+                f"Passwörter anderer Programme abgreift, verhält sich wie "
+                f"Schadsoftware. Einem Archiv vertrauen Sie jahrzehntealte "
+                f"Post an; dieses Vertrauen ist mehr wert als die gesparte "
+                f"Tipparbeit. Übernommen haben wir deshalb nur die "
+                f"Einstellungen, die in einer gewöhnlichen Textdatei stehen.</p>"
+
+                f"<p>{ablage}. Verwendet werden sie ausschließlich, um Ihre "
+                f"Post abzuholen. Jedes Postfach wird gleich einmal "
+                f"ausprobiert, damit Sie sofort sehen, ob es klappt.</p>"
             )
             if uebergangen:
                 text += (
-                    f"<br><br>Nicht abrufbar und daher nicht dabei: "
-                    f"{', '.join(uebergangen)}."
+                    f"<p><b>Nicht dabei:</b> {', '.join(uebergangen)}. "
+                    f"Diese Konten lassen sich nicht über IMAP abrufen. Ihre "
+                    f"Nachrichten liegen aber meist lokal vor und können "
+                    f"später aus dem Mailprogramm eingelesen werden.</p>"
                 )
         else:
             text = (
-                "<b>Kein Thunderbird-Profil gefunden.</b><br>"
-                "Tragen Sie Ihre Postfächer bitte von Hand ein."
+                "<p><b>Kein Thunderbird-Profil gefunden.</b> Tragen Sie Ihre "
+                "Postfächer bitte von Hand ein – Sie brauchen dafür den "
+                "IMAP-Server Ihres Anbieters, Ihre Mailadresse und das "
+                "Passwort.</p>"
+                f"<p>{ablage}.</p>"
+                "<p><i>Bei Gmail, GMX, Web.de und Outlook genügt das Kennwort "
+                "der Weboberfläche nicht – diese Anbieter verlangen ein eigens "
+                "erzeugtes App-Passwort.</i></p>"
             )
         self.herkunft.setText(text)
 
@@ -524,12 +627,32 @@ class AbschlussSeite(QWizardPage):
     def initializePage(self) -> None:
         assistent = self.wizard()
         anzahl = len(getattr(assistent, "konten", []))
+        bund = accounts.schluesselbund_name()
+
         self.text.setText(
             f"<p>Das Archiv liegt in <b>{assistent.archiv_pfad}</b>, "
-            f"{anzahl} Postfächer sind eingerichtet.</p>"
-            f"<p>Der erste Abruf holt alles, was in den Postfächern liegt – "
-            f"das kann bei großen Beständen dauern. Danach wird nur noch "
-            f"geholt, was neu dazukommt.</p>"
+            f"{anzahl} Postfächer sind eingerichtet"
+            + (f", die Passwörter in der {bund}." if bund else ".")
+            + "</p>"
+
+            "<p style='margin-top:12px'><b>Was jetzt passiert</b></p>"
+            "<p>Der erste Abruf holt alles, was in den Postfächern liegt. Bei "
+            "einem gewachsenen Bestand kann das eine Weile dauern – Sie "
+            "können in der Zwischenzeit weiterarbeiten, und wenn Sie "
+            "abbrechen, macht der nächste Abruf dort weiter, wo dieser "
+            "aufgehört hat. Verloren geht dabei nichts.</p>"
+            "<p>Danach wird nur noch geholt, was neu dazugekommen ist. Das "
+            "dauert dann Sekunden.</p>"
+
+            "<p style='margin-top:12px'><b>Damit es von allein weiterläuft</b></p>"
+            "<p>Sinnvoll ist ein regelmäßiger Abruf im Hintergrund – sonst "
+            "muss jemand daran denken. Eingerichtet wird er einmalig mit "
+            "<i>./install.sh --zeitsteuerung</i>; die Anleitung dazu liegt "
+            "im Ordner <i>docs</i>.</p>"
+
+            "<p style='margin-top:12px'><i>Alles hier Eingestellte lässt sich "
+            "später ändern. Postfächer kommen hinzu oder fallen weg, das "
+            "Archiv darf umziehen.</i></p>"
         )
 
 
@@ -543,6 +666,15 @@ class Einrichtungsassistent(QWizard):
 
         self.setWindowTitle(f"{APP_NAME} einrichten")
         self.setWizardStyle(QWizard.ModernStyle)
+
+        # Auch ohne Qts Übersetzungsdateien deutsch. Die fehlen in
+        # abgespeckten Installationen gern einmal, und "Next" neben
+        # "Willkommen" sieht nach halber Arbeit aus.
+        self.setButtonText(QWizard.NextButton, "&Weiter >")
+        self.setButtonText(QWizard.BackButton, "< &Zurück")
+        self.setButtonText(QWizard.CancelButton, "Abbrechen")
+        self.setButtonText(QWizard.FinishButton, "&Fertig")
+        self.setButtonText(QWizard.HelpButton, "Hilfe")
         # Der Anwender soll jederzeit zurück können, ohne etwas zu verlieren.
         self.setOption(QWizard.NoBackButtonOnStartPage, True)
         self.setMinimumSize(680, 520)
