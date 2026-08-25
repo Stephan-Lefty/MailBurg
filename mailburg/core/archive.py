@@ -392,13 +392,19 @@ class Archive:
             "ok": chain.ok and not missing and not unexpected,
         }
 
-    def rebuild_index(self, *, progress=None) -> int:
+    def rebuild_index(self, *, progress=None, mit_anhangstext: bool = True) -> int:
         """Baut den Suchindex vollständig aus Ablage und Journal neu.
 
         Das ist der Grund, warum der Index nicht gesichert werden muss:
         Solange ``mail/`` und ``meta/`` da sind, ist er in Minuten wieder da.
+
+        Der Text der Anhänge wird dabei erneut ausgelesen. Das dauert
+        länger, ist aber notwendig – sonst wäre der neu gebaute Index
+        weniger wert als der alte, und die Zusicherung, dass er sich
+        vollständig aus dem Archiv ergibt, wäre gebrochen.
         """
         from mailburg.extract import message as message_module
+        from mailburg.extract import text as text_module
 
         self.index.close()
         index_file = paths.index_path(self.uuid)
@@ -428,7 +434,11 @@ class Archive:
             except (FileNotFoundError, ValueError):
                 continue
 
-            parsed = message_module.parse(raw)
+            parsed = message_module.parse(raw, with_payloads=mit_anhangstext)
+            anhangstext = ""
+            if mit_anhangstext and parsed.attachments:
+                anhangstext, _ = text_module.aus_mail(parsed)
+
             for entry in entries:
                 self.index.add(
                     digest=digest,
@@ -438,6 +448,7 @@ class Archive:
                     account=entry.get("account", ""),
                     folder=entry.get("folder", ""),
                     uid=entry.get("uid"),
+                    attachment_text=anhangstext,
                 )
             count += 1
             if progress and count % 500 == 0:

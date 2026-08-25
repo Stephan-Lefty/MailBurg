@@ -15,7 +15,9 @@ from pathlib import Path
 
 from mailburg import APP_NAME, __version__
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
+from mailburg.core.importer import importieren
 from mailburg.core.retention import Jurisdiction, describe
+from mailburg.extract import pdf
 from mailburg.search.query import QueryError, describe_syntax
 from mailburg.sources import local
 
@@ -69,49 +71,53 @@ def cmd_importieren(args: argparse.Namespace) -> int:
     print(f"Quelle: {source.describe()}")
     print(f"Konto:  {source.account}")
 
+    mit_text = not args.ohne_anhangstext
+    if mit_text:
+        weg = pdf.verfuegbar()
+        if weg is None:
+            print(
+                "Hinweis: Weder pdftotext noch pypdf gefunden – PDF-Anhänge\n"
+                "         werden nicht durchsuchbar. Abhilfe unter Arch/Manjaro:\n"
+                "         sudo pacman -S poppler",
+                file=sys.stderr,
+            )
+    print(f"Anhänge im Volltext: {'ja' if mit_text else 'nein'}")
+
     with Archive.open(Path(args.archiv)) as archive:
         started = time.monotonic()
-        seen = added = duplicate = failed = 0
 
-        for message in source.iter_messages():
-            seen += 1
-            try:
-                result = archive.add(
-                    message.raw,
-                    account=source.account,
-                    folder=message.folder,
-                    uid=message.uid,
-                    flags=message.flags,
-                )
-                if result.stored:
-                    added += 1
-                else:
-                    duplicate += 1
-            except Exception as exc:  # noqa: BLE001 – eine kaputte Mail stoppt den Lauf nicht
-                failed += 1
-                if args.ausführlich:
-                    print(f"  übersprungen ({message.folder}): {exc}", file=sys.stderr)
+        def fortschritt(stat) -> None:
+            print(f"  … {stat.gelesen} gelesen, {stat.neu} neu", end="\r", flush=True)
 
-            if seen % 500 == 0:
-                archive.index.commit()
-                archive.journal.flush()
-                print(f"  … {seen} gelesen, {added} neu", end="\r", flush=True)
+        def auf_fehler(ordner: str, exc: Exception) -> None:
+            if args.ausführlich:
+                print(f"  übersprungen ({ordner}): {exc}", file=sys.stderr)
 
-        archive.index.commit()
-        archive.journal.flush()
+        stat = importieren(
+            archive,
+            source,
+            mit_anhangstext=mit_text,
+            fortschritt=fortschritt,
+            auf_fehler=auf_fehler,
+        )
+
         print(" " * 60, end="\r")
-
-        if added:
+        if stat.neu:
             print("Verdichte den Suchindex …")
             archive.index.optimize()
 
         seconds = time.monotonic() - started
-        rate = seen / seconds if seconds else 0
-        print(
-            f"Fertig: {seen} gelesen, {added} neu aufgenommen, "
-            f"{duplicate} bereits vorhanden, {failed} fehlgeschlagen"
-        )
+        rate = stat.gelesen / seconds if seconds else 0
+        print(f"Fertig: {stat}")
         print(f"Dauer: {seconds:.1f} s ({rate:.0f} Mails/s)")
+
+        if mit_text:
+            print(f"Mit Anhangstext: {stat.mit_anhangstext} Mails")
+            if stat.eingescannt:
+                print(
+                    f"Davon {stat.eingescannt} PDF ohne Textebene – vermutlich "
+                    f"eingescannt und daher nicht durchsuchbar."
+                )
 
     source.close()
     return 0
@@ -276,6 +282,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("archiv", help="Verzeichnis des Archivs")
     p.add_argument("quelle", help="Thunderbird-Profil, Maildir oder MBOX-Datei")
     p.add_argument("--konto", help="Name, unter dem die Mails erscheinen sollen")
+    p.add_argument(
+        "--ohne-anhangstext",
+        action="store_true",
+        help="Anhänge nicht im Volltext erfassen (deutlich schneller, "
+             "dafür sind PDF und Office-Dateien nicht durchsuchbar)",
+    )
     p.set_defaults(func=cmd_importieren)
 
     p = subparsers.add_parser("suchen", help="das Archiv durchsuchen")
