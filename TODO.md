@@ -125,9 +125,15 @@ wurde.
   aus `store.py` dafür schon ausreicht.
 
 - [ ] **Wie schnell ist die Suche bei einer halben Million Mails wirklich?**
-  Bisher nur an Kleinstbeständen gemessen. Ziel sind unter 200 ms. Zu klären
-  ist auch, wie groß der Index dann tatsächlich wird – die Schätzung für den
-  Dreizeichenindex ist bislang nur eine Schätzung.
+  Am 2026-08-25 an 5.187 echten Mails gemessen (1,2 GB aus einem
+  Thunderbird-Profil): **9 bis 13 ms** je Anfrage, quer durch Freitext,
+  Feldsuche und Anhangstyp. Der Index belegt 95 MB, also 12 % der
+  Archivgröße – die Befürchtung, der Dreizeichenindex würde ihn sprengen,
+  hat sich nicht bestätigt.
+
+  Hochgerechnet auf 500.000 Mails wären das rund 9 GB Index. Offen bleibt,
+  ob die Suchzeit dann noch unter 200 ms liegt; FTS5 sollte das packen,
+  gemessen ist es aber nicht. Dafür braucht es einen Bestand dieser Größe.
 
 - [ ] **Umlaut-Umschreibungen in der Suche.** `von:muller` findet inzwischen
   „Müller", aber `von:mueller` nicht. Die Auffächerung ue→ü müsste die
