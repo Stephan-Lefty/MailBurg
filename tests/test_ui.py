@@ -309,3 +309,41 @@ class VorschauTest(OberflaechenTest):
         ziel = zeile._ablegen()
         self.assertEqual(ziel.name, ".bashrc")
         self.assertNotIn("..", str(ziel))
+
+
+class OrteTest(unittest.TestCase):
+    """Welche Ablageorte vorgeschlagen werden."""
+
+    def test_benutzerordner_ist_immer_dabei(self):
+        from mailburg.core import orte
+
+        vorschlaege = orte.vorschlagen()
+        self.assertTrue(vorschlaege)
+        self.assertEqual(vorschlaege[0].art, "benutzer")
+
+    def test_jeder_ort_kennt_seinen_platz(self):
+        from mailburg.core import orte
+
+        for ort in orte.vorschlagen():
+            with self.subTest(ort=ort.beschriftung):
+                self.assertGreater(ort.gesamt, 0)
+                self.assertIn("frei", ort.freier_platz)
+
+    def test_archivordner_wird_angehaengt(self):
+        # Der Anwender wählt einen Ort, kein Verzeichnis - das Archiv soll
+        # nicht lose in seinem Benutzerordner liegen.
+        from mailburg.core import orte
+
+        for ort in orte.vorschlagen():
+            with self.subTest(ort=ort.beschriftung):
+                self.assertEqual(ort.pfad.name, orte.VORGABENAME)
+
+    def test_knapper_platz_wird_erkannt(self):
+        from mailburg.core.orte import Ort
+
+        eng = Ort("Test", __import__("pathlib").Path("/x"), "laufwerk",
+                  frei=500 * 1024**2, gesamt=10 * 1024**3)
+        weit = Ort("Test", __import__("pathlib").Path("/x"), "laufwerk",
+                   frei=50 * 1024**3, gesamt=100 * 1024**3)
+        self.assertTrue(eng.eng)
+        self.assertFalse(weit.eng)

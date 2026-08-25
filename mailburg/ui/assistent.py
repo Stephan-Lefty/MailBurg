@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
 )
 
 from mailburg import APP_NAME, QUELLTEXT_URL
-from mailburg.core import accounts
+from mailburg.core import accounts, orte
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, Mode
 from mailburg.core.retention import Jurisdiction
@@ -165,9 +165,24 @@ class ArchivSeite(QWizardPage):
         self.setTitle("Das Archiv")
         self.setSubTitle("Wo sollen Ihre Mails liegen?")
 
+        # Was tatsächlich zur Verfügung steht, statt eines einzelnen
+        # Vorschlags: Dass der Ort frei wählbar ist, sieht man einem
+        # Eingabefeld nicht an – und was hinter »Auswählen…« steckt,
+        # erfährt nur, wer daraufklickt.
+        self.orte = orte.vorschlagen()
+        self.ortswahl = QComboBox()
+        self.ortswahl.setAccessibleName("Ablageort")
+        for ort in self.orte:
+            beschriftung = ort.beschriftung
+            if ort.freier_platz:
+                beschriftung += f"   ({ort.freier_platz})"
+            self.ortswahl.addItem(beschriftung, ort)
+        self.ortswahl.addItem("Anderer Ordner …", None)
+        self.ortswahl.currentIndexChanged.connect(self._ort_gewaehlt)
+
         self.pfad = QLineEdit()
         self.pfad.setPlaceholderText("noch nichts gewählt")
-        self.pfad.setText(str(Path.home() / "Mailarchiv"))
+        self.pfad.setText(str(self.orte[0].pfad) if self.orte else str(Path.home()))
         # Damit Vorlesehilfen etwas anzusagen haben.
         self.pfad.setAccessibleName("Ort des Archivs")
 
@@ -177,6 +192,10 @@ class ArchivSeite(QWizardPage):
         zeile = QHBoxLayout()
         zeile.addWidget(self.pfad, 1)
         zeile.addWidget(blaettern)
+
+        self.platzhinweis = QLabel()
+        self.platzhinweis.setWordWrap(True)
+        self.platzhinweis.hide()
 
         hinweis = QLabel(
             "<p>Eine interne Platte, eine externe Platte oder ein Ordner, den "
@@ -241,8 +260,11 @@ class ArchivSeite(QWizardPage):
         innen.addLayout(fristen)
 
         aufbau = QVBoxLayout(self)
-        aufbau.addWidget(QLabel("Ort des Archivs:"))
+        aufbau.addWidget(QLabel("Wo soll das Archiv liegen?"))
+        aufbau.addWidget(self.ortswahl)
+        aufbau.addWidget(self.pfad_beschriftung())
         aufbau.addLayout(zeile)
+        aufbau.addWidget(self.platzhinweis)
         aufbau.addWidget(hinweis)
         aufbau.addSpacing(12)
         aufbau.addWidget(art)
@@ -250,12 +272,60 @@ class ArchivSeite(QWizardPage):
 
         self.registerField("archivpfad*", self.pfad)
 
+    def pfad_beschriftung(self) -> QLabel:
+        beschriftung = QLabel("Vollständiger Pfad:")
+        beschriftung.setBuddy(self.pfad)
+        return beschriftung
+
+    def _ort_gewaehlt(self, stelle: int) -> None:
+        ort = self.ortswahl.itemData(stelle)
+        if ort is None:
+            # "Anderer Ordner …" - dann gleich den Dateidialog öffnen.
+            self._waehlen()
+            return
+
+        self.pfad.setText(str(ort.pfad))
+        if ort.eng:
+            self.platzhinweis.setText(
+                f"<b>Wenig Platz:</b> Dort sind nur noch {ort.freier_platz.split(' von')[0]}. "
+                f"Ein Mailarchiv wächst über die Jahre – rechnen Sie mit "
+                f"etwa der Hälfte dessen, was Ihre Postfächer belegen."
+            )
+            self.platzhinweis.setTextFormat(Qt.RichText)
+            self.platzhinweis.show()
+        elif ort.art == "extern":
+            self.platzhinweis.setText(
+                "Auf einer externen Platte ist das Archiv nur erreichbar, "
+                "solange sie angesteckt ist. Der Abruf im Hintergrund "
+                "scheitert dann, solange sie fehlt – verloren geht dabei "
+                "nichts, es wird nur nachgeholt."
+            )
+            self.platzhinweis.setTextFormat(Qt.RichText)
+            self.platzhinweis.show()
+        elif ort.art == "cloud":
+            self.platzhinweis.setText(
+                "Gut gewählt: In der Cloud liegt das Archiv auch dann noch, "
+                "wenn dieser Rechner einmal ausfällt. Nur sollten nicht zwei "
+                "Rechner gleichzeitig hineinschreiben – MailBurg verhindert "
+                "das mit einer Sperre."
+            )
+            self.platzhinweis.setTextFormat(Qt.RichText)
+            self.platzhinweis.show()
+        else:
+            self.platzhinweis.hide()
+
     def _waehlen(self) -> None:
         gewaehlt = QFileDialog.getExistingDirectory(
             self, "Ordner für das Archiv", self.pfad.text()
         )
         if gewaehlt:
-            self.pfad.setText(gewaehlt)
+            ziel = Path(gewaehlt)
+            # Wer einen leeren Ordner wählt, meint ihn selbst. Wer sein
+            # Benutzerverzeichnis wählt, meint das sicher nicht - dort
+            # kommt ein Unterordner hinein.
+            if ziel == Path.home() or any(ziel.iterdir()):
+                ziel = ziel / orte.VORGABENAME
+            self.pfad.setText(str(ziel))
 
     @property
     def betriebsart(self) -> Mode:
