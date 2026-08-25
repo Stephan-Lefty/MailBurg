@@ -175,16 +175,36 @@ class ImapSource(Source):
 
     # ------------------------------------------------------------ Anmelden
 
+    def _tls_kontext(self) -> ssl.SSLContext:
+        """Die TLS-Einstellungen für dieses Konto.
+
+        Im Regelfall die Vorgaben des Systems: Zertifikat prüfen, Namen
+        prüfen. Für ein Brückenprogramm auf dem eigenen Rechner geht das
+        nicht – für ``127.0.0.1`` kann es kein beglaubigtes Zertifikat
+        geben, weil keine Zertifizierungsstelle den eigenen Rechner
+        beglaubigt. Warum das hier vertretbar ist, steht bei
+        ``Konto.bruecke``.
+        """
+        kontext = ssl.create_default_context()
+        if self.konto.ist_lokale_bruecke:
+            kontext.check_hostname = False
+            kontext.verify_mode = ssl.CERT_NONE
+        return kontext
+
     def _verbinden(self, passwort: str) -> None:
         if not passwort:
             raise ImapFehler(
                 f"Für '{self.konto.name}' liegt kein Passwort vor. Es steht "
                 f"weder im Schlüsselbund noch wurde eines angegeben."
             )
+        kontext = self._tls_kontext()
         try:
             if self.konto.ssl:
                 self._verbindung = imaplib.IMAP4_SSL(
-                    self.konto.server, self.konto.port, timeout=self._zeitgrenze
+                    self.konto.server,
+                    self.konto.port,
+                    ssl_context=kontext,
+                    timeout=self._zeitgrenze,
                 )
             else:
                 self._verbindung = imaplib.IMAP4(
@@ -193,10 +213,24 @@ class ImapSource(Source):
                 # Ohne STARTTLS ginge das Passwort im Klartext über die
                 # Leitung. Schlägt es fehl, wird abgebrochen statt
                 # heimlich unverschlüsselt weiterzumachen.
-                self._verbindung.starttls(ssl.create_default_context())
-        except (OSError, socket.timeout, ssl.SSLError, imaplib.IMAP4.error) as exc:
+                self._verbindung.starttls(kontext)
+        except ssl.SSLCertVerificationError as exc:
             raise ImapFehler(
-                f"Keine Verbindung zu {self.konto.server}:{self.konto.port} – {exc}"
+                f"Das Zertifikat von {self.konto.server}:{self.konto.port} ist "
+                f"nicht zu überprüfen – {exc}\n"
+                f"Läuft dort ein Brückenprogramm wie die Proton Mail Bridge? "
+                f"Dann gehört das Konto mit --bruecke eingerichtet."
+            ) from exc
+        except (OSError, socket.timeout, ssl.SSLError, imaplib.IMAP4.error) as exc:
+            hinweis = ""
+            if self.konto.ist_lokale_bruecke:
+                hinweis = (
+                    "\nBrückenprogramme laufen nur, solange sie gestartet sind. "
+                    "Läuft die Brücke gerade?"
+                )
+            raise ImapFehler(
+                f"Keine Verbindung zu {self.konto.server}:{self.konto.port} – "
+                f"{exc}{hinweis}"
             ) from exc
 
         try:

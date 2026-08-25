@@ -31,6 +31,14 @@ from mailburg.core import paths
 #: Spamverdacht sind schon vom Benutzer aussortiert worden - sie ins Archiv
 #: zu holen, würde diese Entscheidung rückgängig machen und das Archiv
 #: unnötig aufblähen.
+#: Adressen, die diesen Rechner selbst meinen. Nur bei ihnen darf die
+#: Zertifikatsprüfung entfallen – siehe ``Konto.bruecke``.
+LOKALE_ADRESSEN = frozenset({"127.0.0.1", "::1", "localhost"})
+
+#: Brückenprogramme und ihre üblichen Ports. Dient nur dazu, ein
+#: übernommenes Konto von selbst richtig einzustufen.
+BRUECKEN_PORTS = frozenset({1143, 1025, 1100})
+
 STANDARD_AUSSCHLUSS = (
     "Trash", "Papierkorb", "Deleted Items", "Gelöschte Elemente", "Deleted Messages",
     "Junk", "Spam", "Junk E-Mail", "Bulk Mail", "Werbung",
@@ -55,6 +63,31 @@ class Konto:
     """Ordner, die übergangen werden."""
 
     aktiv: bool = True
+
+    bruecke: bool = False
+    """Dahinter läuft ein Brückenprogramm auf diesem Rechner.
+
+    Proton Mail und Tuta verschlüsseln Ende zu Ende und bieten deshalb kein
+    IMAP im Netz an. Wer trotzdem mit einem Mailprogramm daran will, lässt
+    ein Brückenprogramm laufen, das auf ``127.0.0.1`` ein IMAP-Postfach
+    bereitstellt und die Entschlüsselung übernimmt.
+
+    Solche Brücken weisen sich mit einem selbstsignierten Zertifikat aus –
+    für ``127.0.0.1`` kann es gar kein anderes geben, denn keine
+    Zertifizierungsstelle beglaubigt den eigenen Rechner. Ist dieses Feld
+    gesetzt, sieht MailBurg deshalb von der Prüfung ab. Das ist vertretbar,
+    **weil die Verbindung den Rechner nicht verlässt**: Wer sie belauschen
+    wollte, säße bereits darauf, und dann wäre ohnehin alles verloren.
+
+    Damit daraus kein Scheunentor wird, wirkt das Feld ausschließlich bei
+    den Adressen in :data:`LOKALE_ADRESSEN`. Bei jedem anderen Server bleibt
+    es folgenlos.
+    """
+
+    @property
+    def ist_lokale_bruecke(self) -> bool:
+        """Ob die Nachsicht beim Zertifikat wirklich greifen darf."""
+        return self.bruecke and self.server.lower() in LOKALE_ADRESSEN
 
     @property
     def schluessel(self) -> str:

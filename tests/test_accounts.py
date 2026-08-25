@@ -37,6 +37,37 @@ class KontoTest(unittest.TestCase):
         self.assertEqual(len(anderer.ausschluss), len(STANDARD_AUSSCHLUSS))
 
 
+class BrueckeTest(unittest.TestCase):
+    """Wann die Zertifikatsprüfung entfallen darf – und wann nicht."""
+
+    def konto(self, server: str, bruecke: bool = True) -> Konto:
+        return Konto(
+            name="Proton", server=server, benutzer="post@proton.me",
+            port=1143, ssl=False, bruecke=bruecke,
+        )
+
+    def test_auf_dem_eigenen_rechner_greift_sie(self):
+        for adresse in ("127.0.0.1", "localhost", "::1", "LOCALHOST"):
+            with self.subTest(adresse=adresse):
+                self.assertTrue(self.konto(adresse).ist_lokale_bruecke)
+
+    def test_bei_einem_fremden_server_greift_sie_nicht(self):
+        # Das ist der Punkt: Sonst ließe sich mit --bruecke die
+        # Zertifikatsprüfung für jeden beliebigen Server abschalten, und
+        # zwar unbemerkt.
+        for adresse in ("imap.example.org", "192.168.1.50", "127.0.0.1.example.org"):
+            with self.subTest(adresse=adresse):
+                self.assertFalse(self.konto(adresse).ist_lokale_bruecke)
+
+    def test_ohne_das_kennzeichen_gar_nicht(self):
+        self.assertFalse(self.konto("127.0.0.1", bruecke=False).ist_lokale_bruecke)
+
+    def test_gewoehnliche_konten_sind_keine_bruecke(self):
+        konto = Konto(name="A", server="imap.example.org", benutzer="b")
+        self.assertFalse(konto.bruecke)
+        self.assertFalse(konto.ist_lokale_bruecke)
+
+
 class KontenlisteTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()

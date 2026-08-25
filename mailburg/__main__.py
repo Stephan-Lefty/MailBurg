@@ -167,12 +167,25 @@ def cmd_konten_liste(args: argparse.Namespace) -> int:
 
 def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
     """Richtet ein Postfach ein und prüft es gleich."""
+    if args.proton:
+        # Die Proton Mail Bridge lauscht auf dem eigenen Rechner und
+        # spricht STARTTLS auf 1143. Wer diese Werte von Hand einträgt,
+        # vertippt sich nur.
+        server, port, starttls, bruecke = "127.0.0.1", args.port if args.port != 993 else 1143, True, True
+    else:
+        server, port, starttls, bruecke = args.server, args.port, args.starttls, args.bruecke
+
+    if not server:
+        print("Ohne --server geht es nicht.", file=sys.stderr)
+        return 2
+
     konto = Konto(
         name=args.name,
-        server=args.server,
+        server=server,
         benutzer=args.benutzer or args.name,
-        port=args.port,
-        ssl=not args.starttls,
+        port=port,
+        ssl=not starttls,
+        bruecke=bruecke,
     )
     passwort = getpass.getpass(f"Passwort für {konto.benutzer} auf {konto.server}: ")
     if not passwort:
@@ -218,6 +231,111 @@ def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
         print(f"    … und {len(ordner) - 15} weitere")
     print()
     print(f"  Übergangen werden: {', '.join(konto.ausschluss)}")
+    return 0
+
+
+def cmd_konten_uebernehmen(args: argparse.Namespace) -> int:
+    """Übernimmt die Einstellungen aus einem Thunderbird-Profil."""
+    from mailburg.core import uebernahme
+
+    if args.profil:
+        profile = [Path(args.profil)]
+    else:
+        profile = local.find_thunderbird_profiles()
+        if not profile:
+            print(
+                "Kein Thunderbird-Profil gefunden. Pfad bitte angeben:\n"
+                "  mailburg konten uebernehmen ~/.thunderbird/xxxx.default",
+                file=sys.stderr,
+            )
+            return 2
+
+    liste = Kontenliste()
+    vergeben = {k.name for k in liste.konten}
+    uebernommen = 0
+
+    for pfad in profile:
+        try:
+            funde = uebernahme.aus_thunderbird(pfad)
+        except (FileNotFoundError, OSError) as exc:
+            print(f"Fehler: {exc}", file=sys.stderr)
+            continue
+
+        print(f"\nProfil {pfad}")
+        if not funde:
+            print("  Keine Postfächer eingerichtet.")
+            continue
+
+        abrufbar = [f for f in funde if f.brauchbar]
+        for fund in funde:
+            if not fund.brauchbar:
+                print(f"  übergangen: {fund.konto.name} ({fund.art.upper()})")
+                print(f"      {fund.begruendung}")
+
+        uebernahme.namen_entzerren(abrufbar, vergeben)
+
+        for fund in abrufbar:
+            konto = fund.konto
+            if liste.finden(konto.name):
+                print(f"  {konto.name}: schon eingerichtet, übersprungen.")
+                continue
+
+            verschluesselung = "IMAPS" if konto.ssl else "STARTTLS"
+            print(f"\n  {konto.name}")
+            print(f"    Server:  {konto.server}:{konto.port} ({verschluesselung})")
+            print(f"    Benutzer: {konto.benutzer}")
+            if konto.ist_lokale_bruecke:
+                print(
+                    "    Brückenprogramm auf diesem Rechner (Proton Mail Bridge\n"
+                    "      oder ähnlich). Das Passwort erzeugt die Brücke – das\n"
+                    "      Kennwort des Anbieterkontos taugt dafür nicht. Und sie\n"
+                    "      muss laufen, sonst gibt es beim Abruf nichts zu holen."
+                )
+
+            if not args.alle:
+                antwort = input("    Übernehmen? [J/n] ").strip().lower()
+                if antwort in ("n", "nein"):
+                    continue
+
+            # Das Passwort kommt von Hand. Es aus dem Thunderbird-Profil zu
+            # holen, wäre technisch möglich und trotzdem falsch – siehe
+            # mailburg/core/uebernahme.py.
+            passwort = getpass.getpass(f"    Passwort für {konto.benutzer}: ")
+            if not passwort:
+                print("    Ohne Passwort übersprungen.")
+                continue
+
+            if not args.ohne_test:
+                try:
+                    quelle = ImapSource(konto, passwort)
+                except ImapFehler as exc:
+                    print(f"    FEHLER: {exc}", file=sys.stderr)
+                    print("    Nicht übernommen.")
+                    continue
+                try:
+                    ordner = quelle.folders()
+                finally:
+                    quelle.close()
+                print(f"    Anmeldung in Ordnung, {len(ordner)} Ordner.")
+
+            liste.hinzufuegen(konto)
+            if accounts.passwort_setzen(konto, passwort):
+                print("    Übernommen, Passwort im Schlüsselbund.")
+            else:
+                print("    Übernommen. Kein Schlüsselbund – Passwort wird je Abruf erfragt.")
+            uebernommen += 1
+
+    print()
+    if uebernommen:
+        print(f"{uebernommen} Konten übernommen. Abrufen mit:")
+        print("    mailburg abrufen ~/Archiv")
+        print()
+        print("Für den Altbestand lohnt außerdem der Weg über die lokalen Dateien –")
+        print("der kommt ohne Passwort aus und holt auch Konten, die es online")
+        print("nicht mehr gibt:")
+        print("    mailburg importieren ~/Archiv <Profilpfad> --konto alt")
+    else:
+        print("Nichts übernommen.")
     return 0
 
 
@@ -553,7 +671,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     k = konten_befehle.add_parser("hinzufuegen", help="ein Postfach einrichten")
     k.add_argument("name", help="Kurzname, unter dem die Mails im Archiv erscheinen")
-    k.add_argument("--server", required=True, help="IMAP-Server, etwa imap.gmail.com")
+    k.add_argument("--server", help="IMAP-Server, etwa imap.gmail.com")
     k.add_argument("--benutzer", help="Anmeldename, meist die Mailadresse")
     k.add_argument("--port", type=int, default=993, help="Standard: 993 (IMAPS)")
     k.add_argument(
@@ -561,7 +679,41 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="unverschlüsselt verbinden und auf TLS hochstufen (Port meist 143)",
     )
+    k.add_argument(
+        "--proton",
+        action="store_true",
+        help="Postfach über die Proton Mail Bridge: setzt Server, Port und "
+             "Verschlüsselung von selbst. Das Passwort erzeugt die Bridge – "
+             "das Kennwort des Proton-Kontos taugt dafür nicht.",
+    )
+    k.add_argument(
+        "--bruecke",
+        action="store_true",
+        help="dahinter läuft ein Brückenprogramm auf diesem Rechner. Dessen "
+             "selbstsigniertes Zertifikat wird dann hingenommen – nur bei "
+             "127.0.0.1, denn nur da verlässt die Verbindung den Rechner nicht",
+    )
     k.set_defaults(func=cmd_konten_hinzufuegen)
+
+    k = konten_befehle.add_parser(
+        "uebernehmen",
+        help="Postfächer aus einem Thunderbird-Profil übernehmen",
+        description="Übernimmt Server, Port, Benutzername und Verschlüsselungsart "
+                    "aus Thunderbird. Das Passwort wird von Hand abgefragt – aus "
+                    "dem Profil holt MailBurg es ausdrücklich nicht.",
+    )
+    k.add_argument(
+        "profil", nargs="?", help="Thunderbird-Profil; ohne Angabe wird gesucht"
+    )
+    k.add_argument(
+        "--alle", action="store_true", help="ohne Rückfrage je Konto übernehmen"
+    )
+    k.add_argument(
+        "--ohne-test",
+        action="store_true",
+        help="Anmeldung nicht gleich ausprobieren",
+    )
+    k.set_defaults(func=cmd_konten_uebernehmen)
 
     k = konten_befehle.add_parser("entfernen", help="ein Postfach aus der Liste nehmen")
     k.add_argument("name")
