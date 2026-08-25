@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="MailBurg">
+  <title>MailBurg</title>
+  <defs>
+    <linearGradient id="mb-grund" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e8af6"/>
+      <stop offset="1" stop-color="#0047a7"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="115" fill="url(#mb-grund)"/>
+
+  <g fill="#fff">
+    <!-- Boden: flache Sichel, zu den Seiten auslaufend. Kubisch, nicht
+         quadratisch - eine quadratische Kurve fällt zu den Enden hin zu
+         steil ab und läge dort deutlich tiefer als in der Vorlage. -->
+    <path d="M56 446 C150 420 362 420 456 446 C362 428 150 428 56 446 Z"/>
+
+    <!-- Fahnenmast -->
+    <rect x="250" y="55" width="9" height="120" rx="4.5"/>
+
+    <!-- Wehende Fahne -->
+    <path d="M259 66 C292 59 316 80 346 73 C336 97 306 112 259 107 Z"/>
+
+    <!-- Mittelturm, drei Zinnen, nach unten leicht verjüngt -->
+    <path d="M180 148 h32 v20 h20 v-20 h45 v20 h20 v-20 h32 v24
+             l-12 36 v50 h-125 v-50 l-12 -36 Z"/>
+
+    <!-- Linker Turm, drei Zinnen -->
+    <path d="M89 220 h21 v12 h13 v-12 h24 v12 h13 v-12 h20 v38 h-91 Z"/>
+
+    <!-- Rechter Turm, spiegelbildlich -->
+    <path d="M329 220 h21 v12 h13 v-12 h23 v12 h13 v-12 h21 v38 h-91 Z"/>
+
+    <!-- Mauer -->
+    <path d="M98 256 h313 v177 h-313 Z"/>
+  </g>
+
+  <!-- Torbogen als Fläche in der Farbe des Untergrunds, nicht als Loch:
+       Er liegt vor dem Boden und verdeckt ihn. Als ausgespartes Loch würde
+       der Boden hindurchscheinen. Der Bogen ist leicht hochoval, nicht
+       halbkreisförmig - so verläuft er wie in der Vorlage. -->
+  <path d="M173 435 v-69 a81.5 83 0 0 1 163 0 v69 Z" fill="url(#mb-grund)"/>
+
+  <!-- Briefumschlag -->
+  <rect x="190" y="338" width="129" height="95" rx="10" fill="#fff"/>
+
+  <!-- Klappe: ebenfalls in der Farbe des Untergrunds. Die Strichbreite ist
+       schmaler als die sichtbare Lücke - eine schräge Linie erscheint
+       waagerecht um den Faktor 1/sin(Winkel) breiter. -->
+  <path d="M189 345 L254.5 406 L320 345" fill="none" stroke="url(#mb-grund)"
+        stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
