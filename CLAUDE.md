@@ -37,6 +37,33 @@ Programmstart. Ohne Archivverschlüsselung wäre es Sicherheitstheater (die
 Mails liegen als Dateien im Ordner) und machte den Abruf im Hintergrund
 unmöglich. Ein Passwort gehört an die Verschlüsselung, und dann pro Archiv.
 
+**Veröffentlichung: noch nicht.** Das Repo bleibt privat, bis der Abruf an
+echten Postfächern gelaufen ist. Der Grund ist nicht die Codequalität,
+sondern dass Fehler in einem Archivprogramm unbemerkt und unumkehrbar sind:
+Was nicht geholt wurde, fällt erst Jahre später auf. Bisher ist alles nur
+gegen `tests/fake_imap.py` gelaufen – also gegen meine eigenen Annahmen.
+
+**Zwei Testumgebungen, die Stephan hat.** Sie sollen Verschiedenes abdecken:
+
+- *Manjaro / KDE Plasma / Wayland* – der Echtbetrieb. Acht Konten in
+  Thunderbird (eines über die Proton Bridge auf 1143, eines auf 993, sechs
+  auf 143), der große Altbestand, der laufende Abruf. Schlüsselbund ist hier
+  **ksecretd**, nicht gnome-keyring.
+- *GuideOS (Debian 13) / Cinnamon* – die andere Hälfte: der apt-Zweig von
+  `install.sh`, gnome-keyring, und der **manuelle** Weg über
+  `konten hinzufuegen` ohne Thunderbird-Übernahme. Den ist noch nie jemand
+  gegangen. Mit Evolution als Client käme die Maildir-Quelle an echte Daten.
+- *Beide zusammen* – endlich prüfbar, was unter „Noch nicht getestet" steht:
+  Sperrdatei bei zwei Rechnern an einem Archiv, Index-Neuaufbau auf dem
+  zweiten, Nextcloud mit laufendem Synchronisationsclient.
+
+**Kein macOS-Testgerät vorhanden, Windows ebenfalls nicht bestätigt.** Das
+README behauptet „Läuft unter Linux, Windows und macOS". Geprüft ist davon
+nur, dass die Einrichtung in der CI durchläuft – der Betrieb auf keiner der
+beiden. Vorschlag lag Stephan vor, ist **noch nicht entschieden**: den Satz
+auf das herunterziehen, was tatsächlich erprobt ist. Passt zur Haltung des
+Projekts, nichts zu behaupten, was nicht belegt ist (siehe RECHTLICHES.md).
+
 ## Aufbau
 
 ```
