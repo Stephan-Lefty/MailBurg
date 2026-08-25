@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420"
+     width="1200" height="420" role="img" aria-label="MailBurg – E-Mails. Sicher bewahrt.">
+  <title>MailBurg – E-Mails. Sicher bewahrt.</title>
+  <style>
+    /* Die Grundfarben stehen als fill-Attribut an den Elementen selbst,
+       nicht in Variablen. Das ist Absicht: CSS-Variablen werden von
+       schlanken Renderern wie rsvg nicht ausgewertet, und GitHub entfernt
+       Stilangaben aus eingebetteten SVG ganz. Ohne Auswertung fielen die
+       Flächen auf Schwarz zurück. So wirkt der dunkle Modus, wo CSS
+       unterstützt wird - und wo nicht, sieht es trotzdem richtig aus. */
+    @media (prefers-color-scheme: dark) {
+      .wort  { fill: #d6dde8; }
+      .turm  { fill: #97a1ad; }
+      .boden { fill: #97a1ad; }
+      .unter { fill: #9aa5b3; }
+      .scharte { fill: #5b6672; }
+    }
+  </style>
+
+  <!-- Burg -->
+  <g transform="translate(-45 -46) scale(1.02)">
+    <path class="boden" fill="#97a1ad" d="M56 446 C150 420 362 420 456 446 C362 428 150 428 56 446 Z"/>
+
+    <!-- Dahinter: der hohe Turm mit Fahne. Der Mast ist grau wie das
+         Mauerwerk, nur das Tuch trägt die Farbe. -->
+    <path class="turm" fill="#97a1ad" d="M250 55 h9 v120 h-9 Z"/>
+    <path fill="#1668e3" d="M259 66 C292 59 316 80 346 73 C336 97 306 112 259 107 Z"/>
+    <path fill="#1668e3" d="M180 148 h32 v20 h20 v-20 h45 v20 h20 v-20 h32 v24 l-12 36 v50 h-125 v-50 l-12 -36 Z"/>
+    <path fill="#0d3a8a" d="M199 196 a8 8 0 0 1 16 0 v32 h-16 Z M247 190 a8 8 0 0 1 16 0 v38 h-16 Z M295 196 a8 8 0 0 1 16 0 v32 h-16 Z"/>
+
+    <!-- Davor: eine durchgehende graue Front aus beiden Türmen und dem
+         Mauerstück dazwischen. -->
+    <path class="turm" fill="#97a1ad" d="M150 256 h209 v177 h-209 Z"/>
+    <path class="turm" fill="#97a1ad" d="M89 220 h21 v12 h13 v-12 h24 v12 h13 v-12 h20 v213 h-91 Z"/>
+    <path class="turm" fill="#97a1ad" d="M329 220 h21 v12 h13 v-12 h23 v12 h13 v-12 h21 v213 h-91 Z"/>
+    <path class="scharte" fill="#5b6672" d="M124 302 a11 11 0 0 1 22 0 v62 h-22 Z"/>
+    <path class="scharte" fill="#5b6672" d="M364 302 a11 11 0 0 1 22 0 v62 h-22 Z"/>
+
+    <!-- Das Tor bricht die graue Front auf und bringt die Farbe nach vorn -->
+    <path fill="#1668e3" d="M173 435 v-69 a81.5 83 0 0 1 163 0 v69 Z"/>
+    <path fill="#ffffff" d="M200 338 h109 a10 10 0 0 1 10 10 v75 a10 10 0 0 1 -10 10 h-109 a10 10 0 0 1 -10 -10 v-75 a10 10 0 0 1 10 -10 Z"/>
+    <path fill="none" stroke="#1668e3" stroke-width="11"
+          stroke-linecap="round" stroke-linejoin="round" d="M189 345 L254.5 406 L320 345"/>
+  </g>
+
+  <!-- Wortmarke: "Mail" im dunklen Ton, "Burg" im Blau der Marke -->
+  <g class="wort" fill="#d6dde8" transform="translate(500 240)">
+<path transform="translate(0.00 0) scale(0.169000 -0.169000)" d="M68 0H205V554L398 0H510L703 554V0H840V739H652L455 179L256 739H68Z"/>
+<path transform="translate(152.10 0) scale(0.169000 -0.169000)" d="M615 554H493V480C447 541 392 567 312 567C148 567 30 444 30 275C30 108 147 -13 309 -13C387 -13 440 11 493 72V0H615ZM326 445C421 445 489 374 489 273C489 233 473 187 449 159C422 126 379 109 328 109C231 109 164 175 164 272C164 373 231 445 326 445Z"/>
+<path transform="translate(263.64 0) scale(0.169000 -0.169000)" d="M54 0H187V554H54ZM54 614H187V739H54Z"/>
+<path transform="translate(304.20 0) scale(0.169000 -0.169000)" d="M54 0H187V739H54Z"/>
+  </g>
+  <g fill="#1668e3" transform="translate(844.76 240)">
+<path transform="translate(0.00 0) scale(0.169000 -0.169000)" d="M68 0H265C347 0 407 13 452 41C513 78 548 144 548 220C548 267 535 311 512 341C491 369 470 383 422 403C482 434 504 472 504 542C504 611 474 669 420 703C376 731 330 739 220 739H68ZM205 131V320H270C365 320 410 289 410 224C410 159 369 131 273 131ZM205 454V605H261C333 605 367 581 367 530C367 477 332 454 249 454Z"/>
+<path transform="translate(98.02 0) scale(0.169000 -0.169000)" d="M547 554H414V293C414 219 409 184 393 160C374 127 337 109 292 109C258 109 232 120 214 144C195 168 187 208 187 283V554H54V257C54 163 65 114 96 69C133 16 192 -13 265 -13C332 -13 373 4 424 53V0H547Z"/>
+<path transform="translate(199.42 0) scale(0.169000 -0.169000)" d="M54 0H187V308C184 390 226 436 306 439V567H296C239 567 211 551 176 500V554H54Z"/>
+<path transform="translate(253.50 0) scale(0.169000 -0.169000)" d="M484 554V484C442 540 383 567 303 567C146 567 30 445 30 281C30 110 144 -13 302 -13C380 -13 432 12 484 73C479 -46 428 -104 329 -104C267 -104 229 -88 190 -45H39C84 -156 188 -221 324 -221C424 -221 503 -186 555 -120C594 -69 611 -1 611 105V554ZM318 445C413 445 478 377 478 275C478 175 416 109 320 109C225 109 164 174 164 275C164 377 225 445 318 445Z"/>
+  </g>
+
+  <!-- Untertitel mit Zierlinien -->
+  <g class="unter" fill="#9aa5b3" transform="translate(617.10 320)">
+<path transform="translate(0.00 0) scale(0.029000 -0.029000)" d="M68 0H465V131H205V303H454V434H205V608H465V739H68Z"/>
+<path transform="translate(19.72 0) scale(0.029000 -0.029000)" d="M74 229H351V347H74Z"/>
+<path transform="translate(36.54 0) scale(0.029000 -0.029000)" d="M68 0H205V554L398 0H510L703 554V0H840V739H652L455 179L256 739H68Z"/>
+<path transform="translate(67.28 0) scale(0.029000 -0.029000)" d="M7 0H158L240 191H503L582 0H733L423 739H315ZM290 322 369 546 448 322Z"/>
+<path transform="translate(93.38 0) scale(0.029000 -0.029000)" d="M68 0H205V739H68Z"/>
+<path transform="translate(106.14 0) scale(0.029000 -0.029000)" d="M68 0H431V131H205V739H68Z"/>
+<path transform="translate(123.54 0) scale(0.029000 -0.029000)" d="M14 211C19 153 32 116 62 76C106 20 178 -13 257 -13C390 -13 493 90 493 224C493 286 471 338 427 378C398 405 375 417 302 445C232 471 230 472 220 478C193 495 179 518 179 545C179 589 210 620 255 620C301 620 329 592 333 542H475C472 598 459 636 429 673C389 723 325 752 256 752C136 752 41 659 41 542C41 449 95 378 195 341C294 304 301 301 323 284C345 266 357 240 357 209C357 156 316 119 257 119C196 119 163 149 157 211Z"/>
+<path transform="translate(143.26 0) scale(0.029000 -0.029000)" d="M72 0H205V128H72Z"/>
+<path transform="translate(168.78 0) scale(0.029000 -0.029000)" d="M14 211C19 153 32 116 62 76C106 20 178 -13 257 -13C390 -13 493 90 493 224C493 286 471 338 427 378C398 405 375 417 302 445C232 471 230 472 220 478C193 495 179 518 179 545C179 589 210 620 255 620C301 620 329 592 333 542H475C472 598 459 636 429 673C389 723 325 752 256 752C136 752 41 659 41 542C41 449 95 378 195 341C294 304 301 301 323 284C345 266 357 240 357 209C357 156 316 119 257 119C196 119 163 149 157 211Z"/>
+<path transform="translate(188.50 0) scale(0.029000 -0.029000)" d="M68 0H205V739H68Z"/>
+<path transform="translate(201.26 0) scale(0.029000 -0.029000)" d="M599 206C538 143 487 119 416 119C279 119 168 233 168 371C168 431 191 495 229 539C274 592 338 620 413 620C499 620 557 592 607 527H760C731 591 705 626 655 667C587 722 500 752 410 752C201 752 30 581 30 372C30 158 203 -13 419 -13C571 -13 702 71 760 206Z"/>
+<path transform="translate(228.52 0) scale(0.029000 -0.029000)" d="M68 0H205V310H469V0H606V739H469V441H205V739H68Z"/>
+<path transform="translate(252.88 0) scale(0.029000 -0.029000)" d="M68 0H465V131H205V303H454V434H205V608H465V739H68Z"/>
+<path transform="translate(272.60 0) scale(0.029000 -0.029000)" d="M68 0H205V283L399 0H568L368 273C425 287 453 300 485 327C536 370 561 428 561 502C561 578 534 641 483 684C435 725 382 739 281 739H68ZM205 386V608H266C330 608 365 601 387 582C411 563 423 534 423 498C423 420 378 386 272 386Z"/>
+<path transform="translate(306.82 0) scale(0.029000 -0.029000)" d="M68 0H265C347 0 407 13 452 41C513 78 548 144 548 220C548 267 535 311 512 341C491 369 470 383 422 403C482 434 504 472 504 542C504 611 474 669 420 703C376 731 330 739 220 739H68ZM205 131V320H270C365 320 410 289 410 224C410 159 369 131 273 131ZM205 454V605H261C333 605 367 581 367 530C367 477 332 454 249 454Z"/>
+<path transform="translate(328.28 0) scale(0.029000 -0.029000)" d="M68 0H465V131H205V303H454V434H205V608H465V739H68Z"/>
+<path transform="translate(348.00 0) scale(0.029000 -0.029000)" d="M224 0H332L454 489L573 0H682L898 739H758L627 223L503 739H403L277 223L147 739H7Z"/>
+<path transform="translate(378.74 0) scale(0.029000 -0.029000)" d="M7 0H158L240 191H503L582 0H733L423 739H315ZM290 322 369 546 448 322Z"/>
+<path transform="translate(404.84 0) scale(0.029000 -0.029000)" d="M68 0H205V310H469V0H606V739H469V441H205V739H68Z"/>
+<path transform="translate(429.20 0) scale(0.029000 -0.029000)" d="M68 0H205V283L399 0H568L368 273C425 287 453 300 485 327C536 370 561 428 561 502C561 578 534 641 483 684C435 725 382 739 281 739H68ZM205 386V608H266C330 608 365 601 387 582C411 563 423 534 423 498C423 420 378 386 272 386Z"/>
+<path transform="translate(450.66 0) scale(0.029000 -0.029000)" d="M144 0H281V608H418V739H7V608H144Z"/>
+<path transform="translate(467.48 0) scale(0.029000 -0.029000)" d="M72 0H205V128H72Z"/>
+  </g>
+  <rect x="500" y="310.72" width="95.10" height="3" fill="#1668e3"/>
+  <rect x="1114.70" y="310.72"
+        width="95.10" height="3" fill="#1668e3"/>
+</svg>
