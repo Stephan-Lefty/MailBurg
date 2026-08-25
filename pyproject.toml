@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mailburg"
+version = "0.1.0"
+description = "Archiv für E-Mail, an einem Ort Ihrer Wahl"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Stephan Rösner" }]
+keywords = ["email", "archive", "imap", "gobd", "dsgvo"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: German",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Communications :: Email",
+    "Topic :: System :: Archiving",
+]
+
+# Der Kern kommt ohne Fremdpakete aus. Das ist Absicht: Ein Archiv, das man
+# in zwanzig Jahren noch öffnen können soll, darf nicht an einer Bibliothek
+# hängen, die es dann nicht mehr gibt. Alles Weitere ist Kür und wird zur
+# Laufzeit geprüft.
+dependencies = []
+
+[project.optional-dependencies]
+# Postfächer abrufen. Ohne keyring läuft es auch, dann wird das Passwort
+# bei jedem Abruf neu erfragt.
+imap = ["keyring>=24"]
+
+# Anhänge durchsuchbar machen. pypdf ist der Rückfall, wenn pdftotext aus
+# poppler nicht auf dem Rechner ist - das ist der schnellere Weg.
+# Ausdrücklich nicht PyMuPDF: AGPL, und das vertrüge sich nicht mit MIT.
+anhaenge = ["pypdf>=4"]
+
+# Bessere Packung. Ab Python 3.14 steckt Zstandard in der Standard-
+# bibliothek, davor braucht es das Paket. Fehlt beides, wird LZMA benutzt.
+packen = ["zstandard>=0.22"]
+
+alles = ["mailburg[imap,anhaenge,packen]"]
+
+[project.urls]
+Quelltext = "https://github.com/Stephan-Lefty/MailBurg"
+# In Anführungszeichen, weil TOML in blanken Schlüsseln keine Umlaute erlaubt.
+"Änderungsprotokoll" = "https://github.com/Stephan-Lefty/MailBurg/blob/main/CHANGELOG.md"
+Fehler = "https://github.com/Stephan-Lefty/MailBurg/issues"
+
+[project.scripts]
+mailburg = "mailburg.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["mailburg*"]

@@ -24,6 +24,10 @@ mailburg/
 │                      imap.py (Postfächer)
 ├── ui/                noch leer – kommt mit PySide6
 └── __main__.py        Kommandozeile
+
+install.sh / install.ps1   Einrichtung; laufen in der CI wirklich durch
+pyproject.toml             Paket und der Befehl "mailburg"
+docs/                      Anleitungen für Anwender
 ```
 
 ## Regeln, die aus Fehlern stammen

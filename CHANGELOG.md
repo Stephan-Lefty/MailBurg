@@ -1,4 +1,4 @@
-[Deutsch](CHANGELOG.md) | [Übersicht](README.md) | [TODO](TODO.md)
+[Deutsch](CHANGELOG.md) | [Übersicht](README.md) | [TODO](TODO.md) | [Anleitungen](docs/README.md)
 
 # Änderungsprotokoll
 
@@ -39,11 +39,35 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   auch die Eigenheit aus RFC 3501, dass `UID n:*` immer mindestens die höchste
   UID liefert – wer das übersieht, holt bei jedem Lauf dieselbe Mail erneut.
 
+- **Einrichtung mit einem Aufruf.** `install.sh` für Linux und macOS,
+  `install.ps1` für Windows. Beide legen eine eigene Python-Umgebung im
+  Benutzerverzeichnis an, richten den Befehl `mailburg` ein und brauchen keine
+  Administratorrechte. `--zeitsteuerung` richtet den nächtlichen Abruf ein
+  (systemd-Timer beziehungsweise Aufgabenplanung), `--entfernen` baut alles
+  wieder ab – das Archiv bleibt dabei unangetastet.
+- **`pyproject.toml`**, damit `pip install .` funktioniert und der Befehl
+  `mailburg` entsteht. Der Kern bleibt ohne Fremdpakete; `keyring`, `pypdf` und
+  `zstandard` sind Kür und einzeln zuschaltbar.
+- **[docs/](docs/README.md)** mit Anleitungen zu Postfächern (samt
+  App-Passwörtern der großen Anbieter), Zeitsteuerung auf allen drei Systemen
+  und MailBurg unter Windows.
+- **Die Einrichtung läuft in der CI wirklich durch**, auf Linux, Windows und
+  macOS: einrichten, Archiv anlegen, wieder abbauen – und die Prüfung, dass das
+  Abbauen das Archiv verschont.
+
 ### Geändert
 
 - `importieren()` übergibt dem Fehler-Rückruf jetzt die ganze Nachricht statt
   nur ihren Ordner. Der IMAP-Abruf braucht die UID, um die gescheiterte Mail
   vormerken zu können.
+
+### Behoben
+
+- **Der Verursacher einer Löschung fehlte unter Windows.** Der Grabstein las den
+  Benutzernamen aus `$USER`; diese Variable gibt es nur unter Unix, unter
+  Windows heißt sie `USERNAME`. Im Protokoll eines Geschäftsarchivs stand
+  deshalb „unbekannt" – wer gelöscht hat, gehört dort aber hin. Jetzt über
+  `getpass.getuser()`.
 
 ## [0.1.0] – 2026-08-25
 

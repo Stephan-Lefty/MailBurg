@@ -1,4 +1,4 @@
-[Deutsch](README.md) | [English](README.en.md) | [Changelog](CHANGELOG.md) | [TODO](TODO.en.md) | [Legal](RECHTLICHES.md)
+[Deutsch](README.md) | [English](README.en.md) | [Changelog](CHANGELOG.md) | [TODO](TODO.en.md) | [Guides](docs/README.md) | [Legal](RECHTLICHES.md)
 
 <p align="center">
   <picture>
@@ -100,12 +100,28 @@ Requires Python 3.11 or newer. The core needs no further packages.
 ```bash
 git clone https://github.com/Stephan-Lefty/MailBurg.git
 cd MailBurg
+./install.sh
+```
 
-python3 -m mailburg anlegen ~/Archive --modus privat
-python3 -m mailburg importieren ~/Archive ~/.thunderbird/xxxx.default --konto private
-python3 -m mailburg suchen ~/Archive betreff:rechnung jahr:2025
-python3 -m mailburg info ~/Archive
-python3 -m mailburg pruefen ~/Archive
+This sets MailBurg up inside your home directory — no administrator rights, no
+changes to the system — and creates the `mailburg` command. On Windows,
+`.\install.ps1` does the same; see [docs/windows.md](docs/windows.md).
+`./install.sh --entfernen` removes it again, leaving the archive untouched.
+
+If you would rather decide where things go, use `pip install ".[alles]"` — or
+skip installing altogether and run `python3 -m mailburg` from the source
+directory.
+
+Note that the command names are German throughout: `anlegen` (create),
+`importieren` (import), `abrufen` (fetch), `suchen` (search), `pruefen`
+(verify), `konten` (accounts).
+
+```bash
+mailburg anlegen ~/Archive --modus privat
+mailburg importieren ~/Archive ~/.thunderbird/xxxx.default --konto private
+mailburg suchen ~/Archive betreff:rechnung jahr:2025
+mailburg info ~/Archive
+mailburg pruefen ~/Archive
 ```
 
 Sources can be a Thunderbird profile, a Maildir directory or a single MBOX
@@ -118,16 +134,16 @@ For ongoing archiving, MailBurg collects mail straight from the mailbox:
 
 ```bash
 # Set up a mailbox — the password is prompted for, never passed as an argument
-python3 -m mailburg konten hinzufuegen Firma \
+mailburg konten hinzufuegen Firma \
     --server imap.example.org --benutzer post@example.org
 
 # See what is configured and which folders would be archived
-python3 -m mailburg konten liste
-python3 -m mailburg konten pruefen Firma
+mailburg konten liste
+mailburg konten pruefen Firma
 
 # Fetch — everything the first time, only what is new afterwards
-python3 -m mailburg abrufen ~/Archive
-python3 -m mailburg abrufen ~/Archive --konto Firma
+mailburg abrufen ~/Archive
+mailburg abrufen ~/Archive --konto Firma
 ```
 
 This is meant for scheduling: `mailburg abrufen ~/Archive` in a nightly cron job

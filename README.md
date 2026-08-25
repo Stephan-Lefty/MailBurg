@@ -1,4 +1,4 @@
-[Deutsch](README.md) | [English](README.en.md) | [Änderungsprotokoll](CHANGELOG.md) | [TODO](TODO.md) | [Rechtliches](RECHTLICHES.md)
+[Deutsch](README.md) | [English](README.en.md) | [Änderungsprotokoll](CHANGELOG.md) | [TODO](TODO.md) | [Anleitungen](docs/README.md) | [Rechtliches](RECHTLICHES.md)
 
 <p align="center">
   <picture>
@@ -104,24 +104,37 @@ Voraussetzung ist Python 3.11 oder neuer. Weitere Pakete braucht der Kern nicht.
 ```bash
 git clone https://github.com/Stephan-Lefty/MailBurg.git
 cd MailBurg
-
-# Archiv anlegen
-python3 -m mailburg anlegen ~/Archiv --modus privat
-
-# Thunderbird-Profil einlesen (findet die Ordnerstruktur von selbst)
-python3 -m mailburg importieren ~/Archiv ~/.thunderbird/xxxx.default --konto privat
-
-# Suchen
-python3 -m mailburg suchen ~/Archiv betreff:rechnung jahr:2025
-
-# Nachsehen, was drin ist
-python3 -m mailburg info ~/Archiv
-
-# Hash-Kette und Ablage prüfen
-python3 -m mailburg pruefen ~/Archiv
+./install.sh
 ```
 
-`python3 -m mailburg suchhilfe` erklärt die Suchsprache.
+Das richtet MailBurg im Benutzerverzeichnis ein – ohne Administratorrechte, ohne
+etwas am System zu ändern – und legt den Befehl `mailburg` an. Unter Windows
+übernimmt das `.\install.ps1`, siehe [docs/windows.md](docs/windows.md).
+`./install.sh --entfernen` baut alles wieder ab; das Archiv bleibt dabei
+unangetastet.
+
+Wer lieber selbst bestimmt, wohin es geht, nimmt `pip install ".[alles]"` – oder
+lässt die Installation ganz weg und ruft `python3 -m mailburg` direkt im
+Quellverzeichnis auf.
+
+```bash
+# Archiv anlegen
+mailburg anlegen ~/Archiv --modus privat
+
+# Thunderbird-Profil einlesen (findet die Ordnerstruktur von selbst)
+mailburg importieren ~/Archiv ~/.thunderbird/xxxx.default --konto privat
+
+# Suchen
+mailburg suchen ~/Archiv betreff:rechnung jahr:2025
+
+# Nachsehen, was drin ist
+mailburg info ~/Archiv
+
+# Hash-Kette und Ablage prüfen
+mailburg pruefen ~/Archiv
+```
+
+`mailburg suchhilfe` erklärt die Suchsprache.
 
 Als Quelle taugt ein Thunderbird-Profil, ein Maildir-Verzeichnis oder eine
 einzelne MBOX-Datei. Bei einem Thunderbird-Profil werden alle Konten und Ordner
@@ -133,16 +146,16 @@ Für die laufende Archivierung holt MailBurg die Post direkt aus dem Postfach:
 
 ```bash
 # Postfach einrichten – das Passwort wird abgefragt, nicht als Argument übergeben
-python3 -m mailburg konten hinzufuegen Firma \
+mailburg konten hinzufuegen Firma \
     --server imap.example.org --benutzer post@example.org
 
 # Nachsehen, was eingerichtet ist und welche Ordner archiviert würden
-python3 -m mailburg konten liste
-python3 -m mailburg konten pruefen Firma
+mailburg konten liste
+mailburg konten pruefen Firma
 
 # Abrufen – beim ersten Mal alles, danach nur noch das Neue
-python3 -m mailburg abrufen ~/Archiv
-python3 -m mailburg abrufen ~/Archiv --konto Firma
+mailburg abrufen ~/Archiv
+mailburg abrufen ~/Archiv --konto Firma
 ```
 
 Der Abruf eignet sich für die Zeitsteuerung: `mailburg abrufen ~/Archiv` in

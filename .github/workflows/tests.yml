@@ -30,6 +30,81 @@ jobs:
       - name: Tests
         run: python -m unittest discover -s tests -v
 
+  einrichtung:
+    name: Einrichtung / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Die Einrichtungsskripte laufen hier wirklich durch. Ein Skript, das
+      # niemand ausführt, ist so viel wert wie kein Skript – und für Windows
+      # lässt sich das anders kaum prüfen.
+      - name: Einrichten (Linux, macOS)
+        if: runner.os != 'Windows'
+        run: ./install.sh --ohne-pakete
+
+      - name: Einrichten (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./install.ps1
+
+      - name: Der Befehl muss da sein und laufen
+        if: runner.os != 'Windows'
+        run: |
+          set -e
+          export PATH="$HOME/.local/bin:$PATH"
+          mailburg --version
+          mailburg anlegen "$HOME/Archiv" --modus privat
+          mailburg info "$HOME/Archiv"
+
+      - name: Der Befehl muss da sein und laufen (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:LOCALAPPDATA\MailBurg\bin;$env:PATH"
+          mailburg --version
+          mailburg anlegen "$env:USERPROFILE\Archiv" --modus privat
+          mailburg info "$env:USERPROFILE\Archiv"
+
+      - name: Die Kür muss mitgekommen sein
+        if: runner.os != 'Windows'
+        run: ~/.local/share/mailburg/venv/bin/python -c "import keyring, pypdf, zstandard"
+
+      - name: Die Kür muss mitgekommen sein (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '& "$env:LOCALAPPDATA\MailBurg\venv\Scripts\python.exe" -c "import keyring, pypdf, zstandard"'
+
+      - name: Abbauen muss das Archiv verschonen
+        if: runner.os != 'Windows'
+        run: |
+          set -e
+          ./install.sh --entfernen
+          test -f "$HOME/Archiv/archive.json" || { echo "Das Archiv wurde mit abgeräumt!"; exit 1; }
+          test ! -e "$HOME/.local/bin/mailburg" || { echo "Der Befehl liegt noch da."; exit 1; }
+          echo "Abgebaut, Archiv unberührt."
+
+      - name: Abbauen muss das Archiv verschonen (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./install.ps1 -Entfernen
+          if (-not (Test-Path "$env:USERPROFILE\Archiv\archive.json")) {
+            throw "Das Archiv wurde mit abgeräumt!"
+          }
+          if (Test-Path "$env:LOCALAPPDATA\MailBurg\bin\mailburg.cmd") {
+            throw "Der Befehl liegt noch da."
+          }
+          Write-Host "Abgebaut, Archiv unberührt."
+
   rauchtest:
     name: Rauchtest der Kommandozeile
     runs-on: ubuntu-latest

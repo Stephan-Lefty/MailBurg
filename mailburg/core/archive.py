@@ -46,6 +46,24 @@ ARCHIVE_FILE = "archive.json"
 LOCK_FILE = ".mailburg-lock"
 
 
+def _angemeldeter_benutzer() -> str:
+    """Wer gerade am Rechner sitzt – für den Grabstein einer Löschung.
+
+    Über ``getpass``, nicht über ``$USER``: Diese Variable gibt es unter
+    Windows nicht, sie heißt dort ``USERNAME``. Ein Grabstein, in dem
+    „unbekannt" steht, wäre in einem Geschäftsarchiv der halbe Zweck der
+    Übung – wer gelöscht hat, gehört ins Protokoll.
+    """
+    import getpass
+
+    try:
+        return getpass.getuser()
+    except (OSError, KeyError, ImportError):
+        # Kommt vor, wenn kein Benutzerkonto zu ermitteln ist – etwa in
+        # einem Container ohne Eintrag in /etc/passwd.
+        return "unbekannt"
+
+
 class Mode(StrEnum):
     """Betriebsart eines Archivs."""
 
@@ -302,7 +320,7 @@ class Archive:
             hash=digest,
             bucket=bucket,
             reason=reason,
-            actor=actor or os.environ.get("USER", "unbekannt"),
+            actor=actor or _angemeldeter_benutzer(),
             note=note,
             file_existed=removed,
         )
