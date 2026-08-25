@@ -51,6 +51,14 @@ ICON_BOX = (4520, 400, 5800, 1720)
 #: Grenze zwischen Burgbild und Schriftzug, auf den Bannerausschnitt bezogen.
 TEXT_AB = 1630
 
+#: Ab dieser Höhe liegt der angedeutete Boden unter der Burg. Darüber
+#: befindet sich der Torbogen, der ähnlich dunkelblau ist und bleiben soll.
+BODEN_AB = 1340
+
+#: Der Grauton der Türme. Der Boden bekommt denselben, damit die
+#: Illustration zusammenpasst.
+BODEN_GRAU = (58, 64, 72)
+
 #: Ab dieser Größe gilt eine eingeschlossene weiße Fläche als gewolltes
 #: Bildelement. Der Briefumschlag hat rund 57.000 und 74.000 Pixel, der
 #: weiße Fahnenmast dagegen nur 1.400 – dazwischen ist reichlich Luft.
@@ -105,7 +113,7 @@ def banner_freistellen(bild: Image.Image) -> Image.Image:
 
     ergebnis = bild.convert("RGBA")
     ergebnis.putalpha(Image.fromarray(alpha.astype(np.uint8)))
-    return ergebnis.crop(ergebnis.getbbox())
+    return ergebnis
 
 
 def icon_freistellen(bild: Image.Image) -> Image.Image:
@@ -144,21 +152,62 @@ def icon_freistellen(bild: Image.Image) -> Image.Image:
     return quadrat
 
 
+def boden_vereinheitlichen(bild: Image.Image) -> Image.Image:
+    """Färbt den angedeuteten Boden unter der Burg in einen glatten Grauton.
+
+    In der Vorlage ist er ein dunkelblauer Bogen mit Verlauf. Der wirkt in
+    kleinen Darstellungen unruhig und beißt sich mit dem Grau der Türme.
+    Ein einziger Ton, derselbe wie bei den Türmen, beruhigt das Bild.
+
+    Getrennt wird über den Blaustich, nicht über die Helligkeit: Der Boden
+    ist dunkelblau (Blau liegt rund 60 Stufen über Rot), die Türme sind
+    neutrales Dunkelgrau (rund 14). Die Höhengrenze hält den Torbogen
+    heraus, der ähnlich blau ist, aber weiter oben liegt.
+    """
+    daten = np.array(bild)
+    rgb = daten[:, :, :3].astype(int)
+    sichtbar = daten[:, :, 3] > 0
+
+    boden = (
+        sichtbar
+        & (rgb[:, :, 2] - rgb[:, :, 0] > 30)
+        & (rgb.max(axis=2) < 110)
+    )
+    boden[:BODEN_AB, :] = False
+    boden[:, TEXT_AB:] = False
+
+    # Nur die Farbe ersetzen, die Deckkraft bleibt. So behalten die weich
+    # auslaufenden Kanten des Bogens ihre Glättung.
+    daten[:, :, 0] = np.where(boden, BODEN_GRAU[0], daten[:, :, 0])
+    daten[:, :, 1] = np.where(boden, BODEN_GRAU[1], daten[:, :, 1])
+    daten[:, :, 2] = np.where(boden, BODEN_GRAU[2], daten[:, :, 2])
+    return Image.fromarray(daten, "RGBA")
+
+
 def aufhellen(bild: Image.Image) -> Image.Image:
-    """Macht den Banner für dunkle Oberflächen lesbar.
+    """Macht den Schriftzug für dunkle Oberflächen lesbar.
 
-    „Mail" ist dunkelblau, die Türme sind dunkelgrau – auf schwarzem Grund
-    verschwindet beides. Angehoben werden nur diese dunklen Töne; das
-    kräftige Blau von „Burg" und der Fahne bleibt unangetastet, damit das
-    Erscheinungsbild dasselbe bleibt.
+    „Mail" ist dunkelblau und auf schwarzem Grund kaum zu entziffern, „Burg"
+    dagegen kräftig blau und gut sichtbar. Angehoben werden deshalb nur die
+    dunklen Töne, und angehoben statt invertiert, weil aus Dunkelblau sonst
+    Gelb würde.
 
-    Angehoben statt invertiert, weil aus Dunkelblau sonst Gelb würde.
+    **Nur der Schriftbereich.** Die Burg bleibt unangetastet. Sie enthält
+    dunkelblaue Flächen – den Torbogen um den Briefumschlag, den Boden –,
+    die in feinen Verläufen angelegt sind. Hellt man die mit auf, zerfallen
+    die Verläufe zu schmutzigem Grau, und Druckartefakte der Vorlage treten
+    als Flecken hervor. Die Illustration ist auf dunklem Grund ohnehin gut
+    zu erkennen; sie braucht die Behandlung nicht.
     """
     daten = np.array(bild).astype(np.float64)
     spitze = daten[:, :, :3].max(axis=2)
+
+    betroffen = spitze < 130
+    betroffen[:, :TEXT_AB] = False  # die Burg bleibt, wie sie ist
+
     staerke = (np.clip((130 - spitze) / 130, 0, 1) * 0.86)[:, :, None]
     daten[:, :, :3] = np.where(
-        (spitze < 130)[:, :, None],
+        betroffen[:, :, None],
         daten[:, :, :3] + (255 - daten[:, :, :3]) * staerke,
         daten[:, :, :3],
     )
@@ -171,9 +220,17 @@ def main() -> int:
 
     quelle = Image.open(QUELLE).convert("RGB")
 
-    banner = banner_freistellen(quelle.crop(BANNER_BOX))
-    banner.save(ASSETS / "banner.png")
+    banner = boden_vereinheitlichen(banner_freistellen(quelle.crop(BANNER_BOX)))
     dunkel = aufhellen(banner)
+
+    # Beide Fassungen mit demselben Rahmen zuschneiden, sonst sitzen sie im
+    # README nicht deckungsgleich übereinander und es ruckelt beim Umschalten
+    # zwischen hellem und dunklem Erscheinungsbild.
+    rahmen = banner.getbbox()
+    banner = banner.crop(rahmen)
+    dunkel = dunkel.crop(rahmen)
+
+    banner.save(ASSETS / "banner.png")
     dunkel.save(ASSETS / "banner-dark.png")
 
     for bild, name in ((banner, "banner"), (dunkel, "banner-dark")):

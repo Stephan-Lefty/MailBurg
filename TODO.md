@@ -45,6 +45,21 @@ wurde.
 
 ### Danach
 
+- [ ] **Das Archiv selbst als IMAP-Server anbieten.** Statt einer eigenen App
+  fürs Handy: MailBurg stellt sein Archiv als nur lesbares IMAP-Konto bereit.
+  Dann bindet es jedes Mailprogramm ein – Thunderbird, Outlook, Apple Mail,
+  K-9 Mail, FairEmail –, auf jedem Gerät, ohne eine Zeile App-Code und ohne
+  Play Console oder App Store.
+
+  Nebenbei löst das den Rückweg in den Mailclient von selbst: Wer eine
+  archivierte Mail beantworten will, tut das im gewohnten Programm.
+
+  **Sicherheit ist hier der springende Punkt.** Ein IMAP-Dienst, der ins
+  offene Netz zeigt, ist eine Angriffsfläche vor einem Archiv mit
+  jahrzehntealter Post. Standard muss deshalb sein: nur auf `127.0.0.1`
+  lauschen, ausdrücklich freizuschalten fürs Heimnetz, und für unterwegs der
+  Verweis auf VPN oder Tailscale statt einer Portfreigabe.
+
 - [ ] **Aufbewahrungskategorien in der Oberfläche.** Das Rechenwerk steht in
   `core/retention.py` und ist getestet, aber es gibt noch keinen Weg, einer
   Mail eine Kategorie zuzuweisen. Der Journalvorgang `classify` ist vorgesehen.

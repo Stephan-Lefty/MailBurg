@@ -40,6 +40,21 @@ down, with the date they were completed.
 
 ### Afterwards
 
+- [ ] **Serve the archive as an IMAP server.** Instead of a dedicated phone
+  app: MailBurg offers its archive as a read-only IMAP account. Any mail
+  program can then mount it — Thunderbird, Outlook, Apple Mail, K-9 Mail,
+  FairEmail — on any device, without a line of app code and without the Play
+  Console or App Store.
+
+  It also solves the route back into the mail client by itself: replying to an
+  archived message happens in the program you already use.
+
+  **Security is the crux here.** An IMAP service exposed to the open internet
+  is an attack surface in front of an archive holding decades of mail. The
+  default must be: listen on `127.0.0.1` only, opt in explicitly for the local
+  network, and point to VPN or Tailscale for remote access rather than a port
+  forward.
+
 - [ ] **Retention categories in the interface.** The arithmetic sits in
   `core/retention.py` and is tested, but there is no way yet to assign a
   category to a message. The `classify` journal operation is reserved. Open
