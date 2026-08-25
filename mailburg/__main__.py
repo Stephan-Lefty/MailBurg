@@ -485,6 +485,16 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
             if laut:
                 print(" " * 60, end="\r")
                 print(f"  {stat} ({seconds:.1f} s)")
+                if mit_text and stat.neu:
+                    # Ob ein PDF durchsuchbar wurde oder nur als Dateiname
+                    # dasteht, ist der Unterschied zwischen Finden und
+                    # Nichtfinden. Das gehört gesagt.
+                    print(f"  Mit Anhangstext: {stat.mit_anhangstext} Mails")
+                    if stat.eingescannt:
+                        print(
+                            f"  Davon {stat.eingescannt} PDF ohne Textebene – "
+                            f"vermutlich eingescannt und daher nicht durchsuchbar."
+                        )
             elif stat.neu:
                 # Auch leise: dass etwas ins Archiv ging, gehört ins Protokoll.
                 print(f"{konto.name}: {stat.neu} neu ({seconds:.1f} s)")
