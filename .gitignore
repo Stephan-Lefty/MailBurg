@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Wegwerfbares: Suchindizes und Testarchive
+*.db
+*.db-wal
+*.db-shm
+archiv/
+probe.mbox
+
+# Pakete
+build/
+dist/
+*.deb
+*.AppImage

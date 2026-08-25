@@ -1,0 +1,113 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        # 3.11 ist die Untergrenze (StrEnum). Ab 3.14 steckt Zstandard in der
+        # Standardbibliothek – beide Wege müssen laufen, deshalb wird oben und
+        # unten geprüft.
+        python: ["3.11", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Syntax prüfen
+        run: python -m compileall -q mailburg tests
+
+      - name: Tests
+        run: python -m unittest discover -s tests -v
+
+  rauchtest:
+    name: Rauchtest der Kommandozeile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Testmails erzeugen
+        run: |
+          python - <<'PY'
+          import mailbox, email.message, email.utils
+          from datetime import datetime, timezone
+          box = mailbox.mbox("probe.mbox", create=True)
+          for i in range(50):
+              m = email.message.EmailMessage()
+              m["Subject"] = f"Schlussrechnung {i} für Grüße aus München"
+              m["From"] = email.utils.formataddr(("Josef Müller", "mueller@beispiel.de"))
+              m["To"] = "stephan@beispiel.de"
+              m["Date"] = email.utils.format_datetime(
+                  datetime(2025, (i % 12) + 1, 14, tzinfo=timezone.utc))
+              m.set_content(f"Inhalt der Nachricht {i} mit Umlauten: äöüß")
+              if i % 3 == 0:
+                  m.add_attachment(b"%PDF-1.4", maintype="application",
+                                   subtype="pdf", filename=f"beleg-{i}.pdf")
+              box.add(m)
+          box.flush(); box.close()
+          PY
+
+      - name: Archiv anlegen, füllen, prüfen
+        run: |
+          python -m mailburg anlegen archiv --modus geschaeftlich --recht de
+          python -m mailburg importieren archiv probe.mbox --konto firma
+          python -m mailburg info archiv
+          python -m mailburg pruefen archiv
+
+      - name: Suche muss treffen
+        run: |
+          set -e
+          # Teilwort mitten im Kompositum – der Grund für den zweiten Index
+          python -m mailburg suchen archiv betreff:rechnung | grep -q "Schlussrechnung"
+          # Umlaut im Absender, und dasselbe ohne Umlaut
+          python -m mailburg suchen archiv von:müller | grep -q "Schlussrechnung"
+          python -m mailburg suchen archiv von:muller | grep -q "Schlussrechnung"
+          python -m mailburg suchen archiv hat:anhang typ:pdf | grep -q "Treffern"
+          echo "Suche in Ordnung"
+
+      - name: Index wegwerfen und neu bauen
+        run: |
+          set -e
+          vorher=$(python -m mailburg info archiv | grep "Mails:")
+          rm -rf ~/.local/share/mailburg
+          python -m mailburg neuaufbau archiv
+          nachher=$(python -m mailburg info archiv | grep "Mails:")
+          test "$vorher" = "$nachher"
+          echo "Neuaufbau liefert denselben Stand: $nachher"
+
+      - name: Manipulation muss auffallen
+        run: |
+          set -e
+          python - <<'PY'
+          import json, pathlib, hashlib
+          seg = sorted(pathlib.Path("archiv/meta").glob("*.jsonl"))[0]
+          zeilen = seg.read_text("utf-8").splitlines()
+          e = json.loads(zeilen[2])
+          e["subject"] = "Harmlose Nachricht"
+          # Der Fälscher rechnet den Eigenhash mit – genau dagegen ist die
+          # Verkettung da.
+          e["self"] = hashlib.sha256(json.dumps(
+              {k: v for k, v in e.items() if k != "self"}, sort_keys=True,
+              separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+          zeilen[2] = json.dumps(e, sort_keys=True, separators=(",", ":"),
+                                 ensure_ascii=False)
+          seg.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
+          PY
+          if python -m mailburg pruefen archiv; then
+            echo "FEHLER: Die Fälschung blieb unbemerkt."
+            exit 1
+          fi
+          echo "Die Fälschung wurde erkannt."
