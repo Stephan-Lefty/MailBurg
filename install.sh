@@ -92,19 +92,46 @@ paketverwaltung() {
     echo ""
 }
 
+schluesselbund_laeuft() {
+    # Gefragt ist nicht ein bestimmtes Programm, sondern die Schnittstelle
+    # org.freedesktop.secrets. Die bedienen mehrere: gnome-keyring unter
+    # GNOME und Cinnamon, ksecretd unter KDE. Läuft eine davon, wäre es
+    # nicht nur unnötig, eine zweite zu installieren, sondern schädlich -
+    # zwei Dienste, die beide dieselbe Schnittstelle beanspruchen.
+    if command -v busctl >/dev/null 2>&1; then
+        busctl --user status org.freedesktop.secrets >/dev/null 2>&1 && return 0
+    fi
+    if command -v dbus-send >/dev/null 2>&1; then
+        dbus-send --session --print-reply --dest=org.freedesktop.DBus \
+            /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>/dev/null \
+            | grep -q "org.freedesktop.secrets" && return 0
+    fi
+    return 1
+}
+
 if [[ $MIT_PAKETEN -eq 1 ]]; then
     melde "Systempakete"
     # Zwei Dinge kann pip nicht liefern, weil sie nicht aus Python bestehen:
     # pdftotext aus poppler (holt Text aus PDF deutlich schneller als pypdf)
     # und einen Schlüsselbund für die Passwörter.
     case "$(paketverwaltung)" in
-        apt-get) PAKETE=(poppler-utils gnome-keyring python3-venv) ; BEFEHL="sudo apt-get install -y" ;;
-        pacman)  PAKETE=(poppler gnome-keyring)                    ; BEFEHL="sudo pacman -S --needed" ;;
-        dnf)     PAKETE=(poppler-utils gnome-keyring)              ; BEFEHL="sudo dnf install -y" ;;
-        zypper)  PAKETE=(poppler-tools gnome-keyring)              ; BEFEHL="sudo zypper install -y" ;;
-        brew)    PAKETE=(poppler)                                  ; BEFEHL="brew install" ;;
-        *)       PAKETE=()                                         ; BEFEHL="" ;;
+        apt-get) PAKETE=(poppler-utils python3-venv) ; SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo apt-get install -y" ;;
+        pacman)  PAKETE=(poppler)                    ; SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo pacman -S --needed" ;;
+        dnf)     PAKETE=(poppler-utils)              ; SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo dnf install -y" ;;
+        zypper)  PAKETE=(poppler-tools)              ; SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo zypper install -y" ;;
+        # macOS bringt seinen Schlüsselbund selbst mit.
+        brew)    PAKETE=(poppler)                    ; SCHLUESSELBUND=()              ; BEFEHL="brew install" ;;
+        *)       PAKETE=()                           ; SCHLUESSELBUND=()              ; BEFEHL="" ;;
     esac
+
+    if [[ ${#SCHLUESSELBUND[@]} -gt 0 ]]; then
+        if schluesselbund_laeuft; then
+            hinweis "Ein Schlüsselbund läuft bereits – ${XDG_CURRENT_DESKTOP:-Desktop} bringt einen mit."
+            hinweis "Es wird also keiner nachinstalliert."
+        else
+            PAKETE+=("${SCHLUESSELBUND[@]}")
+        fi
+    fi
 
     if [[ ${#PAKETE[@]} -eq 0 ]]; then
         hinweis "Keine bekannte Paketverwaltung gefunden – übersprungen."
