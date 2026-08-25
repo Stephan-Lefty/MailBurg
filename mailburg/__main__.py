@@ -274,6 +274,17 @@ def cmd_konten_uebernehmen(args: argparse.Namespace) -> int:
 
         uebernahme.namen_entzerren(abrufbar, vergeben)
 
+        if args.zeigen:
+            # Nur nachsehen, nichts anlegen und nach nichts fragen.
+            for fund in abrufbar:
+                konto = fund.konto
+                art = "IMAPS" if konto.ssl else "STARTTLS"
+                marke = "  [Brücke auf diesem Rechner]" if konto.ist_lokale_bruecke else ""
+                schon = "  – schon eingerichtet" if liste.finden(konto.name) else ""
+                print(f"  {konto.name}{schon}")
+                print(f"      {konto.benutzer} auf {konto.server}:{konto.port} ({art}){marke}")
+            continue
+
         for fund in abrufbar:
             konto = fund.konto
             if liste.finden(konto.name):
@@ -704,6 +715,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     k.add_argument(
         "profil", nargs="?", help="Thunderbird-Profil; ohne Angabe wird gesucht"
+    )
+    k.add_argument(
+        "--zeigen",
+        action="store_true",
+        help="nur anzeigen, was gefunden wurde – nichts einrichten, nichts fragen",
     )
     k.add_argument(
         "--alle", action="store_true", help="ohne Rückfrage je Konto übernehmen"
