@@ -3,7 +3,36 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
-## Hier war Schluss (Stand 2026-08-25 abends)
+## Hier war Schluss (Stand 2026-08-25, spätabends)
+
+Der zweite Tag ging fast vollständig in die Oberfläche. Sie steht jetzt:
+Einrichtungsassistent, Hauptfenster mit Suche und Vorschau, Startbefehl
+`mailburg-gui`, Menüeintrag. 322 Tests, alles auf GitHub.
+
+**Offen und als Nächstes dran:**
+
+1. **Der Absturz bei falschen Passwörtern ist nicht gefunden.** Stephan
+   hat absichtlich falsche eingegeben, die Oberfläche verschwand
+   kommentarlos. Nachgestellt ließ er sich nicht – der reine Fehlerweg
+   läuft sauber durch. Eingebaut ist jetzt ein Ausnahmehaken, der
+   Programmfehler anzeigt statt sie zu verschlucken; beim nächsten Mal
+   sollte also eine Meldung kommen. **Verdacht:** ein QThread, der
+   weggeräumt wird, während er noch läuft – klassischer Qt-Absturz, der
+   sich nicht als Python-Ausnahme zeigt. Zu prüfen wäre die
+   Läuferverwaltung in `ui/assistent.py`, besonders wenn dieselbe Zeile
+   zweimal geprüft wird (Zertifikatsvorschlag).
+2. Die Oberfläche ist noch nie im Alltag gelaufen, nur in Durchgängen.
+3. `mailburg abgleich` fehlt weiterhin – siehe unten.
+
+**Was Stephan an der Oberfläche wichtig war** (gilt für alles Weitere):
+Die Ersteinrichtung ist der Moment, in dem Vertrauen entsteht. Lieber
+ausführlich als knapp, Fachjargon vermeiden (»meldet nichts nach Hause«
+sagt niemandem etwas), keine Formulierung, die Misstrauen voraussetzt,
+und nichts behaupten, was die Oberfläche nicht auch zeigt – ein Text,
+der Nextcloud verspricht, während nur ein Pfadfeld dasteht, ist eine
+halbe Zusage.
+
+## Vom ersten Tag (Stand 2026-08-25 abends)
 
 Alles Committete läuft, 232 Tests grün, alles auf GitHub. Unterbrochen
 mitten in einem Arbeitsgang – **angefangen und nicht zu Ende gebracht:**
