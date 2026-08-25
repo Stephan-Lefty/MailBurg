@@ -384,7 +384,13 @@ class KontoZeile(QWidget):
         self.ankreuz.setChecked(True)
         self.ankreuz.setToolTip(f"{konto.benutzer} auf {konto.server}:{konto.port}")
 
-        beschreibung = f"{konto.benutzer} — {konto.server}:{konto.port}"
+        # Nur das zeigen, was nicht schon im Namen steht. Bei Konten aus
+        # Thunderbird ist der Name die Mailadresse – sie ein zweites Mal
+        # danebenzuschreiben, füllt die Zeile ohne jeden Gewinn.
+        if konto.name.casefold() == konto.benutzer.casefold():
+            beschreibung = f"{konto.server}:{konto.port}"
+        else:
+            beschreibung = f"{konto.benutzer} — {konto.server}:{konto.port}"
         if konto.ist_lokale_bruecke:
             beschreibung += "   (Brücke auf diesem Rechner)"
         self.beschreibung = QLabel(beschreibung)
