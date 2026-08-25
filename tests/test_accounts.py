@@ -220,3 +220,39 @@ class AbrufzustandTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ZertifikatsnamenTest(unittest.TestCase):
+    """Namensprüfung nach RFC 6125, für die Diagnose bei Massenhostern."""
+
+    def test_genauer_name(self):
+        from mailburg.core.tlsdiagnose import passt
+
+        self.assertTrue(passt("mail.example.org", "mail.example.org"))
+        self.assertFalse(passt("mail.example.org", "mail.example.com"))
+
+    def test_gross_und_kleinschreibung_egal(self):
+        from mailburg.core.tlsdiagnose import passt
+
+        self.assertTrue(passt("Mail.Example.ORG", "mail.example.org"))
+
+    def test_platzhalter_deckt_genau_eine_ebene(self):
+        from mailburg.core.tlsdiagnose import passt
+
+        self.assertTrue(passt("s111.hoster.example", "*.hoster.example"))
+        # Zwei Ebenen deckt ein Stern nicht ab - sonst gälte ein Zertifikat
+        # für *.example.org auch für fremde Unterdomänen.
+        self.assertFalse(passt("a.b.hoster.example", "*.hoster.example"))
+        # Und die nackte Domäne ebenfalls nicht.
+        self.assertFalse(passt("hoster.example", "*.hoster.example"))
+
+    def test_platzhalter_greift_nicht_ueber_die_domaene_hinaus(self):
+        from mailburg.core.tlsdiagnose import passt
+
+        self.assertFalse(passt("s111.boeser.host", "*.hoster.example"))
+        self.assertFalse(passt("hoster.example.boese.de", "*.hoster.example"))
+
+    def test_abschliessender_punkt_stoert_nicht(self):
+        from mailburg.core.tlsdiagnose import passt
+
+        self.assertTrue(passt("s111.hoster.example.", "*.hoster.example"))

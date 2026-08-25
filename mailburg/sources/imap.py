@@ -191,6 +191,38 @@ class ImapSource(Source):
             kontext.verify_mode = ssl.CERT_NONE
         return kontext
 
+    def _zertifikat_erklaeren(self, exc: ssl.SSLCertVerificationError) -> str:
+        """Macht aus einem abgelehnten Zertifikat eine brauchbare Auskunft.
+
+        Bei einem Namensfehler wird nachgesehen, für welchen Namen das
+        Zertifikat gilt, und der passende vorgeschlagen. Das ist der
+        häufigste Fall bei eigenen Domains und führt sonst in eine
+        Sackgasse, aus der nur das Abschalten der Prüfung herausführt –
+        genau das soll niemand tun müssen.
+        """
+        from mailburg.core import tlsdiagnose
+
+        kopf = (
+            f"Das Zertifikat von {self.konto.server}:{self.konto.port} wurde "
+            f"abgelehnt – {exc}"
+        )
+
+        if "Hostname mismatch" in str(exc) or "doesn't match" in str(exc):
+            befund = tlsdiagnose.untersuchen(
+                self.konto.server, self.konto.port, starttls=not self.konto.ssl
+            )
+            erklaerung = tlsdiagnose.erklaerung(self.konto.server, befund)
+            if erklaerung:
+                return f"{kopf}\n\n{erklaerung}"
+
+        if self.konto.server in ("127.0.0.1", "::1", "localhost"):
+            return (
+                f"{kopf}\n\nDort läuft offenbar ein Brückenprogramm wie die "
+                f"Proton Mail Bridge. Solche weisen sich selbstsigniert aus – "
+                f"das Konto gehört mit --bruecke eingerichtet."
+            )
+        return kopf
+
     def _verbinden(self, passwort: str) -> None:
         if not passwort:
             raise ImapFehler(
@@ -215,12 +247,7 @@ class ImapSource(Source):
                 # heimlich unverschlüsselt weiterzumachen.
                 self._verbindung.starttls(kontext)
         except ssl.SSLCertVerificationError as exc:
-            raise ImapFehler(
-                f"Das Zertifikat von {self.konto.server}:{self.konto.port} ist "
-                f"nicht zu überprüfen – {exc}\n"
-                f"Läuft dort ein Brückenprogramm wie die Proton Mail Bridge? "
-                f"Dann gehört das Konto mit --bruecke eingerichtet."
-            ) from exc
+            raise ImapFehler(self._zertifikat_erklaeren(exc)) from exc
         except (OSError, socket.timeout, ssl.SSLError, imaplib.IMAP4.error) as exc:
             hinweis = ""
             if self.konto.ist_lokale_bruecke:
