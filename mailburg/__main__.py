@@ -514,7 +514,91 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
         # das den halben Tag über Arbeit für nichts.
         if neu_gesamt:
             archive.index.optimize()
+
+        # Erst wenn die Post im Archiv ist, wird ein Häppchen Texterkennung
+        # nachgeschoben. In dieser Reihenfolge, weil Archivieren Pflicht ist
+        # und Durchsuchbarmachen Kür - und weil beides dieselbe Sperre am
+        # Archiv braucht, also nicht nebeneinander laufen kann.
+        if not args.ohne_texterkennung:
+            _texterkennung_nachschieben(archive, laut=laut, budget=args.erkennungsbudget)
+
     return 1 if fehler else 0
+
+
+def _texterkennung_nachschieben(archive, *, laut: bool, budget: float) -> None:
+    """Arbeitet ein Zeitbudget der Warteschlange ab, falls möglich."""
+    from mailburg.core import erkennung
+    from mailburg.extract import ocr
+
+    warteschlange = erkennung.Warteschlange(archive.index)
+    if not warteschlange.anzahl():
+        return
+
+    bereit, hinweis = ocr.bereit()
+    if not bereit:
+        if laut:
+            print(
+                f"Hinweis: {warteschlange.anzahl()} eingescannte PDF sind nicht "
+                f"durchsuchbar.\n         {hinweis}",
+                file=sys.stderr,
+            )
+        return
+
+    stat = erkennung.durchlauf(archive, budget_sekunden=budget)
+    if laut and (stat.gelesen or stat.gescheitert):
+        print(f"Texterkennung: {stat}")
+    elif stat.gelesen:
+        print(f"Texterkennung: {stat.gelesen} Dokumente lesbar gemacht")
+
+
+def cmd_texterkennung(args: argparse.Namespace) -> int:
+    """Macht eingescannte PDF durchsuchbar."""
+    from mailburg.core import erkennung
+    from mailburg.extract import ocr
+
+    bereit, hinweis = ocr.bereit()
+    if not bereit:
+        print(f"Texterkennung nicht möglich: {hinweis}", file=sys.stderr)
+        return 2
+
+    with Archive.open(Path(args.archiv)) as archive:
+        warteschlange = erkennung.Warteschlange(archive.index)
+        offen = warteschlange.anzahl()
+        if not offen:
+            print("Alle eingescannten Dokumente sind bereits gelesen.")
+            return 0
+
+        print(f"{offen} Dokumente warten auf Texterkennung.")
+        print(f"Sprachen: {ocr.sprachwahl()}")
+        if args.alles:
+            print("Ohne Zeitgrenze – das kann Stunden dauern. Abbruch mit Strg+C;")
+            print("was bis dahin gelesen wurde, bleibt erhalten.")
+        print()
+
+        def fortschritt(stat) -> None:
+            print(
+                f"  … {stat.gelesen} gelesen, {stat.seiten} Seiten",
+                end="\r",
+                flush=True,
+            )
+
+        stat = erkennung.durchlauf(
+            archive,
+            budget_sekunden=0 if args.alles else args.budget,
+            budget_dokumente=0 if args.alles else erkennung.BUDGET_DOKUMENTE,
+            fortschritt=fortschritt,
+        )
+
+        print(" " * 60, end="\r")
+        print(f"Fertig: {stat}")
+        print(f"Dauer: {stat.sekunden:.0f} s")
+        if stat.offen_danach:
+            print(
+                f"\nNoch {stat.offen_danach} Dokumente offen. Sie kommen bei den "
+                f"nächsten Abrufen nach und nach dran – oder auf einmal mit "
+                f"'texterkennung --alles'."
+            )
+    return 0
 
 
 def cmd_suchen(args: argparse.Namespace) -> int:
@@ -775,7 +859,42 @@ def build_parser() -> argparse.ArgumentParser:
         help="nur melden, wenn etwas ankam oder schiefging – für den "
              "Abruf im Hintergrund, damit das Systemprotokoll lesbar bleibt",
     )
+    p.add_argument(
+        "--ohne-texterkennung",
+        action="store_true",
+        help="im Anschluss keine eingescannten PDF lesbar machen",
+    )
+    p.add_argument(
+        "--erkennungsbudget",
+        type=float,
+        default=120,
+        metavar="SEKUNDEN",
+        help="wie lange nach dem Abruf höchstens Texterkennung läuft "
+             "(Standard: 120)",
+    )
     p.set_defaults(func=cmd_abrufen)
+
+    p = subparsers.add_parser(
+        "texterkennung",
+        help="eingescannte PDF durchsuchbar machen",
+        description="Liest eingescannte PDF mit tesseract. Das Archiv bleibt "
+                    "dabei unangetastet – der erkannte Text kommt nur in den "
+                    "Suchindex.",
+    )
+    p.add_argument("archiv")
+    p.add_argument(
+        "--alles",
+        action="store_true",
+        help="ohne Zeitgrenze durchlaufen statt nur ein Häppchen",
+    )
+    p.add_argument(
+        "--budget",
+        type=float,
+        default=120,
+        metavar="SEKUNDEN",
+        help="Zeitgrenze für diesen Lauf (Standard: 120)",
+    )
+    p.set_defaults(func=cmd_texterkennung)
 
     p = subparsers.add_parser("suchen", help="das Archiv durchsuchen")
     p.add_argument("archiv")

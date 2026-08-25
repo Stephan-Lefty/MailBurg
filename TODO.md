@@ -10,13 +10,13 @@ wurde.
 
 ### Muss vor dem ersten echten Einsatz passieren
 
-- [ ] **Texterkennung für eingescannte PDF.** Der Import zählt inzwischen
-  mit, wie viele PDF keine Textebene haben – das sind Dokumente, die jemand
-  eingescannt hat, und die bleiben unauffindbar. Abhilfe schafft nur
-  Texterkennung, etwa über `ocrmypdf` oder `tesseract`. Beides sind große
-  Fremdprogramme, deshalb nur als Kür und nur, wenn sie vorhanden sind.
-  Offen: ob das beim Archivieren laufen soll (langsam) oder später als
-  eigener Durchlauf über vorhandene Bestände.
+- [ ] **Texterkennung: Warteschlange auf Anhangsebene umstellen.** Der Kern
+  steht (`core/erkennung.py`, `extract/ocr.py`), aber die Warteschlange
+  fragt je *Mail*: »umfangreiches PDF dabei, wenig Anhangstext?« Hat eine
+  Mail ein lesbares PDF **und** einen Scan, gilt sie als erledigt – der
+  Scan fällt durchs Raster. An Stephans Bestand fällt das auf: Der Import
+  zählte 748 PDF ohne Textebene, die Warteschlange findet 138 Mails.
+  Gebraucht wird ein Vermerk je Anhang, nicht je Mail.
 
 - [ ] **Anmeldung per OAuth2.** Der Abruf läuft mit App-Passwörtern. Das
   genügt, ist aber nicht das, was Gmail und Outlook eigentlich wollen: Dort
@@ -26,9 +26,45 @@ wurde.
 
 - [ ] **Grafische Oberfläche mit PySide6.** Dreispaltig: Kontenbaum,
   Trefferliste, Vorschau. Suchleiste mit Ergebnissen schon beim Tippen.
-  Assistent zum Anlegen eines Archivs. **PySide6, nicht PyQt6** – PyQt6 steht
-  unter GPLv3 und würde die MIT-Lizenz aushebeln, sobald fertige Binärpakete
-  verteilt werden. Die API ist bis auf Kleinigkeiten dieselbe.
+  **PySide6, nicht PyQt6** – PyQt6 steht unter GPLv3 und würde die
+  MIT-Lizenz aushebeln, sobald fertige Binärpakete verteilt werden. Die API
+  ist bis auf Kleinigkeiten dieselbe.
+
+  Der Einrichtungsassistent steht (`ui/assistent.py`), das Hauptfenster
+  fehlt noch – und damit auch ein Startbefehl. Zur Vorschau gehört:
+  Anhangsliste unter der Mail, **Bilder gleich angezeigt**, alles andere
+  per Doppelklick im zuständigen Programm.
+
+- [ ] **Suchmaske nach dem Vorbild von MailStore.** Stephan hat die Maske
+  der Serverfassung als Anhaltspunkt geliefert (2026-08-25). Grundsatz
+  dabei: **Die Maske darf nichts können, was die Suchsprache nicht kann.**
+  Sie baut einen Suchausdruck zusammen und zeigt ihn an – sonst entstehen
+  zwei Wege, von denen einer immer hinterherhinkt, und die Kommandozeile
+  wäre der schwächere.
+
+  Anders als dort würde ich die fünf Ankreuzfelder für die Suchfelder
+  weglassen: Sie stehen ohnehin alle auf »an«. Wer nur `rechnung` tippt,
+  soll nichts weiter anfassen müssen; Einschränkungen kommen darunter.
+
+  Dazu gehören **gespeicherte Suchen** (»Öffnen…«, »Speichern unter…«).
+
+- [ ] **Suchsprache erweitern.** Was die MailStore-Maske kann und MailBurg
+  noch nicht:
+
+  - `datei:*.jpg`, `datei:Müller*.doc` – Muster auf Anhangsnamen. Über
+    `GLOB` auf `attachments.filename`, das ist genauer als der Volltext
+    über Dateinamen: `*.doc` trifft dann nicht »dokumentation.pdf«.
+  - `archiviert:2026-08` – **wann die Mail ins Archiv kam**, nicht wann sie
+    geschrieben wurde. Steht im Journal, fehlt aber im Index; dort müsste
+    eine Spalte dazu. »Was kam diese Woche herein?« ist die Frage nach
+    jedem Abruf, und für die Verfahrensdokumentation gehört sie
+    beantwortbar.
+  - `groesse:>5MB`
+  - `wichtigkeit:hoch` – der `Importance`-Kopf wird bisher gar nicht
+    ausgewertet.
+  - An/Cc/Bcc getrennt. Heute landen alle Empfänger in einem Feld `an:`;
+    ob jemand direkt angeschrieben war oder im Verteiler stand, lässt sich
+    nicht unterscheiden.
 
 - [ ] **Der Rückweg in den Mailclient.** Drei Wege, weil unterschiedliche
   Situationen unterschiedliche brauchen: „In Mailprogramm öffnen" über eine
