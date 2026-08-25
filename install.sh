@@ -11,6 +11,8 @@
 #                                         laufenden Abruf einrichten, alle 30 min
 #     ./install.sh --zeitsteuerung ~/Archiv --alle 10
 #                                         ... stattdessen alle 10 Minuten
+#     ./install.sh --entwicklung          auf den Quellordner verweisen,
+#                                         statt ihn zu kopieren
 #     ./install.sh --entfernen            alles wieder abbauen
 #
 # Nicht als root ausführen – sudo wird nur für die Systempakete gefragt,
@@ -30,6 +32,7 @@ MIT_PAKETEN=1
 MIT_KUER=1
 ZEITSTEUERUNG=""
 ENTFERNEN=0
+ENTWICKLUNG=0
 
 #: Wie oft die Postfächer abgefragt werden. Dreißig Minuten sind der
 #: Kompromiss: kurz genug, dass eine Aufräumregel im Mailclient nichts
@@ -43,6 +46,7 @@ while [[ $# -gt 0 ]]; do
         --nur-kern) MIT_KUER=0; shift ;;
         --zeitsteuerung) ZEITSTEUERUNG="${2:-}"; shift 2 ;;
         --alle) INTERVALL="${2:-}"; shift 2 ;;
+        --entwicklung) ENTWICKLUNG=1; shift ;;
         --entfernen) ENTFERNEN=1; shift ;;
         -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unbekannte Option: $1" >&2; exit 2 ;;
@@ -115,12 +119,17 @@ if [[ $MIT_PAKETEN -eq 1 ]]; then
     # pdftotext aus poppler (holt Text aus PDF deutlich schneller als pypdf)
     # und einen Schlüsselbund für die Passwörter.
     case "$(paketverwaltung)" in
-        apt-get) PAKETE=(poppler-utils python3-venv) ; SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo apt-get install -y" ;;
-        pacman)  PAKETE=(poppler)                    ; SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo pacman -S --needed" ;;
-        dnf)     PAKETE=(poppler-utils)              ; SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo dnf install -y" ;;
-        zypper)  PAKETE=(poppler-tools)              ; SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo zypper install -y" ;;
+        apt-get) PAKETE=(poppler-utils python3-venv tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng)
+                 SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo apt-get install -y" ;;
+        pacman)  PAKETE=(poppler tesseract tesseract-data-deu tesseract-data-eng)
+                 SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo pacman -S --needed" ;;
+        dnf)     PAKETE=(poppler-utils tesseract tesseract-langpack-deu)
+                 SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo dnf install -y" ;;
+        zypper)  PAKETE=(poppler-tools tesseract-ocr tesseract-ocr-traineddata-german)
+                 SCHLUESSELBUND=(gnome-keyring) ; BEFEHL="sudo zypper install -y" ;;
         # macOS bringt seinen Schlüsselbund selbst mit.
-        brew)    PAKETE=(poppler)                    ; SCHLUESSELBUND=()              ; BEFEHL="brew install" ;;
+        brew)    PAKETE=(poppler tesseract tesseract-lang)
+                 SCHLUESSELBUND=()              ; BEFEHL="brew install" ;;
         *)       PAKETE=()                           ; SCHLUESSELBUND=()              ; BEFEHL="" ;;
     esac
 
@@ -135,7 +144,8 @@ if [[ $MIT_PAKETEN -eq 1 ]]; then
 
     if [[ ${#PAKETE[@]} -eq 0 ]]; then
         hinweis "Keine bekannte Paketverwaltung gefunden – übersprungen."
-        hinweis "Von Hand nachrüsten lohnt: poppler (für pdftotext) und einen Schlüsselbund."
+        hinweis "Von Hand nachrüsten lohnt: poppler (für pdftotext), tesseract samt"
+        hinweis "deutschen Sprachdaten (für eingescannte PDF) und einen Schlüsselbund."
     else
         hinweis "Vorgesehen: ${PAKETE[*]}"
         hinweis "Befehl:     $BEFEHL ${PAKETE[*]}"
@@ -166,12 +176,23 @@ mkdir -p "$ZIEL"
 python3 -m venv --upgrade-deps "$VENV" >/dev/null
 hinweis "Eigene Python-Umgebung unter $VENV"
 
+# Verweisend statt kopierend: Dann wirkt jede Änderung am Quelltext
+# sofort, ohne erneutes Einrichten. Für die Erprobung Gold wert - für
+# Anwender nichts, denn sie hätten den Quellordner gar nicht.
+VERWEIS=""
+[[ $ENTWICKLUNG -eq 1 ]] && VERWEIS="-e"
+
 if [[ $MIT_KUER -eq 1 ]]; then
-    "$VENV/bin/pip" install -q "$QUELLE[alles]"
+    "$VENV/bin/pip" install -q $VERWEIS "$QUELLE[alles]"
     hinweis "MailBurg mit allem eingerichtet: IMAP, Anhänge im Volltext, Zstandard."
 else
-    "$VENV/bin/pip" install -q "$QUELLE"
+    "$VENV/bin/pip" install -q $VERWEIS "$QUELLE"
     hinweis "MailBurg im Kern eingerichtet – ohne IMAP-Schlüsselbund und PDF-Text."
+fi
+
+if [[ $ENTWICKLUNG -eq 1 ]]; then
+    hinweis "Verweisend eingerichtet auf $QUELLE –"
+    hinweis "Änderungen am Quelltext wirken sofort."
 fi
 
 mkdir -p "$BIN"

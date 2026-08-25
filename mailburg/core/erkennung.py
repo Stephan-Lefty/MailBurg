@@ -37,8 +37,12 @@ from mailburg.core import paths
 BUDGET_SEKUNDEN = 120
 
 #: Und höchstens so viele Dokumente, selbst wenn die Zeit reichen würde.
-#: Sonst käme bei kurzen Dokumenten der Rechner nie zur Ruhe.
-BUDGET_DOKUMENTE = 5
+#: Der Deckel ist bewusst hoch: Führen soll die Zeit, nicht die Stückzahl.
+#: An einem echten Bestand gemessen (2026-08-25): gut fünf Sekunden je
+#: Seite, knapp siebzehn je Dokument – bei fünf Dokumenten wären von zwei
+#: Minuten Budget erst achtzig Sekunden verbraucht gewesen. Der Deckel
+#: greift nur noch für den Fall vieler winziger Dokumente.
+BUDGET_DOKUMENTE = 30
 
 #: Um so viel wird die eigene Priorität gesenkt. Wer nebenher arbeitet,
 #: soll nichts davon merken – die Erkennung nimmt sich, was übrig ist.
