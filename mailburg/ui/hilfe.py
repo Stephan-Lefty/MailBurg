@@ -61,6 +61,11 @@ ungelesen bleibt. Gelöscht wird auf dem Server nichts – das entscheiden
 Sie in Ihrem Mailprogramm, und erst, wenn Sie sich vergewissert haben
 (siehe <a href="#aufraeumen">Postfach aufräumen</a>).</p>
 
+<p><b>Wo Sie Hilfe finden.</b> <i>Hilfe → Handbuch</i> (F1) öffnet
+dieses Verzeichnis. <i>Hilfe → Suchsprache</i>, <i>Hilfe → Was das Journal ist</i> und
+<i>Hilfe → Postfach aufräumen</i> führen zum selben Handbuch, nur
+gleich ans passende Kapitel.</p>
+
 <p><b>Ihre Daten bleiben bei Ihnen.</b> MailBurg sendet nichts an
 Dritte. Es verbindet sich ausschließlich mit den Mailservern, die Sie
 selbst eingetragen haben. Wo Ihr Archiv liegt, bestimmen Sie – siehe
@@ -282,16 +287,18 @@ def kapitel() -> list[Kapitel]:
     return [
         Kapitel("ueberblick", "Überblick", _UEBERBLICK),
         Kapitel("archiv", "Das Archiv", _ARCHIV.format(menue=(
-            _menue("Archiv → Archiv anlegen …",
-                   "Legt ein neues, leeres Archiv an.")
+            _menue("Archiv → Neues Archiv anlegen …",
+                   "Legt ein neues, leeres Archiv an – etwa ein privates "
+                   "neben dem geschäftlichen.")
             + _menue("Archiv → Archiv wechseln …",
                      "Wechselt zu einem vorhandenen Archiv.")
             + _menue("Archiv → Zuletzt benutzt",
                      "Die zuletzt geöffneten Archive mit ihrem Namen. Wer "
                      "ein geschäftliches und ein privates Archiv führt, "
                      "wechselt hierüber, ohne den Pfad zu suchen.")
-            + _menue("Archiv → Archiv schließen",
-                     "Schließt das Archiv, ohne das Programm zu beenden.")
+            + _menue("Archiv → Beenden",
+                     "Schließt MailBurg. Ein laufender Abruf im Hintergrund "
+                     "läuft davon unabhängig weiter.")
         ))),
         Kapitel("postfaecher", "Postfächer", _POSTFAECHER.format(menue=(
             _menue("Post → Postfächer verwalten …",
@@ -321,9 +328,10 @@ def kapitel() -> list[Kapitel]:
                    "Größe und Aufteilung so, wie MailBurg das erste Mal "
                    "aufging. Ihre gespeicherte eigene Ansicht bleibt dabei "
                    "erhalten.")
-            + _menue("Ansicht → Postfach nach oben / nach unten "
-                     "(Strg+Auf, Strg+Ab)",
-                     "Rückt das gewählte Postfach eine Stelle.")
+            + _menue("Ansicht → Postfach nach oben (Strg+Auf)",
+                     "Rückt das gewählte Postfach eine Stelle nach oben.")
+            + _menue("Ansicht → Postfach nach unten (Strg+Ab)",
+                     "Rückt es eine Stelle nach unten.")
             + _menue("Ansicht → Eigene Ansicht speichern",
                      "Legt die jetzige Größe, Aufteilung und Reihenfolge ab.")
             + _menue("Ansicht → Eigene Ansicht laden",

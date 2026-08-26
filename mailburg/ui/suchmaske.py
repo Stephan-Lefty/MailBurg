@@ -16,8 +16,9 @@ auseinander.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QDate, QLocale, Qt
 from PySide6.QtWidgets import (
+    QDateEdit,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -38,6 +39,17 @@ def quoten(wert: str) -> str:
     if not wert:
         return ""
     return f'"{wert}"' if " " in wert else wert
+
+
+def _datumsmuster() -> str:
+    """Das Datumsmuster der Systemsprache, mit vierstelligem Jahr.
+
+    Dieselbe Regel wie in :mod:`mailburg.ui.datum`: Qts Kurzformat kürzt
+    die Jahreszahl auf zwei Stellen, und in einem Archiv stünden Post von
+    1998 und Post von 2098 dann beide als »98« da.
+    """
+    muster = QLocale().dateFormat(QLocale.ShortFormat)
+    return muster if "yyyy" in muster else muster.replace("yy", "yyyy")
 
 
 class Suchmaske(QDialog):
@@ -90,8 +102,32 @@ class Suchmaske(QDialog):
         jahre.addWidget(self.jahr_bis)
         jahre.addStretch()
 
+        # Ein Kalender statt eines Eingabefelds: Wer einen Zeitraum
+        # sucht, weiß meist "Anfang März bis Ostern" und nicht das genaue
+        # Datum. Im Kalender sieht er es.
+        self.zeitraum_an = QCheckBox("Nur aus einem Zeitraum")
+        self.zeitraum_an.toggled.connect(self._zeitraum_umschalten)
+
+        heute = QDate.currentDate()
+        self.datum_von = QDateEdit(heute.addYears(-1))
+        self.datum_bis = QDateEdit(heute)
+        for feld in (self.datum_von, self.datum_bis):
+            feld.setCalendarPopup(True)
+            feld.setDisplayFormat(_datumsmuster())
+            # Ein Archiv reicht weiter zurück als die Vorgabe von 1752.
+            feld.setMinimumDate(QDate(1970, 1, 1))
+            feld.setMaximumDate(heute.addYears(1))
+        self.datum_von.setAccessibleName("Zeitraum von")
+        self.datum_bis.setAccessibleName("Zeitraum bis")
+
+        zeitraum = QHBoxLayout()
+        zeitraum.addWidget(self.datum_von)
+        zeitraum.addWidget(QLabel("bis"))
+        zeitraum.addWidget(self.datum_bis)
+        zeitraum.addStretch()
+
         self.archiviert = QLineEdit()
-        self.archiviert.setPlaceholderText("2026 · 2026-08 · 2026-08-25")
+        self.archiviert.setPlaceholderText("2026 · 2026-08 · 26.08.2026")
 
         self.mit_anhang = QCheckBox("Nur Nachrichten mit Anhang")
         self.typ = QLineEdit()
@@ -124,6 +160,8 @@ class Suchmaske(QDialog):
         unten.addRow("Postfach:", self.konto)
         unten.addRow("Ordner:", self.ordner)
         unten.addRow("Jahr:", jahre)
+        unten.addRow("", self.zeitraum_an)
+        unten.addRow("Zeitraum:", zeitraum)
         unten.addRow("Ins Archiv gekommen:", self.archiviert)
         unten.addRow("", self.mit_anhang)
         unten.addRow("Anhang vom Typ:", self.typ)
@@ -170,8 +208,15 @@ class Suchmaske(QDialog):
         self.ordner.editTextChanged.connect(self._vorschau_erneuern)
         for zahl in (self.jahr_von, self.jahr_bis):
             zahl.valueChanged.connect(self._vorschau_erneuern)
+        for kalender in (self.datum_von, self.datum_bis):
+            kalender.dateChanged.connect(self._vorschau_erneuern)
         self.mit_anhang.toggled.connect(self._vorschau_erneuern)
 
+        self._vorschau_erneuern()
+
+    def _zeitraum_umschalten(self, an: bool) -> None:
+        self.datum_von.setEnabled(an)
+        self.datum_bis.setEnabled(an)
         self._vorschau_erneuern()
 
     def _konten_fuellen(self) -> None:
@@ -211,6 +256,13 @@ class Suchmaske(QDialog):
         ordner = self.ordner.currentText().strip()
         if ordner and not ordner.startswith("("):
             teile.append(f"ordner:{quoten(ordner)}")
+
+        if self.zeitraum_an.isChecked():
+            frueh, spaet = sorted(
+                (self.datum_von.date(), self.datum_bis.date())
+            )
+            teile.append(f"seit:{frueh.toString('dd.MM.yyyy')}")
+            teile.append(f"bis:{spaet.toString('dd.MM.yyyy')}")
 
         von, bis = self.jahr_von.value(), self.jahr_bis.value()
         if von and bis and von != bis:

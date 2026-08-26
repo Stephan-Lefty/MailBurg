@@ -253,6 +253,14 @@ def _field_clause(field: str, value: str) -> tuple[str | None, list[object]]:
         # Präfixvergleich auf der ISO-Schreibweise: "2026" trifft das Jahr,
         # "2026-08" den Monat, "2026-08-25" den Tag. Ein einziger Vergleich
         # für alle drei Fälle.
+        #
+        # Ein vollständiges Datum darf auch deutsch geschrieben sein -
+        # überall sonst geht das, und eine Ausnahme müsste sich jemand
+        # merken. Ein halbes Datum wie "08.2026" bleibt außen vor: Es
+        # ließe sich nicht vom Tag "08.2026" unterscheiden, den es nicht
+        # gibt, und Raten hat bei Suchen nichts zu suchen.
+        if "." in value:
+            return "m.archiviert LIKE ?", [f"{_datum_lesen(value)}%"]
         return "m.archiviert LIKE ?", [f"{value}%"]
 
     if field in ("cc", "kopie"):
@@ -340,7 +348,7 @@ def describe_syntax() -> str:
   jahr:2025 · jahr:2020-2025
   seit:01.01.2026 · bis:31.03.2026 · am:26.08.2026
   archiviert:2026-08        wann die Mail ins Archiv kam
-  archiviert:2026-08-25     auch tagesgenau
+  archiviert:26.08.2026     auch tagesgenau
   groesse:>5MB              auch <100KB, >=2GB; ohne Zeichen: mindestens
   wichtigkeit:hoch          hoch, normal oder niedrig
 

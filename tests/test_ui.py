@@ -1865,20 +1865,36 @@ class HandbuchTest(OberflaechenTest):
         return next(k.text for k in kapitel() if k.kennung == kennung)
 
     def test_jeder_menuepunkt_ist_erklaert(self):
-        # Wer wissen will, was ein Menüpunkt tut, sucht nach diesem
-        # Menüpunkt. Steht er nirgends, hilft das beste Kapitel nichts.
+        # Aus dem echten Menü gelesen, nicht aus einer abgeschriebenen
+        # Liste: Sonst laufen Menü und Handbuch auseinander, ohne dass es
+        # auffällt. Genau das war schon passiert - das Handbuch erklärte
+        # ein "Archiv schließen", das es nicht gibt, und kannte das
+        # umbenannte "Archiv wechseln" nicht.
+        import tempfile
+
+        from PySide6.QtGui import QAction
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
         from mailburg.ui.hilfe import kapitel
 
+        with tempfile.TemporaryDirectory() as ordner:
+            ort = pathlib.Path(ordner) / "Archiv"
+            Archive.create(ort).close()
+            fenster = Hauptfenster(ort)
+            self.addCleanup(fenster.close)
+            punkte = [
+                a.text().replace("&", "").removesuffix(" …").strip()
+                for menue in fenster.menuBar().actions()
+                for a in menue.menu().actions()
+                if isinstance(a, QAction) and a.text() and not a.isSeparator()
+            ]
+
         alles = " ".join(k.text for k in kapitel())
-        for punkt in (
-            "Journal prüfen", "Postfächer verwalten", "Jetzt abrufen",
-            "Abruf im Hintergrund", "Ausführlich suchen",
-            "Fenster auf Standard zurücksetzen", "Eigene Ansicht speichern",
-            "Eigene Ansicht laden", "Postfach nach oben",
-            "Archiv anlegen", "Archiv öffnen", "Archiv schließen",
-        ):
+        for punkt in punkte:
             with self.subTest(menuepunkt=punkt):
-                self.assertIn(punkt, alles)
+                self.assertIn(punkt, alles,
+                              f"»{punkt}« steht im Menü, aber nicht im Handbuch")
 
     def test_journalkapitel_ohne_fachwoerter(self):
         text = self._text("journal")
@@ -2098,3 +2114,75 @@ class ArchivwechselTest(OberflaechenTest):
         (kaputt / "archive.json").write_text("kein JSON", encoding="utf-8")
 
         self.assertEqual(_archivname(kaputt), "Kaputt")
+
+
+class ZeitraumInDerSuchmaskeTest(OberflaechenTest):
+    """Ein Zeitraum wird im Kalender gewählt, nicht getippt."""
+
+    def maske(self):
+        from mailburg.ui.suchmaske import Suchmaske
+
+        maske = Suchmaske()
+        self.addCleanup(maske.close)
+        return maske
+
+    def test_kalender_klappt_auf(self):
+        maske = self.maske()
+
+        for feld in (maske.datum_von, maske.datum_bis):
+            self.assertTrue(feld.calendarPopup())
+
+    def test_zeitraum_wird_zu_seit_und_bis(self):
+        from PySide6.QtCore import QDate
+
+        maske = self.maske()
+        maske.zeitraum_an.setChecked(True)
+        maske.datum_von.setDate(QDate(2026, 3, 1))
+        maske.datum_bis.setDate(QDate(2026, 3, 31))
+
+        self.assertEqual(maske.ausdruck(), "seit:01.03.2026 bis:31.03.2026")
+
+    def test_verdrehte_eingabe_wird_geradegerueckt(self):
+        # Wer zuerst das Ende einstellt und dann den Anfang, bekäme sonst
+        # einen Zeitraum, der nie etwas findet.
+        from PySide6.QtCore import QDate
+
+        maske = self.maske()
+        maske.zeitraum_an.setChecked(True)
+        maske.datum_von.setDate(QDate(2026, 3, 31))
+        maske.datum_bis.setDate(QDate(2026, 3, 1))
+
+        self.assertEqual(maske.ausdruck(), "seit:01.03.2026 bis:31.03.2026")
+
+    def test_ohne_haekchen_kein_zeitraum(self):
+        maske = self.maske()
+        maske.zeitraum_an.setChecked(False)
+
+        self.assertEqual(maske.ausdruck(), "")
+
+    def test_jahreszahl_bleibt_vierstellig(self):
+        maske = self.maske()
+
+        self.assertIn("yyyy", maske.datum_von.displayFormat())
+
+
+class ArchiviertMitDeutschemDatumTest(unittest.TestCase):
+    """Auch der Archiv-Zeitpunkt darf deutsch geschrieben werden."""
+
+    def test_beide_schreibweisen(self):
+        from mailburg.search.query import build
+
+        _, deutsch = build("archiviert:26.08.2026")
+        _, iso = build("archiviert:2026-08-25")
+
+        self.assertEqual(deutsch, ["2026-08-26%"])
+        self.assertEqual(iso, ["2026-08-25%"])
+
+    def test_teilangaben_bleiben_iso(self):
+        # "2026-08" trifft den ganzen Monat. Ein halbes deutsches Datum
+        # wie "08.2026" bliebe mehrdeutig - Raten hat bei einer Suche im
+        # eigenen Archiv nichts zu suchen.
+        from mailburg.search.query import build
+
+        _, werte = build("archiviert:2026-08")
+        self.assertEqual(werte, ["2026-08%"])

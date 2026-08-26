@@ -345,11 +345,55 @@ class Hauptfenster(QMainWindow):
             self._zuletzt_fuellen()
 
     def _archiv_waehlen(self) -> None:
+        gewaehlt = self._verzeichnis_waehlen("Archiv wechseln")
+        if gewaehlt:
+            self._wechseln(gewaehlt)
+
+    def _verzeichnis_waehlen(self, titel: str, vorgabe=None):
+        """Ein Verzeichnisdialog, der die angeschlossenen Platten kennt.
+
+        Der Standarddialog startet im Benutzerverzeichnis und zeigt in der
+        Seitenleiste nur die Lesezeichen des Dateimanagers. Ein Archiv
+        liegt aber typischerweise gerade *nicht* dort, sondern auf einer
+        externen Platte – die dann jedes Mal von Hand zusammengeklickt
+        werden muss. Die Einrichtung bietet diese Orte längst an; hier
+        fehlten sie.
+        """
+        from PySide6.QtCore import QUrl
         from PySide6.QtWidgets import QFileDialog
 
-        gewaehlt = QFileDialog.getExistingDirectory(self, "Archiv öffnen")
-        if gewaehlt:
-            self._oeffnen(Path(gewaehlt))
+        from mailburg.core import orte
+
+        dialog = QFileDialog(self, titel)
+        dialog.setFileMode(QFileDialog.Directory)
+        dialog.setOption(QFileDialog.ShowDirsOnly, True)
+        # Nicht der Dialog des Systems: Nur den eigenen lässt Qt um
+        # weitere Orte ergänzen.
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+
+        seitenleiste = list(dialog.sidebarUrls())
+        for ort in orte.vorschlagen():
+            # Der Datenträger selbst, nicht der Vorschlagspfad darauf:
+            # orte.vorschlagen() liefert, wo ein *neues* Archiv angelegt
+            # würde. Diesen Ordner gibt es meist noch gar nicht, und ein
+            # Lesezeichen ins Leere hilft niemandem.
+            traeger = ort.pfad.parent
+            if not traeger.is_dir():
+                continue
+            url = QUrl.fromLocalFile(str(traeger))
+            if url not in seitenleiste:
+                seitenleiste.append(url)
+        dialog.setSidebarUrls(seitenleiste)
+
+        # Dort anfangen, wo das jetzige Archiv liegt: Das zweite Archiv
+        # steht meist daneben.
+        start = vorgabe or (self.archiv.root.parent if self.archiv else None)
+        if start is not None and Path(start).is_dir():
+            dialog.setDirectory(str(start))
+
+        if dialog.exec() and dialog.selectedFiles():
+            return Path(dialog.selectedFiles()[0])
+        return None
 
     # ------------------------------------------------------- Fenstergröße
 
