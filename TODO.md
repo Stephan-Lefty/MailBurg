@@ -41,7 +41,11 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   die Systempalette ausmessen, dann Screenshots, dann Stephans Urteil,
   dann sein Test auf dem Debian-Gerät.
 
-- [ ] **3. Mails aus MailStore Home holen.** Die EML-Quelle steht seit
+- [ ] **3. Mails aus MailStore Home holen – dafür zuerst eine
+  Windows-VM.** MailStore Home läuft nur unter Windows; ohne VM kommt
+  niemand an den Bestand heran (Stephan, 2026-08-26). Die VM ist damit
+  Voraussetzung, nicht Nebensache – und sie erledigt nebenbei den
+  Windows-Test aus den offenen Fragen weiter unten. Die EML-Quelle steht seit
   gestern. Offen sind drei Fragen an Stephan, die von hier aus nicht zu
   beantworten sind: Was bietet MailStore Home unter »Exportieren« an?
   Läuft es unter Windows oder Wine? Wie viele Mails sind es? An das
