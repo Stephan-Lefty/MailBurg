@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -36,17 +37,20 @@ POSTEINGANG = "INBOX"
 class Zurueckgeben(Auftrag):
     """Legt die Mail ins Postfach."""
 
-    def __init__(self, konto, passwort: str, rohdaten: bytes) -> None:
+    def __init__(self, konto, passwort: str, rohdaten: bytes,
+                 ungelesen: bool = True) -> None:
         super().__init__()
         self.konto = konto
         self.passwort = passwort
         self.rohdaten = rohdaten
+        self.ungelesen = ungelesen
 
     def ausfuehren(self) -> str:
         from mailburg.core import rueckgabe
 
         rueckgabe.ins_postfach(
-            self.konto, self.passwort, POSTEINGANG, self.rohdaten
+            self.konto, self.passwort, POSTEINGANG, self.rohdaten,
+            ungelesen=self.ungelesen,
         )
         return self.konto.benutzer or self.konto.name
 
@@ -64,7 +68,8 @@ class Zurueckdialog(QDialog):
         erklaerung = QLabel(
             "<p>Die Nachricht kommt in den <b>Posteingang</b> des gewählten "
             "Postfachs – vollständig, mit allen Anhängen und mit ihrem "
-            "ursprünglichen Datum.</p>"
+            "ursprünglichen Datum. Damit steht sie im Mailprogramm an "
+            "ihrem Platz in der Zeit und nicht ganz oben.</p>"
             "<p><b>Es muss nicht das Postfach sein, aus dem sie stammt.</b> "
             "Post überlebt Anbieter und Adressen; wählen Sie einfach das, "
             "in dem Sie sie jetzt haben wollen.</p>"
@@ -76,6 +81,15 @@ class Zurueckdialog(QDialog):
         for konto in Kontenliste().konten:
             if konto.aktiv:
                 self.konten.addItem(konto.benutzer or konto.name, konto)
+
+        # Voreingestellt an: Die Nachricht kommt mit ihrem alten Datum
+        # zurück und steht damit mitten in der Post von damals. Ungelesen
+        # erscheint sie hervorgehoben und im Zähler des Ordners - sonst
+        # sucht man sie hinterher.
+        self.ungelesen = QCheckBox(
+            "Als ungelesen markieren, damit sie im Mailprogramm auffällt"
+        )
+        self.ungelesen.setChecked(True)
 
         self.stand = QLabel("")
         self.stand.setWordWrap(True)
@@ -92,6 +106,7 @@ class Zurueckdialog(QDialog):
         felder.addRow("Nachricht:", QLabel(betreff or "(ohne Betreff)"))
         felder.addRow("Postfach:", self.konten)
         felder.addRow("Ziel:", QLabel("Posteingang"))
+        felder.addRow("", self.ungelesen)
 
         aufbau = QVBoxLayout(self)
         aufbau.addWidget(erklaerung)
@@ -123,7 +138,9 @@ class Zurueckdialog(QDialog):
 
         self.knoepfe.setEnabled(False)
         self.stand.setText("Lege die Nachricht ab …")
-        auftrag = Zurueckgeben(konto, passwort, self.rohdaten)
+        auftrag = Zurueckgeben(
+            konto, passwort, self.rohdaten, self.ungelesen.isChecked()
+        )
         auftrag.fertig.connect(self._geschafft)
         auftrag.gescheitert.connect(self._misslungen)
         self._laeufer = Läufer(auftrag)

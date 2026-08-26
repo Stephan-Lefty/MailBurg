@@ -249,6 +249,13 @@ Anhängen und mit ihrem ursprünglichen Datum, damit sie im Mailprogramm
 an der richtigen Stelle steht und nicht ganz oben. Von dort verschieben
 Sie sie mit einem Handgriff dahin, wo Sie sie haben wollen.</p>
 
+<p><b>Als ungelesen markiert</b> – dafür sorgt ein Häkchen, das
+voreingestellt gesetzt ist. Das klingt nach einer Falschmeldung,
+gelesen haben Sie die Mail ja längst. Es ist aber der einzige Weg, sie
+wiederzufinden: Mit ihrem alten Datum steht sie mitten in der Post von
+damals. Ungelesen erscheint sie hervorgehoben und im Zähler des
+Ordners; ein Klick darauf, und sie ist wieder gelesen.</p>
+
 <p><b>Es muss nicht das Postfach sein, aus dem sie stammt.</b> Post
 überlebt Arbeitgeber, Anbieter und Adressen; das Konto von damals gibt
 es vielleicht gar nicht mehr. Sie wählen frei, wohin.</p>

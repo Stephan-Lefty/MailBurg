@@ -542,3 +542,46 @@ class RueckgabeTest(unittest.TestCase):
         self.assertNotIn(":", name.removesuffix(".eml"))
         self.assertNotIn("/", name)
         self.assertTrue(name.endswith(".eml"))
+
+
+class UngelesenZurueckTest(unittest.TestCase):
+    """Wiederhergestellte Post muss auffindbar sein."""
+
+    def _append_mitschreiben(self, **kwargs):
+        from unittest import mock
+
+        from mailburg.core import rueckgabe
+        from mailburg.sources import imap
+
+        mitgeschrieben = {}
+
+        class GefaelschteVerbindung:
+            def append(self, ordner, flags, wann, nachricht):
+                mitgeschrieben["flags"] = flags
+                mitgeschrieben["ordner"] = ordner
+                return "OK", [b"APPENDUID"]
+
+        class GefaelschteQuelle:
+            def __init__(self, *a, **k):
+                self._verbindung = GefaelschteVerbindung()
+
+            def close(self):
+                pass
+
+        with mock.patch.object(imap, "ImapSource", GefaelschteQuelle):
+            rueckgabe.ins_postfach(
+                mock.Mock(), "geheim", "INBOX",
+                b"Date: Tue, 15 Mar 2016 09:12:00 +0100\r\n\r\nText",
+                **kwargs,
+            )
+        return mitgeschrieben
+
+    def test_ohne_angabe_kommt_sie_ungelesen_zurueck(self):
+        # Sie kommt mit ihrem alten Datum und steht damit mitten in der
+        # Post von damals. Als gelesen markiert fände man sie dort nie
+        # wieder.
+        self.assertEqual(self._append_mitschreiben().get("flags"), "")
+
+    def test_auf_wunsch_als_gelesen(self):
+        self.assertEqual(
+            self._append_mitschreiben(ungelesen=False).get("flags"), "\\Seen")

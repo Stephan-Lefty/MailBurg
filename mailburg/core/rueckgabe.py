@@ -69,12 +69,19 @@ def _zeitstempel(rohdaten: bytes) -> str:
     return imaplib.Time2Internaldate(datetime.now(timezone.utc))
 
 
-def ins_postfach(konto, passwort: str, ordner: str, rohdaten: bytes) -> None:
+def ins_postfach(konto, passwort: str, ordner: str, rohdaten: bytes,
+                 ungelesen: bool = True) -> None:
     """Legt eine Mail in einen Ordner eines Postfachs.
 
-    Die Nachricht wird als gelesen markiert. Sie im Postfach als
-    ungelesen erscheinen zu lassen wäre eine Falschmeldung: Gelesen wurde
-    sie längst, sie war ja schon einmal da.
+    **Standardmäßig ungelesen.** Auf den ersten Blick ist das eine
+    Falschmeldung – gelesen wurde die Mail ja längst. Praktisch ist es
+    aber der einzige Weg, sie wiederzufinden: Sie kommt mit ihrem
+    ursprünglichen Datum zurück und steht damit nicht oben im
+    Posteingang, sondern zwischen der Post von damals. Ungelesen
+    erscheint sie hervorgehoben und im Zähler des Ordners; ein Klick
+    darauf, und sie ist wieder gelesen.
+
+    Wer das nicht will, schaltet es ab.
     """
     from mailburg.sources.imap import ImapFehler, ImapSource
 
@@ -89,7 +96,7 @@ def ins_postfach(konto, passwort: str, ordner: str, rohdaten: bytes) -> None:
     try:
         status, antwort = quelle._verbindung.append(
             _ordner_kodieren(ordner),
-            "\\Seen",
+            "" if ungelesen else "\\Seen",
             _zeitstempel(rohdaten),
             rohdaten,
         )
