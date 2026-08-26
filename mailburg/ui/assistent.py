@@ -788,10 +788,14 @@ class KontenSeite(QWizardPage):
 
         zu_pruefen = [z for z in self.zeilen if z.gewaehlt]
         if not zu_pruefen:
-            # Alles schon eingerichtet? Dann ist nichts zu tun, und der
-            # Anwender soll weitergehen dürfen statt ermahnt zu werden.
-            if self.zeilen and all(getattr(z, "bereits_da", False) for z in self.zeilen):
-                self.wizard().konten = [z.konto for z in self.zeilen]
+            # Schon eingerichtete Postfächer sind Grund genug weiterzugehen.
+            # Es müssen ausdrücklich nicht *alle* sein: Wer acht Postfächer
+            # hat, sechs eingerichtet und zwei bewusst ausgelassen, wurde
+            # hier sonst festgehalten und um eine Auswahl gebeten, die er
+            # gerade absichtlich nicht getroffen hat.
+            fertige = [z for z in self.zeilen if getattr(z, "bereits_da", False)]
+            if fertige:
+                self.wizard().konten = [z.konto for z in fertige]
                 return True
             QMessageBox.information(
                 self,

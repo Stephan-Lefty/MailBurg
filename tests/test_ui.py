@@ -949,3 +949,45 @@ class KeinePruefschleifeTest(OberflaechenTest):
 
         self.assertEqual(len(gepruefte), 1,
                          "die Prüfung lief ein zweites Mal - das ist die Schleife")
+
+
+class TeilweiseEingerichtetTest(OberflaechenTest):
+    """Wer einen Teil seiner Postfächer bewusst auslässt, muss weiterkommen."""
+
+    def test_ein_eingerichtetes_postfach_genuegt_zum_weitergehen(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QGridLayout, QMessageBox, QWidget
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.assistent import Einrichtungsassistent, KontoZeile
+
+        assistent = Einrichtungsassistent()
+        seite = assistent.page(assistent.pageIds()[2])
+        halter = QWidget()
+        gitter = QGridLayout(halter)
+
+        # Sechs eingerichtet, zwei absichtlich ausgelassen - Stephans Lage
+        # mit Proton und einem Konto, das er später einrichten wollte.
+        for n, (adresse, fertig) in enumerate([
+            ("a@example.org", True), ("b@example.org", True),
+            ("proton@example.com", False), ("spaeter@example.net", False),
+        ]):
+            zeile = KontoZeile(
+                Konto(name=adresse, server="imap.example.org",
+                      benutzer=adresse, port=143, ssl=False),
+                gitter, n,
+            )
+            zeile.ankreuz.setChecked(False)
+            zeile.bereits_da = fertig
+            seite.zeilen.append(zeile)
+
+        ermahnt = []
+        with mock.patch.object(QMessageBox, "information",
+                               lambda *a, **k: ermahnt.append(1)):
+            weiter = seite.validatePage()
+
+        self.assertTrue(weiter, "die eingerichteten Postfächer genügen")
+        self.assertEqual(ermahnt, [], "hier ist nichts zu ermahnen")
+        self.assertEqual([k.name for k in assistent.konten],
+                         ["a@example.org", "b@example.org"])
