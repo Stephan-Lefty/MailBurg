@@ -38,6 +38,43 @@ from mailburg import APP_NAME
 #: der Aufteilung, die sich im Betrieb als brauchbar erwiesen hat: Der
 #: Postfachbaum braucht Platz für verschachtelte Ordnernamen, und die
 #: Vorschau mehr als die Trefferliste – gelesen wird unten, gesucht oben.
+#: Erklärt in der Hilfe, was MailBurg da eigentlich schützt. Bewusst
+#: ohne Fachwörter im Fließtext: Wer wissen will, ob sein Archiv in
+#: Ordnung ist, soll das verstehen, ohne vorher etwas nachschlagen zu
+#: müssen. Und ebenso bewusst mit dem Absatz darüber, was es *nicht*
+#: leistet - eine halbe Zusage ist in Rechtsfragen schlimmer als keine.
+JOURNAL_ERKLAERT = """\
+<p><b>Das Journal ist das Protokoll Ihres Archivs.</b> Darin steht jeder
+Vorgang: Diese Mail wurde aufgenommen, jene gelöscht, diese eingeordnet.
+Es ist die eigentliche Wahrheit des Archivs – die Suche ist nur eine
+Bequemlichkeit, die sich daraus jederzeit neu aufbauen lässt.</p>
+
+<p><b>Warum es fälschungssicher ist.</b> Jeder Eintrag bekommt einen
+Fingerabdruck seines Inhalts, und trägt zusätzlich den Fingerabdruck
+seines Vorgängers. So hängen alle Einträge zusammen wie die Glieder einer
+Kette.</p>
+
+<p>Ändert jemand nachträglich einen alten Eintrag – etwa um eine
+unbequeme Mail verschwinden zu lassen –, ändert sich dessen
+Fingerabdruck. Der nächste Eintrag zeigt dann ins Leere: Die Kette ist
+gerissen, und <i>Archiv → Journal prüfen</i> sagt Ihnen, an welcher
+Stelle. Wer die Änderung verbergen wollte, müsste jeden nachfolgenden
+Eintrag neu berechnen.</p>
+
+<p><b>Was das Prüfen Ihnen sagt.</b> Ob die Kette unversehrt ist, ob alle
+Mails, die laut Protokoll da sein sollten, auch wirklich auf der Platte
+liegen – und ob dort Dateien liegen, die nie über MailBurg
+hereingekommen sind.</p>
+
+<p><b>Was es nicht leistet.</b> Wer Zugriff auf das Archiv hat und sich
+Zeit nimmt, kann die gesamte Kette neu berechnen. Dagegen hilft die Kette
+allein nicht; dagegen hilft nur ein Siegel, dessen Wert außerhalb des
+Archivs liegt – notiert, verschickt oder von einem Zeitstempeldienst
+bestätigt. Deshalb sagt MailBurg, dass es revisionssicheren Betrieb
+<i>unterstützt</i>, und nicht, dass es ihn herstellt. Dazu gehören immer
+auch geregelte Abläufe bei Ihnen im Betrieb.</p>
+"""
+
 BAUMANTEIL = 0.20
 TREFFERANTEIL = 0.42
 from mailburg.core.accounts import Kontenliste
@@ -158,7 +195,11 @@ class Hauptfenster(QMainWindow):
         archiv.addAction(oeffnen)
 
         archiv.addSeparator()
-        pruefen = QAction("Hash-Kette prüfen", self)
+        # "Journal prüfen", nicht "Hash-Kette prüfen": Die Hash-Kette ist
+        # das Mittel, das Journal die Sache. Wer den Menüpunkt sucht,
+        # sucht nicht nach einem Verfahren, sondern nach der Antwort auf
+        # die Frage, ob mit seinem Archiv alles in Ordnung ist.
+        pruefen = QAction("Journal prüfen", self)
         pruefen.triggered.connect(self._pruefen)
         archiv.addAction(pruefen)
 
@@ -202,6 +243,11 @@ class Hauptfenster(QMainWindow):
         suchhilfe.setShortcut("F1")
         suchhilfe.triggered.connect(self._suchhilfe)
         hilfe.addAction(suchhilfe)
+
+        hilfe.addSeparator()
+        journalhilfe = QAction("Was das Journal ist …", self)
+        journalhilfe.triggered.connect(self._journalhilfe)
+        hilfe.addAction(journalhilfe)
 
     # ------------------------------------------------------------- Archiv
 
@@ -596,7 +642,8 @@ class Hauptfenster(QMainWindow):
             QApplication.restoreOverrideCursor()
 
         zeilen = [
-            "Hash-Kette: " + ("unversehrt" if bericht["chain_ok"] else "BESCHÄDIGT"),
+            "Protokollkette: "
+            + ("unversehrt" if bericht["chain_ok"] else "BESCHÄDIGT"),
             f"Laut Journal: {bericht['expected']} Mails",
             f"In der Ablage: {bericht['on_disk']} Dateien",
         ]
@@ -634,6 +681,13 @@ class Hauptfenster(QMainWindow):
             # von Hand weiterdrehen.
             self.suchfeld.setText(maske.ausdruck())
             self._suchen()
+
+    def _journalhilfe(self) -> None:
+        fenster = QMessageBox(self)
+        fenster.setWindowTitle("Was das Journal ist")
+        fenster.setTextFormat(Qt.RichText)
+        fenster.setText(JOURNAL_ERKLAERT)
+        fenster.exec()
 
     def _suchhilfe(self) -> None:
         fenster = QMessageBox(self)

@@ -1631,3 +1631,30 @@ class FarbkontrastTest(OberflaechenTest):
             hell = farben.schlecht()
 
         self.assertNotEqual(dunkel, hell)
+
+
+class JournalhilfeTest(unittest.TestCase):
+    """Die Erklärung muss verständlich sein – und ehrlich."""
+
+    def test_erklaert_ohne_fachwoerter_im_fliesstext(self):
+        from mailburg.ui.hauptfenster import JOURNAL_ERKLAERT
+
+        # Wer wissen will, ob sein Archiv in Ordnung ist, soll das
+        # verstehen, ohne vorher etwas nachschlagen zu müssen.
+        for fachwort in ("SHA-256", "Hash", "Blockchain", "prev", "self"):
+            self.assertNotIn(fachwort, JOURNAL_ERKLAERT)
+        self.assertIn("Fingerabdruck", JOURNAL_ERKLAERT)
+
+    def test_sagt_auch_was_es_nicht_leistet(self):
+        # Eine halbe Zusage ist in Rechtsfragen schlimmer als keine.
+        from mailburg.ui.hauptfenster import JOURNAL_ERKLAERT
+
+        self.assertIn("nicht leistet", JOURNAL_ERKLAERT)
+        self.assertIn("unterstützt", JOURNAL_ERKLAERT)
+        self.assertNotIn("GoBD-konform", JOURNAL_ERKLAERT)
+
+    def test_verweist_auf_den_menuepunkt_wie_er_heisst(self):
+        from mailburg.ui.hauptfenster import JOURNAL_ERKLAERT
+
+        self.assertIn("Journal prüfen", JOURNAL_ERKLAERT)
+        self.assertNotIn("Hash-Kette prüfen", JOURNAL_ERKLAERT)
