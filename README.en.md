@@ -16,7 +16,10 @@ makes it searchable — message bodies, headers and the contents of attachments.
 Where that place is, is up to you: internal disk, external disk, a folder
 synchronised by Nextcloud.
 
-Runs on Linux, Windows and macOS.
+Developed and used daily on Linux. On Windows and macOS the test suite and
+the setup demonstrably pass, but MailBurg has not yet seen daily use there —
+if you run it on those systems, use `mailburg pruefen` regularly at first and
+do not clear out your mailbox too soon.
 
 <p align="center">
   <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes, mail clients and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Access via the interface or the command line." width="960">
