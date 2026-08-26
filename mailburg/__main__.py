@@ -842,7 +842,10 @@ def cmd_sichern(args) -> int:
     if ziel.is_dir() or not ziel.suffix:
         with Archive.open(archiv_pfad, exclusive=False) as archiv:
             name = archiv.name
-        ziel = ziel / sicherung.vorschlag(archiv_pfad, name)
+        ziel = ziel / (
+            sicherung.dateiname(name) if args.ersetzen
+            else sicherung.vorschlag(archiv_pfad, name)
+        )
 
     try:
         befund = sicherung.packen(archiv_pfad, ziel)
@@ -1126,6 +1129,13 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "nur die letzten ANZAHL Sicherungen im Zielverzeichnis behalten "
             "(0 = alle behalten)"
+        ),
+    )
+    p.add_argument(
+        "--ersetzen", action="store_true",
+        help=(
+            "immer dieselbe Datei überschreiben statt eine mit Datum "
+            "anzulegen – für Cloud-Ordner, die selbst Versionen führen"
         ),
     )
     p.add_argument("--leise", action="store_true", help="nur bei Fehlern melden")

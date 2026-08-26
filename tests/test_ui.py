@@ -2896,3 +2896,42 @@ class SicherungsplanTest(OberflaechenTest):
         _alte_sicherungen_entfernen(ordner, 0)
 
         self.assertTrue((ordner / "wichtig.pdf").exists())
+
+
+class ErsetzenStattSammelnTest(SicherungsplanTest):
+    """Für die Cloud: eine Datei, die ersetzt wird."""
+
+    def test_ohne_grenze_wird_ersetzt(self):
+        # Nextcloud führt die Versionen ohnehin selbst; eine wachsende
+        # Sammlung wäre dort doppelt gemoppelt und kostet Platz auf
+        # einer Storage Box.
+        from mailburg.core import zeitplan
+
+        zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud",
+                                      "wöchentlich", behalten=0)
+        dienst = (self.wo / "systemd" / "mailburg-sicherung.service").read_text(
+            encoding="utf-8")
+
+        self.assertIn("--ersetzen", dienst)
+        self.assertNotIn("--behalten", dienst)
+
+    def test_mit_grenze_wird_gesammelt(self):
+        from mailburg.core import zeitplan
+
+        zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud",
+                                      "täglich", behalten=7)
+        dienst = (self.wo / "systemd" / "mailburg-sicherung.service").read_text(
+            encoding="utf-8")
+
+        self.assertIn("--behalten 7", dienst)
+        self.assertNotIn("--ersetzen", dienst)
+
+    def test_woechentlich_kommt_im_zeitplan_an(self):
+        from mailburg.core import zeitplan
+
+        zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud",
+                                      "wöchentlich")
+        uhr = (self.wo / "systemd" / "mailburg-sicherung.timer").read_text(
+            encoding="utf-8")
+
+        self.assertIn("OnCalendar=weekly", uhr)

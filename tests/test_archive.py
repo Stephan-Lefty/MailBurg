@@ -742,3 +742,48 @@ class SicherungTest(unittest.TestCase):
         quelle = inspect.getsource(sicherung.entpacken)
         self.assertIn('".." in Path(', quelle)
         self.assertIn('filter="data"', quelle)
+
+
+class SicherungsnamenTest(unittest.TestCase):
+    """Ein Dateiname wandert durch fremde Hände."""
+
+    def test_umlaute_werden_umgeschrieben(self):
+        # macOS speichert Umlaute anders als Linux, manche Weboberfläche
+        # zeigt sie als Fragezeichen, und wer die Datei später per
+        # Kommandozeile sucht, tippt sie falsch.
+        from mailburg.core.sicherung import dateiname
+
+        name = dateiname("Geschäftsarchiv")
+
+        self.assertTrue(name.startswith("MailBurg-Geschaeftsarchiv."))
+        self.assertTrue(name.isascii())
+
+    def test_leerzeichen_werden_bindestriche(self):
+        from mailburg.core.sicherung import dateiname
+
+        self.assertIn("Mailarchiv-Stephan", dateiname("Mailarchiv Stephan"))
+
+    def test_kein_datum_im_namen(self):
+        # Diese Sicherung wird ersetzt, nicht gesammelt.
+        from datetime import date
+
+        from mailburg.core.sicherung import dateiname
+
+        self.assertNotIn(str(date.today().year), dateiname("Privatarchiv"))
+
+    def test_leerer_name_ergibt_trotzdem_einen(self):
+        from mailburg.core.sicherung import dateiname
+
+        self.assertTrue(dateiname("").startswith("MailBurg-"))
+
+    def test_erst_daneben_dann_umbenennen(self):
+        # Wer wöchentlich unter demselben Namen ersetzt, hätte sonst ein
+        # Zeitfenster von Minuten, in dem die alte Sicherung schon
+        # überschrieben und die neue noch nicht fertig ist.
+        import inspect
+
+        from mailburg.core import sicherung
+
+        quelle = inspect.getsource(sicherung.packen)
+        self.assertIn("unfertig", quelle)
+        self.assertIn("vorlaeufig.replace(ziel)", quelle)

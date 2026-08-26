@@ -58,6 +58,43 @@ class Befund:
         return round((1 - self.ziel_bytes / self.quelle_bytes) * 100)
 
 
+#: Umlaute werden umgeschrieben, nicht durchgereicht. Ein Dateiname
+#: wandert bei einer Sicherung durch fremde Hände: Cloud-Server,
+#: Weboberflächen, fremde Rechner. macOS speichert Umlaute anders als
+#: Linux (NFD statt NFC), manche Weboberfläche zeigt sie als Fragezeichen,
+#: und wer die Datei später per Kommandozeile sucht, tippt sie falsch.
+#: »Geschaeftsarchiv« liest jeder, überall.
+_UMSCHRIFT = str.maketrans({
+    "ä": "ae", "ö": "oe", "ü": "ue",
+    "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
+    "ß": "ss", "é": "e", "è": "e", "à": "a", "ç": "c",
+})
+
+
+def dateiname(name: str) -> str:
+    """Ein fester Dateiname ohne Datum – für Sicherungen, die ersetzt werden.
+
+    Wer wöchentlich denselben Stand überschreibt, will keine wachsende
+    Sammlung, sondern eine Datei, die immer aktuell ist. Die Versionen
+    dazu führt bei Nextcloud ohnehin der Server.
+    """
+    umgeschrieben = (name or "Mailarchiv").translate(_UMSCHRIFT)
+    sauber = "".join(
+        "-" if z in '\\/:*?"<>| ' else z
+        for z in umgeschrieben
+        if z.isascii() or z.isalnum()
+    ).strip("-")
+    return f"MailBurg-{sauber or 'Archiv'}.{_endung()}"
+
+
+def _endung() -> str:
+    try:
+        import zstandard  # noqa: F401
+    except ImportError:
+        return "tar.xz"
+    return "tar.zst"
+
+
 def vorschlag(archiv_pfad: Path, name: str = "") -> str:
     """Ein Dateiname mit Datum – Sicherungen will man unterscheiden."""
     stamm = name or Path(archiv_pfad).name or "Mailarchiv"
@@ -85,6 +122,12 @@ def packen(archiv_pfad: Path, ziel: Path, *, fortschritt=None,
     ``abbruch`` wird zwischen den Dateien gefragt. Bricht jemand ab,
     wird die halbfertige Datei entfernt: Eine Sicherung, die zur Hälfte
     dasteht, ist gefährlicher als gar keine – man hält sie für eine.
+
+    **Geschrieben wird erst daneben, dann umbenannt.** Wer eine
+    Sicherung wöchentlich unter demselben Namen ersetzt, hätte sonst
+    ein Zeitfenster von Minuten, in dem die alte schon überschrieben
+    und die neue noch nicht fertig ist. Stürzt der Rechner genau dann
+    ab, ist beides weg. Das Umbenennen am Ende geschieht in einem Zug.
     """
     archiv_pfad = Path(archiv_pfad)
     ziel = Path(ziel)
@@ -99,8 +142,15 @@ def packen(archiv_pfad: Path, ziel: Path, *, fortschritt=None,
     befund.quelle_bytes = sum(p.stat().st_size for p in dateien)
 
     ziel.parent.mkdir(parents=True, exist_ok=True)
+    # Daneben schreiben, am Ende umbenennen. Der Name beginnt mit einem
+    # Punkt, damit ein Cloud-Programm die halbfertige Datei gar nicht
+    # erst hochlädt.
+    vorlaeufig = ziel.with_name(f".{ziel.name}.unfertig")
     try:
-        with _stream(ziel) as roh:
+        # Die Endung des *endgültigen* Ziels entscheidet über das
+        # Packverfahren, nicht die der Arbeitsdatei - die heißt ja
+        # ".unfertig".
+        with _stream(vorlaeufig, ziel.suffix) as roh:
             # "w|" statt "w": ein fortlaufender Strom, der nicht
             # zurückspringt. Nur so lässt er sich durch einen Kompressor
             # schieben, ohne alles im Speicher zu halten.
@@ -112,11 +162,19 @@ def packen(archiv_pfad: Path, ziel: Path, *, fortschritt=None,
                     if fortschritt:
                         fortschritt(nummer, len(dateien))
     except _Abgebrochen:
-        ziel.unlink(missing_ok=True)
+        vorlaeufig.unlink(missing_ok=True)
         raise SicherungFehler("Abgebrochen – die halbe Datei wurde entfernt.")
     except OSError as exc:
-        ziel.unlink(missing_ok=True)
+        vorlaeufig.unlink(missing_ok=True)
         raise SicherungFehler(str(exc)) from exc
+
+    try:
+        vorlaeufig.replace(ziel)
+    except OSError as exc:
+        vorlaeufig.unlink(missing_ok=True)
+        raise SicherungFehler(
+            f"Die fertige Datei ließ sich nicht ablegen: {exc}"
+        ) from exc
 
     befund.ziel_bytes = _zielgroesse(ziel)
     return befund
@@ -245,15 +303,15 @@ def _lesestream(datei: Path):
     return lzma.open(datei, "rb")
 
 
-def _stream(ziel: Path):
-    """Öffnet das Ziel zum Schreiben, passend zu seiner Endung.
+def _stream(ziel: Path, endung: str = ""):
+    """Öffnet das Ziel zum Schreiben, passend zur gewünschten Endung.
 
     Zstandard, wenn vorhanden – es packt bei dieser Stufe schneller, als
     eine Festplatte schreibt, kostet also praktisch nichts. Sonst LZMA,
     das überall dabei ist. Die Endung sagt, was drin ist; wer die Datei
     in zehn Jahren findet, soll sie ohne MailBurg auspacken können.
     """
-    if ziel.suffix == ".zst":
+    if (endung or ziel.suffix) == ".zst":
         try:
             import zstandard
         except ImportError:

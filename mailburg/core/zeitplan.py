@@ -197,8 +197,7 @@ Description=MailBurg: Archiv sichern
 
 [Service]
 Type=oneshot
-ExecStart={_mailburg_befehl()} sichern --leise --behalten {behalten} \
-    "{archiv}" "{ziel}"
+ExecStart={_mailburg_befehl()} sichern --leise {_haltung(behalten)} "{archiv}" "{ziel}"
 """,
         encoding="utf-8",
     )
@@ -225,6 +224,11 @@ WantedBy=timers.target
     if ergebnis.returncode != 0:
         return False, (ergebnis.stderr or "").strip() or "Ließ sich nicht einschalten."
     return True, f"Sicherung eingerichtet: {takt} nach {ziel}"
+
+
+def _haltung(behalten: int) -> str:
+    """Ersetzen oder sammeln – als Schalter für die Befehlszeile."""
+    return "--ersetzen" if behalten <= 0 else f"--behalten {behalten}"
 
 
 def sicherung_abschalten() -> tuple[bool, str]:

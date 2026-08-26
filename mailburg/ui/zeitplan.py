@@ -138,13 +138,18 @@ class Sicherungswahl(QWidget):
         self.suchen.clicked.connect(self._ordner_waehlen)
 
         self.behalten = QSpinBox()
-        self.behalten.setRange(1, 99)
-        self.behalten.setValue(7)
+        self.behalten.setRange(0, 99)
+        self.behalten.setValue(0)
+        self.behalten.setSpecialValueText("immer dieselbe Datei ersetzen")
         self.behalten.setSuffix(" Stände")
         self.behalten.setToolTip(
-            "Ältere werden entfernt. Ohne Grenze läuft die Platte "
-            "irgendwann voll, und dann scheitert ausgerechnet die "
-            "Sicherung, auf die es ankäme."
+            "»Immer dieselbe Datei ersetzen« hält den Platzbedarf "
+            "gleich – bei Nextcloud sinnvoll, weil der Server die "
+            "Versionen ohnehin führt. Andernfalls wird je Lauf eine "
+            "Datei mit Datum angelegt und nur die eingestellte Zahl "
+            "behalten; ohne Grenze läuft die Platte irgendwann voll, "
+            "und dann scheitert ausgerechnet die Sicherung, auf die es "
+            "ankäme."
         )
 
         reihe = QHBoxLayout()
