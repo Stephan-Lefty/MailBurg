@@ -11,6 +11,32 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Postfächer wurden in jedes Archiv geholt.** Die Kontenliste galt für
+  das ganze Programm, das Archiv aber nicht: Jedes »Abrufen« holte alle
+  eingerichteten Postfächer in das gerade geöffnete Archiv. Wer
+  geschäftlich und privat trennt, bekam in beiden denselben Bestand. An
+  einem echten Aufbau aufgefallen: Von 9.866 Mails in einem
+  Geschäftsarchiv gehörten 176 dorthin – die übrigen waren private Post
+  und lagen damit unter zehnjährigen Aufbewahrungsfristen.
+
+  Ein Konto führt jetzt die Kennungen der Archive, in die es gehört.
+  Eine leere Liste heißt »noch nicht zugeordnet«, nicht »überall«: Nach
+  dem Update ruft zunächst nichts mehr ab, und beide Wege sagen deutlich,
+  warum.
+
+- **Ein Abruf-Zeitplan für alle Archive.** Derselbe Denkfehler, an
+  derselben Stelle übersehen – für die Sicherung gab es längst eine
+  Einheit je Archiv. Das Einrichten des zweiten Zeitplans überschrieb
+  den ersten; danach wurde nur noch ein Archiv beliefert.
+
+### Neu
+
+- **`mailburg konten zuordnen` und `mailburg konten zuordnung`** –
+  Postfächer einem Archiv zuweisen und die Zuordnung ansehen.
+- **`mailburg loeschen`** nimmt Mails eines Postfachs wieder aus dem
+  Archiv. Der Trockenlauf ist die Voreinstellung, und entfernt wird nur,
+  was ausschließlich an diesem Postfach hängt.
+
 - **Derselbe Anhang wurde mehrfach durch die Texterkennung geschickt.**
   Ein Vertrag, der weitergeleitet und mehrfach beantwortet wurde, hängt
   an vielen Mails – aber es ist ein einziges Dokument. Am Geschäftsarchiv
