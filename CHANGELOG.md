@@ -9,6 +9,28 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [0.9.0] – 2026-08-26
+
+Vollständig und im Alltag erprobt – aber auf genau einem System.
+
+Der dritte Tag war der erste im echten Betrieb, und dabei kam ein
+Dutzend Fehler zutage, die keine Testsuite gefunden hätte: ein
+eingefrorenes Fenster, eine Prüfschleife, die den Mailserver mit
+Anmeldungen überzog, eine Fenstergeometrie, die unter Wayland nie
+gespeichert wurde, zwei Zahlen für dieselbe Sache. Alle brauchten einen
+Menschen, der das Programm benutzt.
+
+Deshalb 0.9.0 und nicht 1.0.0. Eine 1.0 ist ein Versprechen – *das ist
+fertig, darauf kannst du bauen* –, und bei einem Archivprogramm wiegt
+das schwerer als anderswo: Was nicht geholt wurde, fällt erst Jahre
+später auf. Die 1.0 wartet, bis MailBurg auf einem Rechner läuft, den
+nicht sein Autor eingerichtet hat.
+
+**Erprobt an:** zwei Archiven mit zusammen 19.154 Mails, sieben
+IMAP-Postfächern samt Proton Bridge, 12.436 Mails aus einer
+Thunderbird-Sicherung, 310 Seiten Texterkennung, zwei Sicherungen à
+2,3 und 1,8 GB samt geprüfter Rückholung.
+
 - **Grafische Oberfläche.** Einrichtungsassistent, Hauptfenster mit
   Postfachbaum, Trefferliste und Vorschau, Suchmaske (Strg+F). Startbefehl
   `mailburg-gui`, Menüeintrag unter Büroprogrammen.
