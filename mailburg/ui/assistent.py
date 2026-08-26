@@ -805,7 +805,14 @@ class KontenSeite(QWizardPage):
             )
             return False
 
-        ohne_passwort = [z for z in zu_pruefen if not z.passwort.text()]
+        # Ein eingerichtetes Postfach hat sein Passwort im Schlüsselbund;
+        # das Eingabefeld bleibt deshalb absichtlich leer. Wer nur aufs
+        # Feld schaut, hält es für vergessen und fragt danach - nach einem
+        # Passwort, das MailBurg längst besitzt und schon erprobt hat.
+        versorgt = [z for z in zu_pruefen if self._schon_versorgt(z)]
+        neu = [z for z in zu_pruefen if z not in versorgt]
+
+        ohne_passwort = [z for z in neu if not z.passwort.text()]
         for zeile in ohne_passwort:
             # Nicht ermahnen, sondern fragen. Wer acht Postfächer vor sich
             # hat, übersieht leicht eines - ihn dann zurückzuschicken, statt
@@ -825,8 +832,13 @@ class KontenSeite(QWizardPage):
                     "»Postfächer verwalten« nachtragen."
                 )
 
-        zu_pruefen = [z for z in self.zeilen if z.gewaehlt and z.passwort.text()]
+        zu_pruefen = [z for z in neu if z.gewaehlt and z.passwort.text()]
         if not zu_pruefen:
+            # Nichts Neues zu prüfen. Sind versorgte Postfächer angekreuzt,
+            # ist alles beisammen und es geht weiter.
+            if any(z.gewaehlt for z in versorgt):
+                self._speichern()
+                return True
             return False
 
         # Anmeldungen laufen nebenläufig; die Seite gibt erst frei, wenn
@@ -917,6 +929,12 @@ class KontenSeite(QWizardPage):
         zeile.fehler = ""
         zeile.melden("Servername berichtigt")
         return True
+
+    def _schon_versorgt(self, zeile: KontoZeile) -> bool:
+        """Eingerichtet, mit erprobtem Passwort im Schlüsselbund."""
+        if not getattr(zeile, "bereits_da", False):
+            return False
+        return bool(accounts.passwort_holen(zeile.konto))
 
     def _weiter_freigeben(self, frei: bool) -> None:
         """Sperrt »Weiter«, solange Anmeldungen laufen."""

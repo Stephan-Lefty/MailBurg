@@ -991,3 +991,43 @@ class TeilweiseEingerichtetTest(OberflaechenTest):
         self.assertEqual(ermahnt, [], "hier ist nichts zu ermahnen")
         self.assertEqual([k.name for k in assistent.konten],
                          ["a@example.org", "b@example.org"])
+
+
+class SchluesselbundStattNachfrageTest(OberflaechenTest):
+    """Nach einem Passwort fragen, das schon im Schlüsselbund liegt, geht nicht."""
+
+    def test_eingerichtetes_postfach_wird_nicht_erneut_gefragt(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QGridLayout, QWidget
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui import assistent as modul
+        from mailburg.ui.assistent import Einrichtungsassistent, KontoZeile
+
+        assistent = Einrichtungsassistent()
+        seite = assistent.page(assistent.pageIds()[2])
+        halter = QWidget()
+        gitter = QGridLayout(halter)
+
+        konto = Konto(name="a@example.org", server="imap.example.org",
+                      benutzer="a@example.org", port=143, ssl=False)
+        zeile = KontoZeile(konto, gitter, 0)
+        zeile.ankreuz.setChecked(True)
+        zeile.bereits_da = True
+        # Das Feld bleibt leer - genau so, wie die Oberfläche es anzeigt.
+        self.assertEqual(zeile.passwort.text(), "")
+        seite.zeilen.append(zeile)
+
+        gefragt = []
+        with mock.patch.object(modul.accounts, "passwort_holen",
+                               lambda k: "aus dem Schlüsselbund"), \
+             mock.patch.object(modul, "PasswortNachfrage",
+                               lambda *a, **k: gefragt.append(1)), \
+             mock.patch.object(seite, "_pruefen", lambda z: gefragt.append(1)), \
+             mock.patch.object(seite, "_speichern", lambda: None):
+            weiter = seite.validatePage()
+
+        self.assertEqual(gefragt, [],
+                         "weder Nachfrage noch erneute Anmeldung nötig")
+        self.assertTrue(weiter, "es geht weiter")
