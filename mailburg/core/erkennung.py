@@ -301,12 +301,18 @@ def durchlauf(
     fortschritt=None,
     weiter=None,
     je_seite=None,
+    gleichzeitig: int = 0,
 ) -> Statistik:
     """Arbeitet die Warteschlange ab, bis das Budget aufgebraucht ist.
 
     ``budget_sekunden`` von 0 bedeutet: ohne Zeitgrenze durchlaufen. Das ist
     für den ausdrücklich angestoßenen Lauf gedacht, nicht für den Anschluss
     an einen Abruf.
+
+    ``gleichzeitig`` bestimmt, wie viele Dokumente nebeneinander gelesen
+    werden; 0 nimmt die Vorgabe :data:`GLEICHZEITIG`. Wer nebenher
+    arbeitet, stellt es niedriger – die Erkennung belegt sonst den
+    Rechner, und das merkt man.
 
     ``je_seite`` meldet sich innerhalb eines Dokuments – mit Dateiname,
     Seite und Seitenzahl. Ohne das steht die Oberfläche bei einem
@@ -430,15 +436,16 @@ def durchlauf(
 
     # Häppchenweise, damit die Rohdaten nicht alle zugleich im Speicher
     # liegen: Ein Bündel von Anhängen kann hundert Megabyte wiegen.
+    breite = max(1, gleichzeitig or GLEICHZEITIG)
     vorbereitet: dict = {}
-    for anfang in range(0, len(kandidaten), GLEICHZEITIG):
+    for anfang in range(0, len(kandidaten), breite):
         if zeit_um() or (
             budget_dokumente and stat.gelesen + stat.gescheitert >= budget_dokumente
         ):
             stat.abgebrochen = True
             break
 
-        buendel = kandidaten[anfang:anfang + GLEICHZEITIG]
+        buendel = kandidaten[anfang:anfang + breite]
         vorbereitet = {
             (d, n): vorbereiten((d, b, n)) for d, b, n in buendel
         }

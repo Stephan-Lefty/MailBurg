@@ -304,7 +304,14 @@ Null, gibt es nichts zu tun.</p>
 
 <p>Zweierlei ist dabei zu wissen:</p>
 
-<p><b>Es dauert.</b> Etwa fünf bis acht Sekunden je Seite. Bei hundert
+<p><b>Wie viele Kerne mitarbeiten,</b> stellen Sie selbst ein. MailBurg
+liest mehrere Dokumente nebeneinander – die Arbeit steckt in zwei
+Hilfsprogrammen, und die laufen unabhängig voneinander. Voreingestellt
+bleiben zwei Kerne frei, damit Ihr Rechner benutzbar bleibt. Wer ihn
+ohnehin stehen lässt, gibt der Erkennung alles.</p>
+
+<p><b>Es dauert.</b> Etwa fünf bis acht Sekunden je Seite, geteilt
+durch die Zahl der Kerne. Bei hundert
 Seiten also eine gute Viertelstunde. Sie müssen dabei aber nicht
 zusehen: Schließen Sie das Fenster, fragt MailBurg, ob im Hintergrund
 weitergelesen werden soll. Sagen Sie ja, können Sie ganz normal
@@ -326,10 +333,12 @@ den Suchindex, die PDF selbst werden nicht verändert. Das ist
 wesentlich: Ein Dokument, an dem nachträglich etwas geändert wurde, wäre
 als Beleg wertlos.</p>
 
-<p>Beim Abruf über die Kommandozeile wird nebenbei immer ein Häppchen
-miterledigt. Wer den <a href="#abrufen">Abruf im Hintergrund</a>
-eingerichtet hat, muss sich also meist gar nicht darum kümmern – der
-Rückstand arbeitet sich von selbst ab.</p>
+<p><b>Meistens brauchen Sie das gar nicht.</b> Nach jedem Abruf wird
+nebenbei ein Häppchen miterledigt – bei halbstündlichem Abruf sind das
+mehrere tausend Seiten am Tag. Wer den <a href="#abrufen">Abruf im
+Hintergrund</a> eingerichtet hat, findet den Rückstand nach ein paar
+Tagen von selbst abgearbeitet. Dieser Menüpunkt ist für den Anfang
+gedacht, wenn ein großes Archiv frisch eingelesen wurde.</p>
 
 {menue}
 """

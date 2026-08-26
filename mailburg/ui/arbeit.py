@@ -276,4 +276,37 @@ class Abruflauf(Auftrag):
                 self.meldung.emit("Verdichte den Suchindex …")
                 archiv.index.optimize()
 
+            # Dasselbe Häppchen wie beim Abruf über die Kommandozeile.
+            # Ohne das blieben eingescannte PDF für alle unlesbar, die
+            # MailBurg nur über die Oberfläche bedienen - und gerade die
+            # erfahren am wenigsten davon, dass etwas fehlt.
+            if not self.abgebrochen:
+                self._anhaenge_lesen(archiv)
+
         return ergebnisse
+
+    def _anhaenge_lesen(self, archiv) -> None:
+        """Ein Häppchen Texterkennung, im Anschluss an den Abruf.
+
+        Begrenzt, damit ein Abruf nicht zur Stunde wird: Wer auf »Jetzt
+        abrufen« klickt, wartet auf seine Post, nicht auf Bilderkennung.
+        Der Rest bleibt liegen und kommt beim nächsten Mal dran.
+        """
+        from mailburg.core import erkennung
+        from mailburg.extract import ocr
+
+        bereit, _hinweis = ocr.bereit()
+        if not bereit:
+            return
+        offen = erkennung.Warteschlange(archiv.index).anzahl()
+        if not offen:
+            return
+
+        self.meldung.emit(f"Lese eingescannte PDF ({offen} offen) …")
+        stat = erkennung.durchlauf(
+            archiv, weiter=lambda: not self.abgebrochen
+        )
+        if stat.gelesen:
+            self.meldung.emit(
+                f"{stat.gelesen} eingescannte PDF durchsuchbar gemacht"
+            )

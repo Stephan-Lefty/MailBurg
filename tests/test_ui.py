@@ -3158,3 +3158,76 @@ class VerweisfarbeTest(OberflaechenTest):
 
         self.assertIn("a {", fenster.text.document().defaultStyleSheet())
         self.assertIn("color", fenster.text.document().defaultStyleSheet())
+
+
+class HaeppchenNachDemAbrufTest(OberflaechenTest):
+    """Was der Zeitplan tut, muss die Oberfläche auch tun."""
+
+    def test_der_abruflauf_liest_eingescannte_pdf(self):
+        # Sonst bleiben eingescannte PDF für alle unlesbar, die MailBurg
+        # nur über die Oberfläche bedienen - und gerade die erfahren am
+        # wenigsten davon, dass etwas fehlt.
+        import inspect
+
+        from mailburg.ui.arbeit import Abruflauf
+
+        quelle = inspect.getsource(Abruflauf)
+        self.assertIn("_anhaenge_lesen", quelle)
+        self.assertIn("erkennung.durchlauf", quelle)
+
+    def test_es_bleibt_ein_haeppchen(self):
+        # Wer auf "Jetzt abrufen" klickt, wartet auf seine Post, nicht
+        # auf Bilderkennung. Also kein budget_sekunden=0.
+        import inspect
+
+        from mailburg.ui.arbeit import Abruflauf
+
+        quelle = inspect.getsource(Abruflauf._anhaenge_lesen)
+        self.assertNotIn("budget_sekunden=0", quelle)
+        self.assertNotIn("budget_dokumente=0", quelle)
+
+    def test_abbruch_wirkt_auch_dort(self):
+        import inspect
+
+        from mailburg.ui.arbeit import Abruflauf
+
+        self.assertIn("weiter=lambda: not self.abgebrochen",
+                      inspect.getsource(Abruflauf._anhaenge_lesen))
+
+
+class KernzahlTest(TexterkennungDialogTest):
+    """Wer nebenher arbeitet, will nicht alle Kerne hergeben."""
+
+    def test_voreinstellung_laesst_kerne_frei(self):
+        import os
+
+        from mailburg.core.erkennung import GLEICHZEITIG
+
+        dialog = self._dialog(50)
+
+        self.assertEqual(dialog.kerne.value(), GLEICHZEITIG)
+        self.assertLess(GLEICHZEITIG, os.cpu_count() or 2,
+                        "die Oberfläche braucht auch Rechenzeit")
+
+    def test_bis_zur_vollen_ausschoepfung_waehlbar(self):
+        import os
+
+        dialog = self._dialog(50)
+
+        self.assertEqual(dialog.kerne.maximum(), os.cpu_count() or 2)
+        self.assertEqual(dialog.kerne.minimum(), 1)
+
+    def test_die_wahl_kommt_beim_lauf_an(self):
+        from mailburg.ui.texterkennung import Erkennungslauf
+
+        auftrag = Erkennungslauf("/irgendwo", 3)
+
+        self.assertEqual(auftrag.gleichzeitig, 3)
+
+    def test_der_kern_nimmt_die_zahl_entgegen(self):
+        import inspect
+
+        from mailburg.core import erkennung
+
+        self.assertIn("gleichzeitig",
+                      inspect.signature(erkennung.durchlauf).parameters)

@@ -20,13 +20,17 @@ erkannt.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
+import os
+
 from PySide6.QtWidgets import (
     QDialog,
+    QHBoxLayout,
     QMessageBox,
     QLayout,
     QDialogButtonBox,
     QLabel,
     QProgressBar,
+    QSpinBox,
     QVBoxLayout,
 )
 
@@ -36,9 +40,10 @@ from mailburg.ui.arbeit import Auftrag, Läufer
 class Erkennungslauf(Auftrag):
     """Arbeitet die Warteschlange ab, bis nichts mehr da ist."""
 
-    def __init__(self, archiv_pfad) -> None:
+    def __init__(self, archiv_pfad, gleichzeitig: int = 0) -> None:
         super().__init__()
         self.archiv_pfad = archiv_pfad
+        self.gleichzeitig = gleichzeitig
 
     def ausfuehren(self):
         from mailburg.core import erkennung
@@ -68,6 +73,7 @@ class Erkennungslauf(Auftrag):
                 fortschritt=melden,
                 weiter=lambda: not self.abgebrochen,
                 je_seite=seite,
+                gleichzeitig=self.gleichzeitig,
             )
 
 
@@ -105,6 +111,28 @@ class Texterkennungsdialog(QDialog):
         # es noch dauert, und sieht, dass sich überhaupt etwas rührt.
         self.balken.setFormat("%v von %m")
 
+        # Wie viele Kerne mitarbeiten. Wer nebenher weiterarbeitet,
+        # stellt es niedrig; wer den Rechner ohnehin stehen lässt, gibt
+        # ihm alles. Voreingestellt bleiben zwei Kerne frei, damit die
+        # Oberfläche flüssig bleibt.
+        from mailburg.core.erkennung import GLEICHZEITIG
+
+        self.kerne = QSpinBox()
+        self.kerne.setRange(1, max(1, (os.cpu_count() or 2)))
+        self.kerne.setValue(GLEICHZEITIG)
+        self.kerne.setSuffix(" gleichzeitig")
+        self.kerne.setToolTip(
+            "Wie viele Dokumente nebeneinander gelesen werden. Mehr ist "
+            "schneller, macht den Rechner aber träge – bei voller "
+            "Ausschöpfung merken Sie das deutlich."
+        )
+        kernreihe = QHBoxLayout()
+        kernreihe.addWidget(QLabel(
+            f"Ihr Rechner hat {os.cpu_count() or '?'} Kerne. Verwenden:"
+        ))
+        kernreihe.addWidget(self.kerne)
+        kernreihe.addStretch()
+
         self.stand = QLabel("")
         self.stand.setWordWrap(True)
 
@@ -119,6 +147,7 @@ class Texterkennungsdialog(QDialog):
 
         aufbau = QVBoxLayout(self)
         aufbau.addWidget(self.erklaerung)
+        aufbau.addLayout(kernreihe)
         aufbau.addWidget(self.balken)
         aufbau.addWidget(self.stand)
         aufbau.addWidget(self.knoepfe)
@@ -158,7 +187,7 @@ class Texterkennungsdialog(QDialog):
         self.balken.setVisible(True)
         self.stand.setText("Beginne …")
 
-        auftrag = Erkennungslauf(self.archiv_pfad)
+        auftrag = Erkennungslauf(self.archiv_pfad, self.kerne.value())
         auftrag.fortschritt.connect(self._schritt)
         auftrag.meldung.connect(self._welches)
         auftrag.fertig.connect(self._fertig)
