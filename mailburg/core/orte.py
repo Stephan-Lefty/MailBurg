@@ -43,6 +43,14 @@ class Ort:
     frei: int = 0
     gesamt: int = 0
 
+    auf_systemplatte: bool = False
+    """Ob dieser Ort auf demselben Datenträger liegt wie das System.
+
+    Dann trifft ein Plattendefekt beides auf einmal: den Rechner und das
+    Archiv. Das ist nicht verboten – aber es ist der Fall, in dem eine
+    Sicherung am dringendsten gebraucht wird.
+    """
+
     @property
     def freier_platz(self) -> str:
         if not self.gesamt:
@@ -150,6 +158,19 @@ def ist_wechseldatentraeger(einhaengepunkt: Path) -> bool:
         return False
 
 
+def _geraetenummer(pfad: Path) -> int:
+    """Auf welchem Datenträger ein Pfad liegt.
+
+    Nicht der Pfad entscheidet, sondern das Gerät dahinter: ``/home`` kann
+    auf derselben Platte liegen wie ``/`` oder auf einer eigenen. Nur die
+    Gerätenummer sagt es sicher.
+    """
+    try:
+        return pfad.stat().st_dev
+    except OSError:
+        return -1
+
+
 def _beschreibbar(pfad: Path) -> bool:
     """Ob dort tatsächlich etwas angelegt werden könnte.
 
@@ -167,9 +188,12 @@ def vorschlagen() -> list[Ort]:
     gefunden: list[Ort] = []
     zuhause = Path.home()
 
+    system = _geraetenummer(zuhause)
+
     frei, gesamt = _platz(zuhause)
     gefunden.append(
-        Ort("Im Benutzerordner", zuhause / VORGABENAME, "benutzer", frei, gesamt)
+        Ort("Im Benutzerordner", zuhause / VORGABENAME, "benutzer", frei, gesamt,
+            auf_systemplatte=True)
     )
 
     for name in CLOUD_ORDNER:
@@ -178,7 +202,8 @@ def vorschlagen() -> list[Ort]:
             continue
         frei, gesamt = _platz(ordner)
         gefunden.append(
-            Ort(f"In der Cloud ({name})", ordner / VORGABENAME, "cloud", frei, gesamt)
+            Ort(f"In der Cloud ({name})", ordner / VORGABENAME, "cloud", frei, gesamt,
+                auf_systemplatte=_geraetenummer(ordner) == system)
         )
 
     for wurzel in EINHAENGEPUNKTE:
@@ -207,7 +232,8 @@ def vorschlagen() -> list[Ort]:
                 art = "laufwerk"
 
             gefunden.append(
-                Ort(beschriftung, laufwerk / VORGABENAME, art, frei, gesamt)
+                Ort(beschriftung, laufwerk / VORGABENAME, art, frei, gesamt,
+                    auf_systemplatte=_geraetenummer(laufwerk) == system)
             )
 
     return gefunden

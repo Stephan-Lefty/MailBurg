@@ -617,3 +617,27 @@ class SuchmaskeTest(OberflaechenTest):
                 self.fail(f"SQLite lehnt den Ausdruck ab: {fehler}")
             finally:
                 index.close()
+
+
+class SystemplatteTest(unittest.TestCase):
+    """Der Hinweis, dass ein Plattendefekt beides auf einmal trifft."""
+
+    def test_benutzerordner_gilt_als_systemplatte(self):
+        from mailburg.core import orte
+
+        erster = orte.vorschlagen()[0]
+        self.assertEqual(erster.art, "benutzer")
+        self.assertTrue(erster.auf_systemplatte)
+
+    def test_eigene_datentraeger_werden_unterschieden(self):
+        # Wenn alles als Systemplatte gälte, wäre der Hinweis wertlos -
+        # dann käme er überall und niemand läse ihn.
+        from mailburg.core import orte
+
+        vorschlaege = orte.vorschlagen()
+        if len(vorschlaege) < 2:
+            self.skipTest("nur ein Ablageort auf diesem Rechner")
+        self.assertFalse(
+            all(o.auf_systemplatte for o in vorschlaege),
+            "es muss auch Orte abseits der Systemplatte geben",
+        )

@@ -344,9 +344,15 @@ class ArchivSeite(QWizardPage):
             "<i>mail</i> mit Ihren Nachrichten, nach Monaten sortiert, und "
             "ein Unterordner <i>meta</i> mit dem Protokoll darüber, was wann "
             "aufgenommen wurde. Sonst nichts.</p>"
-            "<p><b>Sichern sollten Sie diesen Ordner</b> wie alle wichtigen "
-            "Daten. Der Suchindex gehört nicht dazu – der liegt getrennt "
-            "davon und lässt sich jederzeit aus dem Archiv neu erzeugen.</p>"
+            "<p><b>Dieser Ordner braucht eine Sicherung.</b> Solange Ihre "
+            "Post auch noch im Postfach liegt, wäre ein Plattendefekt "
+            "ärgerlich. Sobald Sie aber anfangen, das Postfach zu entlasten, "
+            "ist dieses Archiv die <i>einzige</i> Kopie – und dann hängt "
+            "alles an einer einzigen Platte.</p>"
+            "<p>Deshalb: möglichst nicht auf derselben Platte wie das "
+            "System, und in jedem Fall regelmäßig woandershin sichern. Der "
+            "Suchindex gehört nicht dazu – der liegt getrennt und lässt sich "
+            "jederzeit aus dem Archiv neu erzeugen.</p>"
         )
         hinweis.setWordWrap(True)
         hinweis.setTextFormat(Qt.RichText)
@@ -411,6 +417,12 @@ class ArchivSeite(QWizardPage):
 
         self.registerField("archivpfad*", self.pfad)
 
+        # Einmal von Hand: Der Hinweis hängt sonst an einem Wechsel, und
+        # der findet für die Vorauswahl nie statt - ausgerechnet dort, wo
+        # er am nötigsten ist.
+        if self.orte:
+            self._ort_gewaehlt(0)
+
     def pfad_beschriftung(self) -> QLabel:
         beschriftung = QLabel("Vollständiger Pfad:")
         beschriftung.setBuddy(self.pfad)
@@ -424,6 +436,18 @@ class ArchivSeite(QWizardPage):
             return
 
         self.pfad.setText(str(ort.pfad))
+
+        if ort.auf_systemplatte:
+            self.platzhinweis.setText(
+                "<b>Das liegt auf derselben Platte wie Ihr System.</b> Geht "
+                "sie kaputt, sind Rechner und Archiv zugleich weg. Eine "
+                "zweite Platte oder Ihre Cloud wäre sicherer – und in jedem "
+                "Fall braucht das Archiv eine Sicherung."
+            )
+            self.platzhinweis.setTextFormat(Qt.RichText)
+            self.platzhinweis.show()
+            return
+
         if ort.eng:
             self.platzhinweis.setText(
                 f"<b>Wenig Platz:</b> Dort sind nur noch {ort.freier_platz.split(' von')[0]}. "
