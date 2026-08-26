@@ -711,3 +711,36 @@ class FadenLebensdauerTest(OberflaechenTest):
         laeufer.starten()
         dialog.reject()
         self.assertEqual(len(arbeit._LAUFENDE), 0, "beim Schließen muss gewartet werden")
+
+
+class FenstergroesseTest(OberflaechenTest):
+    """Der Assistent soll bei jedem Schritt gleich groß bleiben."""
+
+    def test_alle_schritte_gleich_gross(self):
+        # Ein Fenster, das bei jedem "Weiter" springt, wirkt unfertig -
+        # und man verliert die Stelle, an der man gerade gelesen hat.
+        from mailburg.ui.assistent import Einrichtungsassistent
+
+        assistent = Einrichtungsassistent()
+        assistent.show()
+        self.app.processEvents()
+
+        groessen = set()
+        for kennung in assistent.pageIds():
+            assistent.setStartId(kennung)
+            assistent.restart()
+            self.app.processEvents()
+            groessen.add((assistent.width(), assistent.height()))
+
+        self.assertEqual(len(groessen), 1, f"unterschiedliche Größen: {groessen}")
+
+    def test_archivseite_rollt_statt_abzuschneiden(self):
+        from PySide6.QtWidgets import QScrollArea
+
+        from mailburg.ui.assistent import ArchivSeite
+
+        seite = ArchivSeite()
+        self.assertIsNotNone(
+            seite.findChild(QScrollArea),
+            "die Seite braucht einen Rollbereich, sonst fehlt unten die Fundstelle",
+        )

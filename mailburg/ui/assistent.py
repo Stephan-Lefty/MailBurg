@@ -417,16 +417,31 @@ class ArchivSeite(QWizardPage):
         innen.addWidget(geschaeft_text)
         innen.addLayout(fristen)
 
+        inhalt = QWidget()
+        innen = QVBoxLayout(inhalt)
+        innen.setContentsMargins(0, 0, 12, 0)
+        innen.addWidget(QLabel("Wo soll das Archiv liegen?"))
+        innen.addWidget(self.ortswahl)
+        innen.addWidget(self.pfad_beschriftung())
+        innen.addLayout(zeile)
+        innen.addWidget(self.platzhinweis)
+        innen.addWidget(hinweis)
+        innen.addSpacing(12)
+        innen.addWidget(art)
+        innen.addStretch()
+
+        # Wie auf der Willkommensseite: Lieber rollen als abschneiden.
+        # Ortsauswahl, Erklärung, Betriebsart und Fundstelle zusammen
+        # brauchen mehr Höhe, als ein Fenster vernünftigerweise hat.
+        rollbar = QScrollArea()
+        rollbar.setWidget(inhalt)
+        rollbar.setWidgetResizable(True)
+        rollbar.setFrameShape(QScrollArea.NoFrame)
+        rollbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
         aufbau = QVBoxLayout(self)
-        aufbau.addWidget(QLabel("Wo soll das Archiv liegen?"))
-        aufbau.addWidget(self.ortswahl)
-        aufbau.addWidget(self.pfad_beschriftung())
-        aufbau.addLayout(zeile)
-        aufbau.addWidget(self.platzhinweis)
-        aufbau.addWidget(hinweis)
-        aufbau.addSpacing(12)
-        aufbau.addWidget(art)
-        aufbau.addStretch()
+        aufbau.setContentsMargins(0, 0, 0, 0)
+        aufbau.addWidget(rollbar)
 
         self._quelle_erneuern()
         self.registerField("archivpfad*", self.pfad)
@@ -1121,7 +1136,11 @@ class Einrichtungsassistent(QWizard):
         self.setButtonText(QWizard.HelpButton, "Hilfe")
         # Der Anwender soll jederzeit zurück können, ohne etwas zu verlieren.
         self.setOption(QWizard.NoBackButtonOnStartPage, True)
-        self.setMinimumSize(820, 620)
+        # Eine Größe für alle Schritte. Ein Assistent, dessen Fenster bei
+        # jedem Weiter springt, wirkt unfertig - und man verliert die
+        # Stelle, an der man gerade gelesen hat.
+        self.setMinimumSize(880, 720)
+        self.resize(880, 720)
 
         self.addPage(WillkommenSeite())
         self.addPage(ArchivSeite())
