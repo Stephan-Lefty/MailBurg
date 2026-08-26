@@ -211,6 +211,12 @@ if [[ -x "$VENV/bin/mailburg-gui" ]]; then
     mkdir -p "$ANWENDUNGEN" "$SYMBOLE"
     [[ -f "$QUELLE/assets/icon.svg" ]] && cp "$QUELLE/assets/icon.svg" "$SYMBOLE/mailburg.svg"
 
+    # Genau eine Hauptkategorie. Standen dort "Office" und "Utility"
+    # nebeneinander, erschien MailBurg zweimal im Menü - unter
+    # Büroprogrammen und unter Dienstprogrammen. Die Kategorien sind eine
+    # Liste, keine Rangfolge: Das Menü zeigt den Eintrag in jeder, die es
+    # kennt. "Email" ist eine Zusatzkategorie und macht keinen eigenen
+    # Punkt auf.
     cat > "$ANWENDUNGEN/de.stephanlefty.MailBurg.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -220,7 +226,7 @@ Comment=E-Mails sammeln, aufbewahren und durchsuchen
 Exec=$BIN/mailburg-gui %f
 Icon=mailburg
 Terminal=false
-Categories=Office;Email;Utility;
+Categories=Office;Email;
 Keywords=Mail;E-Mail;Archiv;Suche;IMAP;
 StartupNotify=true
 EOF
