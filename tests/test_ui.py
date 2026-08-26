@@ -699,18 +699,39 @@ class FadenLebensdauerTest(OberflaechenTest):
         self.assertFalse(laeufer.faden.isRunning())
         self.assertEqual(len(arbeit._LAUFENDE), 0)
 
-    def test_dialog_wartet_beim_schliessen(self):
+    def test_dialog_schliesst_sofort_und_ohne_absturz(self):
         # Genau der Weg, auf dem es zweimal geknallt hat: Prüfung läuft,
-        # Fenster geht zu.
+        # Fenster geht zu. Es darf weder abstürzen noch hängen - warten
+        # würde die Oberfläche einfrieren, und zwar ausgerechnet dann,
+        # wenn jemand abbrechen will, weil etwas klemmt.
+        import time
+
         from mailburg.ui import arbeit
         from mailburg.ui.assistent import KontoDialog
 
         dialog = KontoDialog()
-        dialog._laeufer = None
+        laeufer = arbeit.Läufer(self.auftrag(0.4))
+        laeufer.starten()
+
+        beginn = time.monotonic()
+        dialog.reject()
+        gebraucht = time.monotonic() - beginn
+
+        self.assertLess(gebraucht, 0.2, "das Schließen darf nicht blockieren")
+        self.assertTrue(laeufer.auftrag.abgebrochen)
+        # Der Faden lebt weiter, wird aber gehalten - kein Absturz.
+        laeufer.faden.wait(3000)
+        self.app.processEvents()
+
+    def test_beenden_wartet_dagegen_sehr_wohl(self):
+        # Beim Abbau der Anwendung ist es umgekehrt: Laufen dann noch
+        # Fäden, stürzt Qt beim Aufräumen ab.
+        from mailburg.ui import arbeit
+
         laeufer = arbeit.Läufer(self.auftrag(0.2))
         laeufer.starten()
-        dialog.reject()
-        self.assertEqual(len(arbeit._LAUFENDE), 0, "beim Schließen muss gewartet werden")
+        arbeit.alle_beenden(3000)
+        self.assertFalse(laeufer.faden.isRunning())
 
 
 class FenstergroesseTest(OberflaechenTest):

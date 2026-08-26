@@ -43,7 +43,7 @@ from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, Mode
 from mailburg.core.retention import QUELLEN, Jurisdiction
 from mailburg.ui import bilder
-from mailburg.ui.arbeit import Anmeldeprobe, Läufer, alle_beenden
+from mailburg.ui.arbeit import Anmeldeprobe, Läufer, alle_abbrechen
 
 
 def _schluesselbund_satz() -> str:
@@ -801,7 +801,11 @@ class KontenSeite(QWizardPage):
                 zeile.passwort.setText(dialog.passwort.text())
             else:
                 zeile.ankreuz.setChecked(False)
-                zeile.melden("ausgelassen")
+                zeile.melden("ohne Passwort übergangen")
+                zeile.zustand.setToolTip(
+                    "Sie können dieses Postfach später über "
+                    "»Postfächer verwalten« nachtragen."
+                )
 
         zu_pruefen = [z for z in self.zeilen if z.gewaehlt and z.passwort.text()]
         if not zu_pruefen:
@@ -894,11 +898,18 @@ class KontenSeite(QWizardPage):
                     zeile.fehler = ""
                     nochmal.append(zeile)
                 else:
-                    # Ausgelassen heißt ausgelassen - nicht abgewählt und
-                    # damit stillschweigend vergessen, sondern sichtbar.
+                    # Sichtbar stehen lassen, statt stillschweigend
+                    # abzuwählen - und dazuschreiben, woran es lag. "Nicht
+                    # eingerichtet" allein ließe den Anwender rätseln, ob
+                    # er etwas falsch gemacht hat.
+                    grund = zeile.fehler
                     zeile.ankreuz.setChecked(False)
                     zeile.fehler = ""
-                    zeile.melden("ausgelassen")
+                    zeile.melden("nicht eingerichtet – Anmeldung schlug fehl", gut=False)
+                    zeile.zustand.setToolTip(
+                        f"{grund}\n\nSie können es später über »Postfächer "
+                        f"verwalten« nachtragen."
+                    )
 
             if nochmal:
                 self._offen = len(nochmal)
@@ -1043,7 +1054,7 @@ class KontoDialog(QDialog):
         self.uebernehmen_knopf.setFocus()
 
     def done(self, ergebnis: int) -> None:
-        alle_beenden(3000)
+        alle_abbrechen()
         super().done(ergebnis)
 
     def _misslungen(self, text: str) -> None:
@@ -1153,10 +1164,11 @@ class Einrichtungsassistent(QWizard):
         return self.abschluss.gleich_abrufen.isChecked()
 
     def done(self, ergebnis: int) -> None:
-        """Beim Schließen erst die Prüfläufe zu Ende bringen.
+        """Beim Schließen die Prüfläufe abbestellen – ohne zu warten.
 
-        Ein Faden, der noch am Mailserver hängt, während sein Fenster
-        verschwindet, beendet sonst das ganze Programm - ohne Meldung.
+        Warten würde die Oberfläche einfrieren, und zwar ausgerechnet
+        dann, wenn jemand abbrechen will, weil etwas hängt. Die Fäden
+        halten sich selbst am Leben und räumen sich auf.
         """
-        alle_beenden(3000)
+        alle_abbrechen()
         super().done(ergebnis)

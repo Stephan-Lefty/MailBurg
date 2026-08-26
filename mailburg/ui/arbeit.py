@@ -106,12 +106,32 @@ class Läufer:
         return fertig
 
 
-def alle_beenden(millisekunden: int = 5000) -> None:
-    """Wartet auf alle laufenden Fäden, bevor ein Fenster schließt.
+def alle_abbrechen() -> None:
+    """Bittet alle laufenden Fäden aufzuhören – ohne zu warten.
 
-    Ein Faden, der noch arbeitet, während sein Fenster verschwindet, ist
-    der häufigste Weg, ein Qt-Programm zum Absturz zu bringen. Beim
-    Schließen wird deshalb gebeten aufzuhören – und kurz gewartet.
+    **Nicht warten ist hier wesentlich.** Ein ``QThread.wait()`` blockiert
+    den Faden der Oberfläche: Solange es läuft, verarbeitet Qt keine
+    Ereignisse mehr, und für den Anwender ist das Fenster eingefroren –
+    Knöpfe reagieren nicht, nicht einmal »Abbrechen«. Bei einer Anmeldung,
+    die auf einen stummen Server wartet, dauert das quälend lange.
+
+    Nötig ist das Warten auch gar nicht: Die laufenden Fäden stehen in
+    :data:`_LAUFENDE` und halten sich damit selbst am Leben, bis sie fertig
+    sind. Sie räumen sich anschließend selbst weg. Das Fenster darf
+    ruhig vorher verschwinden.
+    """
+    for laeufer in list(_LAUFENDE):
+        laeufer.auftrag.abbrechen()
+        laeufer.faden.quit()
+
+
+def alle_beenden(millisekunden: int = 3000) -> None:
+    """Wartet doch – aber nur beim Beenden des ganzen Programms.
+
+    Dort ist es umgekehrt: Wenn Qt seine Anwendung abbaut, während noch
+    Fäden laufen, stürzt es beim Aufräumen ab. Ein kurzes Warten am
+    Schluss ist deshalb richtig – ein Fenster, das ohnehin verschwindet,
+    kann dabei auch stehen bleiben.
     """
     for laeufer in list(_LAUFENDE):
         laeufer.warten(millisekunden)
@@ -131,10 +151,13 @@ class Anmeldeprobe(Auftrag):
         self.passwort = passwort
 
     def ausfuehren(self) -> list[str]:
-        from mailburg.sources.imap import ImapSource
+        from mailburg.sources.imap import ZEITGRENZE_PRUEFEN, ImapSource
 
         self.meldung.emit(f"Verbinde mit {self.konto.server} …")
-        quelle = ImapSource(self.konto, self.passwort)
+        # Kürzer als beim Abruf: Hier sitzt jemand davor und wartet.
+        quelle = ImapSource(
+            self.konto, self.passwort, zeitgrenze=ZEITGRENZE_PRUEFEN
+        )
         try:
             return quelle.folders()
         finally:

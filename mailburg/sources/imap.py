@@ -42,6 +42,11 @@ from mailburg.sources.base import RawMessage, Source
 #: hängen – gern über Nacht in einer Zeitsteuerung.
 ZEITGRENZE = 60
 
+#: Beim Prüfen in der Oberfläche wartet dagegen ein Mensch. Eine Minute
+#: vor einem Fenster, das sich nicht rührt, hält niemand aus – dann wird
+#: lieber abgebrochen und noch einmal versucht.
+ZEITGRENZE_PRUEFEN = 15
+
 #: Höchstens so viele Mails auf einmal anfordern. Jeder Umlauf kostet, aber
 #: eine zu große Anforderung landet vollständig im Arbeitsspeicher.
 BLOCK_MAILS = 50
