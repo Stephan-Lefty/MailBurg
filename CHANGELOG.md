@@ -9,6 +9,38 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Behoben
+
+- **Derselbe Anhang wurde mehrfach durch die Texterkennung geschickt.**
+  Ein Vertrag, der weitergeleitet und mehrfach beantwortet wurde, hängt
+  an vielen Mails – aber es ist ein einziges Dokument. Am Geschäftsarchiv
+  gemessen: 222 gelesene Dokumente mit 986 Seiten, davon 153 Dokumente
+  mit 691 Seiten Abschriften. Siebzig Prozent der Rechenzeit. Verglichen
+  werden jetzt die Bytes des Anhangs, und zwar über Läufe und Archive
+  hinweg; in den Suchindex kommt der Text trotzdem für jede Mail einzeln.
+
+- **Im Fortschrittsfenster fehlte Text.** Ein umbrechendes Etikett meldet
+  Qt eine Höhe, die für eine angenommene Breite gilt, nicht für die
+  tatsächliche. Sobald der Fortschrittsbalken Platz verlangte, nahm sich
+  das Layout ihn beim Absatz darüber – der Text war nicht abgeschnitten,
+  sondern weg.
+
+### Geändert
+
+- **Der Erkennungsdialog verspricht keine Dauer mehr.** Die Angabe war
+  aus zwölf Sekunden je Dokument hochgerechnet; die Rechenzeit hängt aber
+  an der Seitenzahl, und die sieht man einem PDF von außen nicht an. Eine
+  Schätzung, die um ein Vielfaches danebenliegt, legt nahe, es laufe
+  etwas falsch, sobald es länger dauert.
+
+### Neu
+
+- **`mailburg vorrat`** macht schon erkannten Text für künftige Läufe
+  nutzbar. Für Bestände, die vor der Dublettenprüfung erkannt wurden:
+  Der Text ist da, aber unter dem Schlüssel der Mail statt dem des
+  Dokuments. Erkannt wird nichts neu.
+
+
 ## [0.9.0] – 2026-08-26
 
 Vollständig und im Alltag erprobt – aber auf genau einem System.

@@ -26,29 +26,11 @@ wurde.
   Wer später erklären muss, warum eine Datei nicht auffindbar war, will das
   belegen können.
 
-- [ ] **Bestehende Archive einmal neu indizieren.** Wer von einer Fassung
-  vor dem Anhangsvermerk kommt, hat in `attachments.text_zeichen` überall
-  `-1` stehen; für diese Zeilen greift weiter die grobe Schätzung je Mail.
-  An Stephans Bestand: 156 statt der erwarteten rund 700 Dokumente in der
-  Warteschlange. `mailburg neuaufbau` richtet das. Offen ist, ob das
-  Programm von selbst darauf hinweisen sollte.
-
 - [ ] **Anmeldung per OAuth2.** Der Abruf läuft mit App-Passwörtern. Das
   genügt, ist aber nicht das, was Gmail und Outlook eigentlich wollen: Dort
   gehört OAuth2 hin. Bei Google hängt daran ein Prüfverfahren für die
   Anwendung, das Zeit kostet – deshalb später und nicht als Voraussetzung für
   den ersten Einsatz.
-
-- [ ] **Grafische Oberfläche mit PySide6.** Dreispaltig: Kontenbaum,
-  Trefferliste, Vorschau. Suchleiste mit Ergebnissen schon beim Tippen.
-  **PySide6, nicht PyQt6** – PyQt6 steht unter GPLv3 und würde die
-  MIT-Lizenz aushebeln, sobald fertige Binärpakete verteilt werden. Die API
-  ist bis auf Kleinigkeiten dieselbe.
-
-  Der Einrichtungsassistent steht (`ui/assistent.py`), das Hauptfenster
-  fehlt noch – und damit auch ein Startbefehl. Zur Vorschau gehört:
-  Anhangsliste unter der Mail, **Bilder gleich angezeigt**, alles andere
-  per Doppelklick im zuständigen Programm.
 
 - [ ] **Suchmaske nach dem Vorbild von MailStore.** Stephan hat die Maske
   der Serverfassung als Anhaltspunkt geliefert (2026-08-25). Grundsatz
@@ -68,18 +50,27 @@ wurde.
   Rechnungen eines Lieferanten –, soll ihn nicht jedes Mal neu
   zusammensetzen müssen.
 
-- [ ] **Der Rückweg in den Mailclient.** Drei Wege, weil unterschiedliche
-  Situationen unterschiedliche brauchen: „In Mailprogramm öffnen" über eine
-  temporäre `.eml` und `xdg-open`/`start`/`open`; Drag & Drop aus der
-  Trefferliste ins Thunderbird-Fenster; „Wiederherstellen nach…" per IMAP
-  `APPEND` zurück in einen wählbaren Ordner. Dazu Anhänge per Doppelklick
-  öffnen.
+- [ ] **Der Rückweg: „In Mailprogramm öffnen".** Über eine temporäre
+  `.eml` und `xdg-open`/`start`/`open`. Die beiden anderen Wege stehen
+  (siehe Erledigtes); dieser fehlt noch, und mit ihm die Frage, wo die
+  temporäre Datei liegt und wann sie wieder verschwindet. Bei einem
+  Archiv, dem man Post anvertraut, ist eine `.eml`, die in `/tmp`
+  liegenbleibt, kein Detail.
 
 - [ ] **Ausschlussregeln für private Mails.** Ordner, Absender oder
   Betreffmuster von der Archivierung ausnehmen. Der praktisch wichtigste
   Datenschutzbaustein: Wenn ein Firmenkonto auch privat genutzt werden darf,
   dürfen private Nachrichten nicht ohne Weiteres mitarchiviert werden. Siehe
   [RECHTLICHES.md](RECHTLICHES.md).
+
+- [ ] **Dunkles Thema auf kleinen Bildschirmen.** Am 2026-08-26 unter
+  GuideOS auf einem 14-Zoll-Gerät geprüft: Schriftgröße (Strg + / −) und
+  Verweisfarben sind nachgebessert, die **Abgrenzung der Bereiche** aber
+  nicht. Hintergrund, Menüleiste, Baum und Trefferliste liegen dort in
+  fast demselben Grau; wo das eine aufhört und das andere anfängt, ist
+  auf Armlänge kaum zu sehen. Zu klären ist, ob sich das über die
+  Systempalette lösen lässt – eigene Farben zu setzen bricht
+  Hochkontrast-Themen, und das wäre für dieselbe Zielgruppe schlimmer.
 
 ### Danach
 
@@ -208,6 +199,33 @@ wurde.
   eingehängt. Bisher ungetestet.
 
 ## Erledigtes
+
+- [x] **Doppelte Anhänge nur einmal erkennen.** Erledigt am 2026-08-26.
+  Ein Anhang, der an mehreren Mails hängt, ging mehrfach durch tesseract.
+  Am Geschäftsarchiv gemessen: 222 gelesene Dokumente, aber nur 67
+  verschiedene – 70 Prozent der Rechenzeit waren Abschriften. Verglichen
+  werden jetzt die Bytes des Anhangs, über Läufe und Archive hinweg;
+  `mailburg vorrat` holt das für schon erkannte Bestände nach.
+- [x] **Grafische Oberfläche mit PySide6.** Erledigt am 2026-08-26.
+  Dreispaltig, Suche beim Tippen, Vorschau mit Anhangsliste, Doppelklick
+  öffnet die Nachricht in einem eigenen Fenster. Dazu Menüs für Archiv,
+  Post, Suchen, Ansicht, Einstellungen und Hilfe, ein Handbuch in zehn
+  Kapiteln und Schriftgrößen über Strg + / − / 0.
+- [x] **Suchmaske nach dem Vorbild von MailStore.** Erledigt am
+  2026-08-26. Sie baut einen Suchausdruck zusammen und zeigt ihn an –
+  die Maske kann nichts, was die Suchsprache nicht kann.
+- [x] **Der Rückweg ins Postfach.** Erledigt am 2026-08-26, zwei von drei
+  Wegen: „Zurücklegen…" per IMAP `APPEND` mit dem ursprünglichen Datum,
+  auch in ein anderes Postfach als das der Herkunft, und „Als Datei
+  speichern…" als `.eml`. Anhänge öffnen per Doppelklick.
+- [x] **Bestehende Archive neu indizieren.** Erledigt am 2026-08-26 an
+  beiden Archiven. Das Programm weist inzwischen von selbst darauf hin,
+  wenn der Index leer ist, aber Dateien auf der Platte liegen.
+- [x] **Texterkennung aus der Oberfläche.** Erledigt am 2026-08-26.
+  Parallel über mehrere Kerne, Kernzahl wählbar, kleinste Dokumente
+  zuerst, läuft beim Schließen des Fensters im Hintergrund weiter.
+- [x] **Archivsicherung als eine komprimierte Datei.** Erledigt am
+  2026-08-26, mit Zeitplan über systemd-Timer, eine Einheit je Archiv.
 
 - [x] **Archivformat mit Hash-Kette.** Erledigt am 2026-08-25.
 - [x] **Bytegenaue, inhaltsadressierte Ablage.** Erledigt am 2026-08-25.
