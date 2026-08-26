@@ -252,8 +252,15 @@ class ImapSource(Source):
                 # heimlich unverschlüsselt weiterzumachen.
                 self._verbindung.starttls(kontext)
         except ssl.SSLCertVerificationError as exc:
+            # Beim Zertifikatsfehler steht die TCP-Verbindung schon; nur der
+            # Handshake darüber scheiterte. Wer sie hier nicht schließt,
+            # lässt sie für die Lebensdauer des Programms offen stehen -
+            # gemessen: drei abgelehnte Anmeldungen, drei tote Verbindungen
+            # zum Server, die erst mit dem Programm verschwanden.
+            self._verbindung_wegwerfen()
             raise ImapFehler(self._zertifikat_erklaeren(exc)) from exc
         except (OSError, socket.timeout, ssl.SSLError, imaplib.IMAP4.error) as exc:
+            self._verbindung_wegwerfen()
             hinweis = ""
             if self.konto.ist_lokale_bruecke:
                 hinweis = (
@@ -268,12 +275,33 @@ class ImapSource(Source):
         try:
             self._verbindung.login(self.konto.benutzer, passwort)
         except imaplib.IMAP4.error as exc:
+            self._verbindung_wegwerfen()
             raise ImapFehler(
                 f"Anmeldung als {self.konto.benutzer} abgelehnt – {exc}\n"
                 f"Bei Gmail, GMX, Web.de und Outlook verlangt der Zugriff von "
                 f"außen ein eigenes App-Passwort; das Kennwort der Weboberfläche "
                 f"genügt dort nicht."
             ) from exc
+
+    def _verbindung_wegwerfen(self) -> None:
+        """Schließt eine halbfertige Verbindung, ohne noch einmal zu stören.
+
+        Kein ``LOGOUT``: Der Server ist entweder nie so weit gekommen oder
+        hat gerade abgelehnt. Hier zählt nur, dass das Betriebssystem den
+        Anschluss zurückbekommt.
+        """
+        verbindung, self._verbindung = self._verbindung, None
+        if verbindung is None:
+            return
+        try:
+            verbindung.shutdown()
+        except (OSError, imaplib.IMAP4.error, AttributeError):
+            pass
+        try:
+            if getattr(verbindung, "sock", None) is not None:
+                verbindung.sock.close()
+        except OSError:
+            pass
 
     def _befehl(self, *teile: str) -> list:
         """Setzt einen UID-Befehl ab und gibt die Nutzdaten zurück."""

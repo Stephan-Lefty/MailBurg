@@ -904,3 +904,48 @@ class FadengrenzeTest(OberflaechenTest):
                                   f"{datei.name}:{nr} verbindet ein Hintergrund"
                                   f"signal mit einem Lambda - das läuft im "
                                   f"Arbeitsfaden und friert die Oberfläche ein")
+
+
+class KeinePruefschleifeTest(OberflaechenTest):
+    """validatePage darf sich nicht selbst wieder anwerfen.
+
+    Die Seite prüft nebenläufig, sagt deshalb erst Nein und schickt sich
+    selbst weiter, sobald alle Antworten da sind. Dieses Weiterschicken
+    ruft validatePage erneut auf - und ohne Merker prüft sie wieder.
+    Beobachtet wurde: eine flackernde Zustandsspalte und ein Mailserver,
+    der pro Umlauf drei neue Anmeldungen bekam.
+    """
+
+    def test_weiterschicken_prueft_nicht_noch_einmal(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QGridLayout, QWidget, QWizard
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.assistent import Einrichtungsassistent, KontoZeile
+
+        assistent = Einrichtungsassistent()
+        seite = assistent.page(assistent.pageIds()[2])
+        halter = QWidget()
+        gitter = QGridLayout(halter)
+        zeile = KontoZeile(
+            Konto(name="a@example.org", server="imap.example.org",
+                  benutzer="a@example.org", port=143, ssl=False),
+            gitter, 0,
+        )
+        zeile.passwort.setText("geheim")
+        seite.zeilen.append(zeile)
+
+        gepruefte = []
+        with mock.patch.object(seite, "_pruefen", gepruefte.append), \
+             mock.patch.object(seite, "_speichern", lambda: None), \
+             mock.patch.object(QWizard, "next", lambda w: seite.validatePage()):
+            self.assertFalse(seite.validatePage(), "prüft nebenläufig, also erst Nein")
+            self.assertEqual(len(gepruefte), 1)
+
+            # Antwort vom Server: alles in Ordnung. Die Seite schickt sich
+            # weiter, und dabei darf sie nicht erneut prüfen.
+            seite._geklappt(zeile, ["INBOX"])
+
+        self.assertEqual(len(gepruefte), 1,
+                         "die Prüfung lief ein zweites Mal - das ist die Schleife")

@@ -644,6 +644,7 @@ class KontenSeite(QWizardPage):
         self.zeilen: list[KontoZeile] = []
         self._laeufer: list[Läufer] = []
         self._zu_zeile: dict = {}
+        self._durchgewinkt = False
         self._offen = 0
 
         self.herkunft = QLabel()
@@ -773,6 +774,18 @@ class KontenSeite(QWizardPage):
             self._zeile_anlegen(dialog.konto())
 
     def validatePage(self) -> bool:
+        if self._durchgewinkt:
+            # Die Anmeldungen laufen nebenläufig. Deshalb sagt diese
+            # Methode zunächst Nein und schickt die Seite selbst weiter,
+            # sobald alle Antworten da sind - und genau dieses
+            # Weiterschicken landet hier ein zweites Mal. Wer das nicht
+            # abfängt, prüft erneut, schickt erneut weiter, prüft erneut:
+            # Die Zustandsspalte flackerte zwischen »prüfe …« und »in
+            # Ordnung«, und der Mailserver bekam bei jedem Umlauf drei
+            # frische Anmeldungen.
+            self._durchgewinkt = False
+            return True
+
         zu_pruefen = [z for z in self.zeilen if z.gewaehlt]
         if not zu_pruefen:
             # Alles schon eingerichtet? Dann ist nichts zu tun, und der
@@ -904,8 +917,10 @@ class KontenSeite(QWizardPage):
     def _weiter_freigeben(self, frei: bool) -> None:
         """Sperrt »Weiter«, solange Anmeldungen laufen."""
         assistent = self.wizard()
-        if assistent is not None:
-            assistent.button(QWizard.NextButton).setEnabled(frei)
+        if assistent is None:
+            return
+        for knopf in (QWizard.NextButton, QWizard.BackButton):
+            assistent.button(knopf).setEnabled(frei)
 
     def _abschliessen(self) -> None:
         self._offen -= 1
@@ -963,6 +978,7 @@ class KontenSeite(QWizardPage):
                 return
 
         self._speichern()
+        self._durchgewinkt = True
         self.wizard().next()
 
     def _speichern(self) -> None:
