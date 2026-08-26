@@ -153,6 +153,12 @@ class Hauptfenster(QMainWindow):
         self.abrufen_aktion.triggered.connect(self._abrufen)
         post.addAction(self.abrufen_aktion)
 
+        suchen_menue = self.menuBar().addMenu("&Suchen")
+        ausfuehrlich = QAction("Ausführlich suchen …", self)
+        ausfuehrlich.setShortcut("Ctrl+F")
+        ausfuehrlich.triggered.connect(self._suchmaske)
+        suchen_menue.addAction(ausfuehrlich)
+
         hilfe = self.menuBar().addMenu("&Hilfe")
         suchhilfe = QAction("Suchsprache …", self)
         suchhilfe.setShortcut("F1")
@@ -340,6 +346,18 @@ class Hauptfenster(QMainWindow):
 
         art = QMessageBox.information if bericht["ok"] else QMessageBox.warning
         art(self, "Prüfung", "\n".join(zeilen))
+
+    def _suchmaske(self) -> None:
+        """Öffnet die Maske und übernimmt, was sie zusammengestellt hat."""
+        from mailburg.ui.suchmaske import Suchmaske
+
+        maske = Suchmaske(self.archiv, self.suchfeld.text(), self)
+        if maske.exec():
+            # In die Suchleiste, nicht direkt in die Abfrage: So sieht der
+            # Anwender, was aus seinen Angaben geworden ist, und kann es
+            # von Hand weiterdrehen.
+            self.suchfeld.setText(maske.ausdruck())
+            self._suchen()
 
     def _suchhilfe(self) -> None:
         fenster = QMessageBox(self)

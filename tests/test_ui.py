@@ -485,3 +485,135 @@ class FehleranzeigeTest(unittest.TestCase):
             self.assertTrue(gerufen)
         finally:
             sys.excepthook = vorher
+
+
+class SuchmaskeTest(OberflaechenTest):
+    """Was die Maske zusammenstellt, muss die Suchsprache verstehen.
+
+    Das ist der Grund, warum die Maske nichts kann, was die Sprache nicht
+    kann: Sonst entstünden zwei Wege, von denen einer irgendwann
+    hinterherhinkt – und die Kommandozeile wäre der schwächere.
+    """
+
+    def maske(self):
+        from mailburg.ui.suchmaske import Suchmaske
+
+        return Suchmaske()
+
+    def test_leere_maske_ergibt_leeren_ausdruck(self):
+        self.assertEqual(self.maske().ausdruck(), "")
+
+    def test_jedes_feld_landet_im_ausdruck(self):
+        m = self.maske()
+        m.begriff.setText("rechnung")
+        m.von.setText("müller")
+        m.betreff.setText("mahnung")
+        m.datei.setText("*.pdf")
+        m.mit_anhang.setChecked(True)
+
+        ausdruck = m.ausdruck()
+        for teil in ("rechnung", "von:müller", "betreff:mahnung",
+                     "datei:*.pdf", "hat:anhang"):
+            with self.subTest(teil=teil):
+                self.assertIn(teil, ausdruck)
+
+    def test_mehrere_woerter_werden_zusammengehalten(self):
+        # Ohne Anführungszeichen suchte "von:müller gmbh" nach zwei Dingen.
+        m = self.maske()
+        m.von.setText("müller gmbh")
+        self.assertIn('von:"müller gmbh"', m.ausdruck())
+
+    def test_jahresbereich(self):
+        m = self.maske()
+        m.jahr_von.setValue(2020)
+        m.jahr_bis.setValue(2025)
+        self.assertIn("jahr:2020-2025", m.ausdruck())
+
+    def test_ein_einzelnes_jahr(self):
+        m = self.maske()
+        m.jahr_von.setValue(2025)
+        self.assertIn("jahr:2025", m.ausdruck())
+
+    def test_verdrehte_jahre_werden_gerichtet(self):
+        m = self.maske()
+        m.jahr_von.setValue(2026)
+        m.jahr_bis.setValue(2020)
+        self.assertIn("jahr:2020-2026", m.ausdruck())
+
+    def test_ausschluesse_einzeln(self):
+        m = self.maske()
+        m.ohne.setText("werbung newsletter")
+        ausdruck = m.ausdruck()
+        self.assertIn("-werbung", ausdruck)
+        self.assertIn("-newsletter", ausdruck)
+
+    def test_groesse_nur_mit_wert(self):
+        m = self.maske()
+        m.groesse_art.setCurrentIndex(1)
+        self.assertNotIn("groesse", m.ausdruck())
+        m.groesse_wert.setText("5MB")
+        self.assertIn("groesse:>5MB", m.ausdruck())
+
+    def test_punkt_vor_der_endung_stoert_nicht(self):
+        m = self.maske()
+        m.typ.setText(".pdf")
+        self.assertIn("typ:pdf", m.ausdruck())
+
+    def test_die_vorschau_zeigt_denselben_ausdruck(self):
+        m = self.maske()
+        m.begriff.setText("vertrag")
+        self.assertEqual(m.vorschau.text(), m.ausdruck())
+
+    def test_das_ergebnis_ist_eine_gueltige_suche(self):
+        # Der eigentliche Punkt: Die Sprache muss verstehen, was hier
+        # herauskommt - sonst baut die Maske Ausdrücke ins Leere.
+        from mailburg.search.query import build
+
+        m = self.maske()
+        m.begriff.setText("rechnung")
+        m.von.setText("müller gmbh")
+        m.betreff.setText("offene posten")
+        m.datei.setText("*.pdf")
+        m.archiviert.setText("2026-08")
+        m.mit_anhang.setChecked(True)
+        m.typ.setText("pdf")
+        m.jahr_von.setValue(2024)
+        m.jahr_bis.setValue(2026)
+        m.groesse_art.setCurrentIndex(1)
+        m.groesse_wert.setText("1MB")
+        m.wichtigkeit.setCurrentIndex(1)
+        m.ohne.setText("werbung")
+
+        klausel, parameter = build(m.ausdruck())
+        self.assertNotEqual(klausel, "1=1", "der Ausdruck darf nicht leer wirken")
+        for erwartet in ("GLOB", "m.size", "m.wichtigkeit", "m.year", "m.archiviert"):
+            with self.subTest(erwartet=erwartet):
+                self.assertIn(erwartet, klausel)
+
+    def test_das_ergebnis_laeuft_auch_wirklich(self):
+        # Gültig gebaut heißt noch nicht, dass SQLite es ausführt.
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+
+        from mailburg.core.index import Index
+        from mailburg.search.query import build
+
+        with tempfile.TemporaryDirectory() as ordner:
+            index = Index(Path(ordner) / "test.db")
+            m = self.maske()
+            m.begriff.setText("rechnung")
+            m.datei.setText("*.pdf")
+            m.groesse_art.setCurrentIndex(2)
+            m.groesse_wert.setText("10MB")
+            m.wichtigkeit.setCurrentIndex(1)
+
+            klausel, parameter = build(m.ausdruck())
+            try:
+                index.db.execute(
+                    f"SELECT COUNT(*) FROM messages m WHERE {klausel}", parameter
+                ).fetchone()
+            except sqlite3.Error as fehler:
+                self.fail(f"SQLite lehnt den Ausdruck ab: {fehler}")
+            finally:
+                index.close()
