@@ -258,3 +258,32 @@ class NeueFelderTest(unittest.TestCase):
     def test_ausschluss_wirkt_auch_auf_neue_felder(self):
         klausel, _ = self.bedingung("-datei:*.jpg")
         self.assertTrue(klausel.startswith("NOT ("))
+
+
+class DatumsfilterTest(unittest.TestCase):
+    """Taggenau suchen – und zwar so, wie man das Datum hier schreibt."""
+
+    def test_beide_schreibweisen_meinen_denselben_tag(self):
+        _, deutsch = build("am:26.08.2026")
+        _, iso = build("am:2026-08-26")
+        self.assertEqual(deutsch, iso)
+
+    def test_zeitraum_schliesst_beide_tage_ein(self):
+        _, werte = build("seit:01.01.2026 bis:31.03.2026")
+        self.assertEqual(werte[0], "2026-01-01T00:00:00")
+        # Bis Mitternacht, nicht bis 00:00 - sonst fiele der letzte Tag
+        # bis auf seine erste Sekunde aus dem Zeitraum heraus.
+        self.assertEqual(werte[1], "2026-03-31T23:59:59")
+
+    def test_schraegstriche_werden_abgelehnt(self):
+        # 08/09/2026 ist in Deutschland der 8. September und in den USA
+        # der 9. August. Rät das Programm, bekommt der Anwender die
+        # falschen Mails und hält sie für alle - ein Fehler, den bei einer
+        # Suche im eigenen Archiv niemand bemerkt.
+        with self.assertRaises(QueryError):
+            build("am:08/09/2026")
+
+    def test_unsinn_wird_erklaert(self):
+        with self.assertRaises(QueryError) as fehler:
+            build("seit:neulich")
+        self.assertIn("26.08.2026", str(fehler.exception))

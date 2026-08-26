@@ -21,6 +21,8 @@ kein Sonderwunsch, sondern der Normalfall.
 
 from __future__ import annotations
 
+import time
+
 import re
 
 #: ``feld:wert``, wobei der Wert in Anführungszeichen stehen darf.
@@ -66,6 +68,32 @@ def _fts_quote(value: str) -> str:
     Anführungszeichen werden nach FTS5-Art verdoppelt.
     """
     return '"' + value.replace('"', '""') + '"'
+
+
+def _datum_lesen(wert: str) -> str:
+    """Nimmt ein Datum entgegen – geschrieben, wie man es hier schreibt.
+
+    Zwei Schreibweisen, beide eindeutig: ``26.08.2026`` mit Punkten meint
+    Tag zuerst, ``2026-08-26`` mit Bindestrichen ist ISO. Bewusst *nicht*
+    mit Schrägstrichen: ``08/09/2026`` ist in Deutschland der 8. September
+    und in den USA der 9. August. Bei einer Suche im eigenen Archiv wäre
+    das ein Fehler, den niemand bemerkt – man bekäme einfach die falschen
+    Mails und hielte sie für alle.
+
+    Dieses Modul kennt Qt nicht: Die Kommandozeile läuft ohne
+    Oberfläche, und ein Suchausdruck muss dort dasselbe bedeuten.
+    """
+    from datetime import date
+
+    text = wert.strip()
+    for muster in ("%d.%m.%Y", "%Y-%m-%d", "%d.%m.%y"):
+        try:
+            return date(*time.strptime(text, muster)[:3]).isoformat()
+        except ValueError:
+            continue
+    raise QueryError(
+        f"'{wert}' ist kein Datum. Erwartet: 26.08.2026 oder 2026-08-26."
+    )
 
 
 def _column_match(table: str, column: str, value: str, *, prefix: bool = False) -> str:
@@ -168,6 +196,14 @@ def _field_clause(field: str, value: str) -> tuple[str | None, list[object]]:
         if value.isdigit():
             return "m.year = ?", [int(value)]
         raise QueryError(f"'{value}' ist keine Jahreszahl. Erwartet: jahr:2025 oder jahr:2020-2025")
+
+    if field in ("seit", "ab", "nach", "bis", "vor", "am"):
+        tag = _datum_lesen(value)
+        if field in ("seit", "ab", "nach"):
+            return "m.date >= ?", [f"{tag}T00:00:00"]
+        if field in ("bis", "vor"):
+            return "m.date <= ?", [f"{tag}T23:59:59"]
+        return "m.date >= ? AND m.date <= ?", [f"{tag}T00:00:00", f"{tag}T23:59:59"]
 
     if field in ("typ", "type", "endung"):
         return (
@@ -302,6 +338,7 @@ def describe_syntax() -> str:
   typ:pdf                   Anhang mit dieser Endung
 
   jahr:2025 · jahr:2020-2025
+  seit:01.01.2026 · bis:31.03.2026 · am:26.08.2026
   archiviert:2026-08        wann die Mail ins Archiv kam
   archiviert:2026-08-25     auch tagesgenau
   groesse:>5MB              auch <100KB, >=2GB; ohne Zeichen: mindestens
