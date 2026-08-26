@@ -329,8 +329,12 @@ def durchlauf(
     # wenn mehrere ihrer Anhänge in der Warteschlange stehen.
     zwischenspeicher: dict[str, object] = {}
 
+    # Ohne Dokumentbudget heißt: alles, was da ist. "max(0 * 4, 40)"
+    # ergab genau 40 - der Lauf hörte nach vierzig Dokumenten auf und
+    # fragte, ob er weitermachen soll. Wer die Texterkennung
+    # unbeaufsichtigt laufen lässt, fand sie danach wartend vor.
     for digest, bucket, dateiname in warteschlange.offen(
-        grenze=max(budget_dokumente * 4, 40)
+        grenze=(budget_dokumente * 4) if budget_dokumente else 100_000
     ):
         if zeit_um() or (
             budget_dokumente and stat.gelesen + stat.gescheitert >= budget_dokumente

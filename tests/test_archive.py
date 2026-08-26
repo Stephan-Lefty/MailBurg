@@ -811,3 +811,30 @@ class SicherungsnameAusdruecklichTest(unittest.TestCase):
             ["sichern", "--name", "Geschaeftsarchiv", "A", "B"]
         )
         self.assertEqual(args.name, "Geschaeftsarchiv")
+
+
+class OhneBudgetDurchlaufenTest(unittest.TestCase):
+    """Ein Lauf ohne Budget muss auch ohne Budget laufen."""
+
+    def test_die_warteschlange_wird_nicht_bei_vierzig_gekappt(self):
+        # max(0 * 4, 40) ergab 40: Der Lauf hörte nach vierzig Dokumenten
+        # auf und fragte, ob er weitermachen soll. Wer die Texterkennung
+        # unbeaufsichtigt startete, fand sie danach wartend vor.
+        import inspect
+
+        from mailburg.core import erkennung
+
+        quelle = inspect.getsource(erkennung.durchlauf)
+        self.assertNotIn("max(budget_dokumente * 4, 40)", quelle)
+        self.assertIn("if budget_dokumente else 100_000", quelle)
+
+    def test_mit_budget_bleibt_der_vorrat_begrenzt(self):
+        # Beim Häppchen nach dem Abruf soll nicht die ganze Warteschlange
+        # geholt werden - das kostet bei zehntausend Anhängen Zeit für
+        # nichts.
+        import inspect
+
+        from mailburg.core import erkennung
+
+        self.assertIn("(budget_dokumente * 4)",
+                      inspect.getsource(erkennung.durchlauf))
