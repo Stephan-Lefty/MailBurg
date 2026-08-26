@@ -42,7 +42,7 @@ from mailburg.core import accounts, orte
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, Mode
 from mailburg.core.retention import QUELLEN, Jurisdiction
-from mailburg.ui import bilder
+from mailburg.ui import bilder, farben
 from mailburg.ui.arbeit import Anmeldeprobe, Läufer, alle_abbrechen
 from mailburg.ui.zeitplan import Zeitplanwahl
 
@@ -630,8 +630,7 @@ class KontoZeile(QWidget):
         return self.ankreuz.isChecked()
 
     def melden(self, text: str, gut: bool | None = None) -> None:
-        farbe = {True: "#2e7d32", False: "#c62828", None: ""}[gut]
-        self.zustand.setStyleSheet(f"color: {farbe}" if farbe else "")
+        self.zustand.setStyleSheet(farben.stil(gut))
         self.zustand.setText(text)
 
 
@@ -1114,7 +1113,7 @@ class KontoDialog(QDialog):
     def _geglueckt(self, ordner: list) -> None:
         self.ordner = list(ordner)
         self.pruefknopf.setEnabled(True)
-        self.pruefstand.setStyleSheet("color: #2e7d32")
+        self.pruefstand.setStyleSheet(farben.stil(True))
         self.pruefstand.setText(
             f"Anmeldung in Ordnung – {len(ordner)} Ordner würden archiviert."
         )
@@ -1127,7 +1126,7 @@ class KontoDialog(QDialog):
 
     def _misslungen(self, text: str) -> None:
         self.pruefknopf.setEnabled(True)
-        self.pruefstand.setStyleSheet("color: #c62828")
+        self.pruefstand.setStyleSheet(farben.stil(False))
         # Nur die erste Zeile: Die ausführliche Erklärung steht im Dialog,
         # der beim Abruf erscheint, und würde hier den Platz sprengen.
         self.pruefstand.setText(text.split("\n")[0])

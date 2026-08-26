@@ -1,0 +1,67 @@
+"""Die wenigen Farben, die MailBurg selbst festlegt.
+
+Fast alles überlässt die Oberfläche dem System: Auswahl, Hintergrund,
+Schrift, Akzent. Wer die Systemfarben überschreibt, sieht auf jedem
+fremden Desktop falsch aus und bricht Hochkontrast-Themen.
+
+Zwei Farben lassen sich aber nicht ableiten, weil sie eine *Bedeutung*
+tragen und keine Rolle: »hat geklappt« und »ist schiefgegangen«. Dafür
+gibt es in keiner Qt-Palette einen Eintrag.
+
+Und genau die müssen zum Thema passen. Ein festes ``#c62828`` erreicht
+auf weißem Grund ein Kontrastverhältnis von 5,6 – auf dunklem nur 2,7.
+Verlangt sind 4,5 (WCAG AA). Ausgerechnet »Anmeldung gescheitert« wäre
+im dunklen Thema also die am schlechtesten lesbare Zeile im Fenster.
+"""
+
+from __future__ import annotations
+
+from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import QApplication
+
+#: Für helle Themen. Nachgerechnet auf Weiß: 5,1 und 5,6.
+_HELL = {"gut": "#2e7d32", "schlecht": "#c62828"}
+
+#: Für dunkle. Nachgerechnet auf dem üblichen Breeze-Dunkel (#232629):
+#: 8,0 und 7,3. Dieselben Farbtöne, nur aufgehellt – Grün bleibt Grün.
+_DUNKEL = {"gut": "#81c784", "schlecht": "#ef9a9a"}
+
+
+def dunkles_thema() -> bool:
+    """Ob die Oberfläche gerade dunkel eingestellt ist.
+
+    Gefragt wird die Palette, nicht die Arbeitsumgebung: Das Thema kann
+    zur Laufzeit wechseln, und es gibt mehr Arbeitsumgebungen, als man
+    einzeln abfragen möchte.
+    """
+    anwendung = QApplication.instance()
+    if anwendung is None:
+        return False
+    grund = anwendung.palette().color(QPalette.Window)
+    # value() ist der Helligkeitsanteil in HSV, von 0 bis 255.
+    return grund.value() < 128
+
+
+def _waehlen(rolle: str) -> str:
+    return (_DUNKEL if dunkles_thema() else _HELL)[rolle]
+
+
+def gut() -> str:
+    """Farbe für »hat geklappt«."""
+    return _waehlen("gut")
+
+
+def schlecht() -> str:
+    """Farbe für »ist schiefgegangen«."""
+    return _waehlen("schlecht")
+
+
+def stil(gelungen: bool | None) -> str:
+    """Fertiges Stylesheet für eine Zustandsanzeige.
+
+    ``None`` heißt »noch nichts zu sagen« und gibt die Schrift wieder
+    frei – dann gilt wieder die Farbe des Themas.
+    """
+    if gelungen is None:
+        return ""
+    return f"color: {gut() if gelungen else schlecht()}"

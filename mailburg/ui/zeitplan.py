@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from mailburg.core import zeitplan
+from mailburg.ui import farben
 
 #: Die angebotenen Abstände. Bewusst wenige: Wer zwischen siebzehn
 #: Möglichkeiten wählen soll, wählt gar nicht.
@@ -136,5 +137,5 @@ class Zeitplandialog(QDialog):
             return
         # Nicht schließen, wenn es nicht geklappt hat: Sonst geht der
         # Anwender davon aus, es sei eingerichtet.
-        self.meldung.setStyleSheet("color: #c62828")
+        self.meldung.setStyleSheet(farben.stil(False))
         self.meldung.setText(text)

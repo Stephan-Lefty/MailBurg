@@ -1575,3 +1575,54 @@ class SummenImBaumTest(OberflaechenTest):
         # Mit Tausenderpunkt: 1500 liest sich schlechter als 1.500, und
         # in einem Archiv stehen dort schnell sechsstellige Zahlen.
         self.assertEqual(baum.topLevelItem(0).text(1), "1.500")
+
+
+class FarbkontrastTest(OberflaechenTest):
+    """Zustandsfarben müssen in beiden Themen lesbar bleiben."""
+
+    @staticmethod
+    def _kontrast(vordergrund: str, hintergrund: str) -> float:
+        def linear(anteil: float) -> float:
+            return anteil / 12.92 if anteil <= 0.03928 else (
+                ((anteil + 0.055) / 1.055) ** 2.4
+            )
+
+        def helligkeit(farbe: str) -> float:
+            r, g, b = (int(farbe[i:i + 2], 16) / 255 for i in (1, 3, 5))
+            return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+
+        a, b = helligkeit(vordergrund), helligkeit(hintergrund)
+        return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+
+    def test_beide_farbsaetze_erfuellen_wcag_aa(self):
+        # 4,5:1 ist die Schwelle für gewöhnlichen Text. Ausgerechnet
+        # "Anmeldung gescheitert" wäre sonst die am schlechtesten lesbare
+        # Zeile im Fenster - die Meldung, auf die es ankommt.
+        from mailburg.ui.farben import _DUNKEL, _HELL
+
+        for satz, grund, wie in ((_HELL, "#ffffff", "hell"),
+                                 (_DUNKEL, "#232629", "dunkel")):
+            for rolle, farbe in satz.items():
+                with self.subTest(thema=wie, rolle=rolle):
+                    self.assertGreaterEqual(
+                        self._kontrast(farbe, grund), 4.5,
+                        f"{farbe} auf {grund} ist zu schwach",
+                    )
+
+    def test_ohne_aussage_bleibt_die_schrift_frei(self):
+        from mailburg.ui import farben
+
+        # Kein "color:" - dann gilt wieder die Farbe des Themas.
+        self.assertEqual(farben.stil(None), "")
+
+    def test_das_thema_entscheidet(self):
+        from unittest import mock
+
+        from mailburg.ui import farben
+
+        with mock.patch.object(farben, "dunkles_thema", lambda: True):
+            dunkel = farben.schlecht()
+        with mock.patch.object(farben, "dunkles_thema", lambda: False):
+            hell = farben.schlecht()
+
+        self.assertNotEqual(dunkel, hell)
