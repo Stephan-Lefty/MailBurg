@@ -1,118 +1,61 @@
 name: Tests
 
+# MailBurg ist ein privates Repository – hier kosten Actions-Minuten Geld.
+# Und zwar mehr, als die Laufzeiten vermuten lassen: GitHub rundet *jeden
+# einzelnen Job* auf volle Minuten auf und rechnet macOS zehnfach, Windows
+# zweifach. Ein macOS-Job, der neun Sekunden läuft, kostet damit zehn Minuten.
+#
+# Die alte Fassung startete bei jedem Push dreizehn Jobs auf drei
+# Betriebssystemen: 53 abgerechnete Minuten für einen Durchlauf von unter
+# einer Minute. An einem einzigen Arbeitstag summierte sich das auf 1.800
+# Minuten – das gesamte Monatskontingent.
+#
+# Deshalb gilt jetzt: Bei jedem Push läuft *ein* Job auf Linux. Die teuren
+# Betriebssysteme kommen einmal die Woche dran, und wenn jemand sie ruft.
+
 on:
   push:
+    # An Text ändert sich durch einen Testlauf nichts.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
   pull_request:
+  schedule:
+    # Montags um 4 Uhr der breite Durchgang über alle Systeme.
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      breit:
+        description: "Auch Windows und macOS prüfen"
+        type: boolean
+        default: false
+
+# Wer dreimal hintereinander pusht, braucht nur die Antwort auf den letzten.
+# Ohne das liefen gestern Läufe weiter, deren Ergebnis niemanden mehr
+# interessierte – bezahlt wurden sie trotzdem.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: ${{ matrix.os }} / Python ${{ matrix.python }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        # 3.11 ist die Untergrenze (StrEnum). Ab 3.14 steckt Zstandard in der
-        # Standardbibliothek – beide Wege müssen laufen, deshalb wird oben und
-        # unten geprüft.
-        python: ["3.11", "3.13", "3.14"]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Syntax prüfen
-        run: python -m compileall -q mailburg tests
-
-      - name: Tests
-        run: python -m unittest discover -s tests -v
-
-  einrichtung:
-    name: Einrichtung / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      # Die Einrichtungsskripte laufen hier wirklich durch. Ein Skript, das
-      # niemand ausführt, ist so viel wert wie kein Skript – und für Windows
-      # lässt sich das anders kaum prüfen.
-      - name: Einrichten (Linux, macOS)
-        if: runner.os != 'Windows'
-        run: ./install.sh --ohne-pakete
-
-      - name: Einrichten (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./install.ps1
-
-      - name: Der Befehl muss da sein und laufen
-        if: runner.os != 'Windows'
-        run: |
-          set -e
-          export PATH="$HOME/.local/bin:$PATH"
-          mailburg --version
-          mailburg anlegen "$HOME/Archiv" --modus privat
-          mailburg info "$HOME/Archiv"
-
-      - name: Der Befehl muss da sein und laufen (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $env:PATH = "$env:LOCALAPPDATA\MailBurg\bin;$env:PATH"
-          mailburg --version
-          mailburg anlegen "$env:USERPROFILE\Archiv" --modus privat
-          mailburg info "$env:USERPROFILE\Archiv"
-
-      - name: Die Kür muss mitgekommen sein
-        if: runner.os != 'Windows'
-        run: ~/.local/share/mailburg/venv/bin/python -c "import keyring, pypdf, zstandard"
-
-      - name: Die Kür muss mitgekommen sein (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: '& "$env:LOCALAPPDATA\MailBurg\venv\Scripts\python.exe" -c "import keyring, pypdf, zstandard"'
-
-      - name: Abbauen muss das Archiv verschonen
-        if: runner.os != 'Windows'
-        run: |
-          set -e
-          ./install.sh --entfernen
-          test -f "$HOME/Archiv/archive.json" || { echo "Das Archiv wurde mit abgeräumt!"; exit 1; }
-          test ! -e "$HOME/.local/bin/mailburg" || { echo "Der Befehl liegt noch da."; exit 1; }
-          echo "Abgebaut, Archiv unberührt."
-
-      - name: Abbauen muss das Archiv verschonen (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          ./install.ps1 -Entfernen
-          if (-not (Test-Path "$env:USERPROFILE\Archiv\archive.json")) {
-            throw "Das Archiv wurde mit abgeräumt!"
-          }
-          if (Test-Path "$env:LOCALAPPDATA\MailBurg\bin\mailburg.cmd") {
-            throw "Der Befehl liegt noch da."
-          }
-          Write-Host "Abgebaut, Archiv unberührt."
-
-  rauchtest:
-    name: Rauchtest der Kommandozeile
+  # Alles in einem Job. Nicht aus Ordnungsliebe, sondern wegen der Aufrundung:
+  # fünf Jobs à fünfzehn Sekunden kosten fünf Minuten, einer à siebzig
+  # Sekunden kostet zwei.
+  linux:
+    name: Linux (bei jedem Push)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
+      - name: Syntax prüfen
+        run: python -m compileall -q mailburg tests
+
+      - name: Tests
+        run: python -m unittest discover -s tests
 
       - name: Testmails erzeugen
         run: |
@@ -186,3 +129,85 @@ jobs:
             exit 1
           fi
           echo "Die Fälschung wurde erkannt."
+
+      # Zuletzt, weil das Einrichtungsskript ein eigenes venv baut. Ein
+      # Skript, das niemand ausführt, ist so viel wert wie kein Skript.
+      - name: Einrichten und wieder abbauen
+        run: |
+          set -e
+          ./install.sh --ohne-pakete
+          export PATH="$HOME/.local/bin:$PATH"
+          mailburg --version
+          mailburg anlegen "$HOME/Archiv" --modus privat
+          mailburg info "$HOME/Archiv"
+          ~/.local/share/mailburg/venv/bin/python -c "import keyring, pypdf, zstandard"
+          ./install.sh --entfernen
+          test -f "$HOME/Archiv/archive.json" || { echo "Das Archiv wurde mit abgeräumt!"; exit 1; }
+          test ! -e "$HOME/.local/bin/mailburg" || { echo "Der Befehl liegt noch da."; exit 1; }
+          echo "Abgebaut, Archiv unberührt."
+
+  # Die Versionsgrenzen sind plattformunabhängig – 3.11 wegen StrEnum, 3.14
+  # weil Zstandard dort in der Standardbibliothek steckt. Beides lässt sich
+  # auf Linux prüfen, also wird es auf Linux geprüft.
+  python-raender:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m compileall -q mailburg tests
+      - run: python -m unittest discover -s tests
+
+  # Der teure Teil: macOS kostet das Zehnfache, Windows das Doppelte. Nur
+  # montags, oder wenn jemand den Ablauf von Hand mit »breit« startet.
+  fremde-systeme:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.breit)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Tests
+        run: python -m unittest discover -s tests
+
+      - name: Einrichten und wieder abbauen (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          ./install.sh --ohne-pakete
+          export PATH="$HOME/.local/bin:$PATH"
+          mailburg --version
+          mailburg anlegen "$HOME/Archiv" --modus privat
+          ~/.local/share/mailburg/venv/bin/python -c "import keyring, pypdf, zstandard"
+          ./install.sh --entfernen
+          test -f "$HOME/Archiv/archive.json" || { echo "Das Archiv wurde mit abgeräumt!"; exit 1; }
+
+      - name: Einrichten und wieder abbauen (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./install.ps1
+          $env:PATH = "$env:LOCALAPPDATA\MailBurg\bin;$env:PATH"
+          mailburg --version
+          mailburg anlegen "$env:USERPROFILE\Archiv" --modus privat
+          & "$env:LOCALAPPDATA\MailBurg\venv\Scripts\python.exe" -c "import keyring, pypdf, zstandard"
+          ./install.ps1 -Entfernen
+          if (-not (Test-Path "$env:USERPROFILE\Archiv\archive.json")) {
+            throw "Das Archiv wurde mit abgeräumt!"
+          }
