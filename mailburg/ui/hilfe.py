@@ -160,8 +160,8 @@ _SUCHEN = """
 
 <p>Ins Suchfeld oben können Sie einfach hineinschreiben, wonach Sie
 suchen. Gesucht wird in Betreff, Text, Absender, Empfänger und in den
-Anhängen – auch in eingescannten PDF, sofern deren Text erkannt
-wurde.</p>
+Anhängen – auch in <a href="#scans">eingescannten PDF</a>, sofern deren
+Text erkannt wurde.</p>
 
 <p>Darunter steht, was dabei herauskam: <i>MailBurg hat 191 Treffer</i>
 oder <i>MailBurg hat nichts gefunden</i>.</p>
@@ -283,6 +283,45 @@ bleibt eine vorhandene Signatur gültig, und nur so ist die Mail im
 Postfach dieselbe wie die im Archiv.</p>
 """
 
+_SCANS = """
+<h2>Eingescannte PDF</h2>
+
+<p>Die meisten PDF tragen ihren Text mit sich – MailBurg liest ihn beim
+Archivieren mit, und Sie finden die Rechnung über ihren Betrag oder die
+Kundennummer.</p>
+
+<p><b>Ein eingescanntes PDF ist etwas anderes.</b> Es enthält keinen
+Text, sondern ein Foto einer Seite. Für die Suche ist es ein weißes
+Blatt: Der Dateiname lässt sich finden, der Inhalt nicht.</p>
+
+<p>Das ist die unangenehmste Sorte Lücke, weil sie sich nicht meldet.
+Sie merken sie erst, wenn Sie nach einer Rechnung suchen, die es im
+Archiv gibt, und nichts bekommen.</p>
+
+<p><b>Die Texterkennung liest solche Seiten.</b> Sie steht im
+Menü, mit der Zahl der wartenden Dokumente dahinter – ist die Zahl
+Null, gibt es nichts zu tun.</p>
+
+<p>Zweierlei ist dabei zu wissen:</p>
+
+<p><b>Es dauert.</b> Etwa fünf Sekunden je Seite. Bei hundert Seiten
+also eine knappe Viertelstunde. Sie können jederzeit abbrechen; was
+gelesen ist, bleibt gelesen, und beim nächsten Mal geht es dort
+weiter.</p>
+
+<p><b>Das Archiv bleibt unangetastet.</b> Der erkannte Text kommt nur in
+den Suchindex, die PDF selbst werden nicht verändert. Das ist
+wesentlich: Ein Dokument, an dem nachträglich etwas geändert wurde, wäre
+als Beleg wertlos.</p>
+
+<p>Beim Abruf über die Kommandozeile wird nebenbei immer ein Häppchen
+miterledigt. Wer den <a href="#abrufen">Abruf im Hintergrund</a>
+eingerichtet hat, muss sich also meist gar nicht darum kümmern – der
+Rückstand arbeitet sich von selbst ab.</p>
+
+{menue}
+"""
+
 _AUFRAEUMEN = """
 <h2>Postfach aufräumen</h2>
 
@@ -393,6 +432,11 @@ def kapitel() -> list[Kapitel]:
             _menue("Archiv → Journal prüfen",
                    "Prüft die Kette und vergleicht das Protokoll mit dem, "
                    "was tatsächlich auf der Platte liegt.")
+        ))),
+        Kapitel("scans", "Eingescannte PDF", _SCANS.format(menue=_menue(
+            "Post → Eingescannte PDF lesen …",
+            "Liest die wartenden Dokumente. Die Zahl dahinter sagt, wie "
+            "viele es sind.",
         ))),
         Kapitel("zurueck", "Eine Mail zurückholen", _ZURUECK),
         Kapitel("aufraeumen", "Postfach aufräumen", _AUFRAEUMEN),

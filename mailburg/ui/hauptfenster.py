@@ -216,6 +216,14 @@ class Hauptfenster(QMainWindow):
         hintergrund.triggered.connect(self._zeitplan)
         post.addAction(hintergrund)
 
+        post.addSeparator()
+        # Mit der Zahl im Text: Ein eingescanntes PDF meldet sich nicht
+        # von selbst. Wer nicht weiß, dass ein Teil seines Archivs
+        # unauffindbar ist, sucht diesen Menüpunkt auch nicht.
+        self.ocr_aktion = QAction("Eingescannte PDF lesen …", self)
+        self.ocr_aktion.triggered.connect(self._texterkennung)
+        post.addAction(self.ocr_aktion)
+
         ansicht = self.menuBar().addMenu("&Ansicht")
         zuruecksetzen = QAction("Fenster auf Standard zurücksetzen", self)
         zuruecksetzen.setStatusTip(
@@ -295,6 +303,7 @@ class Hauptfenster(QMainWindow):
         self.setWindowTitle(f"{APP_NAME} – {self.archiv.name}")
         self._baum_fuellen()
         self._bestand_zeigen()
+        self._offene_pdf_zeigen()
         self._suchen()
         if hasattr(self, "zuletzt_menue"):
             # Das gerade geöffnete Archiv gehört nicht in die Liste der
@@ -922,6 +931,35 @@ class Hauptfenster(QMainWindow):
 
         art = QMessageBox.information if bericht["ok"] else QMessageBox.warning
         art(self, "Prüfung", "\n".join(zeilen))
+
+    def _texterkennung(self) -> None:
+        from mailburg.ui.texterkennung import Texterkennungsdialog
+
+        if self.archiv is None:
+            return
+        Texterkennungsdialog(self.archiv, self).exec()
+        self._offene_pdf_zeigen()
+        self._suchen()
+
+    def _offene_pdf_zeigen(self) -> None:
+        """Schreibt die Zahl wartender PDF in den Menüeintrag."""
+        if self.archiv is None or not hasattr(self, "ocr_aktion"):
+            return
+        from mailburg.core.erkennung import Warteschlange
+
+        try:
+            offen = Warteschlange(self.archiv.index).anzahl()
+        except Exception:  # noqa: BLE001 – eine Zahl im Menü ist kein Grund zu scheitern
+            return
+        self.ocr_aktion.setText(
+            f"Eingescannte PDF lesen … ({offen})" if offen
+            else "Eingescannte PDF lesen …"
+        )
+        self.ocr_aktion.setEnabled(offen > 0)
+        self.ocr_aktion.setStatusTip(
+            f"{offen} eingescannte PDF sind noch nicht durchsuchbar."
+            if offen else "Alle lesbaren PDF sind durchsuchbar."
+        )
 
     def _zeitplan(self) -> None:
         from mailburg.ui.zeitplan import Zeitplandialog

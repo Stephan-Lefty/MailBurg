@@ -280,12 +280,18 @@ def durchlauf(
     budget_sekunden: float = BUDGET_SEKUNDEN,
     budget_dokumente: int = BUDGET_DOKUMENTE,
     fortschritt=None,
+    weiter=None,
 ) -> Statistik:
     """Arbeitet die Warteschlange ab, bis das Budget aufgebraucht ist.
 
     ``budget_sekunden`` von 0 bedeutet: ohne Zeitgrenze durchlaufen. Das ist
     für den ausdrücklich angestoßenen Lauf gedacht, nicht für den Anschluss
     an einen Abruf.
+
+    ``weiter`` ist ein Rückruf, der ``False`` liefert, wenn Schluss sein
+    soll – für den Abbruchknopf in der Oberfläche. Geprüft wird zwischen
+    zwei Dokumenten, nicht mitten in einem: Ein halb gelesenes PDF wäre
+    schlimmer als ein ungelesenes, weil es als erledigt gälte.
     """
     from mailburg.extract import message as message_modul
     from mailburg.extract import ocr
@@ -373,6 +379,10 @@ def durchlauf(
         archiv.index.commit()
         if fortschritt:
             fortschritt(stat)
+
+        if weiter is not None and not weiter():
+            stat.abgebrochen = True
+            break
 
         if ergebnis.abgebrochen:
             stat.abgebrochen = True

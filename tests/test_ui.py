@@ -2485,3 +2485,64 @@ class HtmlMitAbsaetzenTest(unittest.TestCase):
         from mailburg.extract.message import html_to_text
 
         self.assertEqual(html_to_text("<p>Eins</p><p>Zwei</p>"), "Eins Zwei")
+
+
+class TexterkennungDialogTest(OberflaechenTest):
+    """Der Weg zur Texterkennung darf nicht durchs Terminal führen."""
+
+    def _dialog(self, offen):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import erkennung
+        from mailburg.core.archive import Archive
+        from mailburg.ui.texterkennung import Texterkennungsdialog
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        archiv = Archive.create(pathlib.Path(ordner.name) / "A")
+        self.addCleanup(archiv.close)
+
+        with mock.patch.object(erkennung.Warteschlange, "anzahl",
+                               lambda self: offen):
+            dialog = Texterkennungsdialog(archiv)
+        self.addCleanup(dialog.close)
+        return dialog
+
+    def test_sagt_wie_viele_warten_und_warum_das_zaehlt(self):
+        dialog = self._dialog(36)
+        text = dialog.erklaerung.text()
+
+        self.assertIn("36", text)
+        # Der Grund gehört dazu: Ein eingescanntes PDF meldet sich nicht,
+        # es schweigt. Wer nicht weiß, dass ein Teil seines Archivs
+        # unauffindbar ist, sucht diesen Menüpunkt nie.
+        self.assertIn("weißes Blatt", text)
+        self.assertIn("unangetastet", text)
+
+    def test_die_dauer_wird_genannt(self):
+        # Fünf Sekunden je Seite. Wer das nicht weiß, hält das Programm
+        # nach einer Minute für abgestürzt.
+        dialog = self._dialog(36)
+
+        self.assertIn("Minuten", dialog.erklaerung.text())
+
+    def test_ohne_wartende_gibt_es_nichts_zu_tun(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        dialog = self._dialog(0)
+
+        self.assertFalse(
+            dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
+        self.assertIn("keine eingescannten PDF", dialog.erklaerung.text())
+
+    def test_abbruch_verwirft_nichts(self):
+        # Was gelesen ist, steht schon im Index - der Lauf schreibt nach
+        # jedem Dokument. Abbrechen heißt aufhören, nicht zurücknehmen.
+        from mailburg.core import erkennung
+
+        quelltext = pathlib.Path(
+            erkennung.__file__).read_text(encoding="utf-8")
+        self.assertIn("if weiter is not None and not weiter():", quelltext)
+        # Zwischen zwei Dokumenten, nicht mitten in einem.
+        self.assertIn("archiv.index.commit()", quelltext)
