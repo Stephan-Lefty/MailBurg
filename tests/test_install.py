@@ -112,3 +112,25 @@ class BeispieldatenTest(unittest.TestCase):
                         sauber.endswith(erlaubt),
                         f"{datei.name}: {sauber} ist keine Beispieladresse",
                     )
+
+
+class TestlaufHinterlaesstNichtsTest(unittest.TestCase):
+    """Die Testsuite darf das Datenverzeichnis des Anwenders nicht füllen."""
+
+    def test_die_tests_schreiben_woandershin(self):
+        # Ein Archiv hält seinen Suchindex außerhalb des Archivordners.
+        # Für die Tests heißt das: Jedes wegwerfbare Archiv hinterlässt
+        # eine Indexdatei im echten Datenverzeichnis, und die räumt
+        # niemand weg - der temporäre Ordner wird ja gelöscht.
+        #
+        # Bemerkt am 2026-08-26: 5.585 Dateien, 1,5 GB, davon zwei echte.
+        # Auffallen kann so etwas nicht, solange die Tests grün sind.
+        import os
+
+        from mailburg.core import paths
+
+        self.assertTrue(
+            str(paths.data_dir()).startswith(os.environ["XDG_DATA_HOME"]),
+            "die Tests schreiben ins echte Datenverzeichnis",
+        )
+        self.assertIn("mailburg-tests-", str(paths.data_dir()))
