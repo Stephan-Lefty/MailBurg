@@ -3380,3 +3380,48 @@ class FliesstextTest(OberflaechenTest):
         etikett = Fliesstext(self.LANG)
 
         self.assertGreater(etikett.minimumSizeHint().height(), 0)
+
+
+class SicherungseinheitTest(OberflaechenTest):
+    """Geschrieben und eingeschaltet muss dieselbe Einheit sein.
+
+    Die Sicherungsdatei entstand unter dem archiveigenen Namen, das
+    Einschalten nannte die feste Sammelbezeichnung. systemd meldete
+    daraufhin »Unit mailburg-sicherung.timer does not exist« – und der
+    Zeitplan lag als Datei da, ohne je zu laufen. Der unangenehmste
+    Fehler bei einer Sicherung: Sie sieht eingerichtet aus.
+    """
+
+    def test_eingeschaltet_wird_die_archiveigene_einheit(self):
+        import subprocess
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import zeitplan
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        wo = pathlib.Path(ordner.name)
+        archiv = wo / "Privatarchiv"
+        archiv.mkdir()
+        (archiv / "archive.json").write_text("{}", encoding="utf-8")
+        aufrufe = []
+
+        def merken(*args, **kw):
+            aufrufe.append(args)
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        with mock.patch.object(zeitplan, "DIENSTE", wo / "systemd"), \
+                mock.patch.object(zeitplan, "_systemctl", merken), \
+                mock.patch.object(zeitplan, "moeglich", lambda: (True, "")):
+            zeitplan.sicherung_einrichten(archiv, wo / "ziel")
+
+            erwartet = f"{zeitplan._einheitsname(archiv)}.timer"
+            self.assertTrue(
+                (wo / "systemd" / erwartet).is_file(),
+                "die Einheit wurde unter anderem Namen geschrieben",
+            )
+            self.assertIn(
+                ("enable", "--now", erwartet), aufrufe,
+                f"eingeschaltet wurde etwas anderes: {aufrufe}",
+            )

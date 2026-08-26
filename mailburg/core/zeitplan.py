@@ -257,7 +257,10 @@ WantedBy=timers.target
     )
 
     _systemctl("daemon-reload")
-    ergebnis = _systemctl("enable", "--now", f"{EINHEIT_SICHERUNG}.timer")
+    # Die *archiveigene* Einheit, nicht die Sammelbezeichnung. Geschrieben
+    # wurde sie schon immer unter dem eigenen Namen; eingeschaltet wurde
+    # der feste - und systemd meldete zu Recht, dass es die nicht gibt.
+    ergebnis = _systemctl("enable", "--now", f"{einheit}.timer")
     if ergebnis.returncode != 0:
         return False, (ergebnis.stderr or "").strip() or "Ließ sich nicht einschalten."
     return True, f"Sicherung eingerichtet: {takt} nach {ziel}"
