@@ -299,6 +299,11 @@ class Hauptfenster(QMainWindow):
         aufraeumen.triggered.connect(lambda: self._handbuch("aufraeumen"))
         hilfe.addAction(aufraeumen)
 
+        tipps = QAction("Tipps …", self)
+        tipps.setStatusTip("Was sich im Alltag als nützlich erwiesen hat.")
+        tipps.triggered.connect(lambda: self._handbuch("tipps"))
+        hilfe.addAction(tipps)
+
     # ------------------------------------------------------------- Archiv
 
     def _oeffnen(self, pfad: Path) -> None:

@@ -2701,3 +2701,39 @@ class HintergrundhinweisTest(OberflaechenTest):
 
         self.assertIn("191", fenster.suchmeldung.text())
         self.assertIn("15 von 57", fenster.ocr_hinweis.text())
+
+
+class TippsTest(OberflaechenTest):
+    """Das Tipps-Kapitel sagt, was man nur aus dem Betrieb lernt."""
+
+    def _text(self):
+        from mailburg.ui.hilfe import kapitel
+
+        return next(k.text for k in kapitel() if k.kennung == "tipps")
+
+    def test_der_unterschied_zwischen_archiv_und_backup_steht_drin(self):
+        text = self._text()
+
+        # Der wichtigste Satz überhaupt: Ein Archiv auf einer Platte ist
+        # keine Sicherung. Wer das verwechselt, schaltet sein bisheriges
+        # Backup ab und steht mit einer einzigen Kopie da.
+        self.assertIn("kein Backup", text)
+        self.assertIn("zweiten", text)
+
+    def test_der_index_muss_nicht_mitgesichert_werden(self):
+        text = self._text()
+
+        self.assertIn("Suchindex", text)
+        self.assertIn("neu aufbauen", text)
+
+    def test_nach_dem_zurueckholen_pruefen(self):
+        # Eine Cloud-Synchronisation lässt schon einmal eine Datei aus,
+        # und bei einem Archiv merkt man das erst Jahre später.
+        text = self._text()
+
+        self.assertIn("Journal prüfen", text)
+
+    def test_das_kapitel_steht_im_verzeichnis(self):
+        from mailburg.ui.hilfe import kapitel
+
+        self.assertIn("Tipps", [k.titel for k in kapitel()])

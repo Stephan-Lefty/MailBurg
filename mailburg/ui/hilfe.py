@@ -334,6 +334,76 @@ Rückstand arbeitet sich von selbst ab.</p>
 {menue}
 """
 
+_TIPPS = """
+<h2>Tipps</h2>
+
+<p>Dinge, die sich im Alltag als nützlich erwiesen haben.</p>
+
+<h3>Das Archiv sichern</h3>
+
+<p><b>MailBurg ist ein Archiv, kein Backup.</b> Der Unterschied ist
+nicht akademisch: Ihr Archiv liegt auf <i>einer</i> Platte. Geht die
+kaputt, ist alles weg. Eine Sicherung ist eine Kopie an einem
+<i>zweiten</i> Ort – auf einer anderen Platte oder in der Cloud.</p>
+
+<p>Ein Archiv ist ein gewöhnlicher Ordner; kopieren genügt. Zwei Dinge
+dabei:</p>
+
+<p><b>Den Suchindex brauchen Sie nicht mitzusichern.</b> Er liegt
+ohnehin außerhalb des Archivordners und lässt sich jederzeit aus dem
+Protokoll neu aufbauen. Da er sich bei jedem Abruf vollständig ändert
+und die größte einzelne Datei ist, spart das bei jeder Sicherung
+erheblich.</p>
+
+<p><b>Sichern Sie möglichst nicht während eines Abrufs.</b> Nicht wegen
+Datenverlust, sondern wegen der Vollständigkeit: Läuft gerade ein
+Import, erwischt die Kopie einen Zwischenstand, bei dem eine Mail schon
+abgelegt, ihr Protokolleintrag aber noch nicht geschrieben ist. Die
+Prüfung würde das in der Kopie bemängeln. Die nächste Sicherung räumt
+das von selbst auf.</p>
+
+<p><b>Nach dem Zurückholen einmal prüfen.</b> Haben Sie eine Sicherung
+zurückgespielt, gehen Sie auf <i>Archiv → Journal prüfen</i>. Eine
+Cloud-Synchronisation lässt schon einmal eine Datei aus, und bei einem
+Archiv merkt man das sonst erst Jahre später beim Suchen.</p>
+
+<h3>Wo das Archiv liegen sollte</h3>
+
+<p>Möglichst nicht auf derselben Platte wie das Betriebssystem – geht
+die kaputt, wäre sonst beides weg. Eine externe Platte ist eine gute
+Wahl; sie muss nur angesteckt sein, wenn abgerufen wird. Fehlt sie,
+holt der nächste Lauf alles nach.</p>
+
+<h3>Mehrere Archive</h3>
+
+<p>Geschäftliche Post gehört in ein Geschäftsarchiv mit Fristen,
+private in ein Privatarchiv ohne. Das ist keine Ordnungsliebe: Ein
+Geschäftsarchiv bremst das Löschen jahrelang, während die DSGVO für
+Gesundheitsdaten und Ähnliches das Gegenteil verlangt. Über
+<i>Archiv → Zuletzt benutzt</i> wechseln Sie mit zwei Klicks.</p>
+
+<h3>Wenn ein Postfach nicht erreichbar war</h3>
+
+<p>Dann fehlen dessen Mails im Archiv – und Sie sollten dort im
+Mailprogramm nichts aufräumen. MailBurg sagt es Ihnen nach jedem selbst
+gestarteten Abruf. Bleibt es dabei, hilft
+<a href="#aufraeumen">Postfach aufräumen</a> weiter.</p>
+
+<h3>Suchen, die sich lohnen</h3>
+
+<p><i>hat:anhang groesse:&gt;5MB</i> – die Brocken, die Ihr Postfach
+füllen.<br>
+<i>von:finanzamt jahr:2025</i> – alles von einem Absender aus einem
+Jahr.<br>
+<i>inhalt:kündigung</i> – sucht im Text der Anhänge, nicht in der
+Mail.<br>
+<i>-newsletter rechnung</i> – Rechnungen ohne Werbung.</p>
+
+<p>Und wenn eine Suche nichts findet, obwohl es die Mail geben müsste:
+Vielleicht steckt sie in einem <a href="#scans">eingescannten PDF</a>,
+das noch nicht gelesen wurde.</p>
+"""
+
 _AUFRAEUMEN = """
 <h2>Postfach aufräumen</h2>
 
@@ -453,6 +523,7 @@ def kapitel() -> list[Kapitel]:
         Kapitel("zurueck", "Eine Mail zurückholen", _ZURUECK),
         Kapitel("aufraeumen", "Postfach aufräumen", _AUFRAEUMEN),
         Kapitel("fristen", "Geschäftsarchiv und Fristen", _FRISTEN),
+        Kapitel("tipps", "Tipps", _TIPPS),
     ]
 
 
