@@ -849,13 +849,21 @@ class KontenSeite(QWizardPage):
         self._abschliessen()
 
     def _namen_anbieten(self, zeile: KontoZeile, text: str) -> bool:
-        """Fragt, ob der beglaubigte Name verwendet werden soll."""
-        import re
+        """Fragt, ob der beglaubigte Name verwendet werden soll.
 
-        treffer = re.search(r"Mit --server (\S+) wird", text)
-        if not treffer:
+        Der Vorschlag wird eigens ermittelt und nicht aus der
+        Fehlermeldung herausgelesen: Ein Text, an dem eine Funktion hängt,
+        lässt sich nicht mehr umformulieren, ohne sie zu zerbrechen – und
+        umformuliert wird an Fehlermeldungen ständig.
+        """
+        from mailburg.core import tlsdiagnose
+
+        befund = tlsdiagnose.untersuchen(
+            zeile.konto.server, zeile.konto.port, starttls=not zeile.konto.ssl
+        )
+        if not befund.vorschlag:
             return False
-        vorschlag = treffer.group(1)
+        vorschlag = befund.vorschlag
 
         antwort = QMessageBox.question(
             self,

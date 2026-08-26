@@ -162,8 +162,9 @@ def erklaerung(server: str, befund: Befund) -> str:
         zeilen.append(
             f"Das ist der übliche Fall bei einem Massenhoster: Der Mailserver "
             f"läuft unter dem Namen des Anbieters, '{server}' zeigt nur "
-            f"dorthin. Mit --server {befund.vorschlag} wird die Verbindung "
-            f"vollständig geprüft – zum selben Server."
+            f"dorthin. Verwenden Sie stattdessen den Servernamen "
+            f"{befund.vorschlag} – das ist derselbe Rechner, nur unter dem "
+            f"Namen, für den sein Zertifikat gilt."
         )
     else:
         zeilen.append(
