@@ -685,16 +685,17 @@ class KontenSeite(QWizardPage):
 
         gefunden: list[Konto] = []
         vergeben: set[str] = set()
-        uebergangen: list[str] = []
 
         for profil in local.find_thunderbird_profiles():
             try:
                 funde = uebernahme.aus_thunderbird(profil)
             except (FileNotFoundError, OSError):
                 continue
+            # Was sich nicht über IMAP abrufen lässt, wird stillschweigend
+            # übergangen. Es aufzuzählen hieße, in einem Mailarchiv fremde
+            # Postfächer aufzulisten - darunter Testprofile ganz anderer
+            # Programme, die in MailBurg nichts verloren haben.
             brauchbar = [f for f in funde if f.brauchbar]
-            uebergangen += [f"{f.konto.name} ({f.art.upper()})" for f in funde
-                            if not f.brauchbar]
             uebernahme.namen_entzerren(brauchbar, vergeben)
             gefunden += [f.konto for f in brauchbar]
 
@@ -727,24 +728,6 @@ class KontenSeite(QWizardPage):
                 f"Post abzuholen. Jedes Postfach wird gleich einmal "
                 f"ausprobiert, damit Sie sofort sehen, ob es klappt.</p>"
             )
-            if uebergangen:
-                # Ohne die Adressen. Sie standen hier einmal ausgeschrieben,
-                # und das ist eine Zeile, die man versehentlich mit einem
-                # Bildschirmfoto weitergibt - Postfächer, die dem Anwender
-                # nicht einmal selbst gehören müssen. Wie viele es sind,
-                # genügt: Wer es genau wissen will, sieht die Liste in
-                # seinem Mailprogramm.
-                wieviele = (
-                    "Ein Postfach" if len(uebergangen) == 1
-                    else f"{len(uebergangen)} Postfächer"
-                )
-                text += (
-                    f"<p><b>Nicht dabei:</b> {wieviele} aus Thunderbird "
-                    f"nutzen Exchange und lassen sich nicht über IMAP "
-                    f"abrufen. Die Nachrichten liegen aber meist lokal vor "
-                    f"und können später aus dem Mailprogramm eingelesen "
-                    f"werden.</p>"
-                )
         else:
             text = (
                 "<p><b>Kein Thunderbird-Profil gefunden.</b> Tragen Sie Ihre "

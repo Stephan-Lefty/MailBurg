@@ -236,10 +236,18 @@ class Hauptfenster(QMainWindow):
         alle.setData(0, Qt.UserRole, "")
         self.baum.addTopLevelItem(alle)
 
+        # Angezeigt wird die Mailadresse, nicht der frei gewählte Name.
+        # "Kontakt" sagt bei drei Postfächern auf demselben Server nichts;
+        # kontakt@example.org lässt keinen Zweifel, welches gemeint ist.
+        # Gesucht wird weiterhin über den Namen - der steht so im Archiv.
+        adressen = {k.name: k.benutzer for k in Kontenliste().konten}
+
         konten: dict[str, QTreeWidgetItem] = {}
         for konto, ordner, anzahl in self.archiv.index.accounts():
             if konto not in konten:
-                eintrag = QTreeWidgetItem([konto, ""])
+                # Fällt ein Postfach später aus der Liste, bleiben seine
+                # Mails im Archiv. Dann muss der Name genügen.
+                eintrag = QTreeWidgetItem([adressen.get(konto, konto), ""])
                 eintrag.setData(0, Qt.UserRole, f"konto:{_quoten(konto)}")
                 self.baum.addTopLevelItem(eintrag)
                 konten[konto] = eintrag

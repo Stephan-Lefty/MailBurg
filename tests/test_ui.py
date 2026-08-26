@@ -1109,19 +1109,21 @@ class ZeitplanTest(unittest.TestCase):
         self.assertEqual(stand.archiv, str(self.archiv))
 
 
-class KeineFremdenAdressenTest(OberflaechenTest):
-    """Übergangene Postfächer werden gezählt, nicht ausgeschrieben.
+class KeineFremdenPostfaecherTest(OberflaechenTest):
+    """Nicht abrufbare Postfächer werden gar nicht erst erwähnt.
 
-    Der Hinweis nannte die Adressen einmal vollständig - eine Zeile, die
-    man versehentlich mit einem Bildschirmfoto weitergibt. Es können
-    Postfächer sein, die dem Anwender nicht einmal selbst gehören.
+    Der Hinweis "Nicht dabei:" zählte sie auf, samt Mailadresse. Das ist
+    eine Zeile, die man versehentlich mit einem Bildschirmfoto weitergibt -
+    und was Thunderbird kennt, gehört nicht zwangsläufig hierher: In
+    Stephans Profil standen dort Testkonten einer ganz anderen Anwendung.
     """
 
-    def test_adressen_stehen_nicht_im_hinweis(self):
+    def test_uebergangene_postfaecher_tauchen_nirgends_auf(self):
         from unittest import mock
 
         from mailburg.core import uebernahme
         from mailburg.core.accounts import Konto
+        from mailburg.sources import local
         from mailburg.ui.assistent import KontenSeite
 
         def fund(adresse, brauchbar):
@@ -1132,20 +1134,91 @@ class KeineFremdenAdressenTest(OberflaechenTest):
             eintrag.art = "ews"
             return eintrag
 
-        from mailburg.sources import local
-
         with mock.patch.object(local, "find_thunderbird_profiles",
                                return_value=["/irgendwo"]), \
              mock.patch.object(uebernahme, "aus_thunderbird", return_value=[
                  fund("gut@example.org", True),
-                 fund("geheim@firma.example", False),
-                 fund("chef@firma.example", False),
+                 fund("testprofil@fremde-app.example", False),
              ]):
             seite = KontenSeite()
-            # Geladen wird erst, wenn die Seite an die Reihe kommt.
             seite.initializePage()
 
-        gesamt = seite.herkunft.text()
-        self.assertNotIn("geheim@firma.example", gesamt)
-        self.assertNotIn("chef@firma.example", gesamt)
-        self.assertIn("2 Postfächer", gesamt)
+        text = seite.herkunft.text()
+        self.assertNotIn("testprofil@fremde-app.example", text)
+        self.assertNotIn("Nicht dabei", text)
+        self.assertEqual(len(seite.zeilen), 1, "nur das abrufbare Postfach")
+
+
+class MailadresseInDerUebersichtTest(OberflaechenTest):
+    """Der Name allein genügt nicht, wenn mehrere Postfächer gleich heißen.
+
+    "Kontakt" sagt bei drei Postfächern auf demselben Server nichts -
+    kontakt@example.org lässt keinen Zweifel.
+    """
+
+    def test_postfachbaum_zeigt_die_adresse(self):
+        import tempfile
+        from unittest import mock
+
+        from PySide6.QtCore import Qt
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui import hauptfenster as modul
+
+        konto = Konto(name="Kontakt", server="s111.example", port=143,
+                      benutzer="kontakt@example.org", ssl=False)
+
+        with tempfile.TemporaryDirectory() as ordner:
+            from mailburg.core.archive import Archive
+
+            archiv = Archive.create(pathlib.Path(ordner) / "A")
+            with mock.patch.object(modul, "Kontenliste",
+                                   lambda: mock.Mock(konten=[konto])), \
+                 mock.patch.object(type(archiv.index), "accounts",
+                                   lambda self: [("Kontakt", "INBOX", 3)]):
+                fenster = modul.Hauptfenster(archiv.root)
+                self.addCleanup(fenster.close)
+                fenster._baum_fuellen()
+
+            beschriftungen = [
+                fenster.baum.topLevelItem(i).text(0)
+                for i in range(fenster.baum.topLevelItemCount())
+            ]
+            self.assertIn("kontakt@example.org", beschriftungen)
+            self.assertNotIn("Kontakt", beschriftungen)
+
+            # Gesucht wird weiterhin über den Namen - der steht so im Archiv.
+            eintrag = next(
+                fenster.baum.topLevelItem(i)
+                for i in range(fenster.baum.topLevelItemCount())
+                if fenster.baum.topLevelItem(i).text(0) == "kontakt@example.org"
+            )
+            self.assertIn("Kontakt", eintrag.data(0, Qt.UserRole))
+            archiv.close()
+
+    def test_ohne_eintrag_in_der_kontenliste_bleibt_der_name(self):
+        # Fällt ein Postfach später aus der Liste, bleiben seine Mails im
+        # Archiv - dann ist der Name alles, was es noch gibt.
+        import tempfile
+        from unittest import mock
+
+        from mailburg.ui import hauptfenster as modul
+
+        with tempfile.TemporaryDirectory() as ordner:
+            from mailburg.core.archive import Archive
+
+            archiv = Archive.create(pathlib.Path(ordner) / "A")
+            with mock.patch.object(modul, "Kontenliste",
+                                   lambda: mock.Mock(konten=[])), \
+                 mock.patch.object(type(archiv.index), "accounts",
+                                   lambda self: [("Weggefallen", "INBOX", 1)]):
+                fenster = modul.Hauptfenster(archiv.root)
+                self.addCleanup(fenster.close)
+                fenster._baum_fuellen()
+
+            beschriftungen = [
+                fenster.baum.topLevelItem(i).text(0)
+                for i in range(fenster.baum.topLevelItemCount())
+            ]
+            self.assertIn("Weggefallen", beschriftungen)
+            archiv.close()

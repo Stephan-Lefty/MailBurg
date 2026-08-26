@@ -39,7 +39,11 @@ class Kontenverwaltung(QDialog):
         self.liste = Kontenliste()
 
         self.baum = QTreeWidget()
-        self.baum.setHeaderLabels(["Postfach", "Server", "Passwort", "Zustand"])
+        # Die Mailadresse gehört sichtbar dazu: Der Name ist frei gewählt
+        # und sagt bei mehreren Postfächern desselben Anbieters nichts.
+        self.baum.setHeaderLabels(
+            ["Postfach", "Mailadresse", "Server", "Passwort", "Zustand"]
+        )
         self.baum.setRootIsDecorated(False)
         self.baum.setAccessibleName("Eingerichtete Postfächer")
         self.baum.itemSelectionChanged.connect(self._auswahl_geaendert)
@@ -90,6 +94,7 @@ class Kontenverwaltung(QDialog):
             gemerkt = "im Schlüsselbund" if accounts.passwort_holen(konto) else "fehlt"
             eintrag = QTreeWidgetItem([
                 konto.name,
+                konto.benutzer,
                 f"{konto.server}:{konto.port}",
                 gemerkt,
                 "aktiv" if konto.aktiv else "stillgelegt",
@@ -99,7 +104,7 @@ class Kontenverwaltung(QDialog):
                 eintrag.setForeground(0, self.palette().placeholderText())
             self.baum.addTopLevelItem(eintrag)
 
-        for spalte in range(4):
+        for spalte in range(5):
             self.baum.resizeColumnToContents(spalte)
         self._auswahl_geaendert()
 
