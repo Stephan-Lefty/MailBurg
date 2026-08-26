@@ -388,6 +388,7 @@ class Hauptfenster(QMainWindow):
         adressen = {k.name: k.benutzer for k in Kontenliste().konten}
 
         konten: dict[str, QTreeWidgetItem] = {}
+        summen: dict[str, int] = {}
         for konto, ordner, anzahl in self.archiv.index.accounts():
             if konto not in konten:
                 # Fällt ein Postfach später aus der Liste, bleiben seine
@@ -401,6 +402,17 @@ class Hauptfenster(QMainWindow):
                 0, Qt.UserRole, f"konto:{_quoten(konto)} ordner:{_quoten(ordner)}"
             )
             konten[konto].addChild(unter)
+            summen[konto] = summen.get(konto, 0) + anzahl
+
+        # Die Gesamtzahl je Postfach gehört neben das Postfach. Sonst
+        # muss man den Zweig aufklappen und im Kopf addieren, um die
+        # Frage zu beantworten, die man zuerst hat: Wie viel liegt von
+        # diesem Postfach überhaupt im Archiv?
+        gesamt = 0
+        for konto, eintrag in konten.items():
+            eintrag.setText(1, f"{summen[konto]:,}".replace(",", "."))
+            gesamt += summen[konto]
+        alle.setText(1, f"{gesamt:,}".replace(",", "."))
 
         alle.setSelected(True)
         self.baum.expandItem(alle)

@@ -1526,3 +1526,52 @@ class SpaltenAufStandardTest(FenstergroesseTest):
         fenster._standardansicht()
 
         self.assertEqual(fenster.tabelle.columnWidth(1), vorher)
+
+
+class SummenImBaumTest(OberflaechenTest):
+    """Die Gesamtzahl je Postfach steht neben dem Postfach."""
+
+    def _baum(self, eintraege):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core.accounts import Konto
+        from mailburg.core.archive import Archive
+        from mailburg.ui import hauptfenster as modul
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        archiv = Archive.create(pathlib.Path(ordner.name) / "A")
+        konto = Konto(name="Kontakt", server="s", port=143,
+                      benutzer="kontakt@example.org", ssl=False)
+
+        with mock.patch.object(modul, "Kontenliste",
+                               lambda: mock.Mock(konten=[konto])), \
+             mock.patch.object(type(archiv.index), "accounts",
+                               lambda self: eintraege):
+            fenster = modul.Hauptfenster(archiv.root)
+            self.addCleanup(fenster.close)
+            fenster._baum_fuellen()
+        archiv.close()
+        return fenster.baum
+
+    def test_postfach_zeigt_die_summe_seiner_ordner(self):
+        baum = self._baum([
+            ("Kontakt", "INBOX", 9),
+            ("Kontakt", "INBOX/DialOS-Mobil", 14),
+            ("Kontakt", "Sent", 14),
+        ])
+
+        postfach = baum.topLevelItem(1)
+        self.assertEqual(postfach.text(0), "kontakt@example.org")
+        self.assertEqual(postfach.text(1), "37")
+
+    def test_alle_postfaecher_zeigt_die_gesamtsumme(self):
+        baum = self._baum([
+            ("Kontakt", "INBOX", 1000),
+            ("Kontakt", "Sent", 500),
+        ])
+
+        # Mit Tausenderpunkt: 1500 liest sich schlechter als 1.500, und
+        # in einem Archiv stehen dort schnell sechsstellige Zahlen.
+        self.assertEqual(baum.topLevelItem(0).text(1), "1.500")
