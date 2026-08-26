@@ -243,3 +243,82 @@ class TestReihenfolge(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUeberLaeufeHinweg(unittest.TestCase):
+    """Was einmal erkannt ist, wird nie wieder erkannt.
+
+    Der Textspeicher liegt neben dem Index und überlebt beides: den
+    Neuaufbau des Index und das Ende des Programms. Er gehört auch nicht
+    einem einzelnen Archiv. Damit gilt die Ersparnis über Läufe *und*
+    über Archive hinweg – wer denselben Vertrag im Geschäfts- und im
+    Privatarchiv liegen hat, zahlt ihn einmal.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        # Über addCleanup, nicht über tearDown: Die Archive müssen zuerst
+        # geschlossen werden, und Cleanups laufen in umgekehrter Folge.
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name)
+        self.gelesen: list[bytes] = []
+
+    def _lauf(self, archiv):
+        def gefaelscht(nutzlast, **_):
+            self.gelesen.append(nutzlast)
+            ergebnis = ocr.Ergebnis()
+            ergebnis.text = "Erkannt: Vollmacht über alles"
+            ergebnis.seiten = 19
+            return ergebnis
+
+        with mock.patch.object(ocr, "bereit", return_value=(True, "")), \
+                mock.patch.object(ocr, "text_aus_pdf", side_effect=gefaelscht):
+            return erkennung.durchlauf(
+                archiv, budget_sekunden=0, budget_dokumente=0, gleichzeitig=2
+            )
+
+    def _archiv_mit(self, name: str, mails: list[bytes]):
+        archiv = Archive.create(self.wo / name, name=name)
+        for nr, roh in enumerate(mails):
+            archiv.add(roh, account="probe", folder=f"INBOX/{nr}")
+        archiv.index.db.execute("UPDATE attachments SET text_zeichen = 0")
+        archiv.index.commit()
+        return archiv
+
+    def test_ein_zweiter_lauf_liest_nicht_noch_einmal(self) -> None:
+        gleich = b"%PDF-Vollmacht" + b"v" * GROSS
+        archiv = self._archiv_mit("A", [
+            mail_mit_anhang("Vollmacht", "V.pdf", gleich, tag=1),
+        ])
+        self.addCleanup(archiv.close)
+
+        self._lauf(archiv)
+        # Den Vermerk löschen, als wäre das Dokument nie erledigt worden –
+        # so entsteht dieselbe Lage wie bei einem neu aufgebauten Index.
+        archiv.index.db.execute("DELETE FROM ocr_vermerk")
+        archiv.index.commit()
+        stat = self._lauf(archiv)
+
+        self.assertEqual(len(self.gelesen), 1, "der zweite Lauf hat neu erkannt")
+        self.assertEqual(stat.gelesen, 1)
+        self.assertEqual(stat.doppelt, 1)
+
+    def test_ein_zweites_archiv_zahlt_nicht_noch_einmal(self) -> None:
+        """Derselbe Vertrag im Geschäfts- und im Privatarchiv."""
+        gleich = b"%PDF-Vertrag" + b"w" * GROSS
+        geschaeft = self._archiv_mit("Geschaeft", [
+            mail_mit_anhang("Vertrag", "V.pdf", gleich, tag=1),
+        ])
+        self.addCleanup(geschaeft.close)
+        privat = self._archiv_mit("Privat", [
+            mail_mit_anhang("Fwd: Vertrag", "V.pdf", gleich, tag=2),
+        ])
+        self.addCleanup(privat.close)
+
+        self._lauf(geschaeft)
+        stat = self._lauf(privat)
+
+        self.assertEqual(len(self.gelesen), 1)
+        self.assertEqual(stat.gelesen, 1)
+        # Und der Text ist im zweiten Archiv wirklich durchsuchbar.
+        self.assertEqual(len(privat.index.search("Vollmacht")), 1)

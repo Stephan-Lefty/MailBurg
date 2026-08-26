@@ -423,6 +423,14 @@ def durchlauf(
 
         if ergebnis.text:
             speicher.schreiben(f"{digest}-{_kennung(dateiname)}", ergebnis.text)
+            if not wiederholung:
+                # Ein zweites Mal unter dem Fingerabdruck des Anhangs.
+                # Der erste Schlüssel gehört der Mail und wird beim
+                # Neuaufbau des Index gebraucht; dieser gehört dem
+                # Dokument und erspart die Erkennung überhaupt.
+                finger = abdruck.get((digest, dateiname))
+                if finger:
+                    speicher.schreiben(finger, ergebnis.text)
             _in_index_schreiben(
                 archiv.index, digest, f"{dateiname}\n{ergebnis.text}"
             )
@@ -495,6 +503,17 @@ def durchlauf(
                 continue
             finger = hashlib.sha256(nutzlast).hexdigest()
             abdruck[d, n] = finger
+            if finger not in bekannt:
+                # Auch über Läufe und Archive hinweg. Der Textspeicher
+                # ist gemeinsam: Was im Geschäftsarchiv schon erkannt
+                # wurde, muss im Privatarchiv nicht noch einmal durch
+                # tesseract - und ein zweiter Lauf am nächsten Tag
+                # fängt nicht wieder bei null an.
+                vorrat = speicher.lesen(finger)
+                if vorrat:
+                    fertig = ocr.Ergebnis()
+                    fertig.text = vorrat
+                    bekannt[finger] = fertig
             if finger in im_buendel or finger in bekannt:
                 # Die Nutzlast wird nicht mehr gebraucht - nur der Text
                 # des Erstlings. Nicht festhalten: Bei zwanzig Megabyte
