@@ -7,17 +7,21 @@ Byte dasselbe. Wer das nicht bemerkt, lässt tesseract fünfmal über
 dieselben zwanzig Seiten laufen und bekommt fünfmal denselben Text.
 
 Aufgefallen ist es am 2026-08-26 an einem echten Geschäftsarchiv: Von
-zwölf verbliebenen Aufträgen waren es drei Dokumente. Eine
-23-MB-Vollmacht stand neunmal in der Warteschlange.
+222 erkannten Dokumenten mit 986 Seiten waren 153 Dokumente mit 691
+Seiten Abschriften bereits gelesener Anhänge. Siebzig Prozent der
+Rechenzeit – eine Stunde, von der vierzig Minuten überflüssig waren.
 
-Die Erkennung selbst wird hier nicht ausgeführt – tesseract ist auf
-einem Testrechner nicht vorauszusetzen, und was es ausrechnet, ist auch
-nicht Gegenstand dieser Tests. Ersetzt wird sie durch einen Zähler.
+Die Erkennung selbst wird hier nicht ausgeführt. tesseract ist auf einem
+Testrechner nicht vorauszusetzen, und was es ausrechnet, ist auch nicht
+Gegenstand dieser Tests. Ersetzt wird es durch einen Zähler: Die Frage
+ist nicht, *was* gelesen wurde, sondern *wie oft*.
 """
 
 from __future__ import annotations
 
+import base64
 import email.utils
+import hashlib
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -39,8 +43,6 @@ def mail_mit_anhang(betreff: str, dateiname: str, inhalt: bytes,
     datum = email.utils.format_datetime(
         datetime(2025, 3, tag, 9, 30, tzinfo=timezone.utc)
     )
-    import base64
-
     kodiert = base64.b64encode(inhalt).decode("ascii")
     return (
         f"From: Martha Mustermann <martha@example.com>\r\n"
@@ -62,52 +64,74 @@ def mail_mit_anhang(betreff: str, dateiname: str, inhalt: bytes,
 GROSS = erkennung.GROESSENSCHWELLE + 5_000
 
 
-class TestDoppelteAnhaenge(unittest.TestCase):
-    """Derselbe Anhang an mehreren Mails wird nur einmal gelesen."""
+class ErkennungsTestFall(unittest.TestCase):
+    """Gemeinsame Grundlage: ein eigener Textspeicher je Test.
+
+    Der Textspeicher gehört keinem Archiv – das ist seine Stärke im
+    Betrieb und seine Tücke im Test. Ohne Trennung erbt ein Test den
+    Vorrat seiner Vorgänger und bekommt »schon erkannt« zu sehen, wo er
+    »frisch erkannt« prüfen wollte. Das ist beim Schreiben dieser Datei
+    einmal passiert und sah aus wie ein Fehler im Programm.
+    """
 
     def setUp(self) -> None:
         self.ordner = tempfile.TemporaryDirectory()
-        self.archiv = Archive.create(Path(self.ordner.name) / "A", name="Probe")
+        # Über addCleanup, nicht über tearDown: Die Archive müssen zuerst
+        # geschlossen werden, und Cleanups laufen in umgekehrter Folge.
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name)
         self.gelesen: list[bytes] = []
 
-    def tearDown(self) -> None:
-        self.archiv.close()
-        self.ordner.cleanup()
+        flicken = mock.patch.object(
+            erkennung.paths, "data_dir", return_value=self.wo / "textspeicher"
+        )
+        flicken.start()
+        self.addCleanup(flicken.stop)
 
-    def _ablegen(self, mails: list[bytes]) -> None:
+    # ------------------------------------------------------------- Werkzeug
+
+    def _archiv(self, name: str, mails: list[bytes]):
+        archiv = Archive.create(self.wo / name, name=name)
+        self.addCleanup(archiv.close)
         for nr, roh in enumerate(mails):
-            self.archiv.add(roh, account="probe", folder=f"INBOX/{nr}")
+            archiv.add(roh, account="probe", folder=f"INBOX/{nr}")
         # Die Anhänge als »ohne Textebene« markieren. Im Betrieb macht
         # das die Extraktion beim Archivieren; hier wären es Attrappen,
         # aus denen poppler nie Text holen könnte.
-        self.archiv.index.db.execute("UPDATE attachments SET text_zeichen = 0")
-        self.archiv.index.commit()
+        archiv.index.db.execute("UPDATE attachments SET text_zeichen = 0")
+        archiv.index.commit()
+        return archiv
 
-    def _durchlauf(self, **kw):
+    def _lauf(self, archiv, *, gleichzeitig: int = 1,
+              text: str = "Erkannt: Vollmacht", seiten: int = 3):
+        """Ein vollständiger Durchlauf, mit einem Zähler statt tesseract."""
         def gefaelscht(nutzlast, **_):
             self.gelesen.append(nutzlast)
             ergebnis = ocr.Ergebnis()
-            ergebnis.text = f"Erkannt: {len(nutzlast)} Bytes"
-            ergebnis.seiten = 3
+            ergebnis.text = text
+            ergebnis.seiten = seiten
             return ergebnis
 
         with mock.patch.object(ocr, "bereit", return_value=(True, "")), \
                 mock.patch.object(ocr, "text_aus_pdf", side_effect=gefaelscht):
             return erkennung.durchlauf(
-                self.archiv, budget_sekunden=0, budget_dokumente=0, **kw
+                archiv, budget_sekunden=0, budget_dokumente=0,
+                gleichzeitig=gleichzeitig,
             )
 
-    # --------------------------------------------------------------- Kern
+
+class TestDoppelteAnhaenge(ErkennungsTestFall):
+    """Derselbe Anhang an mehreren Mails wird nur einmal gelesen."""
 
     def test_derselbe_anhang_wird_nur_einmal_gelesen(self) -> None:
         gleich = b"%PDF-Vollmacht" + b"x" * GROSS
-        self._ablegen([
+        archiv = self._archiv("A", [
             mail_mit_anhang("Vollmacht", "Vollmacht.pdf", gleich, tag=1),
             mail_mit_anhang("Fwd: Vollmacht", "Vollmacht.pdf", gleich, tag=2),
             mail_mit_anhang("Re: Vollmacht", "Vollmacht.pdf", gleich, tag=3),
         ])
 
-        stat = self._durchlauf(gleichzeitig=1)
+        stat = self._lauf(archiv)
 
         self.assertEqual(len(self.gelesen), 1, "tesseract lief mehr als einmal")
         self.assertEqual(stat.gelesen, 3, "nicht alle drei Mails gelten als erledigt")
@@ -120,15 +144,15 @@ class TestDoppelteAnhaenge(unittest.TestCase):
 
         Damit landen sie im selben Bündel – wo ein Zwischenspeicher, der
         erst nach dem Bündel gefüllt wird, zu spät käme. Genau dieser
-        Fall wäre in der Praxis der Regelfall.
+        Fall ist in der Praxis der Regelfall.
         """
         gleich = b"%PDF-Zeugnismappe" + b"y" * GROSS
-        self._ablegen([
+        archiv = self._archiv("A", [
             mail_mit_anhang(f"Mappe {i}", "Zeugnismappe.pdf", gleich, tag=i)
             for i in range(1, 5)
         ])
 
-        stat = self._durchlauf(gleichzeitig=4)
+        stat = self._lauf(archiv, gleichzeitig=4)
 
         self.assertEqual(len(self.gelesen), 1)
         self.assertEqual(stat.gelesen, 4)
@@ -136,14 +160,14 @@ class TestDoppelteAnhaenge(unittest.TestCase):
 
     def test_verschiedene_anhaenge_werden_einzeln_gelesen(self) -> None:
         """Der gleiche Dateiname macht noch keine Dublette."""
-        self._ablegen([
+        archiv = self._archiv("A", [
             mail_mit_anhang("Rechnung März", "Rechnung.pdf",
                             b"%PDF-A" + b"a" * GROSS, tag=1),
             mail_mit_anhang("Rechnung April", "Rechnung.pdf",
                             b"%PDF-B" + b"b" * GROSS, tag=2),
         ])
 
-        stat = self._durchlauf(gleichzeitig=2)
+        stat = self._lauf(archiv, gleichzeitig=2)
 
         self.assertEqual(len(self.gelesen), 2)
         self.assertEqual(stat.gelesen, 2)
@@ -154,20 +178,19 @@ class TestDoppelteAnhaenge(unittest.TestCase):
         """Der Sinn der Sache: Auch die Abschriften muss man finden.
 
         Gespart wird die Erkennung, nicht der Eintrag im Suchindex. Der
-        hängt an der Mail – wer nach dem Inhalt sucht, soll alle drei
-        Mails finden, nicht nur die zuerst gelesene.
+        hängt an der Mail – wer nach dem Inhalt sucht, soll beide Mails
+        finden, nicht nur die zuerst gelesene.
         """
         gleich = b"%PDF-Kuendigung" + b"z" * GROSS
-        self._ablegen([
+        archiv = self._archiv("A", [
             mail_mit_anhang("Kündigung", "K.pdf", gleich, tag=1),
             mail_mit_anhang("Fwd: Kündigung", "K.pdf", gleich, tag=2),
         ])
 
-        self._durchlauf(gleichzeitig=2)
+        self._lauf(archiv, gleichzeitig=2, text="Erkannt: hiermit kündige ich")
 
-        treffer = self.archiv.index.search("Erkannt")
         self.assertEqual(
-            len(treffer), 2,
+            len(archiv.index.search("kündige")), 2,
             "die Abschrift ist nicht durchsuchbar geworden",
         )
 
@@ -184,113 +207,33 @@ class TestDoppelteAnhaenge(unittest.TestCase):
         wird nichts vermerkt und der nächste Lauf beginnt von vorn.
         """
         gleich = b"%PDF-Kaputt" + b"q" * GROSS
-        self._ablegen([
+        archiv = self._archiv("A", [
             mail_mit_anhang("Kaputt", "K.pdf", gleich, tag=1),
             mail_mit_anhang("Fwd: Kaputt", "K.pdf", gleich, tag=2),
         ])
 
-        def leer(nutzlast, **_):
-            self.gelesen.append(nutzlast)
-            ergebnis = ocr.Ergebnis()
-            ergebnis.fehler = "nichts zu erkennen"
-            return ergebnis
-
-        with mock.patch.object(ocr, "bereit", return_value=(True, "")), \
-                mock.patch.object(ocr, "text_aus_pdf", side_effect=leer):
-            stat = erkennung.durchlauf(
-                self.archiv, budget_sekunden=0, budget_dokumente=0,
-                gleichzeitig=2,
-            )
+        stat = self._lauf(archiv, gleichzeitig=2, text="", seiten=0)
 
         self.assertEqual(stat.gescheitert, 2)
         self.assertEqual(len(self.gelesen), 1, "die Abschrift wurde erneut gelesen")
         self.assertEqual(stat.offen_danach, 0)
 
 
-class TestReihenfolge(unittest.TestCase):
-    """Die kleinsten Dokumente zuerst."""
-
-    def setUp(self) -> None:
-        self.ordner = tempfile.TemporaryDirectory()
-        self.archiv = Archive.create(Path(self.ordner.name) / "A", name="Probe")
-
-    def tearDown(self) -> None:
-        self.archiv.close()
-        self.ordner.cleanup()
-
-    def test_kleine_vor_grossen(self) -> None:
-        """Wer abbricht, soll möglichst viel erledigt haben.
-
-        Ein 20-MB-Scan kann eine Viertelstunde dauern. Steht er vorn,
-        passiert in dieser Viertelstunde sichtbar nichts.
-        """
-        for name, groesse in (("gross", GROSS * 4), ("klein", GROSS),
-                              ("mittel", GROSS * 2)):
-            self.archiv.add(
-                mail_mit_anhang(name, f"{name}.pdf", b"%PDF" + b"x" * groesse),
-                account="probe", folder="INBOX",
-            )
-        self.archiv.index.db.execute("UPDATE attachments SET text_zeichen = 0")
-        self.archiv.index.commit()
-
-        offen = erkennung.Warteschlange(self.archiv.index).offen(grenze=10)
-
-        self.assertEqual(
-            [n for _, _, n in offen],
-            ["klein.pdf", "mittel.pdf", "gross.pdf"],
-        )
-
-
-if __name__ == "__main__":
-    unittest.main()
-
-
-class TestUeberLaeufeHinweg(unittest.TestCase):
+class TestUeberLaeufeHinweg(ErkennungsTestFall):
     """Was einmal erkannt ist, wird nie wieder erkannt.
 
     Der Textspeicher liegt neben dem Index und überlebt beides: den
-    Neuaufbau des Index und das Ende des Programms. Er gehört auch nicht
-    einem einzelnen Archiv. Damit gilt die Ersparnis über Läufe *und*
+    Neuaufbau des Index und das Ende des Programms. Er gehört auch
+    keinem einzelnen Archiv. Damit gilt die Ersparnis über Läufe *und*
     über Archive hinweg – wer denselben Vertrag im Geschäfts- und im
     Privatarchiv liegen hat, zahlt ihn einmal.
     """
 
-    def setUp(self) -> None:
-        self.ordner = tempfile.TemporaryDirectory()
-        # Über addCleanup, nicht über tearDown: Die Archive müssen zuerst
-        # geschlossen werden, und Cleanups laufen in umgekehrter Folge.
-        self.addCleanup(self.ordner.cleanup)
-        self.wo = Path(self.ordner.name)
-        self.gelesen: list[bytes] = []
-
-    def _lauf(self, archiv):
-        def gefaelscht(nutzlast, **_):
-            self.gelesen.append(nutzlast)
-            ergebnis = ocr.Ergebnis()
-            ergebnis.text = "Erkannt: Vollmacht über alles"
-            ergebnis.seiten = 19
-            return ergebnis
-
-        with mock.patch.object(ocr, "bereit", return_value=(True, "")), \
-                mock.patch.object(ocr, "text_aus_pdf", side_effect=gefaelscht):
-            return erkennung.durchlauf(
-                archiv, budget_sekunden=0, budget_dokumente=0, gleichzeitig=2
-            )
-
-    def _archiv_mit(self, name: str, mails: list[bytes]):
-        archiv = Archive.create(self.wo / name, name=name)
-        for nr, roh in enumerate(mails):
-            archiv.add(roh, account="probe", folder=f"INBOX/{nr}")
-        archiv.index.db.execute("UPDATE attachments SET text_zeichen = 0")
-        archiv.index.commit()
-        return archiv
-
     def test_ein_zweiter_lauf_liest_nicht_noch_einmal(self) -> None:
         gleich = b"%PDF-Vollmacht" + b"v" * GROSS
-        archiv = self._archiv_mit("A", [
+        archiv = self._archiv("A", [
             mail_mit_anhang("Vollmacht", "V.pdf", gleich, tag=1),
         ])
-        self.addCleanup(archiv.close)
 
         self._lauf(archiv)
         # Den Vermerk löschen, als wäre das Dokument nie erledigt worden –
@@ -306,19 +249,117 @@ class TestUeberLaeufeHinweg(unittest.TestCase):
     def test_ein_zweites_archiv_zahlt_nicht_noch_einmal(self) -> None:
         """Derselbe Vertrag im Geschäfts- und im Privatarchiv."""
         gleich = b"%PDF-Vertrag" + b"w" * GROSS
-        geschaeft = self._archiv_mit("Geschaeft", [
+        geschaeft = self._archiv("Geschaeft", [
             mail_mit_anhang("Vertrag", "V.pdf", gleich, tag=1),
         ])
-        self.addCleanup(geschaeft.close)
-        privat = self._archiv_mit("Privat", [
+        privat = self._archiv("Privat", [
             mail_mit_anhang("Fwd: Vertrag", "V.pdf", gleich, tag=2),
         ])
-        self.addCleanup(privat.close)
 
-        self._lauf(geschaeft)
-        stat = self._lauf(privat)
+        self._lauf(geschaeft, text="Erkannt: Mietvertrag")
+        stat = self._lauf(privat, text="Erkannt: Mietvertrag")
 
         self.assertEqual(len(self.gelesen), 1)
         self.assertEqual(stat.gelesen, 1)
         # Und der Text ist im zweiten Archiv wirklich durchsuchbar.
-        self.assertEqual(len(privat.index.search("Vollmacht")), 1)
+        self.assertEqual(len(privat.index.search("Mietvertrag")), 1)
+
+
+class TestVorratNachtraeglich(ErkennungsTestFall):
+    """Wer die Texterkennung vor der Dublettenprüfung laufen ließ.
+
+    Der Text ist da, aber unter dem Schlüssel der Mail. Unter dem des
+    Dokuments – dem einzigen, unter dem ein späterer Lauf ihn suchen
+    würde – steht nichts. ``vorrat_aufbauen`` holt das nach, ohne
+    irgendetwas neu zu erkennen.
+    """
+
+    ANHANG = b"%PDF-Generalvollmacht" + b"g" * GROSS
+
+    def _alten_zustand_herstellen(self) -> str:
+        """Entfernt den Eintrag unter dem Fingerabdruck des Dokuments.
+
+        So sah der Textspeicher aus, bevor es diesen zweiten Schlüssel
+        gab: Der Text ist vorhanden, aber nicht auffindbar.
+        """
+        finger = hashlib.sha256(self.ANHANG).hexdigest()
+        erkennung.Textspeicher()._pfad(finger).unlink()
+        return finger
+
+    def test_der_vorrat_entsteht_ohne_neue_erkennung(self) -> None:
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Vollmacht", "V.pdf", self.ANHANG, tag=1),
+        ])
+        self._lauf(archiv)
+        finger = self._alten_zustand_herstellen()
+        self.assertFalse(erkennung.Textspeicher().hat(finger))
+
+        abgelegt, ohne = erkennung.vorrat_aufbauen(archiv)
+
+        self.assertEqual(abgelegt, 1)
+        self.assertEqual(ohne, 0)
+        self.assertTrue(erkennung.Textspeicher().hat(finger))
+        self.assertEqual(len(self.gelesen), 1, "es wurde neu erkannt")
+
+    def test_danach_zahlt_ein_zweites_archiv_nicht_mehr(self) -> None:
+        """Der Zweck der Übung – nachgewiesen am zweiten Archiv."""
+        erstes = self._archiv("Geschaeft", [
+            mail_mit_anhang("Vollmacht", "V.pdf", self.ANHANG, tag=1),
+        ])
+        self._lauf(erstes, text="Erkannt: Generalvollmacht")
+        self._alten_zustand_herstellen()
+
+        erkennung.vorrat_aufbauen(erstes)
+
+        zweites = self._archiv("Privat", [
+            mail_mit_anhang("Fwd: Vollmacht", "V.pdf", self.ANHANG, tag=2),
+        ])
+        stat = self._lauf(zweites, text="Erkannt: Generalvollmacht")
+
+        self.assertEqual(len(self.gelesen), 1, "das zweite Archiv hat neu erkannt")
+        self.assertEqual(stat.gelesen, 1)
+        self.assertEqual(len(zweites.index.search("Generalvollmacht")), 1)
+
+    def test_ein_verwaister_vermerk_stoert_nicht(self) -> None:
+        """Zu einer gelöschten Mail gibt es nichts mehr zuzuordnen."""
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Vollmacht", "V.pdf", self.ANHANG, tag=1),
+        ])
+        self._lauf(archiv)
+        archiv.index.db.execute(
+            "INSERT INTO ocr_vermerk (hash, dateiname, zustand, seiten) "
+            "SELECT hash, 'weg.pdf', 'erledigt', 3 FROM messages LIMIT 1"
+        )
+        archiv.index.commit()
+
+        abgelegt, ohne = erkennung.vorrat_aufbauen(archiv)
+
+        self.assertEqual(ohne, 1)
+        self.assertEqual(abgelegt, 0, "der vorhandene lag schon im Vorrat")
+
+
+class TestReihenfolge(ErkennungsTestFall):
+    """Die kleinsten Dokumente zuerst."""
+
+    def test_kleine_vor_grossen(self) -> None:
+        """Wer abbricht, soll möglichst viel erledigt haben.
+
+        Ein 20-MB-Scan kann eine Viertelstunde dauern. Steht er vorn,
+        passiert in dieser Viertelstunde sichtbar nichts.
+        """
+        archiv = self._archiv("A", [
+            mail_mit_anhang(name, f"{name}.pdf", b"%PDF" + b"x" * groesse)
+            for name, groesse in (("gross", GROSS * 4), ("klein", GROSS),
+                                  ("mittel", GROSS * 2))
+        ])
+
+        offen = erkennung.Warteschlange(archiv.index).offen(grenze=10)
+
+        self.assertEqual(
+            [n for _, _, n in offen],
+            ["klein.pdf", "mittel.pdf", "gross.pdf"],
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

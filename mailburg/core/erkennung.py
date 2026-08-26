@@ -564,6 +564,83 @@ def durchlauf(
     return stat
 
 
+def vorrat_aufbauen(archiv, *, fortschritt=None) -> tuple[int, int]:
+    """Legt bereits erkannten Text unter dem Fingerabdruck des Anhangs ab.
+
+    Der Textspeicher kennt zwei Schlüssel für dieselbe Sache. Der ältere
+    gehört der *Mail* – unter ihm findet der Neuaufbau des Index den
+    Text wieder. Der jüngere gehört dem *Dokument*: Unter ihm erkennt
+    ein späterer Lauf, dass dieser Anhang schon gelesen wurde, ganz
+    gleich an welcher Mail er hängt und in welchem Archiv.
+
+    Wer die Texterkennung schon laufen ließ, bevor es den zweiten
+    Schlüssel gab, hat den Text – aber nicht den Zugriff darauf. Diese
+    Funktion holt das nach. Sie erkennt nichts neu: Sie liest die Mails
+    noch einmal, bildet den Fingerabdruck ihrer Anhänge und legt den
+    vorhandenen Text ein zweites Mal ab. Das kostet Minuten statt
+    Stunden.
+
+    Zurück kommt, wie viele Einträge dazukamen und wie viele Vermerke
+    sich nicht zuordnen ließen – etwa weil die Mail inzwischen gelöscht
+    wurde.
+    """
+    from mailburg.extract import message as message_modul
+
+    speicher = Textspeicher()
+    zeilen = archiv.index.db.execute(
+        """SELECT v.hash, v.dateiname, m.bucket
+             FROM ocr_vermerk v
+             JOIN messages m ON m.hash = v.hash
+            WHERE v.zustand = 'erledigt'
+            ORDER BY v.hash"""
+    ).fetchall()
+
+    neu_abgelegt = 0
+    ohne_zuordnung = 0
+    letzter = None
+    zerlegt = None
+
+    for nr, zeile in enumerate(zeilen, start=1):
+        digest, dateiname, bucket = zeile[0], zeile[1], zeile[2]
+        text = speicher.lesen(f"{digest}-{_kennung(dateiname)}")
+        if not text:
+            ohne_zuordnung += 1
+            continue
+
+        # Nach Mail sortiert: Eine Mail mit fünf Anhängen wird einmal
+        # geladen, nicht fünfmal.
+        if digest != letzter:
+            try:
+                zerlegt = message_modul.parse(
+                    archiv.store.get(digest, bucket), with_payloads=True
+                )
+            except (FileNotFoundError, ValueError, OSError):
+                zerlegt = None
+            letzter = digest
+        if zerlegt is None:
+            ohne_zuordnung += 1
+            continue
+
+        anhang = next(
+            (a for a in zerlegt.attachments
+             if a.filename == dateiname and a.payload),
+            None,
+        )
+        if anhang is None:
+            ohne_zuordnung += 1
+            continue
+
+        finger = hashlib.sha256(anhang.payload).hexdigest()
+        if not speicher.hat(finger):
+            speicher.schreiben(finger, text)
+            neu_abgelegt += 1
+
+        if fortschritt:
+            fortschritt(nr, len(zeilen), neu_abgelegt)
+
+    return neu_abgelegt, ohne_zuordnung
+
+
 def _in_index_schreiben(index, digest: str, text: str) -> None:
     """Hängt den erkannten Text an den Suchindex der Mail an.
 

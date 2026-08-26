@@ -652,6 +652,33 @@ def cmd_abgleich(args: argparse.Namespace) -> int:
     return 1 if bedenklich else 0
 
 
+def cmd_vorrat(args: argparse.Namespace) -> int:
+    """Macht schon erkannten Text für künftige Läufe wiederverwendbar."""
+    from mailburg.core import erkennung
+
+    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+        print("Der schon erkannte Text wird ein zweites Mal abgelegt –")
+        print("unter dem Fingerabdruck des Anhangs statt dem der Mail.")
+        print("Es wird nichts neu erkannt.")
+        print()
+
+        def fortschritt(nr, gesamt, abgelegt) -> None:
+            print(f"  … {nr} von {gesamt} geprüft, {abgelegt} abgelegt",
+                  end="\r", flush=True)
+
+        abgelegt, ohne = erkennung.vorrat_aufbauen(
+            archive, fortschritt=fortschritt
+        )
+
+        print(" " * 60, end="\r")
+        print(f"Fertig: {abgelegt} Dokumente im Vorrat.")
+        if ohne:
+            # Kein Fehler, aber erwähnenswert: Meist sind es Vermerke zu
+            # Mails, die inzwischen gelöscht wurden.
+            print(f"{ohne} Vermerke ließen sich nicht zuordnen.")
+    return 0
+
+
 def cmd_texterkennung(args: argparse.Namespace) -> int:
     """Macht eingescannte PDF durchsuchbar."""
     from mailburg.core import erkennung
@@ -1084,6 +1111,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Zeitgrenze für diesen Lauf (Standard: 120)",
     )
     p.set_defaults(func=cmd_texterkennung)
+
+    p = subparsers.add_parser(
+        "vorrat",
+        help="schon erkannten Text für künftige Läufe nutzbar machen",
+        description=(
+            "Ein Anhang, der an mehreren Mails hängt, wird nur einmal "
+            "gelesen. Erkannt wird er unter dem Fingerabdruck des "
+            "Dokuments – wer die Texterkennung laufen ließ, bevor es "
+            "diesen Schlüssel gab, hat den Text, aber nicht den Zugriff "
+            "darauf. Dieser Befehl holt das nach. Er erkennt nichts neu."
+        ),
+    )
+    p.add_argument("archiv", help="Pfad zum Archiv")
+    p.set_defaults(func=cmd_vorrat)
 
     p = subparsers.add_parser("suchen", help="das Archiv durchsuchen")
     p.add_argument("archiv")
