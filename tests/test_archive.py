@@ -787,3 +787,27 @@ class SicherungsnamenTest(unittest.TestCase):
         quelle = inspect.getsource(sicherung.packen)
         self.assertIn("unfertig", quelle)
         self.assertIn("vorlaeufig.replace(ziel)", quelle)
+
+
+class SicherungsnameAusdruecklichTest(unittest.TestCase):
+    """Der Dateiname folgt nicht zwingend dem Archivnamen."""
+
+    def test_name_lässt_sich_vorgeben(self):
+        # Stephans Archiv heißt intern "Mailarchiv", die Sicherung sollte
+        # aber "MailBurg-Geschaeftsarchiv" heißen. Ohne diese Angabe
+        # bekommt man einen Dateinamen, den man hinterher von Hand
+        # richtigstellt - und beim nächsten Lauf wieder.
+        from mailburg.core.sicherung import dateiname
+
+        self.assertEqual(
+            dateiname("Geschaeftsarchiv").split(".")[0],
+            "MailBurg-Geschaeftsarchiv",
+        )
+
+    def test_die_kommandozeile_kennt_den_schalter(self):
+        from mailburg.__main__ import build_parser
+
+        args = build_parser().parse_args(
+            ["sichern", "--name", "Geschaeftsarchiv", "A", "B"]
+        )
+        self.assertEqual(args.name, "Geschaeftsarchiv")

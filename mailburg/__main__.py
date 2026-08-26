@@ -840,8 +840,10 @@ def cmd_sichern(args) -> int:
     # lässt sich derselbe Befehl täglich aufrufen, ohne dass eine
     # Sicherung die vorige überschreibt.
     if ziel.is_dir() or not ziel.suffix:
-        with Archive.open(archiv_pfad, exclusive=False) as archiv:
-            name = archiv.name
+        name = args.name
+        if not name:
+            with Archive.open(archiv_pfad, exclusive=False) as archiv:
+                name = archiv.name
         ziel = ziel / (
             sicherung.dateiname(name) if args.ersetzen
             else sicherung.vorschlag(archiv_pfad, name)
@@ -1129,6 +1131,13 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "nur die letzten ANZAHL Sicherungen im Zielverzeichnis behalten "
             "(0 = alle behalten)"
+        ),
+    )
+    p.add_argument(
+        "--name", default="", metavar="NAME",
+        help=(
+            "Name für die Sicherungsdatei statt des Archivnamens – etwa "
+            "»Geschaeftsarchiv«"
         ),
     )
     p.add_argument(
