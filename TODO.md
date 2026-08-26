@@ -82,6 +82,13 @@ wurde.
   Systempalette lösen lässt – eigene Farben zu setzen bricht
   Hochkontrast-Themen, und das wäre für dieselbe Zielgruppe schlimmer.
 
+  **Für den 2026-08-27 verabredet.** Vorgehen: Änderung und Screenshots
+  in hell und dunkel hier erzeugen, Stephan prüft die Bilder, und erst
+  danach installiert er einmal auf dem Debian-Rechner und sieht es am
+  14-Zoll-Gerät an. Ein Zyklus statt fünf – was sich von hier aus nicht
+  beurteilen lässt, ist die Wirkung auf dem echten Panel bei echtem
+  Sitzabstand.
+
 - [ ] **Wie stabil läuft MailBurg im Dauerbetrieb?** Die Frage, an der
   alles Weitere hängt (Stephan, 2026-08-26). Zwei Archive laufen seit dem
   2026-08-26 mit Zeitplan; zu beobachten sind Abrufe, die hängenbleiben,
