@@ -1072,27 +1072,59 @@ class ZeitplanTest(unittest.TestCase):
             flicken.start()
             self.addCleanup(flicken.stop)
 
+    def _einheit(self):
+        """Der Name enthält das Archiv – eine eigene Einheit je Archiv.
+
+        Mit einer festen Einheit überschrieb der zweite Zeitplan den
+        ersten. Wer geschäftlich und privat trennt, hätte am Ende nur
+        ein beliefertes Archiv gehabt und es nicht bemerkt.
+        """
+        return self.zeitplan._abrufeinheit(self.archiv)
+
     def test_zeitplan_wird_angelegt_und_eingeschaltet(self):
         geklappt, text = self.zeitplan.einrichten(self.archiv, 30)
 
         self.assertTrue(geklappt, text)
-        dienst = (self.dienste / "mailburg-abruf.service").read_text(encoding="utf-8")
-        uhr = (self.dienste / "mailburg-abruf.timer").read_text(encoding="utf-8")
+        einheit = self._einheit()
+        self.assertIn(self.archiv.name.lower(), einheit)
+        dienst = (self.dienste / f"{einheit}.service").read_text(encoding="utf-8")
+        uhr = (self.dienste / f"{einheit}.timer").read_text(encoding="utf-8")
 
         self.assertIn(str(self.archiv), dienst)
         self.assertIn("OnUnitActiveSec=30min", uhr)
         # Ohne vollen Pfad liefe der Abruf nie: Ein Dienst startet ohne die
         # PATH-Ergänzungen einer Anmeldesitzung.
         self.assertIn("/", dienst.split("ExecStart=")[1].split()[0])
-        self.assertIn(("enable", "--now", "mailburg-abruf.timer"), self.aufrufe)
+        self.assertIn(("enable", "--now", f"{einheit}.timer"), self.aufrufe)
 
     def test_abschalten_raeumt_die_dateien_weg(self):
         self.zeitplan.einrichten(self.archiv, 30)
-        geklappt, _ = self.zeitplan.abschalten()
+        geklappt, _ = self.zeitplan.abschalten(self.archiv)
 
         self.assertTrue(geklappt)
-        self.assertFalse((self.dienste / "mailburg-abruf.timer").exists())
-        self.assertFalse((self.dienste / "mailburg-abruf.service").exists())
+        self.assertFalse((self.dienste / f"{self._einheit()}.timer").exists())
+        self.assertFalse((self.dienste / f"{self._einheit()}.service").exists())
+
+    def test_zwei_archive_bekommen_zwei_zeitplaene(self):
+        """Der Fehler, der lange unbemerkt geblieben wäre.
+
+        Mit einer festen Einheit überschrieb das Einrichten des zweiten
+        Zeitplans den ersten. Danach wurde nur noch ein Archiv beliefert –
+        und weil das andere ja weiterhin dalag, fiel es niemandem auf.
+        """
+        zweites = pathlib.Path(self.ordner.name) / "Zweitarchiv"
+        zweites.mkdir()
+        (zweites / "archive.json").write_text("{}", encoding="utf-8")
+
+        self.zeitplan.einrichten(self.archiv, 30)
+        self.zeitplan.einrichten(zweites, 60)
+
+        uhren = sorted(p.name for p in self.dienste.glob("*.timer"))
+        self.assertEqual(len(uhren), 2, uhren)
+        # Und jeder zeigt auf sein eigenes Archiv.
+        for pfad in (self.archiv, zweites):
+            dienst = (self.dienste / f"{self.zeitplan._abrufeinheit(pfad)}.service")
+            self.assertIn(str(pfad), dienst.read_text(encoding="utf-8"))
 
     def test_ohne_archiv_wird_nichts_angelegt(self):
         leer = pathlib.Path(self.ordner.name) / "leer"
@@ -1105,7 +1137,7 @@ class ZeitplanTest(unittest.TestCase):
 
     def test_takt_wird_wieder_ausgelesen(self):
         self.zeitplan.einrichten(self.archiv, 240)
-        stand = self.zeitplan.zustand()
+        stand = self.zeitplan.zustand(self.archiv)
 
         self.assertEqual(stand.takt, 240)
         self.assertEqual(stand.archiv, str(self.archiv))

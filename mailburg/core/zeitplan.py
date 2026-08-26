@@ -104,6 +104,19 @@ def _mailburg_befehl() -> str:
     return str(Path.home() / ".local" / "bin" / "mailburg")
 
 
+def _abrufeinheit(archiv: Path) -> str:
+    """Eine eigene Abrufeinheit je Archiv.
+
+    Dieselbe Überlegung wie bei :func:`_einheitsname` für die Sicherung –
+    und dieselbe Lücke, die dort schon geschlossen war und hier nicht.
+    Mit einer festen Einheit überschrieb das Einrichten des zweiten
+    Zeitplans den ersten: Nur ein Archiv wurde noch beliefert, und
+    bemerkt hätte man es erst, wenn dort etwas fehlt.
+    """
+    kurz = "".join(z if z.isalnum() else "-" for z in archiv.name).strip("-")
+    return f"{EINHEIT}-{kurz.lower() or 'archiv'}"
+
+
 def einrichten(archiv: Path | str, takt: int = STANDARDTAKT) -> tuple[bool, str]:
     """Legt den Zeitplan an und schaltet ihn ein."""
     geht, grund = moeglich()
@@ -114,11 +127,12 @@ def einrichten(archiv: Path | str, takt: int = STANDARDTAKT) -> tuple[bool, str]
     if not (archiv / "archive.json").is_file():
         return False, f"In {archiv} liegt kein Archiv."
     takt = max(5, int(takt))
+    einheit = _abrufeinheit(archiv)
 
     DIENSTE.mkdir(parents=True, exist_ok=True)
-    (DIENSTE / f"{EINHEIT}.service").write_text(
+    (DIENSTE / f"{einheit}.service").write_text(
         f"""[Unit]
-Description=MailBurg: neue Mails ins Archiv holen
+Description=MailBurg: neue Mails nach {archiv.name} holen
 # Ohne Netz braucht der Abruf gar nicht erst anzulaufen.
 After=network-online.target
 
@@ -129,9 +143,9 @@ Environment=PYTHONUNBUFFERED=1
 """,
         encoding="utf-8",
     )
-    (DIENSTE / f"{EINHEIT}.timer").write_text(
+    (DIENSTE / f"{einheit}.timer").write_text(
         f"""[Unit]
-Description=MailBurg alle {takt} Minuten abrufen
+Description=MailBurg alle {takt} Minuten nach {archiv.name} abrufen
 
 [Timer]
 # Nicht sofort beim Anmelden: Erst soll der Rechner hochkommen.
@@ -151,19 +165,24 @@ WantedBy=timers.target
     )
 
     _systemctl("daemon-reload")
-    ergebnis = _systemctl("enable", "--now", f"{EINHEIT}.timer")
+    ergebnis = _systemctl("enable", "--now", f"{einheit}.timer")
     if ergebnis.returncode != 0:
         return False, (ergebnis.stderr or "").strip() or "Der Zeitplan ließ sich nicht einschalten."
     return True, f"Abruf eingerichtet: alle {takt} Minuten, solange Sie angemeldet sind."
 
 
-def abschalten() -> tuple[bool, str]:
-    """Nimmt den Zeitplan zurück. Das Archiv bleibt selbstverständlich."""
+def abschalten(archiv: Path | str | None = None) -> tuple[bool, str]:
+    """Nimmt den Zeitplan zurück. Das Archiv bleibt selbstverständlich.
+
+    Ohne Archiv wird die alte, archivlose Einheit entfernt – die aus der
+    Zeit, als es nur einen Zeitplan für alles gab.
+    """
     geht, grund = moeglich()
     if not geht:
         return False, grund
-    _systemctl("disable", "--now", f"{EINHEIT}.timer")
-    for datei in (f"{EINHEIT}.timer", f"{EINHEIT}.service"):
+    einheit = _abrufeinheit(Path(archiv).expanduser().resolve()) if archiv else EINHEIT
+    _systemctl("disable", "--now", f"{einheit}.timer")
+    for datei in (f"{einheit}.timer", f"{einheit}.service"):
         (DIENSTE / datei).unlink(missing_ok=True)
     _systemctl("daemon-reload")
     return True, "Der regelmäßige Abruf ist abgeschaltet."
@@ -284,22 +303,25 @@ def sicherung_zustand(archiv: Path | str | None = None) -> Zustand:
     return stand
 
 
-def zustand() -> Zustand:
+def zustand(archiv: Path | str | None = None) -> Zustand:
     """Was gerade eingerichtet ist – für die Anzeige in den Einstellungen."""
     geht, grund = moeglich()
     stand = Zustand(moeglich=geht, grund=grund)
     if not geht:
         return stand
 
-    stand.laeuft = _systemctl("is-enabled", f"{EINHEIT}.timer").stdout.strip() == "enabled"
+    einheit = _abrufeinheit(Path(archiv).expanduser().resolve()) if archiv else EINHEIT
+    stand.laeuft = _systemctl(
+        "is-enabled", f"{einheit}.timer"
+    ).stdout.strip() == "enabled"
 
-    dienst = DIENSTE / f"{EINHEIT}.service"
+    dienst = DIENSTE / f"{einheit}.service"
     if dienst.is_file():
         for zeile in dienst.read_text(encoding="utf-8").splitlines():
             if zeile.startswith("ExecStart=") and '"' in zeile:
                 stand.archiv = zeile.split('"')[1]
 
-    uhr = DIENSTE / f"{EINHEIT}.timer"
+    uhr = DIENSTE / f"{einheit}.timer"
     if uhr.is_file():
         for zeile in uhr.read_text(encoding="utf-8").splitlines():
             if zeile.startswith("OnUnitActiveSec="):

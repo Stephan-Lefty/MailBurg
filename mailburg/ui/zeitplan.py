@@ -47,7 +47,7 @@ class Zeitplanwahl(QWidget):
     def __init__(self, eltern=None, archiv=None) -> None:
         super().__init__(eltern)
         self.archiv = archiv
-        stand = zeitplan.zustand()
+        stand = zeitplan.zustand(self.archiv)
 
         self.an = QCheckBox("Neue Post regelmäßig im Hintergrund holen")
         self.an.setChecked(stand.laeuft or stand.moeglich)
@@ -102,7 +102,7 @@ class Zeitplanwahl(QWidget):
         if not self.an.isEnabled():
             return True, ""
         if not self.an.isChecked():
-            return zeitplan.abschalten()
+            return zeitplan.abschalten(self.archiv)
         archiv = self.archiv
         if archiv is None:
             from mailburg.ui.app import zuletzt_gemerkt
