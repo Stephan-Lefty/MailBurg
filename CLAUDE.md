@@ -47,14 +47,30 @@ Oberfläche (`core/zeitplan.py`), der Weg zurück ins Postfach
 (`core/rueckgabe.py`, `ui/zurueck.py`), sortierbare Trefferliste,
 taggenaue Suche mit `seit:`/`bis:`/`am:`.
 
+**Am Nachmittag kam dazu:** Sicherung als eine Datei samt Zeitplan,
+Anleitungen mit erzeugten Bildern (`werkzeuge/screenshots.py`),
+Menü »Einstellungen«, Schriftgröße einstellbar, parallele Texterkennung.
+Version 0.9.0 ist getaggt.
+
+**GuideOS läuft.** Debian mit Cinnamon, apt-Zweig, gnome-keyring – die
+zweite Umgebung, die für 1.0 fehlte. Zwei Befunde von dort: Der
+Installer schwieg zehn Minuten, während pip PySide6 holte (`-q`), und
+im dunklen Thema sind die Kontraste zu schwach. Ersteres behoben,
+Zweites teilweise – die Linkfarbe stimmt jetzt, die Schriftgröße lässt
+sich einstellen, der Rest kommt vom System-Thema.
+
 **Offen und als Nächstes dran:**
 
-1. `docs/postfach-entlasten.md` fehlt weiterhin, obwohl
-   `docs/zeitsteuerung.md` darauf verweist. Das Handbuch in der
-   Oberfläche hat das Kapitel inzwischen, die Doku nicht.
-2. Zweite Testumgebung GuideOS/Cinnamon – der apt-Zweig von
-   `install.sh`, gnome-keyring, der manuelle Weg ohne Thunderbird.
-3. Texterkennung für die 40 eingescannten PDF im Privatarchiv.
+1. **Dunkles Thema auf kleinen Bildschirmen.** Stephans Urteil: „alles
+   relativ dunkel, auf 14 Zoll schlecht lesbar, die Unterschiede
+   zwischen Hintergrund, Text, Menüs und Links kaum zu erkennen."
+   Schriftgröße und Linkfarbe sind gemacht; die Abgrenzung der Bereiche
+   noch nicht.
+2. **Messung der parallelen Texterkennung** an 431 echten Dokumenten.
+   Erwartet: aus einer Stunde werden fünfzehn Minuten.
+3. **700.000 Mails** aus dem MailStore-Archiv der Firma. Gerechnet: 2,5
+   bis 4 Stunden Import, ~170 GB. Der unbekannte Teil ist, wie MailStore
+   die Daten herausgibt – dort würde es scheitern, nicht bei MailBurg.
 
 ## Vom zweiten Tag (Stand 2026-08-25, spätabends)
 
