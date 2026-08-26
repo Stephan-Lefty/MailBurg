@@ -255,28 +255,14 @@ class Hauptfenster(QMainWindow):
         post.addAction(self.ocr_aktion)
 
         # Einstellungen sind kein Handeln: Was hier steht, gilt fort,
-        # bis es jemand ändert. Unter "Post" stand es zwischen "Jetzt
-        # abrufen" und "Eingescannte PDF lesen" - beides Dinge, die man
-        # anstößt und die dann vorbei sind.
-        einstellungen = self.menuBar().addMenu("&Einstellungen")
-
-        postfaecher = QAction("Postfächer verwalten …", self)
-        postfaecher.setStatusTip(
-            "Postfächer hinzufügen, Passwörter ändern, stilllegen oder "
-            "entfernen."
-        )
-        postfaecher.triggered.connect(self._postfaecher)
-        einstellungen.addAction(postfaecher)
-
-        # Der Klammerzusatz ist keine Doppelung: "Was von selbst laufen
-        # soll" sagt, was gemeint ist, und "Automatisierung" ist das
-        # Wort, unter dem viele danach suchen.
-        hintergrund = QAction("Was von selbst laufen soll (Automatisierung) …", self)
-        hintergrund.setStatusTip(
-            "Regelmäßiger Abruf und regelmäßige Sicherung des Archivs."
-        )
-        hintergrund.triggered.connect(self._zeitplan)
-        einstellungen.addAction(hintergrund)
+        # bis es jemand ändert. Deshalb ein eigenes Menü - und deshalb
+        # weit rechts, kurz vor der Hilfe: Was man täglich braucht,
+        # steht links, was man einmal einstellt, rechts.
+        suchen_menue = self.menuBar().addMenu("&Suchen")
+        ausfuehrlich = QAction("Ausführlich suchen …", self)
+        ausfuehrlich.setShortcut("Ctrl+F")
+        ausfuehrlich.triggered.connect(self._suchmaske)
+        suchen_menue.addAction(ausfuehrlich)
 
         ansicht = self.menuBar().addMenu("&Ansicht")
         zuruecksetzen = QAction("Fenster auf Standard zurücksetzen", self)
@@ -310,11 +296,25 @@ class Hauptfenster(QMainWindow):
         laden.triggered.connect(self._ansicht_laden)
         ansicht.addAction(laden)
 
-        suchen_menue = self.menuBar().addMenu("&Suchen")
-        ausfuehrlich = QAction("Ausführlich suchen …", self)
-        ausfuehrlich.setShortcut("Ctrl+F")
-        ausfuehrlich.triggered.connect(self._suchmaske)
-        suchen_menue.addAction(ausfuehrlich)
+        einstellungen = self.menuBar().addMenu("&Einstellungen")
+
+        postfaecher = QAction("Postfächer verwalten …", self)
+        postfaecher.setStatusTip(
+            "Postfächer hinzufügen, Passwörter ändern, stilllegen oder "
+            "entfernen."
+        )
+        postfaecher.triggered.connect(self._postfaecher)
+        einstellungen.addAction(postfaecher)
+
+        # Der Klammerzusatz ist keine Doppelung: "Was von selbst laufen
+        # soll" sagt, was gemeint ist, und "Automatisierung" ist das
+        # Wort, unter dem viele danach suchen.
+        hintergrund = QAction("Was von selbst laufen soll (Automatisierung) …", self)
+        hintergrund.setStatusTip(
+            "Regelmäßiger Abruf und regelmäßige Sicherung des Archivs."
+        )
+        hintergrund.triggered.connect(self._zeitplan)
+        einstellungen.addAction(hintergrund)
 
         hilfe = self.menuBar().addMenu("&Hilfe")
         handbuch = QAction("Handbuch …", self)

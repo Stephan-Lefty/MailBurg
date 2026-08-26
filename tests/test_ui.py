@@ -2985,3 +2985,28 @@ class EinPlanJeArchivTest(SicherungsplanTest):
                   ).read_text(encoding="utf-8")
 
         self.assertIn('--name "Geschaeftsarchiv"', dienst)
+
+
+class MenuereihenfolgeTest(OberflaechenTest):
+    """Was man täglich braucht, steht links."""
+
+    def test_die_ordnung_stimmt(self):
+        import tempfile
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        with tempfile.TemporaryDirectory() as ordner:
+            ort = pathlib.Path(ordner) / "A"
+            Archive.create(ort).close()
+            fenster = Hauptfenster(ort)
+            self.addCleanup(fenster.close)
+
+            menues = [
+                m.text().replace("&", "") for m in fenster.menuBar().actions()
+            ]
+
+        self.assertEqual(
+            menues,
+            ["Archiv", "Post", "Suchen", "Ansicht", "Einstellungen", "Hilfe"],
+        )
