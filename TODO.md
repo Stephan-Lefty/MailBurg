@@ -63,6 +63,16 @@ wurde.
   dürfen private Nachrichten nicht ohne Weiteres mitarchiviert werden. Siehe
   [RECHTLICHES.md](RECHTLICHES.md).
 
+  **Für Stephans eigenen Bestand nicht dringend** (2026-08-26): Er würde
+  bei beruflicher Nutzung einer Adresse die Postfächer neu strukturieren,
+  statt sich auf Filter zu verlassen. Das ist der sauberere Weg – eine
+  Ausschlussregel greift erst nach dem Abruf und ist eine Zusicherung, die
+  das Programm geben muss; getrennte Postfächer sind eine Tatsache. Der
+  Punkt bleibt trotzdem offen: MailBurg ist öffentlich, und wer ein
+  gemischt genutztes Firmenkonto erbt, kann nicht mehr neu strukturieren.
+  Dann sollte die Doku wenigstens sagen, dass die Trennung an der Quelle
+  vorzuziehen ist.
+
 - [ ] **Dunkles Thema auf kleinen Bildschirmen.** Am 2026-08-26 unter
   GuideOS auf einem 14-Zoll-Gerät geprüft: Schriftgröße (Strg + / −) und
   Verweisfarben sind nachgebessert, die **Abgrenzung der Bereiche** aber
