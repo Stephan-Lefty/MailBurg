@@ -64,6 +64,27 @@ class Konto:
 
     aktiv: bool = True
 
+    archive: list[str] = field(default_factory=list)
+    """In welche Archive dieses Postfach gehört – als Archivkennungen.
+
+    **Ohne dieses Feld holt jeder Abruf jedes Postfach.** Wer zwei
+    Archive führt – geschäftlich und privat, wie es die
+    Aufbewahrungsfristen nahelegen –, bekam bis dahin in beiden
+    denselben Bestand. Am 2026-08-26 an einem echten Aufbau aufgefallen:
+    Von 9.866 Mails im Geschäftsarchiv gehörten 176 dorthin.
+
+    Die Kennung ist die ``uuid`` aus ``archive.json``, nicht der Pfad.
+    Ein Archiv auf einer externen Platte liegt morgen woanders; seine
+    Kennung ändert sich nie.
+
+    **Eine leere Liste heißt »noch nicht zugeordnet«, nicht »überall«.**
+    Der Abruf übergeht solche Postfächer und sagt es. Das ist die
+    unbequemere Voreinstellung und die einzige vertretbare: Post, die
+    fälschlich nicht archiviert wurde, holt der nächste Lauf nach; Post,
+    die fälschlich in einem Geschäftsarchiv landet, unterliegt dort zehn
+    Jahre lang Aufbewahrungsfristen.
+    """
+
     bruecke: bool = False
     """Dahinter läuft ein Brückenprogramm auf diesem Rechner.
 
@@ -180,6 +201,38 @@ class Kontenliste:
 
     def aktive(self) -> list[Konto]:
         return [k for k in self.konten if k.aktiv]
+
+    def fuer_archiv(self, kennung: str) -> list[Konto]:
+        """Die aktiven Postfächer, die in dieses Archiv gehören.
+
+        Nicht zugeordnete Postfächer sind hier *nicht* dabei. Sie
+        gesondert zu erfragen ist Absicht: Der Aufrufer soll sie
+        erwähnen können, statt sie stillschweigend zu übergehen.
+        """
+        return [k for k in self.aktive() if kennung in k.archive]
+
+    def ohne_archiv(self) -> list[Konto]:
+        """Die aktiven Postfächer, die noch keinem Archiv zugeordnet sind."""
+        return [k for k in self.aktive() if not k.archive]
+
+    def zuordnen(self, name: str, kennung: str) -> bool:
+        """Weist ein Postfach einem Archiv zu. Mehrfachnennung ist erlaubt."""
+        konto = self.finden(name)
+        if konto is None:
+            return False
+        if kennung not in konto.archive:
+            konto.archive.append(kennung)
+            self.speichern()
+        return True
+
+    def loesen(self, name: str, kennung: str) -> bool:
+        """Nimmt ein Postfach aus einem Archiv heraus."""
+        konto = self.finden(name)
+        if konto is None or kennung not in konto.archive:
+            return False
+        konto.archive.remove(kennung)
+        self.speichern()
+        return True
 
     def __len__(self) -> int:
         return len(self.konten)

@@ -376,3 +376,116 @@ class PostfachErkennenTest(unittest.TestCase):
         self.assertIsNone(
             self.liste.finden_nach_postfach("p1234567", "imap.anbieter-b.de")
         )
+
+
+class ArchivzuordnungTest(unittest.TestCase):
+    """Ein Postfach gehört in ein bestimmtes Archiv – nicht in jedes.
+
+    Der teuerste Fehler in der Geschichte dieses Programms. Die
+    Kontenliste gilt für das ganze Programm, das Archiv aber nicht:
+    Jedes »Abrufen« holte alle eingerichteten Postfächer in das gerade
+    geöffnete Archiv. Wer geschäftlich und privat trennt – wie es die
+    Aufbewahrungsfristen nahelegen –, bekam in beiden denselben Bestand.
+
+    Am 2026-08-26 an einem echten Aufbau aufgefallen: Von 9.866 Mails im
+    Geschäftsarchiv gehörten 176 dorthin. Die übrigen 9.690 waren private
+    Post – und lagen damit unter zehnjährigen Aufbewahrungsfristen.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.datei = Path(self.ordner.name) / "konten.json"
+        self.liste = Kontenliste(self.datei)
+        for name in ("Geschaeftlich", "Privat", "Ungeklaert"):
+            self.liste.hinzufuegen(
+                Konto(name=name, server="imap.example.com", benutzer=f"{name}@example.com")
+            )
+
+    def test_neue_konten_sind_keinem_archiv_zugeordnet(self) -> None:
+        """Die Voreinstellung ist »nirgends«, nicht »überall«.
+
+        Unbequem, aber die einzige vertretbare Richtung: Post, die
+        fälschlich nicht archiviert wurde, holt der nächste Lauf nach.
+        Post, die fälschlich in einem Geschäftsarchiv landet, unterliegt
+        dort zehn Jahre lang Aufbewahrungsfristen.
+        """
+        self.assertEqual(len(self.liste.ohne_archiv()), 3)
+        self.assertEqual(self.liste.fuer_archiv("irgendeine-kennung"), [])
+
+    def test_zuordnen_und_abfragen(self) -> None:
+        self.liste.zuordnen("Geschaeftlich", "archiv-A")
+        self.liste.zuordnen("Privat", "archiv-B")
+
+        self.assertEqual(
+            [k.name for k in self.liste.fuer_archiv("archiv-A")], ["Geschaeftlich"]
+        )
+        self.assertEqual(
+            [k.name for k in self.liste.fuer_archiv("archiv-B")], ["Privat"]
+        )
+        self.assertEqual([k.name for k in self.liste.ohne_archiv()], ["Ungeklaert"])
+
+    def test_ein_postfach_darf_in_mehrere_archive(self) -> None:
+        """Selten, aber es gibt Gründe – etwa ein Archiv je Geschäftsjahr."""
+        self.liste.zuordnen("Geschaeftlich", "archiv-A")
+        self.liste.zuordnen("Geschaeftlich", "archiv-B")
+
+        self.assertEqual(len(self.liste.fuer_archiv("archiv-A")), 1)
+        self.assertEqual(len(self.liste.fuer_archiv("archiv-B")), 1)
+
+    def test_zweimal_zuordnen_bleibt_einmal(self) -> None:
+        self.liste.zuordnen("Geschaeftlich", "archiv-A")
+        self.liste.zuordnen("Geschaeftlich", "archiv-A")
+
+        self.assertEqual(self.liste.finden("Geschaeftlich").archive, ["archiv-A"])
+
+    def test_loesen_nimmt_es_wieder_heraus(self) -> None:
+        self.liste.zuordnen("Geschaeftlich", "archiv-A")
+
+        self.assertTrue(self.liste.loesen("Geschaeftlich", "archiv-A"))
+        self.assertEqual(self.liste.fuer_archiv("archiv-A"), [])
+
+    def test_loesen_einer_nicht_vorhandenen_zuordnung(self) -> None:
+        self.assertFalse(self.liste.loesen("Geschaeftlich", "archiv-A"))
+        self.assertFalse(self.liste.loesen("Gibtsnicht", "archiv-A"))
+
+    def test_die_zuordnung_bleibt_auf_der_platte(self) -> None:
+        self.liste.zuordnen("Geschaeftlich", "archiv-A")
+
+        wieder = Kontenliste(self.datei)
+
+        self.assertEqual(
+            [k.name for k in wieder.fuer_archiv("archiv-A")], ["Geschaeftlich"]
+        )
+
+    def test_abgeschaltete_konten_bleiben_aussen_vor(self) -> None:
+        self.liste.zuordnen("Geschaeftlich", "archiv-A")
+        self.liste.finden("Geschaeftlich").aktiv = False
+
+        self.assertEqual(self.liste.fuer_archiv("archiv-A"), [])
+        # Und es taucht auch nicht unter den offenen auf: Ein
+        # abgeschaltetes Postfach ist keine unerledigte Zuordnung.
+        self.assertNotIn(
+            "Geschaeftlich", [k.name for k in self.liste.ohne_archiv()]
+        )
+
+    def test_eine_alte_kontendatei_ordnet_nichts_zu(self) -> None:
+        """Aus einer Fassung ohne dieses Feld darf kein »überall« werden.
+
+        Nach dem Update ruft zunächst nichts mehr ab. Das ist gewollt:
+        Lieber eine Meldung, die zum Zuordnen auffordert, als ein
+        stillschweigend falsch befülltes Archiv.
+        """
+        self.datei.write_text(
+            json.dumps({"konten": [{
+                "name": "Alt", "server": "imap.example.com",
+                "benutzer": "alt@example.com",
+            }]}),
+            encoding="utf-8",
+        )
+
+        liste = Kontenliste(self.datei)
+
+        self.assertEqual(liste.finden("Alt").archive, [])
+        self.assertEqual(liste.fuer_archiv("irgendwas"), [])
+        self.assertEqual([k.name for k in liste.ohne_archiv()], ["Alt"])

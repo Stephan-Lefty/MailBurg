@@ -1040,15 +1040,43 @@ class Hauptfenster(QMainWindow):
         if self.archiv is None or self.laeufer is not None:
             return
 
-        konten = Kontenliste().aktive()
+        # **Nur die Postfächer dieses Archivs.** Hier lag der Fehler: Die
+        # Kontenliste gilt für das ganze Programm, das Archiv aber nicht.
+        # Wer geschäftlich und privat trennt, bekam mit jedem Abruf in
+        # beiden Archiven denselben Bestand - am 2026-08-26 aufgefallen,
+        # als von 9.866 Mails im Geschäftsarchiv 176 dorthin gehörten.
+        liste = Kontenliste()
+        konten = liste.fuer_archiv(self.archiv.uuid)
+        offen = liste.ohne_archiv()
         if not konten:
-            QMessageBox.information(
-                self,
-                "Kein Postfach eingerichtet",
-                "Es ist noch kein Postfach eingerichtet, aus dem abgerufen "
-                "werden könnte.",
-            )
+            if offen:
+                QMessageBox.information(
+                    self,
+                    "Kein Postfach für dieses Archiv",
+                    f"Diesem Archiv ist kein Postfach zugeordnet.\n\n"
+                    f"Nicht zugeordnet sind: "
+                    f"{', '.join(k.name for k in offen)}\n\n"
+                    f"Ein Postfach gehört ausdrücklich in ein Archiv – sonst "
+                    f"landet geschäftliche Post im Privatarchiv und private "
+                    f"Post unter den Aufbewahrungsfristen eines "
+                    f"Geschäftsarchivs. Zuordnen unter "
+                    f"Einstellungen → Postfächer.",
+                )
+            else:
+                QMessageBox.information(
+                    self,
+                    "Kein Postfach eingerichtet",
+                    "Es ist noch kein Postfach eingerichtet, aus dem "
+                    "abgerufen werden könnte.",
+                )
             return
+        if offen:
+            # Kein Abbruch, aber eine Ansage: Wer nach einem Update
+            # feststellt, dass weniger ankommt, soll den Grund kennen.
+            self.stand.setText(
+                f"{len(offen)} Postfächer sind keinem Archiv zugeordnet und "
+                f"werden übergangen."
+            )
 
         # Der Abruf braucht das Archiv schreibend; das Fenster hält es nur
         # lesend. Deshalb gibt der Auftrag es sich selbst - und wir

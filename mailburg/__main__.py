@@ -391,25 +391,98 @@ def cmd_konten_pruefen(args: argparse.Namespace) -> int:
     return 1 if fehler else 0
 
 
+def cmd_konten_zuordnen(args: argparse.Namespace) -> int:
+    """Weist ein Postfach einem Archiv zu – oder nimmt es wieder heraus."""
+    liste = Kontenliste()
+    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+        kennung = archive.uuid
+        name = archive.name
+
+    if args.loesen:
+        if not liste.loesen(args.konto, kennung):
+            print(
+                f"'{args.konto}' war '{name}' nicht zugeordnet.", file=sys.stderr
+            )
+            return 2
+        print(f"'{args.konto}' gehört nicht mehr zu '{name}'.")
+        return 0
+
+    if not liste.zuordnen(args.konto, kennung):
+        print(f"Ein Konto namens '{args.konto}' gibt es nicht.", file=sys.stderr)
+        return 2
+    print(f"'{args.konto}' gehört jetzt zu '{name}'.")
+    return 0
+
+
+def cmd_konten_zuordnung(args: argparse.Namespace) -> int:
+    """Zeigt, welches Postfach in welches Archiv geht."""
+    liste = Kontenliste()
+    if not liste.konten:
+        print("Noch kein Postfach eingerichtet.")
+        return 0
+
+    for konto in liste.konten:
+        zustand = "" if konto.aktiv else "  (abgeschaltet)"
+        if konto.archive:
+            ziele = ", ".join(konto.archive)
+        else:
+            ziele = "keinem Archiv zugeordnet – wird nicht abgerufen"
+        print(f"{konto.name}{zustand}")
+        print(f"   {ziele}")
+    return 0
+
+
+def _konten_waehlen(liste, archive, gewuenscht: str | None, *, laut: bool = True):
+    """Welche Postfächer in dieses Archiv gehören – und was fehlt.
+
+    **Ein Postfach ohne Archivzuordnung wird nicht abgerufen.** Das ist
+    die unbequemere Voreinstellung und die einzige vertretbare: Post, die
+    fälschlich nicht archiviert wurde, holt der nächste Lauf nach. Post,
+    die fälschlich in einem Geschäftsarchiv landet, unterliegt dort zehn
+    Jahre lang Aufbewahrungsfristen und lässt sich nur mit einem
+    Grabstein im Journal wieder herausnehmen.
+
+    Wird ein Postfach ausdrücklich genannt, entscheidet der Aufrufer –
+    dann wird die Zuordnung nur angemerkt, nicht erzwungen.
+
+    Gibt ``(konten, fehlermeldung)`` zurück; ist die Meldung gesetzt,
+    soll der Aufruf mit Rückgabewert 2 enden.
+    """
+    if gewuenscht:
+        konto = liste.finden(gewuenscht)
+        if konto is None:
+            return [], f"Ein Konto namens '{gewuenscht}' gibt es nicht."
+        if archive.uuid not in konto.archive and laut:
+            print(
+                f"Hinweis: '{konto.name}' ist diesem Archiv nicht zugeordnet. "
+                f"Es wird trotzdem abgerufen, weil Sie es genannt haben.",
+                file=sys.stderr,
+            )
+        return [konto], ""
+
+    konten = liste.fuer_archiv(archive.uuid)
+    offen = liste.ohne_archiv()
+    if offen and laut:
+        # Nicht verschweigen: Wer nach einem Update feststellt, dass
+        # nichts mehr ankommt, soll hier lesen, warum.
+        namen = ", ".join(k.name for k in offen)
+        print(
+            f"\n{len(offen)} Postfächer sind keinem Archiv zugeordnet und "
+            f"werden übergangen: {namen}\n"
+            f"Zuordnen mit: mailburg konten zuordnen <Archiv> <Postfach>",
+            file=sys.stderr,
+        )
+    if not konten:
+        return [], (
+            "Diesem Archiv ist kein Postfach zugeordnet. "
+            "Zuordnen mit 'mailburg konten zuordnen <Archiv> <Postfach>'."
+        )
+    return konten, ""
+
+
 def cmd_abrufen(args: argparse.Namespace) -> int:
     """Holt neue Mails aus den Postfächern ins Archiv."""
     liste = Kontenliste()
-    if args.konto:
-        konto = liste.finden(args.konto)
-        if konto is None:
-            print(f"Ein Konto namens '{args.konto}' gibt es nicht.", file=sys.stderr)
-            return 2
-        konten = [konto]
-    else:
-        konten = liste.aktive()
-
-    if not konten:
-        print(
-            "Kein aktives Konto. Einrichten mit 'mailburg konten hinzufuegen'.",
-            file=sys.stderr,
-        )
-        return 2
-
     mit_text = not args.ohne_anhangstext
     fehler = 0
     neu_gesamt = 0
@@ -424,6 +497,11 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
             print(text)
 
     with Archive.open(Path(args.archiv)) as archive:
+        konten, meldung = _konten_waehlen(liste, archive, args.konto, laut=laut)
+        if meldung:
+            print(meldung, file=sys.stderr)
+            return 2
+
         zustand = Abrufzustand(archive.uuid)
         if args.voll:
             sagen("Vollabruf: Der bisherige Stand wird nicht berücksichtigt.")
@@ -575,24 +653,15 @@ def cmd_abgleich(args: argparse.Namespace) -> int:
         stichtag = abgleich.stichtag_aus_tagen(args.aelter_als)
 
     liste = Kontenliste()
-    if args.konto:
-        konto = liste.finden(args.konto)
-        if konto is None:
-            print(f"Ein Konto namens '{args.konto}' gibt es nicht.", file=sys.stderr)
-            return 2
-        konten = [konto]
-    else:
-        konten = liste.aktive()
-
-    if not konten:
-        print("Kein aktives Konto.", file=sys.stderr)
-        return 2
-
     print(f"Stichtag: {stichtag.strftime('%d.%m.%Y')}")
     print("Geprüft wird, was der Server hat und im Archiv fehlt.\n")
 
     bedenklich = 0
     with Archive.open(Path(args.archiv), exclusive=False) as archive:
+        konten, meldung = _konten_waehlen(liste, archive, args.konto)
+        if meldung:
+            print(meldung, file=sys.stderr)
+            return 2
         zustand = Abrufzustand(archive.uuid)
 
         for konto in konten:
@@ -1023,6 +1092,28 @@ def build_parser() -> argparse.ArgumentParser:
     k = konten_befehle.add_parser("entfernen", help="ein Postfach aus der Liste nehmen")
     k.add_argument("name")
     k.set_defaults(func=cmd_konten_entfernen)
+
+    k = konten_befehle.add_parser(
+        "zuordnen",
+        help="ein Postfach einem Archiv zuordnen",
+        description=(
+            "Nur zugeordnete Postfächer werden abgerufen. Ohne Zuordnung "
+            "holte früher jeder Abruf jedes Postfach – wer geschäftlich und "
+            "privat trennt, bekam in beiden Archiven denselben Bestand."
+        ),
+    )
+    k.add_argument("archiv", help="Verzeichnis des Archivs")
+    k.add_argument("konto", help="Name des Postfachs")
+    k.add_argument(
+        "--loesen", action="store_true",
+        help="die Zuordnung wieder aufheben",
+    )
+    k.set_defaults(func=cmd_konten_zuordnen)
+
+    k = konten_befehle.add_parser(
+        "zuordnung", help="zeigen, welches Postfach in welches Archiv geht"
+    )
+    k.set_defaults(func=cmd_konten_zuordnung)
 
     k = konten_befehle.add_parser("pruefen", help="Anmeldung und Ordner prüfen")
     k.add_argument("name", nargs="?", help="ohne Angabe werden alle geprüft")
