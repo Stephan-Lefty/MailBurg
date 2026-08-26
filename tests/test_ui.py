@@ -2568,3 +2568,136 @@ class ErkennungsdialogLayoutTest(TexterkennungDialogTest):
         # "7 von 57" sagt mehr als "12%".
         self.assertIn("%v", dialog.balken.format())
         self.assertIn("%m", dialog.balken.format())
+
+
+class ErkennungImHintergrundTest(TexterkennungDialogTest):
+    """Fenster zu heißt nicht Arbeit weg."""
+
+    def test_beim_schliessen_wird_gefragt(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog = self._dialog(57)
+        # Ein Lauf, der noch nicht durch ist.
+        dialog._laeufer = mock.Mock()
+        dialog._laeufer.auftrag.abgebrochen = False
+        dialog.balken.setRange(0, 57)
+        dialog.balken.setValue(15)
+
+        gefragt = []
+        with mock.patch.object(QMessageBox, "question",
+                               lambda *a, **k: gefragt.append(a[2])
+                               or QMessageBox.Yes):
+            dialog._abbrechen()
+
+        self.assertEqual(len(gefragt), 1)
+        self.assertIn("im Hintergrund", gefragt[0])
+        # Anhalten ist die seltenere Absicht - deshalb nicht abgebrochen.
+        dialog._laeufer_geprueft = True
+
+    def test_weiterlaufen_reicht_den_laeufer_weiter(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog = self._dialog(57)
+        laeufer = mock.Mock()
+        laeufer.auftrag.abgebrochen = False
+        dialog._laeufer = laeufer
+        dialog.balken.setRange(0, 57)
+        dialog.balken.setValue(15)
+
+        weitergereicht = []
+        dialog.weiterlaufen.connect(weitergereicht.append)
+        with mock.patch.object(QMessageBox, "question",
+                               lambda *a, **k: QMessageBox.Yes):
+            dialog._abbrechen()
+
+        self.assertEqual(weitergereicht, [laeufer])
+        laeufer.auftrag.abbrechen.assert_not_called()
+
+    def test_anhalten_bricht_wirklich_ab(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog = self._dialog(57)
+        laeufer = mock.Mock()
+        laeufer.auftrag.abgebrochen = False
+        dialog._laeufer = laeufer
+        dialog.balken.setRange(0, 57)
+        dialog.balken.setValue(15)
+
+        with mock.patch.object(QMessageBox, "question",
+                               lambda *a, **k: QMessageBox.No):
+            dialog._abbrechen()
+
+        laeufer.auftrag.abbrechen.assert_called_once()
+
+    def test_nach_dem_ende_wird_nicht_mehr_gefragt(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog = self._dialog(57)
+        laeufer = mock.Mock()
+        laeufer.auftrag.abgebrochen = False
+        dialog._laeufer = laeufer
+        dialog.balken.setRange(0, 57)
+        dialog.balken.setValue(57)  # durch
+
+        gefragt = []
+        with mock.patch.object(QMessageBox, "question",
+                               lambda *a, **k: gefragt.append(1)):
+            dialog._abbrechen()
+
+        self.assertEqual(gefragt, [])
+
+
+class HintergrundhinweisTest(OberflaechenTest):
+    """Was im Hintergrund läuft, gehört ins Blickfeld."""
+
+    def _fenster(self):
+        import tempfile
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        ort = pathlib.Path(ordner.name) / "A"
+        Archive.create(ort).close()
+        fenster = Hauptfenster(ort)
+        self.addCleanup(fenster.close)
+        return fenster
+
+    def test_hinweis_steht_neben_der_trefferzahl(self):
+        import re
+
+        fenster = self._fenster()
+        fenster._ocr_hinweis_setzen(15, 57)
+
+        text = re.sub("<[^>]+>", "", fenster.ocr_hinweis.text())
+        self.assertIn("15 von 57", text)
+        self.assertIn("Hintergrund", text)
+        # Farbig, damit man es beim Suchen bemerkt.
+        self.assertIn("color:", fenster.ocr_hinweis.text())
+
+    def test_nach_dem_ende_verschwindet_er(self):
+        fenster = self._fenster()
+        fenster._ocr_hinweis_setzen(15, 57)
+
+        fenster._erkennung_fertig()
+
+        self.assertEqual(fenster.ocr_hinweis.text(), "")
+
+    def test_die_suchmeldung_bleibt_daneben_bestehen(self):
+        # Beides gleichzeitig: Wer sucht, während gelesen wird, soll sein
+        # Suchergebnis nicht verlieren.
+        fenster = self._fenster()
+        fenster._suchmeldung_setzen("MailBurg hat 191 Treffer.", True)
+        fenster._ocr_hinweis_setzen(15, 57)
+
+        self.assertIn("191", fenster.suchmeldung.text())
+        self.assertIn("15 von 57", fenster.ocr_hinweis.text())

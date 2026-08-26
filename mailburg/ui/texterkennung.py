@@ -19,9 +19,10 @@ erkannt.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog,
+    QMessageBox,
     QLayout,
     QDialogButtonBox,
     QLabel,
@@ -72,6 +73,13 @@ class Erkennungslauf(Auftrag):
 
 class Texterkennungsdialog(QDialog):
     """Zeigt, wie viel noch aussteht, und lässt es durchlaufen."""
+
+    weiterlaufen = Signal(object)
+    """Der Anwender schließt das Fenster, der Lauf soll weitergehen.
+
+    Übergeben wird der Läufer. Er wandert damit ans Hauptfenster, das
+    ihn weiter beobachtet – der Dialog verschwindet, die Arbeit nicht.
+    """
 
     def __init__(self, archiv, eltern=None) -> None:
         super().__init__(eltern)
@@ -183,8 +191,35 @@ class Texterkennungsdialog(QDialog):
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(True)
 
     def _abbrechen(self) -> None:
+        """Beim Schließen: fragen, ob der Lauf weitergehen soll.
+
+        Anhalten ist die seltenere Absicht. Wer das Fenster zumacht,
+        will meistens nur weitersuchen, während im Hintergrund gelesen
+        wird – und wäre überrascht, wenn er dabei die halbe Arbeit
+        verlöre.
+        """
+        laeuft = self._laeufer is not None and not self._laeufer.auftrag.abgebrochen
+        if not laeuft or self.balken.value() >= self.balken.maximum():
+            self.reject()
+            return
+
+        antwort = QMessageBox.question(
+            self,
+            "Im Hintergrund weiterlesen?",
+            "Es sind noch nicht alle Dokumente gelesen.\n\n"
+            "MailBurg kann im Hintergrund weitermachen – Sie können "
+            "inzwischen ganz normal suchen und lesen. Unten rechts sehen "
+            "Sie, wie weit es ist.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if antwort == QMessageBox.Yes:
+            self.weiterlaufen.emit(self._laeufer)
+            self._laeufer = None
+            self.accept()
+            return
+
         # Nicht warten, nur bitten – wie überall sonst. Der laufende Faden
         # räumt sich selbst weg, und was gelesen ist, steht schon im Index.
-        if self._laeufer is not None:
-            self._laeufer.auftrag.abbrechen()
+        self._laeufer.auftrag.abbrechen()
         self.reject()

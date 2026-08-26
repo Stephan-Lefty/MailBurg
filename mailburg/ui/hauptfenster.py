@@ -18,6 +18,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
@@ -61,6 +62,7 @@ class Hauptfenster(QMainWindow):
         super().__init__()
         self.archiv: Archive | None = None
         self.laeufer: Läufer | None = None
+        self.ocr_laeufer: Läufer | None = None
 
         self.setWindowTitle(APP_NAME)
 
@@ -144,8 +146,21 @@ class Hauptfenster(QMainWindow):
         self.suchmeldung.setAccessibleName("Suchergebnis")
         self.suchmeldung.setContentsMargins(2, 2, 2, 4)
 
+        # Rechts daneben, auf derselben Höhe: Was im Hintergrund läuft,
+        # gehört dorthin, wo der Anwender ohnehin hinschaut - und nicht
+        # in die Statuszeile am unteren Rand, die beim Suchen niemand
+        # ansieht.
+        self.ocr_hinweis = QLabel("")
+        self.ocr_hinweis.setTextFormat(Qt.RichText)
+        self.ocr_hinweis.setAccessibleName("Läuft im Hintergrund")
+        self.ocr_hinweis.setContentsMargins(2, 2, 2, 4)
+
+        meldungszeile = QHBoxLayout()
+        meldungszeile.addWidget(self.suchmeldung, 1)
+        meldungszeile.addWidget(self.ocr_hinweis)
+
         aufbau.addWidget(self.suchfeld)
-        aufbau.addWidget(self.suchmeldung)
+        aufbau.addLayout(meldungszeile)
         aufbau.addWidget(teiler, 1)
         self.setCentralWidget(mitte)
 
@@ -937,9 +952,49 @@ class Hauptfenster(QMainWindow):
 
         if self.archiv is None:
             return
-        Texterkennungsdialog(self.archiv, self).exec()
+        dialog = Texterkennungsdialog(self.archiv, self)
+        dialog.weiterlaufen.connect(self._erkennung_uebernehmen)
+        dialog.exec()
         self._offene_pdf_zeigen()
         self._suchen()
+
+    def _erkennung_uebernehmen(self, laeufer) -> None:
+        """Beobachtet einen Erkennungslauf weiter, dessen Fenster zu ist.
+
+        Der Läufer wandert hierher, weil das Hauptfenster länger lebt als
+        der Dialog. Angezeigt wird nur noch in der Statuszeile – man soll
+        weitersuchen können, ohne dass etwas dazwischenfunkt.
+        """
+        self.ocr_laeufer = laeufer
+        laeufer.auftrag.fortschritt.connect(self._erkennung_schritt)
+        laeufer.auftrag.fertig.connect(self._erkennung_fertig)
+        laeufer.auftrag.gescheitert.connect(self._erkennung_fertig)
+        self.balken.setFormat("%v von %m")
+        self.balken.show()
+        self._ocr_hinweis_setzen(0, 0)
+
+    def _erkennung_schritt(self, erledigt: int, gesamt: int) -> None:
+        if gesamt:
+            self.balken.setRange(0, gesamt)
+        self.balken.setValue(erledigt)
+        self._ocr_hinweis_setzen(erledigt, gesamt)
+
+    def _ocr_hinweis_setzen(self, erledigt: int, gesamt: int) -> None:
+        stand = f" {erledigt} von {gesamt}" if gesamt else " …"
+        self.ocr_hinweis.setText(
+            f"<span style='color: {farben.schlecht()}'><b>"
+            f"PDF-Erkennung läuft im Hintergrund:{stand}</b></span>"
+        )
+
+    def _erkennung_fertig(self, _ergebnis=None) -> None:
+        self.ocr_laeufer = None
+        self.ocr_hinweis.setText("")
+        self.balken.hide()
+        self.balken.setFormat("%p%")
+        self._offene_pdf_zeigen()
+        # Frisch suchen: Was gerade gelesen wurde, ist ab jetzt zu finden.
+        self._suchen()
+        self.stand.setText("Die eingescannten PDF sind gelesen.")
 
     def _offene_pdf_zeigen(self) -> None:
         """Schreibt die Zahl wartender PDF in den Menüeintrag."""

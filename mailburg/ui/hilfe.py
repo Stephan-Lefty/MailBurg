@@ -304,10 +304,22 @@ Null, gibt es nichts zu tun.</p>
 
 <p>Zweierlei ist dabei zu wissen:</p>
 
-<p><b>Es dauert.</b> Etwa fünf Sekunden je Seite. Bei hundert Seiten
-also eine knappe Viertelstunde. Sie können jederzeit abbrechen; was
-gelesen ist, bleibt gelesen, und beim nächsten Mal geht es dort
-weiter.</p>
+<p><b>Es dauert.</b> Etwa fünf bis acht Sekunden je Seite. Bei hundert
+Seiten also eine gute Viertelstunde. Sie müssen dabei aber nicht
+zusehen: Schließen Sie das Fenster, fragt MailBurg, ob im Hintergrund
+weitergelesen werden soll. Sagen Sie ja, können Sie ganz normal
+weitersuchen – oben rechts steht dann, wie weit es ist.</p>
+
+<p>Abbrechen geht ebenso. Was gelesen ist, bleibt gelesen: MailBurg
+schreibt nach jedem einzelnen Dokument mit. Nur das gerade in Arbeit
+befindliche fällt weg und kommt beim nächsten Mal wieder dran – ein
+halb gelesenes PDF wäre schlimmer als ein ungelesenes, weil es als
+erledigt gälte.</p>
+
+<p>Abgearbeitet wird von klein nach groß. Ein einseitiger Scan ist in
+vier Sekunden gelesen, ein zwanzigseitiger Brocken braucht eine halbe
+Stunde – so sind die vielen kleinen schnell durch, statt hinter einem
+einzigen großen zu warten.</p>
 
 <p><b>Das Archiv bleibt unangetastet.</b> Der erkannte Text kommt nur in
 den Suchindex, die PDF selbst werden nicht verändert. Das ist
