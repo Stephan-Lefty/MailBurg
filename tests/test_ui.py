@@ -1545,10 +1545,15 @@ class SummenImBaumTest(OberflaechenTest):
         konto = Konto(name="Kontakt", server="s", port=143,
                       benutzer="kontakt@example.org", ssl=False)
 
+        gesamt = sum(n for _, _, n in eintraege)
         with mock.patch.object(modul, "Kontenliste",
                                lambda: mock.Mock(konten=[konto])), \
              mock.patch.object(type(archiv.index), "accounts",
-                               lambda self: eintraege):
+                               lambda self: eintraege), \
+             mock.patch.object(type(archiv.index), "account_totals",
+                               lambda self: {"Kontakt": gesamt}), \
+             mock.patch.object(type(archiv.index), "count",
+                               lambda self, ausdruck="": gesamt):
             fenster = modul.Hauptfenster(archiv.root)
             self.addCleanup(fenster.close)
             fenster._baum_fuellen()

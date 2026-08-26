@@ -431,3 +431,39 @@ class SperrmeldungTest(unittest.TestCase):
     def test_alte_sperrdatei_ohne_pid(self):
         text = self.erklaerung()
         self.assertIn("2026-08-26", text)
+
+
+class MailsStattFundorteTest(unittest.TestCase):
+    """Eine Mail in zwei Ordnern ist eine Mail, nicht zwei."""
+
+    def setUp(self):
+        import pathlib
+        import tempfile
+
+        from mailburg.core.archive import Archive
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.archive = Archive.create(pathlib.Path(self.ordner.name) / "A")
+        self.addCleanup(self.archive.close)
+
+    def test_dieselbe_mail_in_zwei_ordnern_zaehlt_einmal(self):
+        # Genau die Lage bei Proton: Jede Mail liegt in ihrem Ordner und
+        # zusätzlich unter jedem ihrer Etiketten. Wer die Ordnerzahlen
+        # addiert, kommt auf eine Zahl, die es nicht gibt - im Betrieb
+        # gemessen 2.877 statt der tatsächlichen 2.078.
+        roh = probe("Rechnung")
+        self.archive.add(roh, account="proton", folder="Archive")
+        self.archive.add(roh, account="proton", folder="Labels/Finanzamt")
+
+        fundorte = sum(n for k, _, n in self.archive.index.accounts()
+                       if k == "proton")
+        self.assertEqual(fundorte, 2, "zwei Fundorte, das ist richtig so")
+        self.assertEqual(self.archive.index.account_totals()["proton"], 1)
+        self.assertEqual(self.archive.index.count(), 1)
+
+    def test_getrennte_konten_werden_getrennt_gezaehlt(self):
+        self.archive.add(probe("Eins"), account="a", folder="INBOX")
+        self.archive.add(probe("Zwei"), account="b", folder="INBOX")
+
+        self.assertEqual(self.archive.index.account_totals(), {"a": 1, "b": 1})

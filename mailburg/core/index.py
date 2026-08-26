@@ -457,6 +457,22 @@ class Index:
             )
         ]
 
+    def account_totals(self) -> dict[str, int]:
+        """Je Konto, wie viele *Mails* dort liegen – nicht wie viele Fundorte.
+
+        Der Unterschied ist bei Proton beträchtlich: Dort trägt jede Mail
+        neben ihrem Ordner noch Etiketten, und jedes Etikett ist ein
+        weiterer Fundort. Wer die Fundorte addiert, kommt auf eine Zahl,
+        die es nicht gibt – gemessen 2.877 statt der tatsächlichen 2.078.
+        """
+        return {
+            r["account"]: r["n"]
+            for r in self.db.execute(
+                """SELECT account, COUNT(DISTINCT msg_id) AS n
+                   FROM locations GROUP BY account"""
+            )
+        }
+
     def max_uid(self, account: str, folder: str) -> int:
         """Die höchste UID, die aus diesem Ordner tatsächlich im Archiv liegt.
 

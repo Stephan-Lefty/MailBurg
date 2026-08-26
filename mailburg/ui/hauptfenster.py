@@ -88,7 +88,7 @@ class Hauptfenster(QMainWindow):
         self.tipp_uhr.timeout.connect(self._suchen)
 
         self.baum = QTreeWidget()
-        self.baum.setHeaderLabels(["Postfach", "Mails"])
+        self.baum.setHeaderLabels(["Postfächer", "Mails"])
         self.baum.setAccessibleName("Postfächer und Ordner")
         self.baum.itemClicked.connect(self._ordner_gewaehlt)
         self.baum.setMinimumWidth(230)
@@ -103,19 +103,8 @@ class Hauptfenster(QMainWindow):
         self.tabelle.setAccessibleName("Trefferliste")
         self.tabelle.setSortingEnabled(False)
 
-        kopf = self.tabelle.horizontalHeader()
-        kopf.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        kopf.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        kopf.setSectionResizeMode(2, QHeaderView.Interactive)
-        kopf.setSectionResizeMode(3, QHeaderView.Stretch)
-        kopf.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.tabelle.setColumnWidth(2, 220)
-
-        # Einmal festhalten, wie die Spalten aussehen, bevor jemand daran
-        # gezogen hat. Ohne das ließe sich "auf Standard" für die Spalten
-        # gar nicht erfüllen - man kann nur wiederherstellen, was man
-        # sich gemerkt hat.
-        self._spalten_ausgangs = self.tabelle.horizontalHeader().saveState()
+        self._spalten_einrichten()
+        self._baumspalten_einrichten()
 
         self.tabelle.selectionModel().selectionChanged.connect(self._treffer_gewaehlt)
 
@@ -293,8 +282,14 @@ class Hauptfenster(QMainWindow):
 
         kopf = stand.get("spalten")
         if kopf:
-            self.tabelle.horizontalHeader().restoreState(
-                QByteArray.fromBase64(kopf.encode())
+            # Erst wenn das Fenster seine Größe hat. Sonst rechnet der
+            # Kopf mit der Anfangsbreite der Tabelle, und die Spalten
+            # stehen zusammengedrängt, bis jemand am Fensterrand zieht.
+            QTimer.singleShot(
+                0,
+                lambda: self.tabelle.horizontalHeader().restoreState(
+                    QByteArray.fromBase64(kopf.encode())
+                ),
             )
 
     def _standardansicht(self, nur_aufbauen: bool = False) -> None:
@@ -333,7 +328,8 @@ class Hauptfenster(QMainWindow):
         self.senkrecht.setSizes([
             round(TREFFERANTEIL * 1000), round((1 - TREFFERANTEIL) * 1000),
         ])
-        self.tabelle.horizontalHeader().restoreState(self._spalten_ausgangs)
+        self._spalten_einrichten()
+        self._baumspalten_einrichten()
 
         if not nur_aufbauen:
             self._groesse_merken()
@@ -354,6 +350,42 @@ class Hauptfenster(QMainWindow):
             "spalten",
             bytes(self.tabelle.horizontalHeader().saveState().toBase64()).decode(),
         )
+
+    def _baumspalten_einrichten(self) -> None:
+        """Drei Viertel für die Namen, ein Viertel für die Zahlen.
+
+        Die Namen sind das Lange: Mailadressen und verschachtelte
+        Ordnerpfade wie ``Folders/Max.Muster/Entwicklung``. Die
+        Zahlen brauchen kaum Platz, und eine hälftige Teilung schnitte
+        genau das ab, wonach man sucht.
+        """
+        kopf = self.baum.header()
+        kopf.setSectionResizeMode(0, QHeaderView.Interactive)
+        kopf.setSectionResizeMode(1, QHeaderView.Interactive)
+        breite = max(self.baum.width(), self.baum.minimumWidth())
+        self.baum.setColumnWidth(0, int(breite * 0.75))
+        self.baum.setColumnWidth(1, breite - int(breite * 0.75))
+
+    def _spalten_einrichten(self) -> None:
+        """Legt fest, welche Spalte sich wie verhält.
+
+        Ausdrücklich über die Verhaltensregeln und nicht über einen
+        gespeicherten Zustand: ``saveState`` hält auch die damalige Breite
+        der Tabelle fest. Wird so ein Zustand wiederhergestellt, während
+        das Fenster noch seine Anfangsgröße hat, bekommen alle Spalten die
+        Breiten von damals – und der Betreff dehnt sich erst beim nächsten
+        Ziehen am Fensterrand wieder aus. Genau so sah es aus: schmale
+        Spalten, abgeschnittene Betreffs, rechts daneben freie Fläche.
+        """
+        kopf = self.tabelle.horizontalHeader()
+        kopf.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        kopf.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        kopf.setSectionResizeMode(2, QHeaderView.Interactive)
+        # Der Betreff bekommt, was übrig bleibt. Er ist die einzige Spalte,
+        # bei der jedes zusätzliche Zeichen zählt.
+        kopf.setSectionResizeMode(3, QHeaderView.Stretch)
+        kopf.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        self.tabelle.setColumnWidth(2, 220)
 
     def _bestand_zeigen(self) -> None:
         """Wie viel im Archiv liegt und wann zuletzt geholt wurde.
@@ -388,7 +420,6 @@ class Hauptfenster(QMainWindow):
         adressen = {k.name: k.benutzer for k in Kontenliste().konten}
 
         konten: dict[str, QTreeWidgetItem] = {}
-        summen: dict[str, int] = {}
         for konto, ordner, anzahl in self.archiv.index.accounts():
             if konto not in konten:
                 # Fällt ein Postfach später aus der Liste, bleiben seine
@@ -398,21 +429,32 @@ class Hauptfenster(QMainWindow):
                 self.baum.addTopLevelItem(eintrag)
                 konten[konto] = eintrag
             unter = QTreeWidgetItem([ordner, f"{anzahl:,}".replace(",", ".")])
+            unter.setData(1, Qt.UserRole, anzahl)
             unter.setData(
                 0, Qt.UserRole, f"konto:{_quoten(konto)} ordner:{_quoten(ordner)}"
             )
             konten[konto].addChild(unter)
-            summen[konto] = summen.get(konto, 0) + anzahl
 
-        # Die Gesamtzahl je Postfach gehört neben das Postfach. Sonst
-        # muss man den Zweig aufklappen und im Kopf addieren, um die
-        # Frage zu beantworten, die man zuerst hat: Wie viel liegt von
-        # diesem Postfach überhaupt im Archiv?
-        gesamt = 0
+        # Gezählt werden Mails, nicht Fundorte. Die Ordnerzahlen darüber
+        # zu addieren wäre falsch: Bei Proton trägt jede Mail neben ihrem
+        # Ordner noch Etiketten, und jedes Etikett ist ein weiterer
+        # Fundort. Die Summe ergäbe eine Zahl, die es nicht gibt - und
+        # sie widerspräche der Gesamtzahl in der Statuszeile.
+        summen = self.archiv.index.account_totals()
         for konto, eintrag in konten.items():
-            eintrag.setText(1, f"{summen[konto]:,}".replace(",", "."))
-            gesamt += summen[konto]
-        alle.setText(1, f"{gesamt:,}".replace(",", "."))
+            anzahl = summen.get(konto, 0)
+            eintrag.setText(1, f"{anzahl:,}".replace(",", "."))
+            if anzahl != sum(
+                eintrag.child(i).data(1, Qt.UserRole) or 0
+                for i in range(eintrag.childCount())
+            ):
+                eintrag.setToolTip(
+                    1,
+                    "Mails, nicht Fundorte: Dieselbe Mail kann in mehreren "
+                    "Ordnern liegen – bei Proton etwa im Ordner und unter "
+                    "jedem ihrer Etiketten.",
+                )
+        alle.setText(1, f"{self.archiv.index.count():,}".replace(",", "."))
 
         alle.setSelected(True)
         self.baum.expandItem(alle)
