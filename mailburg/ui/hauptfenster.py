@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, Qt, QTimer
+from PySide6.QtCore import QByteArray, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -124,8 +124,9 @@ class Hauptfenster(QMainWindow):
         self.tipp_uhr.setSingleShot(True)
         self.tipp_uhr.timeout.connect(self._suchen)
 
-        self.baum = QTreeWidget()
+        self.baum = Postfachbaum()
         self.baum.setHeaderLabels(["Postfächer", "Mails"])
+        self.baum.reihenfolge_geaendert.connect(self._reihenfolge_merken)
         self.baum.setAccessibleName("Postfächer und Ordner")
         self.baum.itemClicked.connect(self._ordner_gewaehlt)
         self.baum.setMinimumWidth(230)
@@ -241,6 +242,17 @@ class Hauptfenster(QMainWindow):
         )
         zuruecksetzen.triggered.connect(self._standardansicht)
         ansicht.addAction(zuruecksetzen)
+
+        ansicht.addSeparator()
+        hoch = QAction("Postfach nach oben", self)
+        hoch.setShortcut("Ctrl+Up")
+        hoch.triggered.connect(lambda: self.baum.verschieben(-1))
+        ansicht.addAction(hoch)
+
+        runter = QAction("Postfach nach unten", self)
+        runter.setShortcut("Ctrl+Down")
+        runter.triggered.connect(lambda: self.baum.verschieben(1))
+        ansicht.addAction(runter)
 
         ansicht.addSeparator()
         merken = QAction("Eigene Ansicht speichern", self)
@@ -504,10 +516,17 @@ class Hauptfenster(QMainWindow):
         wann = _abrufzeit(Abrufzustand(self.archiv.uuid).zuletzt)
         self.bestand.setText(f"{anzahl} Mails im Archiv · {wann}")
 
+    def _reihenfolge_merken(self) -> None:
+        from mailburg.ui.app import merken_unter
+
+        merken_unter("postfachreihenfolge", self.baum.reihenfolge())
+
     def _baum_fuellen(self) -> None:
         self.baum.clear()
         if self.archiv is None:
             return
+
+        from mailburg.ui.app import gemerktes
 
         alle = QTreeWidgetItem(["Alle Postfächer", ""])
         alle.setData(0, Qt.UserRole, "")
@@ -519,12 +538,28 @@ class Hauptfenster(QMainWindow):
         # Gesucht wird weiterhin über den Namen - der steht so im Archiv.
         adressen = {k.name: k.benutzer for k in Kontenliste().konten}
 
+        # Die selbst gewählte Reihenfolge zuerst, alles Übrige dahinter -
+        # ein neu eingerichtetes Postfach soll auftauchen und nicht
+        # verschwinden, nur weil es beim Sortieren noch nicht dabei war.
+        gewuenscht = gemerktes().get("postfachreihenfolge", [])
+        eintraege = sorted(
+            self.archiv.index.accounts(),
+            key=lambda z: (
+                gewuenscht.index(z[0]) if z[0] in gewuenscht else len(gewuenscht),
+                z[0],
+                z[1],
+            ),
+        )
+
         konten: dict[str, QTreeWidgetItem] = {}
-        for konto, ordner, anzahl in self.archiv.index.accounts():
+        for konto, ordner, anzahl in eintraege:
             if konto not in konten:
                 # Fällt ein Postfach später aus der Liste, bleiben seine
                 # Mails im Archiv. Dann muss der Name genügen.
                 eintrag = QTreeWidgetItem([adressen.get(konto, konto), ""])
+                # Der Kontoname, nicht die Anzeige: Die Reihenfolge soll
+                # halten, auch wenn sich die Mailadresse einmal ändert.
+                eintrag.setData(0, Qt.UserRole + 1, konto)
                 eintrag.setData(0, Qt.UserRole, f"konto:{_quoten(konto)}")
                 self.baum.addTopLevelItem(eintrag)
                 konten[konto] = eintrag
@@ -791,6 +826,88 @@ class Hauptfenster(QMainWindow):
         if self.archiv is not None:
             self.archiv.close()
         super().closeEvent(ereignis)
+
+
+class Postfachbaum(QTreeWidget):
+    """Der Baum links – mit frei verschiebbaren Postfächern.
+
+    Verschoben werden dürfen nur die Postfächer, nicht ihre Ordner. Die
+    Ordner stehen alphabetisch, und das ist auch richtig so: Ihre
+    Reihenfolge kommt vom Mailserver und sagt nichts. Welches Postfach
+    einem am wichtigsten ist, weiß dagegen nur der Anwender.
+    """
+
+    reihenfolge_geaendert = Signal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setDragDropMode(QAbstractItemView.InternalMove)
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+
+    def dragMoveEvent(self, ereignis) -> None:
+        if not self._erlaubt(ereignis):
+            ereignis.ignore()
+            return
+        super().dragMoveEvent(ereignis)
+
+    def dropEvent(self, ereignis) -> None:
+        if not self._erlaubt(ereignis):
+            ereignis.ignore()
+            return
+        super().dropEvent(ereignis)
+        self.reihenfolge_geaendert.emit()
+
+    def _erlaubt(self, ereignis) -> bool:
+        """Nur ein Postfach, nur zwischen zwei andere.
+
+        Ohne diese Prüfung ließe sich ein Postfach in ein anderes
+        hineinziehen oder ein Ordner aus seinem Postfach heraus. Beides
+        ergäbe einen Baum, der etwas behauptet, was im Archiv nicht steht.
+        """
+        gezogen = self.currentItem()
+        if gezogen is None or gezogen.parent() is not None:
+            return False
+        # Auf einem Element abzulegen hieße "hineinlegen"; erlaubt ist nur
+        # davor und dahinter.
+        if self.dropIndicatorPosition() not in (
+            QAbstractItemView.AboveItem, QAbstractItemView.BelowItem
+        ):
+            return False
+        ziel = self.itemAt(ereignis.position().toPoint())
+        return ziel is None or ziel.parent() is None
+
+    def verschieben(self, richtung: int) -> None:
+        """Rückt das gewählte Postfach eine Stelle – für die Tastatur.
+
+        Ziehen mit der Maus ist für viele keine Option: Wer mit der
+        Tastatur arbeitet oder eine Sprachsteuerung nutzt, kommt daran
+        nicht heran. Eine Anordnung, die sich nur ziehen lässt, ist
+        deshalb keine.
+        """
+        eintrag = self.currentItem()
+        if eintrag is None or eintrag.parent() is not None:
+            return
+        stelle = self.indexOfTopLevelItem(eintrag)
+        # Stelle 0 ist "Alle Postfächer" und bleibt oben.
+        neu = stelle + richtung
+        if stelle < 1 or not 1 <= neu < self.topLevelItemCount():
+            return
+        ausgeklappt = eintrag.isExpanded()
+        self.takeTopLevelItem(stelle)
+        self.insertTopLevelItem(neu, eintrag)
+        eintrag.setExpanded(ausgeklappt)
+        self.setCurrentItem(eintrag)
+        self.reihenfolge_geaendert.emit()
+
+    def reihenfolge(self) -> list[str]:
+        """Die Postfächer in ihrer jetzigen Reihenfolge."""
+        return [
+            self.topLevelItem(i).data(0, Qt.UserRole + 1)
+            for i in range(1, self.topLevelItemCount())
+            if self.topLevelItem(i).data(0, Qt.UserRole + 1)
+        ]
 
 
 def _abrufzeit(iso: str) -> str:

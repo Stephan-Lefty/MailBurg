@@ -1787,3 +1787,95 @@ class SuchmeldungTest(OberflaechenTest):
         fenster._suchen()
 
         self.assertIn("stimmt nicht", self._text(fenster))
+
+
+class PostfachreihenfolgeTest(OberflaechenTest):
+    """Postfächer lassen sich anordnen – mit der Maus und ohne."""
+
+    def setUp(self):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        flicken = mock.patch.object(
+            paths, "config_dir", lambda: pathlib.Path(self.ordner.name)
+        )
+        flicken.start()
+        self.addCleanup(flicken.stop)
+
+    def _fenster(self, konten=("a@example.org", "b@example.org", "c@example.org")):
+        from unittest import mock
+
+        from mailburg.core.accounts import Konto
+        from mailburg.core.archive import Archive
+        from mailburg.ui import hauptfenster as modul
+
+        ort = pathlib.Path(self.ordner.name) / "Archiv"
+        if not (ort / "archive.json").exists():
+            Archive.create(ort).close()
+        archiv = Archive.open(ort, exclusive=False)
+        liste = [Konto(name=k, server="s", port=143, benutzer=k, ssl=False)
+                 for k in konten]
+
+        with mock.patch.object(modul, "Kontenliste",
+                               lambda: mock.Mock(konten=liste)), \
+             mock.patch.object(type(archiv.index), "accounts",
+                               lambda self: [(k, "INBOX", 1) for k in konten]), \
+             mock.patch.object(type(archiv.index), "account_totals",
+                               lambda self: {k: 1 for k in konten}), \
+             mock.patch.object(type(archiv.index), "count",
+                               lambda self, a="": len(konten)):
+            fenster = modul.Hauptfenster(ort)
+            self.addCleanup(fenster.close)
+            fenster._baum_fuellen()
+        archiv.close()
+        return fenster
+
+    def _namen(self, fenster):
+        return [fenster.baum.topLevelItem(i).text(0)
+                for i in range(1, fenster.baum.topLevelItemCount())]
+
+    def test_verschieben_ohne_maus(self):
+        # Wer mit der Tastatur arbeitet oder eine Sprachsteuerung nutzt,
+        # kommt ans Ziehen nicht heran. Eine Anordnung, die sich nur
+        # ziehen lässt, ist deshalb keine.
+        fenster = self._fenster()
+        fenster.baum.setCurrentItem(fenster.baum.topLevelItem(3))
+
+        fenster.baum.verschieben(-1)
+
+        self.assertEqual(self._namen(fenster),
+                         ["a@example.org", "c@example.org", "b@example.org"])
+
+    def test_reihenfolge_ueberlebt_den_neustart(self):
+        fenster = self._fenster()
+        fenster.baum.setCurrentItem(fenster.baum.topLevelItem(3))
+        fenster.baum.verschieben(-1)
+
+        zweites = self._fenster()
+        self.assertEqual(self._namen(zweites),
+                         ["a@example.org", "c@example.org", "b@example.org"])
+
+    def test_alle_postfaecher_bleibt_oben(self):
+        fenster = self._fenster()
+        fenster.baum.setCurrentItem(fenster.baum.topLevelItem(1))
+
+        fenster.baum.verschieben(-1)
+
+        self.assertEqual(fenster.baum.topLevelItem(0).text(0), "Alle Postfächer")
+
+    def test_neues_postfach_verschwindet_nicht(self):
+        # Es steht noch nicht in der gemerkten Reihenfolge - dahinter
+        # gehört es, nicht ins Nichts.
+        fenster = self._fenster()
+        fenster.baum.setCurrentItem(fenster.baum.topLevelItem(3))
+        fenster.baum.verschieben(-1)
+
+        zweites = self._fenster(
+            ("a@example.org", "b@example.org", "c@example.org", "neu@example.org")
+        )
+        self.assertIn("neu@example.org", self._namen(zweites))
+        self.assertEqual(self._namen(zweites)[-1], "neu@example.org")
