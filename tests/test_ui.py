@@ -1107,3 +1107,43 @@ class ZeitplanTest(unittest.TestCase):
 
         self.assertEqual(stand.takt, 240)
         self.assertEqual(stand.archiv, str(self.archiv))
+
+
+class KeineFremdenAdressenTest(OberflaechenTest):
+    """Übergangene Postfächer werden gezählt, nicht ausgeschrieben.
+
+    Der Hinweis nannte die Adressen einmal vollständig - eine Zeile, die
+    man versehentlich mit einem Bildschirmfoto weitergibt. Es können
+    Postfächer sein, die dem Anwender nicht einmal selbst gehören.
+    """
+
+    def test_adressen_stehen_nicht_im_hinweis(self):
+        from unittest import mock
+
+        from mailburg.core import uebernahme
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.assistent import KontenSeite
+
+        def fund(adresse, brauchbar):
+            eintrag = mock.Mock()
+            eintrag.konto = Konto(name=adresse, server="s", benutzer=adresse,
+                                  port=143, ssl=False)
+            eintrag.brauchbar = brauchbar
+            eintrag.art = "ews"
+            return eintrag
+
+        from mailburg.sources import local
+
+        with mock.patch.object(local, "find_thunderbird_profiles",
+                               return_value=["/irgendwo"]), \
+             mock.patch.object(uebernahme, "aus_thunderbird", return_value=[
+                 fund("gut@example.org", True),
+                 fund("geheim@firma.example", False),
+                 fund("chef@firma.example", False),
+             ]):
+            seite = KontenSeite()
+
+        gesamt = seite.herkunft.text()
+        self.assertNotIn("geheim@firma.example", gesamt)
+        self.assertNotIn("chef@firma.example", gesamt)
+        self.assertIn("2 Postfächer", gesamt)

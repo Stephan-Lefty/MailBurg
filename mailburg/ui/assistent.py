@@ -728,11 +728,22 @@ class KontenSeite(QWizardPage):
                 f"ausprobiert, damit Sie sofort sehen, ob es klappt.</p>"
             )
             if uebergangen:
+                # Ohne die Adressen. Sie standen hier einmal ausgeschrieben,
+                # und das ist eine Zeile, die man versehentlich mit einem
+                # Bildschirmfoto weitergibt - Postfächer, die dem Anwender
+                # nicht einmal selbst gehören müssen. Wie viele es sind,
+                # genügt: Wer es genau wissen will, sieht die Liste in
+                # seinem Mailprogramm.
+                wieviele = (
+                    "Ein Postfach" if len(uebergangen) == 1
+                    else f"{len(uebergangen)} Postfächer"
+                )
                 text += (
-                    f"<p><b>Nicht dabei:</b> {', '.join(uebergangen)}. "
-                    f"Diese Konten lassen sich nicht über IMAP abrufen. Ihre "
-                    f"Nachrichten liegen aber meist lokal vor und können "
-                    f"später aus dem Mailprogramm eingelesen werden.</p>"
+                    f"<p><b>Nicht dabei:</b> {wieviele} aus Thunderbird "
+                    f"nutzen Exchange und lassen sich nicht über IMAP "
+                    f"abrufen. Die Nachrichten liegen aber meist lokal vor "
+                    f"und können später aus dem Mailprogramm eingelesen "
+                    f"werden.</p>"
                 )
         else:
             text = (
