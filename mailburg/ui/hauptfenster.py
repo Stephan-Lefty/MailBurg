@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QByteArray, Qt, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -54,10 +54,12 @@ class Hauptfenster(QMainWindow):
         self.laeufer: Läufer | None = None
 
         self.setWindowTitle(APP_NAME)
-        self.resize(1180, 720)
 
         self._aufbauen()
         self._menue()
+        # Erst nach dem Aufbau: Wiederhergestellt werden auch die
+        # Aufteilungen, und die gibt es vorher noch nicht.
+        self._groesse_herstellen()
         self._oeffnen(archiv_pfad)
 
     # ------------------------------------------------------------- Aufbau
@@ -109,10 +111,12 @@ class Hauptfenster(QMainWindow):
         rechts.addWidget(self.vorschau)
         rechts.setSizes([320, 400])
 
+        self.senkrecht = rechts
         teiler = QSplitter(Qt.Horizontal)
         teiler.addWidget(self.baum)
         teiler.addWidget(rechts)
         teiler.setSizes([250, 930])
+        self.waagerecht = teiler
 
         mitte = QWidget()
         aufbau = QVBoxLayout(mitte)
@@ -226,6 +230,64 @@ class Hauptfenster(QMainWindow):
         gewaehlt = QFileDialog.getExistingDirectory(self, "Archiv öffnen")
         if gewaehlt:
             self._oeffnen(Path(gewaehlt))
+
+    # ------------------------------------------------------- Fenstergröße
+
+    def _groesse_herstellen(self) -> None:
+        """Stellt die Ansicht her, die der Anwender zuletzt eingestellt hat.
+
+        Beim allerersten Start gibt es nichts herzustellen. Dann ist eine
+        großzügige Vorgabe richtig: Ein Archiv lebt von der Übersicht –
+        Postfächer, Trefferliste und Vorschau nebeneinander. Ein knappes
+        Fenster zwingt beim ersten Blick zum Ziehen an den Rändern, bevor
+        man überhaupt etwas erkennt.
+        """
+        from mailburg.ui.app import gemerktes
+
+        stand = gemerktes()
+        wieder = stand.get("fenster")
+
+        if wieder and self.restoreGeometry(QByteArray.fromBase64(wieder.encode())):
+            if stand.get("maximiert"):
+                self.showMaximized()
+        else:
+            flaeche = self.screen().availableGeometry()
+            # Nicht ganz bis an den Rand: Ein Fenster, das den Bildschirm
+            # ausfüllt, sieht aus wie ein Fehler, wenn es keiner ist.
+            self.resize(
+                min(1600, int(flaeche.width() * 0.9)),
+                min(1000, int(flaeche.height() * 0.9)),
+            )
+            self.move(flaeche.center() - self.rect().center())
+
+        for name, teiler in (("waagerecht", self.waagerecht),
+                             ("senkrecht", self.senkrecht)):
+            gespeichert = stand.get(name)
+            if gespeichert:
+                teiler.restoreState(QByteArray.fromBase64(gespeichert.encode()))
+
+        kopf = stand.get("spalten")
+        if kopf:
+            self.tabelle.horizontalHeader().restoreState(
+                QByteArray.fromBase64(kopf.encode())
+            )
+
+    def _groesse_merken(self) -> None:
+        from mailburg.ui.app import merken_unter
+
+        # Im maximierten Zustand liefert saveGeometry die Größe davor -
+        # genau richtig, sonst käme das Fenster beim Wiederherstellen nie
+        # aus der Vollbildgröße heraus.
+        merken_unter("fenster", bytes(self.saveGeometry().toBase64()).decode())
+        merken_unter("maximiert", self.isMaximized())
+        merken_unter("waagerecht",
+                     bytes(self.waagerecht.saveState().toBase64()).decode())
+        merken_unter("senkrecht",
+                     bytes(self.senkrecht.saveState().toBase64()).decode())
+        merken_unter(
+            "spalten",
+            bytes(self.tabelle.horizontalHeader().saveState().toBase64()).decode(),
+        )
 
     def _baum_fuellen(self) -> None:
         self.baum.clear()
@@ -422,6 +484,8 @@ class Hauptfenster(QMainWindow):
         fenster.exec()
 
     def closeEvent(self, ereignis) -> None:
+        # Zuerst merken, solange das Fenster noch steht.
+        self._groesse_merken()
         # Nicht nur den eigenen Abruf: Auch Prüfungen aus Dialogen können
         # noch laufen, und ein Faden ohne Fenster beendet das Programm.
         alle_beenden(3000)

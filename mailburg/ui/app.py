@@ -16,13 +16,42 @@ from mailburg import APP_NAME, __version__
 from mailburg.core import paths
 
 
+def _datei() -> Path:
+    return paths.config_dir() / "oberflaeche.json"
+
+
+def gemerktes() -> dict:
+    """Alles, was sich die Oberfläche von Sitzung zu Sitzung merkt."""
+    try:
+        inhalt = json.loads(_datei().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return inhalt if isinstance(inhalt, dict) else {}
+
+
+def merken_unter(schluessel: str, wert) -> None:
+    """Ändert einen Eintrag, ohne die übrigen zu verlieren.
+
+    Die frühere Fassung schrieb die Datei jedes Mal komplett neu. Damit
+    hätte das Merken des Archivs die gemerkte Fenstergröße gelöscht – ein
+    Fehler, der erst Wochen später als »das Fenster vergisst wieder alles«
+    aufgefallen wäre.
+    """
+    stand = gemerktes()
+    stand[schluessel] = wert
+    try:
+        _datei().write_text(
+            json.dumps(stand, ensure_ascii=False), encoding="utf-8"
+        )
+    except OSError:
+        # Sich etwas nicht merken zu können ist ärgerlich, aber kein
+        # Grund, das Programm nicht zu starten.
+        pass
+
+
 def zuletzt_gemerkt() -> Path | None:
     """Das Archiv, das zuletzt offen war."""
-    datei = paths.config_dir() / "oberflaeche.json"
-    try:
-        pfad = json.loads(datei.read_text(encoding="utf-8")).get("archiv")
-    except (OSError, json.JSONDecodeError):
-        return None
+    pfad = gemerktes().get("archiv")
     if not pfad:
         return None
     ort = Path(pfad)
@@ -32,15 +61,7 @@ def zuletzt_gemerkt() -> Path | None:
 
 
 def merken(pfad: Path) -> None:
-    datei = paths.config_dir() / "oberflaeche.json"
-    try:
-        datei.write_text(
-            json.dumps({"archiv": str(pfad)}, ensure_ascii=False), encoding="utf-8"
-        )
-    except OSError:
-        # Sich das letzte Archiv nicht merken zu können ist ärgerlich,
-        # aber kein Grund, das Programm nicht zu starten.
-        pass
+    merken_unter("archiv", str(pfad))
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1222,3 +1222,68 @@ class MailadresseInDerUebersichtTest(OberflaechenTest):
             ]
             self.assertIn("Weggefallen", beschriftungen)
             archiv.close()
+
+
+class FenstergroesseTest(OberflaechenTest):
+    """Beim ersten Start großzügig, danach so, wie der Anwender es einstellte."""
+
+    def setUp(self):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        flicken = mock.patch.object(
+            paths, "config_dir", lambda: pathlib.Path(self.ordner.name)
+        )
+        flicken.start()
+        self.addCleanup(flicken.stop)
+
+    def _fenster(self):
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        ort = pathlib.Path(self.ordner.name) / "Archiv"
+        if not (ort / "archive.json").exists():
+            Archive.create(ort).close()
+        fenster = Hauptfenster(ort)
+        self.addCleanup(fenster.close)
+        return fenster
+
+    def test_beim_ersten_start_grosszuegig(self):
+        fenster = self._fenster()
+        flaeche = fenster.screen().availableGeometry()
+
+        self.assertGreaterEqual(
+            fenster.width(), min(1600, int(flaeche.width() * 0.9)) - 1,
+            "ein knappes Fenster zwingt zum Ziehen, bevor man etwas erkennt",
+        )
+
+    def test_die_eingestellte_groesse_ueberlebt_den_neustart(self):
+        # Klein genug, dass es auch auf den 800x600 des Testbildschirms
+        # passt - sonst stutzt der Fenstermanager, und der Test misst ihn
+        # statt uns.
+        fenster = self._fenster()
+        fenster.resize(640, 480)
+        fenster._groesse_merken()
+
+        zweites = self._fenster()
+        self.assertEqual((zweites.width(), zweites.height()), (640, 480))
+
+    def test_archiv_merken_loescht_die_groesse_nicht(self):
+        # Die frühere Fassung schrieb die Datei komplett neu. Das Merken
+        # des Archivs hätte die Fenstergröße gelöscht - ein Fehler, der
+        # erst als "das Fenster vergisst wieder alles" aufgefallen wäre.
+        from mailburg.ui.app import gemerktes, merken
+
+        fenster = self._fenster()
+        fenster.resize(1111, 700)
+        fenster._groesse_merken()
+
+        merken(pathlib.Path(self.ordner.name) / "Archiv")
+
+        stand = gemerktes()
+        self.assertIn("fenster", stand)
+        self.assertIn("archiv", stand)
