@@ -641,3 +641,73 @@ class SystemplatteTest(unittest.TestCase):
             all(o.auf_systemplatte for o in vorschlaege),
             "es muss auch Orte abseits der Systemplatte geben",
         )
+
+
+class FadenLebensdauerTest(OberflaechenTest):
+    """Der Absturz, der die Oberfläche zweimal kommentarlos beendet hat.
+
+    Läuft ein Faden noch, während niemand mehr auf ihn zeigt, räumt Python
+    ihn weg – und Qt beendet daraufhin das gesamte Programm. Das ist keine
+    Python-Ausnahme und deshalb mit keinem try/except zu fangen.
+    """
+
+    def auftrag(self, dauer: float = 0.3):
+        from mailburg.ui.arbeit import Auftrag
+
+        class Langsam(Auftrag):
+            def ausfuehren(self):
+                import time
+
+                time.sleep(dauer)
+                return "fertig"
+
+        return Langsam()
+
+    def test_verlorene_referenz_haelt_den_faden_trotzdem(self):
+        import gc
+
+        from mailburg.ui import arbeit
+        from mailburg.ui.arbeit import Läufer
+
+        def starten_und_vergessen():
+            Läufer(self.auftrag()).starten()
+
+        starten_und_vergessen()
+        gc.collect()
+        self.assertEqual(len(arbeit._LAUFENDE), 1, "der Faden muss gehalten werden")
+        arbeit.alle_beenden(3000)
+
+    def test_nach_getaner_arbeit_wird_wieder_aufgeräumt(self):
+        # Die Liste darf nicht endlos wachsen - sonst hielte sie jeden
+        # Faden einer langen Sitzung fest.
+        from mailburg.ui import arbeit
+        from mailburg.ui.arbeit import Läufer
+
+        laeufer = Läufer(self.auftrag(0.05))
+        laeufer.starten()
+        laeufer.faden.wait(3000)
+        self.app.processEvents()
+        self.assertNotIn(laeufer, arbeit._LAUFENDE)
+
+    def test_alle_beenden_wartet_wirklich(self):
+        from mailburg.ui import arbeit
+        from mailburg.ui.arbeit import Läufer
+
+        laeufer = Läufer(self.auftrag(0.2))
+        laeufer.starten()
+        arbeit.alle_beenden(3000)
+        self.assertFalse(laeufer.faden.isRunning())
+        self.assertEqual(len(arbeit._LAUFENDE), 0)
+
+    def test_dialog_wartet_beim_schliessen(self):
+        # Genau der Weg, auf dem es zweimal geknallt hat: Prüfung läuft,
+        # Fenster geht zu.
+        from mailburg.ui import arbeit
+        from mailburg.ui.assistent import KontoDialog
+
+        dialog = KontoDialog()
+        dialog._laeufer = None
+        laeufer = arbeit.Läufer(self.auftrag(0.2))
+        laeufer.starten()
+        dialog.reject()
+        self.assertEqual(len(arbeit._LAUFENDE), 0, "beim Schließen muss gewartet werden")

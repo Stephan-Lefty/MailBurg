@@ -58,13 +58,22 @@ class Auftrag(QObject):
         self.fertig.emit(ergebnis)
 
 
-class Läufer:
-    """Hält Faden und Auftrag zusammen, solange sie leben.
+#: Alle Läufer, die gerade arbeiten. Der entscheidende Punkt: Solange ein
+#: Faden läuft, muss irgendetwas auf ihn zeigen. Zeigt niemand mehr auf
+#: ihn – etwa weil der Dialog geschlossen wurde, der ihn gestartet hat –,
+#: räumt Python ihn weg, und Qt beendet daraufhin **das gesamte Programm**.
+#: Ohne Meldung, ohne Rückfrage; für den Anwender verschwindet einfach das
+#: Fenster.
+#:
+#: Genau das ist zweimal passiert: beim Prüfen mit falschen Passwörtern.
+#: Der Fehler lässt sich nicht als Python-Ausnahme abfangen, weil er in
+#: Qts C++-Teil geschieht – deshalb diese Liste, die jeden laufenden Faden
+#: am Leben hält, bis er von sich aus fertig ist.
+_LAUFENDE: set = set()
 
-    Ohne eine Referenz von außen räumt Python beides weg, während es noch
-    läuft – ein Fehler, der sich als sporadischer Absturz zeigt und
-    entsprechend schwer zu finden ist.
-    """
+
+class Läufer:
+    """Hält Faden und Auftrag zusammen, solange sie leben."""
 
     def __init__(self, auftrag: Auftrag) -> None:
         self.auftrag = auftrag
@@ -74,18 +83,38 @@ class Läufer:
         self.faden.started.connect(auftrag.starten)
         auftrag.fertig.connect(self._beenden)
         auftrag.gescheitert.connect(self._beenden)
+        # Erst wenn der Faden wirklich zu Ende ist, darf er weggeräumt
+        # werden - nicht schon, wenn das Ergebnis vorliegt.
+        self.faden.finished.connect(self._abmelden)
 
     def starten(self) -> None:
+        _LAUFENDE.add(self)
         self.faden.start()
 
     def _beenden(self, *_egal) -> None:
         self.faden.quit()
 
+    def _abmelden(self) -> None:
+        _LAUFENDE.discard(self)
+
     def warten(self, millisekunden: int = 5000) -> bool:
         """Wartet auf das Ende – beim Schließen des Fensters."""
         self.auftrag.abbrechen()
         self.faden.quit()
-        return self.faden.wait(millisekunden)
+        fertig = self.faden.wait(millisekunden)
+        _LAUFENDE.discard(self)
+        return fertig
+
+
+def alle_beenden(millisekunden: int = 5000) -> None:
+    """Wartet auf alle laufenden Fäden, bevor ein Fenster schließt.
+
+    Ein Faden, der noch arbeitet, während sein Fenster verschwindet, ist
+    der häufigste Weg, ein Qt-Programm zum Absturz zu bringen. Beim
+    Schließen wird deshalb gebeten aufzuhören – und kurz gewartet.
+    """
+    for laeufer in list(_LAUFENDE):
+        laeufer.warten(millisekunden)
 
 
 class Anmeldeprobe(Auftrag):

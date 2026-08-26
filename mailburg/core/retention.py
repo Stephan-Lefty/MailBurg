@@ -32,6 +32,31 @@ class Jurisdiction(StrEnum):
     CH = "ch"
 
 
+#: Die maßgebliche Vorschrift je Rechtsraum, mit amtlicher Fundstelle.
+#: Bewusst keine Kanzlei- oder Anbieterseiten: Wer wissen will, wie lange
+#: er etwas aufbewahren muss, soll das Gesetz selbst lesen können – nicht
+#: die Zusammenfassung von jemandem, der etwas verkaufen möchte.
+#:
+#: Nachgesehen am 2026-08-26. Für Österreich führte die naheliegende
+#: ELI-Adresse zu einer ganz anderen Norm; deshalb hier der Weg über die
+#: Gesetzesnummer, dessen Inhalt geprüft wurde.
+QUELLEN: dict[Jurisdiction, tuple[str, str]] = {
+    Jurisdiction.DE: (
+        "§ 147 AO – Abgabenordnung",
+        "https://www.gesetze-im-internet.de/ao_1977/__147.html",
+    ),
+    Jurisdiction.AT: (
+        "§ 132 BAO – Bundesabgabenordnung",
+        "https://www.ris.bka.gv.at/NormDokument.wxe"
+        "?Abfrage=Bundesnormen&Gesetzesnummer=10003940&Paragraf=132",
+    ),
+    Jurisdiction.CH: (
+        "Art. 958f OR – Obligationenrecht",
+        "https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_958_f",
+    ),
+}
+
+
 class Category(StrEnum):
     """Wozu eine Mail aufbewahrungsrechtlich zählt."""
 

@@ -35,7 +35,7 @@ from mailburg import APP_NAME
 from mailburg.core.accounts import Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked
 from mailburg.search.query import QueryError, describe_syntax
-from mailburg.ui.arbeit import Abruflauf, Läufer
+from mailburg.ui.arbeit import Abruflauf, Läufer, alle_beenden
 from mailburg.ui.modelle import Trefferliste
 from mailburg.ui.vorschau import Mailvorschau
 
@@ -157,6 +157,11 @@ class Hauptfenster(QMainWindow):
         self.abrufen_aktion.setShortcut("F5")
         self.abrufen_aktion.triggered.connect(self._abrufen)
         post.addAction(self.abrufen_aktion)
+
+        post.addSeparator()
+        postfaecher = QAction("Postfächer verwalten …", self)
+        postfaecher.triggered.connect(self._postfaecher)
+        post.addAction(postfaecher)
 
         suchen_menue = self.menuBar().addMenu("&Suchen")
         ausfuehrlich = QAction("Ausführlich suchen …", self)
@@ -373,6 +378,12 @@ class Hauptfenster(QMainWindow):
         art = QMessageBox.information if bericht["ok"] else QMessageBox.warning
         art(self, "Prüfung", "\n".join(zeilen))
 
+    def _postfaecher(self) -> None:
+        """Postfächer hinzufügen, stilllegen oder entfernen."""
+        from mailburg.ui.konten import Kontenverwaltung
+
+        Kontenverwaltung(self).exec()
+
     def _suchmaske(self) -> None:
         """Öffnet die Maske und übernimmt, was sie zusammengestellt hat."""
         from mailburg.ui.suchmaske import Suchmaske
@@ -393,6 +404,9 @@ class Hauptfenster(QMainWindow):
         fenster.exec()
 
     def closeEvent(self, ereignis) -> None:
+        # Nicht nur den eigenen Abruf: Auch Prüfungen aus Dialogen können
+        # noch laufen, und ein Faden ohne Fenster beendet das Programm.
+        alle_beenden(3000)
         if self.laeufer is not None:
             self.laeufer.warten(3000)
         if self.archiv is not None:

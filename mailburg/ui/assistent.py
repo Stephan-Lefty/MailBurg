@@ -41,9 +41,9 @@ from mailburg import APP_NAME, QUELLTEXT_URL
 from mailburg.core import accounts, orte
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, Mode
-from mailburg.core.retention import Jurisdiction
+from mailburg.core.retention import QUELLEN, Jurisdiction
 from mailburg.ui import bilder
-from mailburg.ui.arbeit import Anmeldeprobe, Läufer
+from mailburg.ui.arbeit import Anmeldeprobe, Läufer, alle_beenden
 
 
 def _schluesselbund_satz() -> str:
@@ -392,9 +392,22 @@ class ArchivSeite(QWizardPage):
         self.rechtsraum.setEnabled(False)
         self.rechtsraum.setAccessibleName("Rechtsraum für die Aufbewahrungsfristen")
 
+        # Die Fundstelle zum gewählten Recht, damit niemand unserer
+        # Zusammenfassung glauben muss. Amtliche Quellen, keine
+        # Kanzleiseiten.
+        self.quelle = QLabel()
+        self.quelle.setOpenExternalLinks(True)
+        self.quelle.setTextFormat(Qt.RichText)
+        self.quelle.setWordWrap(True)
+        self.quelle.setIndent(4)
+        self.rechtsraum.currentIndexChanged.connect(self._quelle_erneuern)
+
         fristen = QFormLayout()
         fristen.addRow("Fristen nach dem Recht von:", self.rechtsraum)
+        fristen.addRow("", self.quelle)
         self.geschaeftlich.toggled.connect(self.rechtsraum.setEnabled)
+        self.geschaeftlich.toggled.connect(self.quelle.setEnabled)
+        self.quelle.setEnabled(False)
 
         art = QGroupBox("Wofür ist das Archiv?")
         innen = QVBoxLayout(art)
@@ -415,6 +428,7 @@ class ArchivSeite(QWizardPage):
         aufbau.addWidget(art)
         aufbau.addStretch()
 
+        self._quelle_erneuern()
         self.registerField("archivpfad*", self.pfad)
 
         # Einmal von Hand: Der Hinweis hängt sonst an einem Wechsel, und
@@ -422,6 +436,16 @@ class ArchivSeite(QWizardPage):
         # er am nötigsten ist.
         if self.orte:
             self._ort_gewaehlt(0)
+
+    def _quelle_erneuern(self) -> None:
+        """Zeigt die Vorschrift, nach der gerechnet wird."""
+        gebiet = self.rechtsraum.currentData()
+        bezeichnung, adresse = QUELLEN[gebiet]
+        self.quelle.setText(
+            f"Maßgeblich ist <a href='{adresse}'>{bezeichnung}</a>. "
+            f"MailBurg rechnet danach – entscheiden müssen Sie oder Ihre "
+            f"Steuerberatung."
+        )
 
     def pfad_beschriftung(self) -> QLabel:
         beschriftung = QLabel("Vollständiger Pfad:")
@@ -909,12 +933,9 @@ class KontoDialog(QDialog):
         self.server.setPlaceholderText("imap.example.org")
         self.passwort = QLineEdit()
         self.passwort.setEchoMode(QLineEdit.Password)
-        self.passwort.setPlaceholderText("wird gleich abgefragt")
-        self.passwort.setEnabled(False)
-        self.passwort.setToolTip(
-            "Das Passwort geben Sie in der Übersicht ein, zusammen mit den "
-            "übrigen Postfächern."
-        )
+        self.passwort.setPlaceholderText("Passwort oder App-Passwort")
+        self.passwort.setAccessibleName("Passwort")
+        sichtbarkeit_anbieten(self.passwort)
 
         self.port = QSpinBox()
         self.port.setRange(1, 65535)
@@ -930,17 +951,93 @@ class KontoDialog(QDialog):
         formular.addRow("IMAP-Server:", self.server)
         formular.addRow("Verschlüsselung:", self.verschluesselung)
         formular.addRow("Port:", self.port)
+        formular.addRow("Passwort:", self.passwort)
+
+        # Erst prüfen, dann übernehmen: Ein Postfach, das sich nicht
+        # anmelden kann, in der Liste zu haben, führt nur dazu, dass jeder
+        # Abruf mit einem Fehler endet - und irgendwann sieht niemand mehr
+        # hin. Deshalb bleibt "Übernehmen" gesperrt, bis der Test durch ist.
+        self.pruefknopf = QPushButton("Verbindung testen")
+        self.pruefknopf.clicked.connect(self._pruefen)
+        self.pruefstand = QLabel("Noch nicht geprüft")
+        self.pruefstand.setWordWrap(True)
+        self.pruefstand.setEnabled(False)
+
+        pruefzeile = QHBoxLayout()
+        pruefzeile.addWidget(self.pruefknopf)
+        pruefzeile.addWidget(self.pruefstand, 1)
 
         knoepfe = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.uebernehmen_knopf = knoepfe.button(QDialogButtonBox.Ok)
+        self.uebernehmen_knopf.setText("Übernehmen")
+        self.uebernehmen_knopf.setEnabled(False)
         knoepfe.accepted.connect(self.accept)
         knoepfe.rejected.connect(self.reject)
 
         aufbau = QVBoxLayout(self)
         aufbau.addLayout(formular)
+        aufbau.addLayout(pruefzeile)
         aufbau.addWidget(knoepfe)
+
+        # Jede Änderung macht das Prüfergebnis wertlos.
+        for feld in (self.name, self.benutzer, self.server, self.passwort):
+            feld.textChanged.connect(self._ungeprueft)
+        self.port.valueChanged.connect(self._ungeprueft)
+        self.verschluesselung.currentIndexChanged.connect(self._ungeprueft)
+
+        self._laeufer = None
+        self.ordner: list[str] = []
 
     def _port_anpassen(self, stelle: int) -> None:
         self.port.setValue(993 if self.verschluesselung.itemData(stelle) else 143)
+
+    def _ungeprueft(self) -> None:
+        """Setzt den Prüfstand zurück, sobald sich etwas ändert."""
+        self.uebernehmen_knopf.setEnabled(False)
+        self.pruefstand.setText("Noch nicht geprüft")
+        self.pruefstand.setStyleSheet("")
+
+    def _pruefen(self) -> None:
+        """Meldet sich einmal an und holt die Ordnerliste."""
+        konto = self.konto()
+        if not konto.server or not konto.benutzer:
+            self.pruefstand.setText("Bitte Mailadresse und Server angeben.")
+            return
+        if not self.passwort.text():
+            self.pruefstand.setText("Ohne Passwort lässt sich nichts prüfen.")
+            return
+
+        self.pruefknopf.setEnabled(False)
+        self.pruefstand.setStyleSheet("")
+        self.pruefstand.setText("Verbinde …")
+
+        auftrag = Anmeldeprobe(konto, self.passwort.text())
+        auftrag.fertig.connect(self._geglueckt)
+        auftrag.gescheitert.connect(self._misslungen)
+        self._laeufer = Läufer(auftrag)
+        self._laeufer.starten()
+
+    def _geglueckt(self, ordner: list) -> None:
+        self.ordner = list(ordner)
+        self.pruefknopf.setEnabled(True)
+        self.pruefstand.setStyleSheet("color: #2e7d32")
+        self.pruefstand.setText(
+            f"Anmeldung in Ordnung – {len(ordner)} Ordner würden archiviert."
+        )
+        self.uebernehmen_knopf.setEnabled(True)
+        self.uebernehmen_knopf.setFocus()
+
+    def done(self, ergebnis: int) -> None:
+        alle_beenden(3000)
+        super().done(ergebnis)
+
+    def _misslungen(self, text: str) -> None:
+        self.pruefknopf.setEnabled(True)
+        self.pruefstand.setStyleSheet("color: #c62828")
+        # Nur die erste Zeile: Die ausführliche Erklärung steht im Dialog,
+        # der beim Abruf erscheint, und würde hier den Platz sprengen.
+        self.pruefstand.setText(text.split("\n")[0])
+        self.uebernehmen_knopf.setEnabled(False)
 
     def konto(self) -> Konto:
         server = self.server.text().strip()
@@ -1035,3 +1132,12 @@ class Einrichtungsassistent(QWizard):
     @property
     def soll_abrufen(self) -> bool:
         return self.abschluss.gleich_abrufen.isChecked()
+
+    def done(self, ergebnis: int) -> None:
+        """Beim Schließen erst die Prüfläufe zu Ende bringen.
+
+        Ein Faden, der noch am Mailserver hängt, während sein Fenster
+        verschwindet, beendet sonst das ganze Programm - ohne Meldung.
+        """
+        alle_beenden(3000)
+        super().done(ergebnis)
