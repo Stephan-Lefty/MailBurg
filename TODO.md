@@ -8,6 +8,49 @@ wurde.
 
 ## Offen
 
+### Plan für den 2026-08-27
+
+In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
+
+- [ ] **1. Eingescannte PDF vom iPhone lesbar machen.** Heute gefunden,
+  noch nicht behoben. Sechs Dokumente scheiterten mit »kein Text
+  erkannt«, zwei davon aus derselben Ursache: iOS legt Scans mit
+  riesigen Seitenmaßen an – 4507 × 6681 Punkte statt 595 × 842 bei A4.
+  MailBurg rendert stur mit 300 dpi, das wären 523 Megapixel; daran
+  erstickt tesseract. Belegt: Mit angepasster Auflösung liest es den
+  Wohnungsplan einwandfrei.
+
+  Die Lösung ist klein: `pdftoppm -scale-to 3500` statt `-r 300`. Damit
+  bekommt die längere Kante immer rund 3500 Pixel, was bei A4 genau 300
+  dpi entspricht – der Normalfall ändert sich also nicht.
+
+  Die beiden anderen sind **passwortgeschützte PDF**. Da kann MailBurg
+  nichts machen, soll es aber sagen: »verschlüsselt« statt »kein Text
+  erkannt«. Wer die Meldung liest, muss wissen, ob das Dokument kaputt
+  ist oder nur zu ist.
+
+- [ ] **2. Dunkles Thema auf kleinen Bildschirmen.** Siehe unten. Erst
+  die Systempalette ausmessen, dann Screenshots, dann Stephans Urteil,
+  dann sein Test auf dem Debian-Gerät.
+
+- [ ] **3. Mails aus MailStore Home holen.** Die EML-Quelle steht seit
+  gestern. Offen sind drei Fragen an Stephan, die von hier aus nicht zu
+  beantworten sind: Was bietet MailStore Home unter »Exportieren« an?
+  Läuft es unter Windows oder Wine? Wie viele Mails sind es? An das
+  MailStore-Format selbst wird nicht herangegangen – ein Archiv, das
+  Mails aus einem nachgebauten Format zieht, kann die Bytegenauigkeit
+  nicht garantieren.
+
+- [ ] **4. Meldet MailBurg, wenn das Sicherungsziel fehlt?** Beide
+  Sicherungen schreiben nach `/mnt/…/Storage-Box/`. Ist das
+  am Monatsersten nicht eingehängt, schreibt der Dienst ins Leere. Ob
+  das auffällt, ist ungeprüft – und eine Sicherung, die stillschweigend
+  ausbleibt, ist schlimmer als keine.
+
+- [ ] **5. `konten zuordnung` soll Archivnamen zeigen, keine Kennungen.**
+  Derzeit steht dort `220b2cd0-f3b1-49ea-…`. Richtig wäre der Name des
+  Archivs, mit der Kennung nur als Zusatz.
+
 ### Muss vor dem ersten echten Einsatz passieren
 
 - [ ] **Was als Anhang gilt, soll der Anwender festlegen können.** Nicht
