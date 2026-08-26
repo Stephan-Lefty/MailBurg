@@ -765,3 +765,142 @@ class FenstergroesseTest(OberflaechenTest):
             seite.findChild(QScrollArea),
             "die Seite braucht einen Rollbereich, sonst fehlt unten die Fundstelle",
         )
+
+
+class MehrfachRueckfragenTest(OberflaechenTest):
+    """Mehrere gescheiterte Postfächer dürfen die Oberfläche nicht festfahren."""
+
+    def seite_mit(self, *konten):
+        from PySide6.QtWidgets import QGridLayout, QWidget
+
+        from mailburg.ui.assistent import KontenSeite, KontoZeile
+
+        seite = KontenSeite()
+        self._halter = QWidget()
+        gitter = QGridLayout(self._halter)
+        for n, konto in enumerate(konten):
+            zeile = KontoZeile(konto, gitter, n)
+            zeile.passwort.setText("geheim")
+            seite.zeilen.append(zeile)
+        return seite
+
+    def konto(self, adresse, server):
+        from mailburg.core.accounts import Konto
+
+        return Konto(name=adresse, server=server, benutzer=adresse, port=143, ssl=False)
+
+    def test_kein_dialog_aus_dem_signalempfaenger(self):
+        # Scheitern drei Postfächer fast gleichzeitig, kämen sonst drei
+        # modale Dialoge ineinander - verschachtelte Ereignisschleifen,
+        # und die Oberfläche steht. Genau das ist passiert.
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        seite = self.seite_mit(
+            self.konto("a@example.org", "imap.example.org"),
+            self.konto("b@example.org", "imap.example.org"),
+        )
+        seite._offen = 2
+
+        gefragt = []
+        with mock.patch.object(QMessageBox, "question",
+                               lambda *a, **k: gefragt.append(1)):
+            seite._misslungen(seite.zeilen[0], "Das Zertifikat gilt nicht für …")
+            # Nach dem ersten von zwei darf noch nichts gefragt worden sein.
+            self.assertEqual(gefragt, [], "erst fragen, wenn alle Prüfungen durch sind")
+
+    def test_zertifikatsfaelle_kommen_vor_der_passwortfrage(self):
+        # Wer beim Zertifikatsfehler nach dem Passwort gefragt würde, gäbe
+        # dasselbe noch einmal ein - und es scheiterte wieder.
+        from unittest import mock
+
+        from mailburg.core import tlsdiagnose
+        from PySide6.QtWidgets import QMessageBox
+
+        seite = self.seite_mit(self.konto("a@example.org", "imap.example.org"))
+        seite._offen = 1
+
+        befund = tlsdiagnose.Befund(
+            namen=["*.hoster.example"], rueckwaerts="s1.hoster.example",
+            vorschlag="s1.hoster.example",
+        )
+        passwortfragen = []
+
+        with mock.patch.object(tlsdiagnose, "untersuchen", return_value=befund), \
+             mock.patch.object(QMessageBox, "question",
+                               lambda *a, **k: QMessageBox.Yes), \
+             mock.patch.object(seite, "_pruefen", lambda z: None), \
+             mock.patch("mailburg.ui.assistent.PasswortNachfrage",
+                        lambda *a, **k: passwortfragen.append(1)):
+            seite._misslungen(seite.zeilen[0], "Das Zertifikat gilt nicht für …")
+
+        self.assertEqual(passwortfragen, [], "hier ist nicht das Passwort schuld")
+        self.assertEqual(seite.zeilen[0].konto.server, "s1.hoster.example")
+
+
+class FadengrenzeTest(OberflaechenTest):
+    """Rückmeldungen aus dem Hintergrund müssen im Faden der Oberfläche ankommen.
+
+    Daran hing die Einrichtung fest: Die Antworten waren über Lambdas
+    verbunden, denen Qt keinen Faden zuordnen kann. Also rief es sie
+    sofort auf - im Arbeitsfaden -, und die Zeilen darunter fassten
+    Widgets an. Das Fenster reagierte danach auf nichts mehr.
+    """
+
+    def test_empfaenger_laufen_im_faden_der_oberflaeche(self):
+        import time
+
+        from PySide6.QtCore import QCoreApplication, QObject, QThread
+
+        from mailburg.ui.arbeit import Auftrag, Läufer
+
+        class Rechnen(Auftrag):
+            def ausfuehren(self):
+                return QThread.currentThread()
+
+        gesehen = {}
+
+        class Empfaenger(QObject):
+            def angekommen(self, arbeitsfaden):
+                gesehen["arbeit"] = arbeitsfaden
+                gesehen["empfang"] = QThread.currentThread()
+
+        empfaenger = Empfaenger()
+        auftrag = Rechnen()
+        laeufer = Läufer(auftrag)
+        auftrag.fertig.connect(empfaenger.angekommen)
+        laeufer.starten()
+
+        # Ereignisse abarbeiten, bis die Antwort da ist. Ein ``exec()``
+        # wäre hier falsch: Der Test liefe dann in einer zweiten
+        # Ereignisschleife und käme bei einem Fehler nie zurück.
+        frist = time.monotonic() + 5
+        while "empfang" not in gesehen and time.monotonic() < frist:
+            QCoreApplication.processEvents()
+            time.sleep(0.01)
+        laeufer.warten(2000)
+
+        self.assertIn("empfang", gesehen, "keine Antwort erhalten")
+        self.assertIs(gesehen["empfang"], QThread.currentThread(),
+                      "die Antwort kam im falschen Faden an")
+        self.assertIsNot(gesehen["arbeit"], QThread.currentThread(),
+                         "die Arbeit lief gar nicht nebenher")
+
+    def test_keine_lambdas_an_hintergrundsignalen(self):
+        # Die Regel steht in ui/arbeit.py. Sie hält nur, wenn sie geprüft
+        # wird - ein Lambda ist schnell wieder hingeschrieben.
+        import pathlib
+        import re
+
+        wurzel = pathlib.Path(__file__).resolve().parent.parent / "mailburg" / "ui"
+        muster = re.compile(
+            r"\.(fertig|gescheitert|meldung|fortschritt|konto_beginnt|"
+            r"konto_fertig)\.connect\(\s*(lambda|functools\.partial|partial)"
+        )
+        for datei in wurzel.glob("*.py"):
+            for nr, zeile in enumerate(datei.read_text(encoding="utf-8").splitlines(), 1):
+                self.assertIsNone(muster.search(zeile),
+                                  f"{datei.name}:{nr} verbindet ein Hintergrund"
+                                  f"signal mit einem Lambda - das läuft im "
+                                  f"Arbeitsfaden und friert die Oberfläche ein")

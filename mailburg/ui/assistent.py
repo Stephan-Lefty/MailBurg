@@ -643,6 +643,7 @@ class KontenSeite(QWizardPage):
         self.setSubTitle("Welche Postfächer sollen archiviert werden?")
         self.zeilen: list[KontoZeile] = []
         self._laeufer: list[Läufer] = []
+        self._zu_zeile: dict = {}
         self._offen = 0
 
         self.herkunft = QLabel()
@@ -815,7 +816,7 @@ class KontenSeite(QWizardPage):
         # alle durch sind. Sonst stünde der Anwender vor einem Fenster, das
         # sich nicht mehr rührt.
         self._offen = len(zu_pruefen)
-        self.wizard().button(QWizard.NextButton).setEnabled(False)
+        self._weiter_freigeben(False)
         for zeile in zu_pruefen:
             self._pruefen(zeile)
         return False
@@ -826,9 +827,25 @@ class KontenSeite(QWizardPage):
         laeufer = Läufer(auftrag)
         self._laeufer.append(laeufer)
 
-        auftrag.fertig.connect(lambda ordner, z=zeile: self._geklappt(z, ordner))
-        auftrag.gescheitert.connect(lambda text, z=zeile: self._misslungen(z, text))
+        # Gebundene Methoden dieser Seite, ausdrücklich keine Lambdas.
+        # Siehe die Regel in ``ui/arbeit.py``: Ein Lambda hat keine
+        # Fadenzugehörigkeit, Qt ruft es deshalb im Arbeitsfaden auf – und
+        # die Zeilen darunter fassen Widgets an. Welche Zeile gemeint ist,
+        # steht im Wörterbuch; den Auftrag liefert ``sender()``.
+        self._zu_zeile[auftrag] = zeile
+        auftrag.fertig.connect(self._probe_geglueckt)
+        auftrag.gescheitert.connect(self._probe_gescheitert)
         laeufer.starten()
+
+    def _probe_geglueckt(self, ordner: list[str]) -> None:
+        zeile = self._zu_zeile.pop(self.sender(), None)
+        if zeile is not None:
+            self._geklappt(zeile, ordner)
+
+    def _probe_gescheitert(self, text: str) -> None:
+        zeile = self._zu_zeile.pop(self.sender(), None)
+        if zeile is not None:
+            self._misslungen(zeile, text)
 
     def _geklappt(self, zeile: KontoZeile, ordner: list[str]) -> None:
         zeile.melden(f"in Ordnung, {len(ordner)} Ordner", gut=True)
@@ -836,19 +853,16 @@ class KontenSeite(QWizardPage):
         self._abschliessen()
 
     def _misslungen(self, zeile: KontoZeile, text: str) -> None:
-        # Der häufigste Fall bei eigenen Domänen: Der Mailserver läuft beim
-        # Hoster unter dessen Namen. Mailprogramme lassen den Anwender hier
-        # eine Ausnahme anklicken, die die Prüfung für immer aushebelt. Wir
-        # bieten stattdessen den Namen an, unter dem sie gelingt.
-        if "gilt nicht für" in text and self._namen_anbieten(zeile, text):
-            return
-
+        # Hier wird nur vermerkt, nicht gefragt. Scheitern drei Postfächer
+        # fast gleichzeitig, kämen sonst drei modale Dialoge ineinander -
+        # verschachtelte Ereignisschleifen, und die Oberfläche steht.
+        # Gefragt wird gesammelt, wenn alle Prüfungen durch sind.
         zeile.melden("Anmeldung gescheitert", gut=False)
         zeile.fehler = text
         zeile.zustand.setToolTip(text)
         self._abschliessen()
 
-    def _namen_anbieten(self, zeile: KontoZeile, text: str) -> bool:
+    def _namen_anbieten(self, zeile: KontoZeile) -> bool:
         """Fragt, ob der beglaubigte Name verwendet werden soll.
 
         Der Vorschlag wird eigens ermittelt und nicht aus der
@@ -866,7 +880,7 @@ class KontenSeite(QWizardPage):
         vorschlag = befund.vorschlag
 
         antwort = QMessageBox.question(
-            self,
+            self.window(),
             "Anderer Servername nötig",
             f"<p>Das Zertifikat von <b>{zeile.konto.server}</b> ist nicht auf "
             f"diesen Namen ausgestellt.</p>"
@@ -882,25 +896,38 @@ class KontenSeite(QWizardPage):
             return False
 
         zeile.konto.server = vorschlag
-        zeile.beschreibung.setText(
-            f"{zeile.konto.benutzer} — {vorschlag}:{zeile.konto.port}"
-        )
-        zeile.melden("prüfe erneut …")
-        self._pruefen(zeile)
+        zeile.beschreibung.setText(f"{vorschlag}:{zeile.konto.port}")
+        zeile.fehler = ""
+        zeile.melden("Servername berichtigt")
         return True
+
+    def _weiter_freigeben(self, frei: bool) -> None:
+        """Sperrt »Weiter«, solange Anmeldungen laufen."""
+        assistent = self.wizard()
+        if assistent is not None:
+            assistent.button(QWizard.NextButton).setEnabled(frei)
 
     def _abschliessen(self) -> None:
         self._offen -= 1
         if self._offen > 0:
             return
 
-        self.wizard().button(QWizard.NextButton).setEnabled(True)
+        self._weiter_freigeben(True)
         gescheitert = [z for z in self.zeilen if z.gewaehlt and getattr(z, "fehler", "")]
 
         if gescheitert:
             nochmal = []
+
+            # Zuerst die Zertifikatsfälle: Dort liegt es am Servernamen,
+            # nicht am Passwort. Wer hier nach dem Passwort gefragt würde,
+            # gäbe dasselbe noch einmal ein - und es scheiterte wieder.
+            for zeile in list(gescheitert):
+                if "gilt nicht für" in zeile.fehler and self._namen_anbieten(zeile):
+                    gescheitert.remove(zeile)
+                    nochmal.append(zeile)
+
             for zeile in gescheitert:
-                dialog = PasswortNachfrage(zeile.konto, zeile.fehler, self)
+                dialog = PasswortNachfrage(zeile.konto, zeile.fehler, self.window())
                 if dialog.exec() and dialog.passwort.text():
                     zeile.passwort.setText(dialog.passwort.text())
                     zeile.fehler = ""
@@ -921,7 +948,7 @@ class KontenSeite(QWizardPage):
 
             if nochmal:
                 self._offen = len(nochmal)
-                self.wizard().button(QWizard.NextButton).setEnabled(False)
+                self._weiter_freigeben(False)
                 for zeile in nochmal:
                     self._pruefen(zeile)
                 return

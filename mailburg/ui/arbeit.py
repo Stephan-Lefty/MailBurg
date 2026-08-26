@@ -14,7 +14,7 @@ auslesen – verteilt ``core/importer.py`` ohnehin auf eigene Prozesse.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QObject, Qt, QThread, Signal
 
 
 class Auftrag(QObject):
@@ -72,17 +72,29 @@ class Auftrag(QObject):
 _LAUFENDE: set = set()
 
 
-class Läufer:
-    """Hält Faden und Auftrag zusammen, solange sie leben."""
+class Läufer(QObject):
+    """Hält Faden und Auftrag zusammen, solange sie leben.
+
+    Ein ``QObject`` zu sein ist hier keine Förmlichkeit. Nur an einem
+    ``QObject`` erkennt Qt, zu welchem Faden ein Empfänger gehört, und
+    stellt einen Aufruf über Fadengrenzen hinweg in dessen Warteschlange.
+    Bei einer gewöhnlichen Python-Klasse fehlt diese Angabe – Qt ruft
+    dann sofort auf, und zwar im Arbeitsfaden.
+    """
 
     def __init__(self, auftrag: Auftrag) -> None:
+        super().__init__()
         self.auftrag = auftrag
         self.faden = QThread()
         auftrag.moveToThread(self.faden)
 
         self.faden.started.connect(auftrag.starten)
-        auftrag.fertig.connect(self._beenden)
-        auftrag.gescheitert.connect(self._beenden)
+        # Ausdrücklich direkt: Diese beiden fassen keine Oberfläche an,
+        # sie rufen nur ``quit()`` - das ist fadensicher. Über die
+        # Warteschlange gingen sie erst, wenn die Oberfläche wieder dran
+        # ist; bis dahin liefe der Faden weiter, obwohl er fertig ist.
+        auftrag.fertig.connect(self._beenden, Qt.DirectConnection)
+        auftrag.gescheitert.connect(self._beenden, Qt.DirectConnection)
         # Erst wenn der Faden wirklich zu Ende ist, darf er weggeräumt
         # werden - nicht schon, wenn das Ergebnis vorliegt.
         self.faden.finished.connect(self._abmelden)
@@ -162,6 +174,19 @@ class Anmeldeprobe(Auftrag):
             return quelle.folders()
         finally:
             quelle.close()
+
+
+#: **Regel für alle Empfänger dieser Signale:** eine gebundene Methode
+#: eines ``QObject`` aus dem Faden der Oberfläche – niemals ein Lambda,
+#: keine ``functools.partial``, keine freie Funktion. Denen fehlt die
+#: Fadenzugehörigkeit, also verbindet Qt sie *direkt*: Der Empfänger läuft
+#: im Arbeitsfaden mit. Wer dort ein Widget anfasst, bekommt
+#: »QObject::setParent: Cannot set parent, new parent is in a different
+#: thread«, eine Flut von »QBasicTimer::stop: Failed« – und ein Fenster,
+#: das sich nicht mehr rührt. Genau daran hing die Einrichtung fest.
+#:
+#: Wer mehrere Aufträge auseinanderhalten muss, merkt sich die Zuordnung
+#: in einem Wörterbuch und holt den Auftrag im Empfänger über ``sender()``.
 
 
 class Abruflauf(Auftrag):
