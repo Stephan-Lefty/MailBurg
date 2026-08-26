@@ -10,6 +10,7 @@ man dazunehmen kann, aber nicht muss.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QByteArray, Qt, QTimer
@@ -136,7 +137,15 @@ class Hauptfenster(QMainWindow):
         self.balken = QProgressBar()
         self.balken.setMaximumWidth(220)
         self.balken.hide()
+        # Dauerhaft rechts, nicht links bei den Meldungen: Der Bestand
+        # soll immer dastehen. Links wechselt der Text mit jeder Suche,
+        # jedem Abruf, jedem Fehler - und genau diese Angabe darf nicht
+        # verschwinden, sobald jemand etwas sucht.
+        self.bestand = QLabel("")
+        self.bestand.setAccessibleName("Bestand und letzter Abruf")
+
         self.statusBar().addWidget(self.stand, 1)
+        self.statusBar().addPermanentWidget(self.bestand)
         self.statusBar().addPermanentWidget(self.balken)
 
     def _menue(self) -> None:
@@ -216,6 +225,7 @@ class Hauptfenster(QMainWindow):
         self.modell.suchindex = self.archiv.index
         self.setWindowTitle(f"{APP_NAME} – {self.archiv.name}")
         self._baum_fuellen()
+        self._bestand_zeigen()
         self._suchen()
 
     def _neues_archiv(self) -> None:
@@ -332,6 +342,23 @@ class Hauptfenster(QMainWindow):
             "spalten",
             bytes(self.tabelle.horizontalHeader().saveState().toBase64()).decode(),
         )
+
+    def _bestand_zeigen(self) -> None:
+        """Wie viel im Archiv liegt und wann zuletzt geholt wurde.
+
+        Zusammen beantwortet das die Frage, die sich vor jedem Aufräumen
+        im Mailprogramm stellt: *Ist mein Archiv auf dem Stand?* Ein
+        Archiv, dem man das nicht ansieht, muss man glauben.
+        """
+        if self.archiv is None:
+            self.bestand.setText("")
+            return
+
+        from mailburg.core.sync import Abrufzustand
+
+        anzahl = f"{self.archiv.index.count():,}".replace(",", ".")
+        wann = _abrufzeit(Abrufzustand(self.archiv.uuid).zuletzt)
+        self.bestand.setText(f"{anzahl} Mails im Archiv · {wann}")
 
     def _baum_fuellen(self) -> None:
         self.baum.clear()
@@ -460,6 +487,7 @@ class Hauptfenster(QMainWindow):
                 self, "Nicht alle Postfächer erreichbar", "\n\n".join(fehler)
             )
         self._baum_fuellen()
+        self._bestand_zeigen()
         self._suchen()
 
     def _abruf_gescheitert(self, text: str) -> None:
@@ -538,6 +566,30 @@ class Hauptfenster(QMainWindow):
         if self.archiv is not None:
             self.archiv.close()
         super().closeEvent(ereignis)
+
+
+def _abrufzeit(iso: str) -> str:
+    """Formt den Zeitpunkt des letzten Abrufs in etwas Lesbares um.
+
+    »heute 21:14« sagt mehr als »2026-08-26T21:14:03+02:00« – und der
+    Anwender soll auf einen Blick sehen, ob das lange her ist.
+    """
+    if not iso:
+        return "noch nicht abgerufen"
+    try:
+        wann = datetime.fromisoformat(iso)
+    except ValueError:
+        return "letzter Abruf unbekannt"
+
+    heute = datetime.now(wann.tzinfo).date()
+    tag = wann.date()
+    if tag == heute:
+        wortlaut = "heute"
+    elif (heute - tag).days == 1:
+        wortlaut = "gestern"
+    else:
+        wortlaut = wann.strftime("%d.%m.%Y")
+    return f"zuletzt abgerufen: {wortlaut} {wann:%H:%M}"
 
 
 def _quoten(wert: str) -> str:

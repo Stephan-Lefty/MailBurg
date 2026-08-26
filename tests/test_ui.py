@@ -1329,3 +1329,46 @@ class StandardansichtTest(FenstergroesseTest):
         fenster._standardansicht()
 
         self.assertFalse(fenster.isMaximized())
+
+
+class BestandsanzeigeTest(unittest.TestCase):
+    """Ist mein Archiv auf dem Stand? Das muss man sehen, nicht glauben."""
+
+    def test_zeitpunkt_wird_lesbar(self):
+        from datetime import datetime, timedelta
+
+        from mailburg.ui.hauptfenster import _abrufzeit
+
+        jetzt = datetime.now().astimezone()
+        self.assertIn("heute", _abrufzeit(jetzt.isoformat()))
+        self.assertIn("gestern", _abrufzeit((jetzt - timedelta(days=1)).isoformat()))
+        vorwoche = jetzt - timedelta(days=7)
+        self.assertIn(vorwoche.strftime("%d.%m.%Y"), _abrufzeit(vorwoche.isoformat()))
+
+    def test_ohne_abruf_wird_das_gesagt(self):
+        from mailburg.ui.hauptfenster import _abrufzeit
+
+        # Kein Datum zu erfinden: "noch nicht abgerufen" ist die ehrliche
+        # Auskunft. Ein leeres Feld sähe aus wie ein Anzeigefehler.
+        self.assertEqual(_abrufzeit(""), "noch nicht abgerufen")
+        self.assertIn("unbekannt", _abrufzeit("kein Datum"))
+
+    def test_nur_ein_beendeter_lauf_zaehlt(self):
+        # Ein Abruf, der an einem stummen Server scheitert, darf das
+        # Archiv nicht als aktuell ausweisen - genau darauf schaut der
+        # Anwender, bevor er sein Postfach aufräumen lässt.
+        import tempfile
+
+        from mailburg.core.sync import Abrufzustand
+
+        with tempfile.TemporaryDirectory() as ordner:
+            datei = pathlib.Path(ordner) / "zustand.json"
+            zustand = Abrufzustand("egal", datei=datei)
+            zustand.ordner_gesehen("Konto", "INBOX", 1)
+            zustand.speichern()
+
+            self.assertEqual(Abrufzustand("egal", datei=datei).zuletzt, "")
+
+            zustand.lauf_beendet()
+            zustand.speichern()
+            self.assertTrue(Abrufzustand("egal", datei=datei).zuletzt)

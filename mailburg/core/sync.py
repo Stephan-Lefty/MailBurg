@@ -66,6 +66,14 @@ class Abrufzustand:
     def __init__(self, archiv_uuid: str, datei: Path | None = None) -> None:
         self.datei = datei or (paths.data_dir() / "abruf" / f"{archiv_uuid}.json")
         self.konten: dict[str, dict[str, dict]] = {}
+        self.zuletzt: str = ""
+        """Wann zuletzt ein Abruf zu Ende lief, als ISO-Zeit.
+
+        Nicht wann es zuletzt *versucht* wurde: Ein Abruf, der an einem
+        stummen Server scheitert, darf das Archiv nicht als aktuell
+        ausweisen. Genau darauf schaut der Anwender, bevor er sein
+        Postfach aufräumen lässt.
+        """
         self.laden()
 
     def laden(self) -> None:
@@ -78,15 +86,26 @@ class Abrufzustand:
             # etwas halb Verstandenes. Der Preis ist ein Vollabruf.
             return
         self.konten = daten.get("konten", {})
+        self.zuletzt = daten.get("zuletzt", "")
 
     def speichern(self) -> None:
         self.datei.parent.mkdir(parents=True, exist_ok=True)
-        inhalt = {"version": ZUSTAND_VERSION, "konten": self.konten}
+        inhalt = {
+            "version": ZUSTAND_VERSION,
+            "konten": self.konten,
+            "zuletzt": self.zuletzt,
+        }
         vorlaeufig = self.datei.with_suffix(".neu")
         vorlaeufig.write_text(
             json.dumps(inhalt, indent=2, ensure_ascii=False), encoding="utf-8"
         )
         vorlaeufig.replace(self.datei)
+
+    def lauf_beendet(self) -> None:
+        """Vermerkt, dass ein Abruf durchgelaufen ist."""
+        from datetime import datetime
+
+        self.zuletzt = datetime.now().astimezone().isoformat(timespec="seconds")
 
     # ------------------------------------------------------------ Abfragen
 

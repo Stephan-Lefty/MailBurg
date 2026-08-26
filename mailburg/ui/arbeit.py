@@ -268,6 +268,10 @@ class Abruflauf(Auftrag):
 
                 self.konto_fertig.emit(konto.name, ergebnisse[konto.name])
 
+            if not self.abgebrochen:
+                zustand.lauf_beendet()
+                zustand.speichern()
+
             if any(getattr(e, "neu", 0) for e in ergebnisse.values()):
                 self.meldung.emit("Verdichte den Suchindex …")
                 archiv.index.optimize()

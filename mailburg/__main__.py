@@ -508,6 +508,11 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
                     file=sys.stderr if not laut else sys.stdout,
                 )
 
+        # Erst hier, nicht im finally je Konto: "Zuletzt abgerufen" soll
+        # heißen, dass der Lauf durch ist - nicht, dass er begonnen hat.
+        zustand.lauf_beendet()
+        zustand.speichern()
+
         sagen()
         # Nur wenn wirklich etwas dazugekommen ist. Das Verdichten geht über
         # den ganzen Volltextindex; bei einem Abruf alle zehn Minuten wäre
