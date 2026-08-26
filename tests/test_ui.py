@@ -1633,33 +1633,6 @@ class FarbkontrastTest(OberflaechenTest):
         self.assertNotEqual(dunkel, hell)
 
 
-class JournalhilfeTest(unittest.TestCase):
-    """Die Erklärung muss verständlich sein – und ehrlich."""
-
-    def test_erklaert_ohne_fachwoerter_im_fliesstext(self):
-        from mailburg.ui.hauptfenster import JOURNAL_ERKLAERT
-
-        # Wer wissen will, ob sein Archiv in Ordnung ist, soll das
-        # verstehen, ohne vorher etwas nachschlagen zu müssen.
-        for fachwort in ("SHA-256", "Hash", "Blockchain", "prev", "self"):
-            self.assertNotIn(fachwort, JOURNAL_ERKLAERT)
-        self.assertIn("Fingerabdruck", JOURNAL_ERKLAERT)
-
-    def test_sagt_auch_was_es_nicht_leistet(self):
-        # Eine halbe Zusage ist in Rechtsfragen schlimmer als keine.
-        from mailburg.ui.hauptfenster import JOURNAL_ERKLAERT
-
-        self.assertIn("nicht leistet", JOURNAL_ERKLAERT)
-        self.assertIn("unterstützt", JOURNAL_ERKLAERT)
-        self.assertNotIn("GoBD-konform", JOURNAL_ERKLAERT)
-
-    def test_verweist_auf_den_menuepunkt_wie_er_heisst(self):
-        from mailburg.ui.hauptfenster import JOURNAL_ERKLAERT
-
-        self.assertIn("Journal prüfen", JOURNAL_ERKLAERT)
-        self.assertNotIn("Hash-Kette prüfen", JOURNAL_ERKLAERT)
-
-
 class EigeneAnsichtTest(FenstergroesseTest):
     """Die eingestellte Größe muss den Neustart überleben – auch unter Wayland."""
 
@@ -1879,3 +1852,75 @@ class PostfachreihenfolgeTest(OberflaechenTest):
         )
         self.assertIn("neu@example.org", self._namen(zweites))
         self.assertEqual(self._namen(zweites)[-1], "neu@example.org")
+
+
+class HandbuchTest(OberflaechenTest):
+    """Das Handbuch muss verständlich sein, ehrlich – und vollständig."""
+
+    def _text(self, kennung):
+        from mailburg.ui.hilfe import kapitel
+
+        return next(k.text for k in kapitel() if k.kennung == kennung)
+
+    def test_jeder_menuepunkt_ist_erklaert(self):
+        # Wer wissen will, was ein Menüpunkt tut, sucht nach diesem
+        # Menüpunkt. Steht er nirgends, hilft das beste Kapitel nichts.
+        from mailburg.ui.hilfe import kapitel
+
+        alles = " ".join(k.text for k in kapitel())
+        for punkt in (
+            "Journal prüfen", "Postfächer verwalten", "Jetzt abrufen",
+            "Abruf im Hintergrund", "Ausführlich suchen",
+            "Fenster auf Standard zurücksetzen", "Eigene Ansicht speichern",
+            "Eigene Ansicht laden", "Postfach nach oben",
+            "Archiv anlegen", "Archiv öffnen", "Archiv schließen",
+        ):
+            with self.subTest(menuepunkt=punkt):
+                self.assertIn(punkt, alles)
+
+    def test_journalkapitel_ohne_fachwoerter(self):
+        text = self._text("journal")
+
+        for fachwort in ("SHA-256", "Hash", "Blockchain"):
+            self.assertNotIn(fachwort, text)
+        self.assertIn("Fingerabdruck", text)
+
+    def test_journalkapitel_sagt_auch_was_es_nicht_leistet(self):
+        # Eine halbe Zusage ist in Rechtsfragen schlimmer als keine.
+        text = self._text("journal")
+
+        self.assertIn("nicht leistet", text)
+        self.assertIn("unterstützt", text)
+        self.assertNotIn("GoBD-konform", text)
+
+    def test_aufraeumen_warnt_vor_der_falschen_reihenfolge(self):
+        text = self._text("aufraeumen")
+
+        self.assertIn("abgleich", text)
+        self.assertIn("nicht auf", text)
+
+    def test_fristenkapitel_erhebt_keinen_rechtsanspruch(self):
+        text = self._text("fristen")
+
+        self.assertIn("Kein Rechtsrat", text)
+        self.assertNotIn("rechtssicher", text.lower())
+
+    def test_querverweise_zeigen_auf_vorhandene_kapitel(self):
+        import re
+
+        from mailburg.ui.hilfe import kapitel
+
+        stuecke = kapitel()
+        vorhanden = {k.kennung for k in stuecke}
+        for stueck in stuecke:
+            for ziel in re.findall(r'href="#([^"]+)"', stueck.text):
+                with self.subTest(kapitel=stueck.kennung, ziel=ziel):
+                    self.assertIn(ziel, vorhanden)
+
+    def test_sprung_ins_kapitel(self):
+        from mailburg.ui.hilfe import Hilfefenster
+
+        fenster = Hilfefenster(beginnen_bei="journal")
+        self.addCleanup(fenster.close)
+
+        self.assertEqual(fenster.liste.currentItem().text(), "Das Journal")
