@@ -7,9 +7,11 @@ Fälscher den Eigenhash des geänderten Eintrags korrekt mitrechnet.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from mailburg.core.journal import GENESIS_PREV, Journal, canonical, entry_hash
 
@@ -77,6 +79,67 @@ class TestKette(unittest.TestCase):
         weiter = wieder.append("note", text="nachher")
         self.assertEqual(weiter["seq"], 3)
         self.assertEqual(weiter["prev"], last["self"])
+        self.assertTrue(wieder.verify().ok)
+
+
+class TestFlush(unittest.TestCase):
+    """Das Auf-die-Platte-Zwingen muss auf allen Systemen funktionieren."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.meta = Path(self._tmp.name) / "meta"
+        self.journal = Journal(self.meta)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_der_deskriptor_fuer_fsync_hat_schreibrecht(self) -> None:
+        """Windows verweigert fsync auf einem nur lesend geöffneten Deskriptor.
+
+        Der Fehler ließ dort am 25.08.2026 jeden einzelnen Test scheitern –
+        nicht nur die des Journals, denn schon ``Archive.create`` kommt hier
+        vorbei. Aufgefallen ist er lange nicht, weil unter Linux alles lief:
+        POSIX erlaubt fsync auch lesend.
+
+        Nachstellen lässt sich das ohne Windows nur an der Ursache selbst,
+        also am Zugriffsmodus des Deskriptors, den fsync bekommt.
+        """
+        try:
+            import fcntl
+        except ImportError:  # pragma: no cover – auf Windows prüft es die CI
+            self.skipTest("fcntl gibt es nur auf POSIX")
+
+        modi: list[int] = []
+        echtes_fsync = os.fsync
+
+        def mitschreiben(fd: int) -> None:
+            modi.append(fcntl.fcntl(fd, fcntl.F_GETFL) & os.O_ACCMODE)
+            echtes_fsync(fd)
+
+        self.journal.append("note", text="etwas, das auf die Platte muss")
+        with mock.patch.object(os, "fsync", mitschreiben):
+            self.journal.flush()
+
+        self.assertTrue(modi, "flush() hat gar nicht synchronisiert")
+        for modus in modi:
+            self.assertNotEqual(
+                modus, os.O_RDONLY,
+                "nur lesend geöffnet – unter Windows scheitert fsync damit",
+            )
+
+    def test_ohne_aenderung_wird_nichts_synchronisiert(self) -> None:
+        """Sonst kostet jeder Aufruf eine Plattenumdrehung ohne Anlass."""
+        self.journal.append("note", text="eins")
+        self.journal.flush()
+        with mock.patch.object(os, "fsync") as fsync:
+            self.journal.flush()
+        fsync.assert_not_called()
+
+    def test_der_eintrag_steht_danach_wirklich_da(self) -> None:
+        self.journal.append("note", text="bleibt")
+        self.journal.flush()
+        wieder = Journal(self.meta)
+        self.assertEqual(wieder.count, 1)
         self.assertTrue(wieder.verify().ok)
 
 

@@ -223,11 +223,14 @@ class Journal:
             return
         open_files = [p for p in self.segments() if p.suffix == ".jsonl"]
         if open_files:
-            fd = os.open(open_files[-1], os.O_RDONLY)
-            try:
-                os.fsync(fd)
-            finally:
-                os.close(fd)
+            # Zum Anhängen geöffnet, obwohl nichts angehängt wird: Windows
+            # verweigert fsync auf einem nur lesend geöffneten Deskriptor mit
+            # »Bad file descriptor«, POSIX erlaubt es. Schreibrecht ist die
+            # einzige Fassung, die auf beiden Seiten funktioniert – und weil
+            # schon das Anlegen eines Archivs hier vorbeikommt, war unter
+            # Windows sonst kein einziger Durchlauf möglich.
+            with open(open_files[-1], "ab") as handle:
+                os.fsync(handle.fileno())
         self._dirty = False
 
     # ---------------------------------------------------------------- Prüfen

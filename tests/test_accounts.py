@@ -327,7 +327,7 @@ class PostfachErkennenTest(unittest.TestCase):
         self.liste = Kontenliste(Path(self._tmp.name) / "konten.json")
         self.liste.hinzufuegen(
             Konto(name="Kontakt", server="s111.hoster.example",
-                  benutzer="kontakt@example.org", port=143, ssl=False)
+                  benutzer="kontakt@beispiel.de", port=143, ssl=False)
         )
 
     def tearDown(self):
@@ -335,31 +335,31 @@ class PostfachErkennenTest(unittest.TestCase):
 
     def test_gefunden_trotz_anderem_namen(self):
         # Genau der Fall: von Hand als "Kontakt" eingerichtet, aus
-        # Thunderbird käme es als "kontakt@example.org" wieder.
+        # Thunderbird käme es als "kontakt@beispiel.de" wieder.
         gefunden = self.liste.finden_nach_postfach(
-            "kontakt@example.org", "s111.hoster.example"
+            "kontakt@beispiel.de", "s111.hoster.example"
         )
         self.assertIsNotNone(gefunden)
         self.assertEqual(gefunden.name, "Kontakt")
 
     def test_gross_und_kleinschreibung_egal(self):
         self.assertIsNotNone(
-            self.liste.finden_nach_postfach("Kontakt@DialOS.org", "S111.GoServer.Host")
+            self.liste.finden_nach_postfach("Kontakt@Beispiel.DE", "S111.Hoster.Example")
         )
 
     def test_anderes_postfach_auf_demselben_server(self):
         # Bei einem Massenhoster liegen dutzende Postfächer auf einer
         # Maschine - der Server allein sagt gar nichts.
         self.assertIsNone(
-            self.liste.finden_nach_postfach("service@example.org", "s111.hoster.example")
+            self.liste.finden_nach_postfach("service@beispiel.de", "s111.hoster.example")
         )
 
     def test_derselbe_server_unter_anderem_namen(self):
-        # Genau Stephans Fall: von Hand über s111.hoster.example
-        # eingerichtet, aus Thunderbird käme es über imap.example.org. Ein
+        # Der Fall aus der Erprobung: von Hand über s111.hoster.example
+        # eingerichtet, aus Thunderbird käme es über imap.beispiel.de. Ein
         # Rechner, zwei Namen - und dasselbe Postfach.
         gefunden = self.liste.finden_nach_postfach(
-            "kontakt@example.org", "imap.example.org"
+            "kontakt@beispiel.de", "imap.beispiel.de"
         )
         self.assertIsNotNone(gefunden)
         self.assertEqual(gefunden.name, "Kontakt")

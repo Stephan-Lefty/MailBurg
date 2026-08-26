@@ -359,6 +359,25 @@ class TestSperre(ArchiveTestCase):
         # Damit das Aufräumen in tearDown nicht erneut schließt:
         self.archive = wieder
 
+    def test_rechnername_mit_umlaut_bleibt_lesbar(self) -> None:
+        """Die Sperrdatei wird als UTF-8 gelesen, also muss sie so entstehen.
+
+        Ohne ausdrückliche Angabe nimmt Python die Kodierung des Systems –
+        cp1252 unter Windows, ASCII bei LC_ALL=C. Ein Rechner namens
+        »Büro-PC« hinterließe dann eine Sperrdatei, die sich nicht mehr lesen
+        lässt, und der Hinweis, wo das Archiv gerade offen ist, wäre weg.
+        """
+        self.archive.close()
+        with mock.patch("socket.gethostname", return_value="Büro-PC"):
+            gesperrt = Archive.open(self.archive.root)
+        try:
+            with self.assertRaises(ArchiveLocked) as gefangen:
+                Archive.open(self.archive.root)
+            self.assertIn("Büro-PC", str(gefangen.exception))
+        finally:
+            gesperrt.close()
+        self.archive = gesperrt
+
 
 if __name__ == "__main__":
     unittest.main()

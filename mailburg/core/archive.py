@@ -216,7 +216,12 @@ class Archive:
                 f"Ist das ein Überbleibsel eines Absturzes, kann die Datei "
                 f"{lock} von Hand gelöscht werden."
             ) from None
-        with os.fdopen(fd, "w") as handle:
+        # Gelesen wird oben ausdrücklich als UTF-8, also muss auch so
+        # geschrieben werden. Ohne die Angabe nimmt Python die Kodierung des
+        # Systems – cp1252 unter Windows, ASCII bei LC_ALL=C. Ein Rechnername
+        # mit Umlaut machte die Sperrdatei damit unlesbar, und der Hinweis,
+        # wo das Archiv gerade offen ist, wäre verloren.
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(payload)
         self._lock_held = True
 
