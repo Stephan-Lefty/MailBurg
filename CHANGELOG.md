@@ -38,6 +38,28 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Neu
 
+- **Handbuch mit Kapiteln** (F1) statt zweier Meldungsfenster. Jeder Menüpunkt
+  ist mit dem Wortlaut erklärt, mit dem er im Menü steht; ein Test liest die
+  Punkte aus dem echten Menü, damit Programm und Handbuch nicht auseinander
+  laufen.
+- **Der Weg zurück.** Doppelklick auf eine Nachricht öffnet sie in einem
+  eigenen Fenster. Über die rechte Maustaste lässt sie sich in den Posteingang
+  eines frei gewählten Postfachs zurücklegen – auch in ein anderes als das
+  ursprüngliche, denn das gibt es vielleicht nicht mehr – oder als
+  `.eml`-Datei speichern. Zurückgelegt wird bytegenau, mit dem
+  ursprünglichen Versanddatum und als ungelesen, damit die Nachricht im
+  Mailprogramm auffindbar ist.
+- **Sortierbare Trefferliste.** Klick auf den Spaltenkopf sortiert, nochmal
+  klicken dreht um – sortiert wird im Index, nicht in der geladenen Liste.
+  Ein ⇅ zeigt, welche Spalten sich sortieren lassen.
+- **Postfächer lassen sich anordnen**, mit der Maus oder über Strg+Auf/Ab.
+- **Bestand und letzter Abruf** stehen dauerhaft in der Statuszeile.
+- **Kalender für den Zeitraum** in der erweiterten Suche.
+- **[Postfach entlasten](docs/postfach-entlasten.md)** – die Anleitung zum
+  eigentlichen Zweck: nachweisen, dass alles im Archiv ist, und erst dann beim
+  Anbieter aufräumen lassen.
+
+
 - **IMAP-Abruf.** Mails werden direkt aus dem Postfach geholt, für beliebig
   viele Konten. Das Postfach bleibt dabei unangetastet: Ordner werden nur
   lesend geöffnet (`EXAMINE`) und Mails mit `BODY.PEEK[]` geholt, damit
@@ -99,6 +121,25 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   vormerken zu können.
 
 ### Behoben
+
+- **Mails, die nur als HTML vorliegen, wurden zur Textwurst.** Bei Proton ist
+  das der Regelfall. Die Umwandlung nach Text fasste allen Leerraum zu
+  Leerzeichen zusammen, Zeilenumbrüche eingeschlossen – richtig für den
+  Suchindex, falsch für die Anzeige. Wirkt ohne Neuimport, weil die Vorschau
+  die Nachricht ohnehin frisch aus den Rohdaten zerlegt.
+
+- **Die Postfachliste addierte Fundorte statt Mails.** Bei Proton trägt jede
+  Nachricht neben ihrem Ordner noch Etiketten, und jedes Etikett ist ein
+  weiterer Fundort. Der Baum meldete 2.877, die Statuszeile 2.078 – eine der
+  beiden Zahlen gab es nicht.
+
+- **Die Spalten der Trefferliste standen nach dem Start zusammengedrängt.**
+  Wiederhergestellt wurde ein gespeicherter Zustand, der auch die damalige
+  Breite der Tabelle festhält; angewandt auf ein Fenster, das seine Größe
+  noch nicht hat, ergibt das die Breiten von damals.
+
+- **`archiviert:` nahm nur die ISO-Schreibweise**, obwohl Datumsangaben sonst
+  der Systemsprache folgen.
 
 - **Die Oberfläche fror bei der Einrichtung ein.** Die Anmeldeprobe lief
   richtig im Hintergrund, ihre Antwort wurde aber über ein Lambda
