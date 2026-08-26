@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from mailburg.ui.arbeit import Auftrag, Läufer
+from mailburg.ui.fliesstext import Fliesstext
 
 
 class Packlauf(Auftrag):
@@ -55,9 +56,7 @@ class Sicherungsdialog(QDialog):
         self.archiv_name = archiv.name
         self._laeufer = None
 
-        self.erklaerung = QLabel()
-        self.erklaerung.setWordWrap(True)
-        self.erklaerung.setTextFormat(Qt.RichText)
+        self.erklaerung = Fliesstext()
         self.erklaerung.setText(
             "<p>MailBurg packt das ganze Archiv in <b>eine einzige "
             "Datei</b>. Die lässt sich in die Cloud legen, auf eine "
@@ -75,9 +74,7 @@ class Sicherungsdialog(QDialog):
         self.balken.setFormat("%v von %m Dateien")
         self.balken.setVisible(False)
 
-        self.stand = QLabel("")
-        self.stand.setWordWrap(True)
-        self.stand.setTextFormat(Qt.RichText)
+        self.stand = Fliesstext("")
 
         self.knoepfe = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
@@ -205,7 +202,7 @@ class Rueckholdialog(QDialog):
         self.ziel: Path | None = None
         self._laeufer = None
 
-        erklaerung = QLabel(
+        erklaerung = Fliesstext(
             "<p>Aus einer gesicherten Datei wird wieder ein Archiv.</p>"
             "<p><b>Das Zielverzeichnis muss leer sein.</b> In ein "
             "vorhandenes Archiv hinein zu entpacken hieße, zwei "
@@ -214,16 +211,12 @@ class Rueckholdialog(QDialog):
             "<p>Der Suchindex wird anschließend neu aufgebaut; er wird "
             "nicht mitgesichert, weil er sich aus dem Protokoll ergibt.</p>"
         )
-        erklaerung.setWordWrap(True)
-        erklaerung.setTextFormat(Qt.RichText)
 
         self.balken = QProgressBar()
         self.balken.setRange(0, 0)
         self.balken.setVisible(False)
 
-        self.stand = QLabel("")
-        self.stand.setWordWrap(True)
-        self.stand.setTextFormat(Qt.RichText)
+        self.stand = Fliesstext("")
 
         self.knoepfe = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
@@ -311,7 +304,7 @@ class Uebernahmedialog(QDialog):
         self.archiv = archiv
         self._laeufer = None
 
-        erklaerung = QLabel(
+        erklaerung = Fliesstext(
             f"<p>Die Mails aus einer gesicherten Datei kommen in Ihr "
             f"<b>geöffnetes Archiv</b> – {archiv.name}. Sie behalten "
             f"dabei ihr Postfach und ihren Ordner, denn das steht im "
@@ -322,16 +315,12 @@ class Uebernahmedialog(QDialog):
             f"<p>Soll aus der Datei stattdessen ein eigenes, neues Archiv "
             f"werden, nehmen Sie <i>Sicherung in neues Archiv …</i></p>"
         )
-        erklaerung.setWordWrap(True)
-        erklaerung.setTextFormat(Qt.RichText)
 
         self.balken = QProgressBar()
         self.balken.setFormat("%v von %m Mails")
         self.balken.setVisible(False)
 
-        self.stand = QLabel("")
-        self.stand.setWordWrap(True)
-        self.stand.setTextFormat(Qt.RichText)
+        self.stand = Fliesstext("")
 
         self.knoepfe = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel

@@ -10,11 +10,17 @@ Bisher gab es die Texterkennung nur auf der Kommandozeile. Wer die
 Oberfläche benutzt, erfuhr also nie, dass ein Teil seines Archivs
 unauffindbar ist.
 
-**Es dauert.** Eine Seite braucht etwa fünf Sekunden; ein
-Rechnungsstapel von hundert Seiten ist eine knappe Viertelstunde
-Rechenzeit. Deshalb läuft das im Hintergrund, mit Fortschritt und
-Abbruch – und abgebrochen wird nichts verworfen: Was erkannt ist, bleibt
-erkannt.
+**Es dauert.** Gemessen am 2026-08-26 an einem echten Geschäftsarchiv:
+136 Dokumente mit 711 Seiten in 43 Minuten, mit vier gleichzeitigen
+Arbeitern – rund vierzehn Sekunden reine Rechenzeit je Seite, durch die
+Parallelität auf dreieinhalb gedrückt. Deshalb läuft das im Hintergrund,
+mit Fortschritt und Abbruch, und abgebrochen wird nichts verworfen: Was
+erkannt ist, bleibt erkannt.
+
+**Versprochen wird die Dauer trotzdem nicht.** Sie hängt an der
+Seitenzahl, und die sieht man einem PDF von außen nicht an. Was der
+Anwender braucht, ist nicht eine Vorhersage, sondern die Gewissheit,
+dass es weitergeht – dafür ist der Balken da.
 """
 
 from __future__ import annotations
@@ -35,6 +41,7 @@ from PySide6.QtWidgets import (
 )
 
 from mailburg.ui.arbeit import Auftrag, Läufer
+from mailburg.ui.fliesstext import Fliesstext
 
 
 class Erkennungslauf(Auftrag):
@@ -98,10 +105,7 @@ class Texterkennungsdialog(QDialog):
 
         offen = Warteschlange(archiv.index).anzahl()
 
-        self.erklaerung = QLabel()
-        self.erklaerung.setWordWrap(True)
-        self.erklaerung.setTextFormat(Qt.RichText)
-        self.erklaerung.setText(self._einleitung(offen))
+        self.erklaerung = Fliesstext(self._einleitung(offen))
 
         self.balken = QProgressBar()
         self.balken.setRange(0, max(offen, 1))
@@ -133,8 +137,7 @@ class Texterkennungsdialog(QDialog):
         kernreihe.addWidget(self.kerne)
         kernreihe.addStretch()
 
-        self.stand = QLabel("")
-        self.stand.setWordWrap(True)
+        self.stand = Fliesstext()
 
         self.knoepfe = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
@@ -164,20 +167,30 @@ class Texterkennungsdialog(QDialog):
                 "<p>Es warten keine eingescannten PDF. Alles, was sich lesen "
                 "ließ, ist durchsuchbar.</p>"
             )
-        # Fünf Sekunden je Seite, gemessen; ein PDF hat im Schnitt zwei bis
-        # drei. Lieber großzügig schätzen als den Anwender überraschen.
-        minuten = max(1, round(offen * 12 / 60))
-        dauer = f"{minuten} Minute" if minuten == 1 else f"{minuten} Minuten"
+        # **Keine Dauerangabe.** Sie war nicht zu halten: Die Rechenzeit
+        # hängt an der Seitenzahl, und die steht dem Dokument von außen
+        # nicht an. Ein Zweiseiter und eine sechzigseitige Zeugnismappe
+        # sehen in der Warteschlange gleich aus. Eine Schätzung, die
+        # regelmäßig um das Zehnfache danebenliegt, sagt dem Anwender
+        # nichts - schlimmer, sie legt nahe, etwas laufe nicht richtig,
+        # sobald es länger dauert. Der Fortschrittsbalken zählt echte
+        # Dokumente; daran sieht man in einer Minute mehr als an jeder
+        # Vorhersage.
+        anrede = (
+            "1 eingescanntes PDF wartet" if offen == 1
+            else f"{offen} eingescannte PDF warten"
+        )
         return (
-            f"<p><b>{offen} eingescannte PDF warten.</b> Das sind Dokumente "
+            f"<p><b>{anrede}.</b> Das sind Dokumente "
             f"ohne Textebene – ein Foto einer Seite. Für die Suche sind sie "
             f"bisher ein weißes Blatt: Der Dateiname ist zu finden, der "
             f"Inhalt nicht.</p>"
             f"<p>Die Texterkennung liest sie und legt das Ergebnis in den "
             f"Suchindex. <b>Das Archiv selbst bleibt unangetastet</b> – die "
             f"PDF werden nicht verändert.</p>"
-            f"<p>Das dauert grob <b>{dauer}</b>. Sie können "
-            f"jederzeit abbrechen; was gelesen ist, bleibt gelesen.</p>"
+            f"<p>Sie können jederzeit abbrechen; was gelesen ist, bleibt "
+            f"gelesen. Und Sie können das Fenster schließen – dann läuft "
+            f"die Erkennung im Hintergrund weiter.</p>"
         )
 
     # ------------------------------------------------------------- Ablauf

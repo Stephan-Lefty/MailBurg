@@ -25,6 +25,7 @@ entwerten.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -94,6 +95,13 @@ class Statistik:
     gelesen: int = 0
     gescheitert: int = 0
     seiten: int = 0
+    doppelt: int = 0
+    """Wie viele davon Abschriften eines schon gelesenen Anhangs waren.
+
+    Sie zählen als gelesen – ihre Mail ist ja hinterher durchsuchbar –,
+    haben aber keine Rechenzeit gekostet.
+    """
+
     sekunden: float = 0.0
     offen_danach: int = 0
     abgebrochen: bool = False
@@ -105,6 +113,8 @@ class Statistik:
         if not self.gelesen and not self.gescheitert:
             return "nichts zu tun"
         teile = [f"{self.gelesen} Dokumente lesbar gemacht ({self.seiten} Seiten)"]
+        if self.doppelt:
+            teile.append(f"{self.doppelt} davon bereits bekannt")
         if self.gescheitert:
             teile.append(f"{self.gescheitert} ohne Ergebnis")
         if self.offen_danach:
@@ -392,7 +402,7 @@ def durchlauf(
         )
         return auftrag, ergebnis, ""
 
-    def verbuchen(auftrag, ergebnis, fehler) -> bool:
+    def verbuchen(auftrag, ergebnis, fehler, wiederholung: bool = False) -> bool:
         """Schreibt das Ergebnis fort. Nur hier, nur im Hauptfaden.
 
         Der Index und das Protokoll vertragen keinen Zugriff aus mehreren
@@ -420,7 +430,13 @@ def durchlauf(
                 digest, dateiname, "erledigt", seiten=ergebnis.seiten
             )
             stat.gelesen += 1
-            stat.seiten += ergebnis.seiten
+            if wiederholung:
+                stat.doppelt += 1
+            else:
+                # Nur der erste Durchgang hat wirklich gerechnet. Sonst
+                # sähe die Statistik nach mehr Arbeit aus, als geleistet
+                # wurde, und die Hochrechnung auf große Archive wäre falsch.
+                stat.seiten += ergebnis.seiten
         else:
             warteschlange.vermerken(
                 digest, dateiname, "gescheitert",
@@ -438,29 +454,84 @@ def durchlauf(
     # liegen: Ein Bündel von Anhängen kann hundert Megabyte wiegen.
     breite = max(1, gleichzeitig or GLEICHZEITIG)
     vorbereitet: dict = {}
-    for anfang in range(0, len(kandidaten), breite):
+
+    #: Fingerabdruck des Anhangs -> was dabei herauskam.
+    #:
+    #: **Derselbe Anhang wird nur einmal gelesen.** Ein Vertrag, der
+    #: weitergeleitet und dreimal beantwortet wurde, hängt an fünf
+    #: verschiedenen Mails - fünf verschiedene Mails, aber ein einziges
+    #: Dokument. Gemessen am Geschäftsarchiv am 2026-08-26: Von zwölf
+    #: verbliebenen Aufträgen waren es drei Dokumente, darunter eine
+    #: 23-MB-Vollmacht in neun Ausfertigungen. Ohne diese Prüfung liest
+    #: die Texterkennung sie neunmal und kommt neunmal zum selben Text.
+    bekannt: dict[str, object] = {}
+    abdruck: dict[tuple[str, str], str] = {}
+
+    zeiger = 0
+    while zeiger < len(kandidaten):
         if zeit_um() or (
             budget_dokumente and stat.gelesen + stat.gescheitert >= budget_dokumente
         ):
             stat.abgebrochen = True
             break
 
-        buendel = kandidaten[anfang:anfang + breite]
-        vorbereitet = {
-            (d, n): vorbereiten((d, b, n)) for d, b, n in buendel
-        }
+        # Ein Bündel füllen, bis ``breite`` *verschiedene* Dokumente
+        # darin sind. Dubletten liegen nach der Größensortierung
+        # unmittelbar nebeneinander; ohne das Nachfüllen bestünde ein
+        # Bündel aus vier Abschriften desselben Dokuments und beschäftigte
+        # einen Faden statt vier.
+        buendel: list = []
+        nachzuegler: list = []
+        vorbereitet = {}
+        im_buendel: set[str] = set()
+        while zeiger < len(kandidaten) and len(buendel) < breite:
+            d, b, n = kandidaten[zeiger]
+            zeiger += 1
+            nutzlast, fehler = vorbereiten((d, b, n))
+            if nutzlast is None:
+                # Scheitert gleich beim Verbuchen, kostet keine Rechenzeit.
+                vorbereitet[d, n] = (None, fehler)
+                buendel.append((d, b, n))
+                continue
+            finger = hashlib.sha256(nutzlast).hexdigest()
+            abdruck[d, n] = finger
+            if finger in im_buendel or finger in bekannt:
+                # Die Nutzlast wird nicht mehr gebraucht - nur der Text
+                # des Erstlings. Nicht festhalten: Bei zwanzig Megabyte
+                # je Stück summiert sich das.
+                nachzuegler.append((d, b, n))
+                continue
+            im_buendel.add(finger)
+            vorbereitet[d, n] = (nutzlast, "")
+            buendel.append((d, b, n))
 
         weiterlaufen = True
         if len(buendel) == 1:
             auftrag, ergebnis, fehler = lesen(buendel[0])
+            if ergebnis is not None and not ergebnis.abgebrochen:
+                bekannt[abdruck.get((auftrag[0], auftrag[2]), "")] = ergebnis
             weiterlaufen = verbuchen(auftrag, ergebnis, fehler)
-        else:
+        elif buendel:
             # Fäden genügen: Die Arbeit steckt in fremden Prozessen, und
             # das Warten darauf gibt den GIL frei.
             with ThreadPoolExecutor(max_workers=len(buendel)) as pool:
                 for auftrag, ergebnis, fehler in pool.map(lesen, buendel):
+                    if ergebnis is not None and not ergebnis.abgebrochen:
+                        bekannt[abdruck.get((auftrag[0], auftrag[2]), "")] = ergebnis
                     if not verbuchen(auftrag, ergebnis, fehler):
                         weiterlaufen = False
+
+        # Die Abschriften bekommen denselben Text, ohne ihn neu zu
+        # erkennen. Geschrieben wird er trotzdem für jede Mail einzeln:
+        # Der Suchindex hängt an der Mail, nicht am Anhang.
+        for auftrag in nachzuegler:
+            fertig = bekannt.get(abdruck.get((auftrag[0], auftrag[2]), ""))
+            if fertig is None:
+                # Der Erstling ist gescheitert. Ohne Vermerk lassen -
+                # dann versucht es der nächste Lauf noch einmal.
+                continue
+            verbuchen(auftrag, fertig, "", wiederholung=True)
+
         if not weiterlaufen:
             break
 

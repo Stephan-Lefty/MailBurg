@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from mailburg.core import accounts
 from mailburg.core.accounts import Kontenliste
 from mailburg.ui.arbeit import Auftrag, Läufer
+from mailburg.ui.fliesstext import Fliesstext
 
 #: Dorthin geht die Nachricht zurück. IMAP schreibt diesen Namen vor –
 #: er ist auf jedem Server derselbe, auch auf deutschsprachigen, wo der
@@ -65,7 +66,7 @@ class Zurueckdialog(QDialog):
         self.rohdaten = rohdaten
         self._laeufer = None
 
-        erklaerung = QLabel(
+        erklaerung = Fliesstext(
             "<p>Die Nachricht kommt in den <b>Posteingang</b> des gewählten "
             "Postfachs – vollständig, mit allen Anhängen und mit ihrem "
             "ursprünglichen Datum. Damit steht sie im Mailprogramm an "
@@ -74,8 +75,6 @@ class Zurueckdialog(QDialog):
             "Post überlebt Anbieter und Adressen; wählen Sie einfach das, "
             "in dem Sie sie jetzt haben wollen.</p>"
         )
-        erklaerung.setWordWrap(True)
-        erklaerung.setTextFormat(Qt.RichText)
 
         self.konten = QComboBox()
         for konto in Kontenliste().konten:
@@ -91,8 +90,7 @@ class Zurueckdialog(QDialog):
         )
         self.ungelesen.setChecked(True)
 
-        self.stand = QLabel("")
-        self.stand.setWordWrap(True)
+        self.stand = Fliesstext("")
 
         self.knoepfe = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel

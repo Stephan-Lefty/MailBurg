@@ -2520,12 +2520,27 @@ class TexterkennungDialogTest(OberflaechenTest):
         self.assertIn("weißes Blatt", text)
         self.assertIn("unangetastet", text)
 
-    def test_die_dauer_wird_genannt(self):
-        # Fünf Sekunden je Seite. Wer das nicht weiß, hält das Programm
-        # nach einer Minute für abgestürzt.
-        dialog = self._dialog(36)
+    def test_keine_dauer_wird_versprochen(self):
+        """Eine Schätzung, die nicht zu halten ist, richtet Schaden an.
 
-        self.assertIn("Minuten", dialog.erklaerung.text())
+        Vorher stand hier »Das dauert grob 7 Minuten«, hochgerechnet aus
+        zwölf Sekunden je Dokument. Die Rechenzeit hängt aber an der
+        Seitenzahl, und die sieht man einem PDF von außen nicht an: Ein
+        Zweiseiter und eine sechzigseitige Zeugnismappe sind in der
+        Warteschlange nicht zu unterscheiden. In der Praxis lag die
+        Angabe um ein Vielfaches daneben – und legte dem Anwender nahe,
+        es laufe etwas falsch, sobald es länger dauerte.
+
+        Der Fortschrittsbalken zählt echte Dokumente. Daran sieht man
+        nach einer Minute mehr als an jeder Vorhersage.
+        """
+        text = self._dialog(36).erklaerung.text()
+
+        self.assertNotIn("Minute", text)
+        self.assertNotIn("dauert", text)
+        # Was stattdessen die Sorge nimmt: Es ist jederzeit abbrechbar
+        # und läuft im Hintergrund weiter.
+        self.assertIn("abbrechen", text)
 
     def test_ohne_wartende_gibt_es_nichts_zu_tun(self):
         from PySide6.QtWidgets import QDialogButtonBox
@@ -2556,11 +2571,29 @@ class ErkennungsdialogLayoutTest(TexterkennungDialogTest):
 
         dialog = self._dialog(57)
 
-        # Ohne diese Vorgabe quetscht Qt den Absatz zusammen, sobald der
-        # Fortschrittsbalken sichtbar wird - und ausgerechnet die Zeile
-        # mit der zu erwartenden Dauer fiel heraus.
+        # Notwendig, aber nicht hinreichend: Diese Vorgabe zwingt das
+        # Fenster auf die gemeldete Mindestgröße - und die war beim
+        # umbrechenden Absatz gerade die falsche Zahl. Deshalb rechnet
+        # `Fliesstext` sie selbst aus.
         self.assertEqual(dialog.layout().sizeConstraint(),
                          QLayout.SetMinimumSize)
+
+    def test_der_erklaerende_absatz_kennt_seine_hoehe(self):
+        """Der eigentliche Fehler: Text, der beim Start verschwindet.
+
+        Das Layout nimmt sich den Platz für den Fortschrittsbalken beim
+        Absatz darüber – weil ein umbrechendes ``QLabel`` eine Höhe
+        meldet, die für eine andere Breite gilt als die, die es
+        tatsächlich hat. Der Text war dann nicht abgeschnitten, sondern
+        fehlte; wer das Fenster zum ersten Mal sah, hielt den Rest für
+        das Ganze.
+        """
+        from mailburg.ui.fliesstext import Fliesstext
+
+        dialog = self._dialog(57)
+
+        self.assertIsInstance(dialog.erklaerung, Fliesstext)
+        self.assertTrue(dialog.erklaerung.sizePolicy().hasHeightForWidth())
 
     def test_der_balken_zeigt_zahlen_nicht_prozent(self):
         dialog = self._dialog(57)
@@ -2781,13 +2814,15 @@ class WeiterlesenNachRestTest(TexterkennungDialogTest):
 
 
 class EinzahlTest(TexterkennungDialogTest):
-    """»1 Minuten« liest sich, als hätte niemand hingesehen."""
+    """»1 eingescannte PDF warten« liest sich, als hätte niemand hingesehen."""
 
-    def test_eine_minute_im_singular(self):
-        self.assertIn("1 Minute<", self._dialog(4).erklaerung.text())
+    def test_eine_wartet_im_singular(self):
+        text = self._dialog(1).erklaerung.text()
+
+        self.assertIn("1 eingescanntes PDF wartet", text)
 
     def test_mehrere_im_plural(self):
-        self.assertIn("Minuten", self._dialog(57).erklaerung.text())
+        self.assertIn("57 eingescannte PDF warten", self._dialog(57).erklaerung.text())
 
 
 class SicherungsplanTest(OberflaechenTest):
@@ -3231,3 +3266,85 @@ class KernzahlTest(TexterkennungDialogTest):
 
         self.assertIn("gleichzeitig",
                       inspect.signature(erkennung.durchlauf).parameters)
+
+
+class FliesstextTest(OberflaechenTest):
+    """Ein umbrechender Absatz muss dem Layout die *richtige* Höhe melden.
+
+    Qt meldet sie nicht. Ein ``QLabel`` mit ``setWordWrap(True)`` gibt
+    in ``minimumSizeHint()`` eine Höhe zurück, die für irgendeine
+    angenommene Breite gilt – nicht für die tatsächliche. Solange nichts
+    anderes um Platz konkurriert, fällt das nicht auf. Sobald ein
+    Fortschrittsbalken dazukommt, nimmt sich das Layout den Platz beim
+    Absatz, und dort steht eine Zeile weniger als geschrieben.
+    """
+
+    LANG = (
+        "<p>Das sind Dokumente ohne Textebene – ein Foto einer Seite. Für "
+        "die Suche sind sie bisher ein weißes Blatt: Der Dateiname ist zu "
+        "finden, der Inhalt nicht.</p><p>Die Texterkennung liest sie und "
+        "legt das Ergebnis in den Suchindex. Das Archiv selbst bleibt "
+        "unangetastet – die PDF werden nicht verändert.</p>"
+    )
+
+    def _etikett(self, breite):
+        from mailburg.ui.fliesstext import Fliesstext
+
+        etikett = Fliesstext(self.LANG)
+        etikett.resize(breite, 10)
+        return etikett
+
+    def test_schmaler_heisst_hoeher(self):
+        schmal = self._etikett(300).minimumSizeHint().height()
+        breit = self._etikett(900).minimumSizeHint().height()
+
+        self.assertGreater(
+            schmal, breit,
+            "die gemeldete Höhe hängt gar nicht an der Breite",
+        )
+
+    def test_die_gemeldete_hoehe_reicht_fuer_den_text(self):
+        for breite in (300, 500, 900):
+            with self.subTest(breite=breite):
+                etikett = self._etikett(breite)
+
+                self.assertGreaterEqual(
+                    etikett.minimumSizeHint().height(),
+                    etikett.heightForWidth(breite),
+                )
+
+    def test_ein_gewoehnliches_qlabel_kann_das_nicht(self):
+        """Der Beleg, dass die eigene Klasse nötig ist.
+
+        Fiele dieser Test eines Tages um, weil Qt es selbst richtig
+        macht, wäre ``Fliesstext`` entbehrlich – dann darf er weg.
+        """
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QLabel
+
+        hoehen = []
+        for breite in (300, 900):
+            etikett = QLabel(self.LANG)
+            etikett.setWordWrap(True)
+            etikett.setTextFormat(Qt.RichText)
+            etikett.resize(breite, 10)
+            hoehen.append(etikett.minimumSizeHint().height())
+
+        self.assertEqual(
+            hoehen[0], hoehen[1],
+            "Qt meldet die Höhe inzwischen breitenabhängig – "
+            "Fliesstext wird nicht mehr gebraucht",
+        )
+
+    def test_vor_dem_anzeigen_wird_nicht_geraten(self):
+        """Ohne Breite gibt es noch nichts zu rechnen – aber auch keine Null.
+
+        Eine gemeldete Höhe von 0 wäre der schlimmste Fall: Das Layout
+        gäbe dem Absatz gar keinen Platz, und beim ersten Anzeigen wäre
+        das Fenster leer.
+        """
+        from mailburg.ui.fliesstext import Fliesstext
+
+        etikett = Fliesstext(self.LANG)
+
+        self.assertGreater(etikett.minimumSizeHint().height(), 0)
