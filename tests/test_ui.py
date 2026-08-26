@@ -2546,3 +2546,25 @@ class TexterkennungDialogTest(OberflaechenTest):
         self.assertIn("if weiter is not None and not weiter():", quelltext)
         # Zwischen zwei Dokumenten, nicht mitten in einem.
         self.assertIn("archiv.index.commit()", quelltext)
+
+
+class ErkennungsdialogLayoutTest(TexterkennungDialogTest):
+    """Der erklärende Text darf nicht wegfallen, wenn der Balken kommt."""
+
+    def test_das_fenster_richtet_sich_nach_dem_text(self):
+        from PySide6.QtWidgets import QLayout
+
+        dialog = self._dialog(57)
+
+        # Ohne diese Vorgabe quetscht Qt den Absatz zusammen, sobald der
+        # Fortschrittsbalken sichtbar wird - und ausgerechnet die Zeile
+        # mit der zu erwartenden Dauer fiel heraus.
+        self.assertEqual(dialog.layout().sizeConstraint(),
+                         QLayout.SetMinimumSize)
+
+    def test_der_balken_zeigt_zahlen_nicht_prozent(self):
+        dialog = self._dialog(57)
+
+        # "7 von 57" sagt mehr als "12%".
+        self.assertIn("%v", dialog.balken.format())
+        self.assertIn("%m", dialog.balken.format())

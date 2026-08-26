@@ -585,3 +585,39 @@ class UngelesenZurueckTest(unittest.TestCase):
     def test_auf_wunsch_als_gelesen(self):
         self.assertEqual(
             self._append_mitschreiben(ungelesen=False).get("flags"), "\\Seen")
+
+
+class SeitenfortschrittTest(unittest.TestCase):
+    """Bei einem langen Scan muss sich zwischendurch etwas rühren."""
+
+    def test_ocr_meldet_jede_seite(self):
+        # Ohne diese Rückmeldung steht die Oberfläche bei einem
+        # zwanzigseitigen Dokument fast zwei Minuten auf demselben Wert -
+        # und wer nichts sieht, hält das Programm für abgestürzt.
+        import inspect
+
+        from mailburg.extract import ocr
+
+        unterschrift = inspect.signature(ocr.text_aus_pdf)
+        self.assertIn("je_seite", unterschrift.parameters)
+
+    def test_die_meldung_geht_bis_in_den_durchlauf(self):
+        import inspect
+
+        from mailburg.core import erkennung
+
+        self.assertIn("je_seite",
+                      inspect.signature(erkennung.durchlauf).parameters)
+
+    def test_abbruch_wird_zwischen_dokumenten_geprueft(self):
+        # Mitten in einem Dokument abzubrechen hieße: Es gilt als
+        # erledigt, ist aber nur halb gelesen - und käme nie wieder dran.
+        import inspect
+
+        from mailburg.core import erkennung
+
+        quelle = inspect.getsource(erkennung.durchlauf)
+        vor_abbruch = quelle.index("if weiter is not None and not weiter():")
+        vermerk = quelle.index("archiv.index.commit()")
+        self.assertLess(vermerk, vor_abbruch,
+                        "erst festschreiben, dann abbrechen")

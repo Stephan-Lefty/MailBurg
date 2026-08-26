@@ -22,6 +22,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
+    QLayout,
     QDialogButtonBox,
     QLabel,
     QProgressBar,
@@ -50,10 +51,13 @@ class Erkennungslauf(Auftrag):
             def melden(stat) -> None:
                 fertig = stat.gelesen + stat.gescheitert
                 self.fortschritt.emit(fertig, gesamt)
+
+            def seite(dateiname: str, nummer: int, von: int) -> None:
+                # Der Balken zählt Dokumente; hier steht, woran gerade
+                # gearbeitet wird. Sonst sieht man bei einem
+                # zwanzigseitigen Scan zwei Minuten lang gar nichts.
                 self.meldung.emit(
-                    f"{fertig} von {gesamt} gelesen"
-                    + (f", {stat.gescheitert} ohne Ergebnis"
-                       if stat.gescheitert else "")
+                    f"{dateiname} – Seite {nummer} von {von}"
                 )
 
             return erkennung.durchlauf(
@@ -62,6 +66,7 @@ class Erkennungslauf(Auftrag):
                 budget_dokumente=0,
                 fortschritt=melden,
                 weiter=lambda: not self.abgebrochen,
+                je_seite=seite,
             )
 
 
@@ -88,6 +93,9 @@ class Texterkennungsdialog(QDialog):
         self.balken.setRange(0, max(offen, 1))
         self.balken.setValue(0)
         self.balken.setVisible(False)
+        # "7 von 57" sagt mehr als "12%": Man kann abschätzen, wie lange
+        # es noch dauert, und sieht, dass sich überhaupt etwas rührt.
+        self.balken.setFormat("%v von %m")
 
         self.stand = QLabel("")
         self.stand.setWordWrap(True)
@@ -106,6 +114,11 @@ class Texterkennungsdialog(QDialog):
         aufbau.addWidget(self.balken)
         aufbau.addWidget(self.stand)
         aufbau.addWidget(self.knoepfe)
+        # Das Fenster richtet sich nach dem Text, nicht umgekehrt. Ohne
+        # das quetscht Qt den erklärenden Absatz zusammen, sobald der
+        # Fortschrittsbalken dazukommt - und ausgerechnet die Zeile mit
+        # der zu erwartenden Dauer fiel dabei heraus.
+        aufbau.setSizeConstraint(QLayout.SetMinimumSize)
 
     @staticmethod
     def _einleitung(offen: int) -> str:

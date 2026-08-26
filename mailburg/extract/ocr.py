@@ -142,8 +142,14 @@ def text_aus_pdf(
     *,
     abbruch: Callable[[], bool] | None = None,
     max_seiten: int = MAX_SEITEN,
+    je_seite: Callable[[int, int], None] | None = None,
 ) -> Ergebnis:
     """Liest ein eingescanntes PDF Seite für Seite.
+
+    ``je_seite`` bekommt nach jeder gelesenen Seite die Nummer und die
+    Gesamtzahl. Ohne diese Rückmeldung steht eine Oberfläche bei einem
+    zwanzigseitigen Dokument fast zwei Minuten auf demselben Wert – und
+    wer nichts sieht, hält das Programm für abgestürzt.
 
     ``abbruch`` wird vor jeder Seite gefragt. Sagt es ja, wird der bis dahin
     gewonnene Text zurückgegeben und ``abgebrochen`` gesetzt – angefangene
@@ -203,6 +209,8 @@ def text_aus_pdf(
                 )
                 teile.append(gelesen.stdout.decode("utf-8", errors="replace"))
                 ergebnis.seiten += 1
+                if je_seite:
+                    je_seite(nummer, letzte)
             except (OSError, subprocess.TimeoutExpired):
                 pass
             finally:

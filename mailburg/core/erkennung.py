@@ -281,12 +281,17 @@ def durchlauf(
     budget_dokumente: int = BUDGET_DOKUMENTE,
     fortschritt=None,
     weiter=None,
+    je_seite=None,
 ) -> Statistik:
     """Arbeitet die Warteschlange ab, bis das Budget aufgebraucht ist.
 
     ``budget_sekunden`` von 0 bedeutet: ohne Zeitgrenze durchlaufen. Das ist
     für den ausdrücklich angestoßenen Lauf gedacht, nicht für den Anschluss
     an einen Abruf.
+
+    ``je_seite`` meldet sich innerhalb eines Dokuments – mit Dateiname,
+    Seite und Seitenzahl. Ohne das steht die Oberfläche bei einem
+    zwanzigseitigen Scan fast zwei Minuten auf demselben Wert.
 
     ``weiter`` ist ein Rückruf, der ``False`` liefert, wenn Schluss sein
     soll – für den Abbruchknopf in der Oberfläche. Geprüft wird zwischen
@@ -350,7 +355,14 @@ def durchlauf(
             stat.gescheitert += 1
             continue
 
-        ergebnis = ocr.text_aus_pdf(anhang.payload, abbruch=zeit_um)
+        ergebnis = ocr.text_aus_pdf(
+            anhang.payload,
+            abbruch=zeit_um,
+            je_seite=(
+                (lambda nr, von, name=dateiname: je_seite(name, nr, von))
+                if je_seite else None
+            ),
+        )
 
         if ergebnis.abgebrochen and not ergebnis.text:
             # Nichts geschafft – ohne Vermerk, damit es beim nächsten Mal
