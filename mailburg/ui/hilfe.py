@@ -356,6 +356,10 @@ class Hilfefenster(QDialog):
         teiler.setSizes([230, 630])
 
         schliessen = QDialogButtonBox(QDialogButtonBox.Close)
+        # Ausdrücklich beschriftet: Qts eigene Übersetzung greift nur,
+        # wenn die Sprachdateien vorhanden sind - auf einem englischen
+        # System stünde dort sonst "Close" mitten im deutschen Text.
+        schliessen.button(QDialogButtonBox.Close).setText("Schließen")
         schliessen.rejected.connect(self.accept)
 
         aufbau = QVBoxLayout(self)
