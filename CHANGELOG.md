@@ -63,6 +63,19 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Unter Windows lief MailBurg überhaupt nicht.** Das Journal zwingt seine
+  Einträge mit `fsync` auf die Platte und öffnete die Datei dafür nur lesend.
+  POSIX erlaubt das, Windows nicht – dort scheiterte jeder Aufruf mit
+  „Bad file descriptor". Weil schon das Anlegen eines Archivs dort vorbeikommt,
+  war kein einziger Vorgang möglich. Aufgefallen ist es lange nicht, weil die
+  CI zwar unter Windows lief, ihre roten Ergebnisse aber in einer Matrix aus
+  dreizehn Jobs untergingen.
+
+- **Die Sperrdatei konnte unlesbar werden.** Sie wird ausdrücklich als UTF-8
+  gelesen, entstand aber in der Kodierung des Systems – cp1252 unter Windows,
+  ASCII bei `LC_ALL=C`. Auf einem Rechner mit Umlaut im Namen ging damit der
+  Hinweis verloren, wo das Archiv gerade geöffnet ist.
+
 - **Der Verursacher einer Löschung fehlte unter Windows.** Der Grabstein las den
   Benutzernamen aus `$USER`; diese Variable gibt es nur unter Unix, unter
   Windows heißt sie `USERNAME`. Im Protokoll eines Geschäftsarchivs stand

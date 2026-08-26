@@ -88,8 +88,10 @@ gegen `tests/fake_imap.py` gelaufen – also gegen meine eigenen Annahmen.
 
 **Kein macOS-Testgerät vorhanden, Windows ebenfalls nicht bestätigt.** Das
 README behauptet „Läuft unter Linux, Windows und macOS". Geprüft ist davon
-nur, dass die Einrichtung in der CI durchläuft – der Betrieb auf keiner der
-beiden. Vorschlag lag Stephan vor, ist **noch nicht entschieden**: den Satz
+nur, dass Tests und Einrichtung in der CI durchlaufen – der Betrieb auf keiner
+der beiden. Und selbst das stimmte bis zum 26.08.2026 nicht: Unter Windows
+scheiterte in Wahrheit *jeder* Test, weil das Journal `fsync` auf einem nur
+lesend geöffneten Deskriptor aufrief. Die Läufe waren rot, nur sah es niemand. Vorschlag lag Stephan vor, ist **noch nicht entschieden**: den Satz
 auf das herunterziehen, was tatsächlich erprobt ist. Passt zur Haltung des
 Projekts, nichts zu behaupten, was nicht belegt ist (siehe RECHTLICHES.md).
 

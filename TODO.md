@@ -156,18 +156,17 @@ wurde.
 
 ### Offene Fragen
 
-- [ ] **Die Tests scheitern unter Windows – vollständig.** Am 2026-08-25 lief
-  die CI 35-mal, und jedes Mal brach unter Windows praktisch jeder Test mit
-  `ERROR` ab (`test_abruf`, `test_archive`, alles). Gesehen hat es niemand,
-  weil die roten Läufe untergingen. Verdacht: Pfadtrennzeichen oder Dateien,
-  die unter Windows noch offen sind, während der Test sie wegräumen will –
-  `PermissionError` beim Aufräumen von Temp-Verzeichnissen ist der Klassiker.
+- [ ] **Hält das Windows-Versprechen im README noch?** Die Tests laufen dort
+  seit dem 2026-08-26 grün – der Grund für den Totalausfall war `fsync` auf
+  einem nur lesend geöffneten Deskriptor, siehe CHANGELOG. Damit ist belegt,
+  dass die Tests und die Einrichtung über `install.ps1` durchlaufen.
 
-  Das hängt an einer Entscheidung, die ohnehin ansteht (siehe CLAUDE.md): Das
-  README verspricht Linux, Windows und macOS. Erprobt ist keines der beiden
-  letzteren, ein Testgerät gibt es für keines. Entweder wird Windows repariert
-  und dann auch wirklich benutzt – oder das Versprechen wird auf das
-  zurückgenommen, was belegt ist. Ein drittes gibt es nicht.
+  Nicht belegt ist der Betrieb: kein Testgerät, kein echtes Postfach, keine
+  Oberfläche unter Windows gestartet. Dieselbe Lücke gilt für macOS. Die
+  Entscheidung aus CLAUDE.md steht also weiter an – entweder wird auf beiden
+  wirklich gearbeitet, oder das README sagt, was erprobt ist. Dass die CI grün
+  ist, beantwortet die Frage nicht – sie war es ja gerade nicht, und trotzdem
+  stand das Versprechen schon im README.
 
 - [ ] **Wie verhält sich der Nextcloud-Client bei laufender Archivierung?**
   Die Sperrdatei verhindert, dass zwei Rechner gleichzeitig schreiben. Ungeklärt
