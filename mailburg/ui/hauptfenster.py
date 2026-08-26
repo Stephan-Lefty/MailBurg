@@ -110,6 +110,12 @@ class Hauptfenster(QMainWindow):
         self._baumspalten_einrichten()
 
         self.tabelle.selectionModel().selectionChanged.connect(self._treffer_gewaehlt)
+        # Ein Archiv, aus dem nichts wieder herauskommt, ist ein Grab.
+        self.tabelle.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tabelle.customContextMenuRequested.connect(self._trefferminue)
+        # Doppelklick ebenso: Nicht jeder denkt bei einer Liste an die
+        # rechte Maustaste, und der Doppelklick war bisher ohne Wirkung.
+        self.tabelle.doubleClicked.connect(self._zuruecklegen)
 
         self.vorschau = Mailvorschau()
 
@@ -718,6 +724,77 @@ class Hauptfenster(QMainWindow):
         self.suchfeld.setText(vorgabe)
         self._suchen()
 
+    def _trefferminue(self, stelle) -> None:
+        from PySide6.QtWidgets import QMenu
+
+        treffer = self._gewaehlter_treffer()
+        if treffer is None:
+            return
+
+        menue = QMenu(self)
+        zurueck = menue.addAction("Im Postfach wiederherstellen …")
+        zurueck.triggered.connect(self._zuruecklegen)
+        speichern = menue.addAction("Als Datei speichern …")
+        speichern.triggered.connect(self._als_datei)
+        menue.exec(self.tabelle.viewport().mapToGlobal(stelle))
+
+    def _gewaehlter_treffer(self):
+        stellen = self.tabelle.selectionModel().selectedRows()
+        if not stellen or self.archiv is None:
+            return None
+        return self.modell.treffer_bei(stellen[0].row())
+
+    def _rohdaten(self, treffer) -> bytes | None:
+        """Die Nachricht, so wie sie archiviert wurde – Byte für Byte."""
+        try:
+            return self.archiv.store.get(treffer.hash, treffer.bucket)
+        except OSError as exc:
+            QMessageBox.warning(
+                self, "Nachricht nicht lesbar",
+                f"Die Datei zu dieser Nachricht ließ sich nicht lesen.\n\n"
+                f"{exc}\n\nLiegt das Archiv auf einer externen Platte, ist "
+                f"sie vielleicht abgezogen. »Archiv → Journal prüfen« sagt, "
+                f"ob mehr fehlt.",
+            )
+            return None
+
+    def _zuruecklegen(self) -> None:
+        from mailburg.ui.zurueck import Zurueckdialog
+
+        treffer = self._gewaehlter_treffer()
+        if treffer is None:
+            return
+        roh = self._rohdaten(treffer)
+        if roh is not None:
+            Zurueckdialog(roh, treffer.subject, self).exec()
+
+    def _als_datei(self) -> None:
+        from PySide6.QtWidgets import QFileDialog
+
+        from mailburg.core import rueckgabe
+
+        treffer = self._gewaehlter_treffer()
+        if treffer is None:
+            return
+        roh = self._rohdaten(treffer)
+        if roh is None:
+            return
+
+        vorschlag = _dateiname(treffer.subject)
+        ziel, _ = QFileDialog.getSaveFileName(
+            self, "Nachricht speichern",
+            str(Path.home() / vorschlag),
+            "E-Mail-Datei (*.eml)",
+        )
+        if not ziel:
+            return
+        try:
+            abgelegt = rueckgabe.als_datei(roh, Path(ziel))
+        except OSError as exc:
+            QMessageBox.warning(self, "Nicht gespeichert", str(exc))
+            return
+        self.stand.setText(f"Gespeichert: {abgelegt}")
+
     def _treffer_gewaehlt(self) -> None:
         stellen = self.tabelle.selectionModel().selectedRows()
         if not stellen or self.archiv is None:
@@ -961,6 +1038,19 @@ class Postfachbaum(QTreeWidget):
             for i in range(1, self.topLevelItemCount())
             if self.topLevelItem(i).data(0, Qt.UserRole + 1)
         ]
+
+
+def _dateiname(betreff: str) -> str:
+    """Ein Dateiname aus dem Betreff, der auf jedem System zulässig ist.
+
+    Windows verbietet ``\\ / : * ? " < > |``, und ein Doppelpunkt steht in
+    fast jedem Betreff mit "Re:" oder "AW:". Wer das nicht ersetzt,
+    bekommt beim Speichern eine Fehlermeldung statt einer Datei.
+    """
+    sauber = "".join(
+        "-" if z in '\\/:*?"<>|' else z for z in (betreff or "Nachricht")
+    ).strip()
+    return (sauber[:80] or "Nachricht") + ".eml"
 
 
 def _archivname(pfad) -> str:

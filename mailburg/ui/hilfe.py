@@ -53,7 +53,8 @@ durchsuchen – auch die Anhänge, bis hinein in eingescannte PDF.</p>
 
 <p>Der Zweck dahinter: Ihr Postfach beim Anbieter darf wieder leer
 werden, ohne dass etwas verlorengeht. Was einmal im Archiv liegt,
-bleibt dort, auch wenn Sie es im Mailprogramm löschen.</p>
+bleibt dort, auch wenn Sie es im Mailprogramm löschen – und lässt sich
+jederzeit <a href="#zurueck">wieder zurückholen</a>.</p>
 
 <p><b>Das Postfach bleibt dabei unangetastet.</b> MailBurg öffnet Ihre
 Ordner nur lesend und holt Nachrichten so, dass ungelesene Post
@@ -231,6 +232,45 @@ auch geregelte Abläufe bei Ihnen im Betrieb.</p>
 {menue}
 """
 
+_ZURUECK = """
+<h2>Eine Mail zurückholen</h2>
+
+<p>Ein Archiv, aus dem nichts wieder herauskommt, wäre ein Grab.
+Irgendwann braucht man eine alte Rechnung wieder im Mailprogramm – um
+sie zu beantworten, weiterzuleiten oder einfach im gewohnten Ordner zu
+haben.</p>
+
+<p><b>Doppelklick</b> auf eine Nachricht in der Trefferliste – oder ein
+Klick mit der rechten Maustaste. Zwei Wege stehen offen:</p>
+
+<p><b>Im Postfach wiederherstellen.</b> MailBurg legt die Nachricht in
+den <b>Posteingang</b> des gewählten Postfachs – vollständig, mit allen
+Anhängen und mit ihrem ursprünglichen Datum, damit sie im Mailprogramm
+an der richtigen Stelle steht und nicht ganz oben. Von dort verschieben
+Sie sie mit einem Handgriff dahin, wo Sie sie haben wollen.</p>
+
+<p><b>Es muss nicht das Postfach sein, aus dem sie stammt.</b> Post
+überlebt Arbeitgeber, Anbieter und Adressen; das Konto von damals gibt
+es vielleicht gar nicht mehr. Sie wählen frei, wohin.</p>
+
+<p><b>Als Datei speichern.</b> Die Nachricht wird als
+<i>.eml</i>-Datei abgelegt. Die öffnet jedes Mailprogramm, und in
+Thunderbird lässt sie sich in einen beliebigen Ordner ziehen. Dieser
+Weg braucht weder Zugangsdaten noch ein erreichbares Postfach – er
+funktioniert also auch dann, wenn gar kein Konto mehr eingerichtet
+ist.</p>
+
+<p><b>Hier schreibt MailBurg zum ersten Mal in ein Postfach.</b> Sonst
+gilt strikt: nur lesen. Diese Ausnahme ist eng gefasst – sie geschieht
+nur auf Ihren ausdrücklichen Befehl, für einzelne Nachrichten, und
+niemals im Hintergrund. Gelöscht oder geändert wird in Ihrem Postfach
+weiterhin nichts.</p>
+
+<p>Zurückgespielt wird die Nachricht unverändert, Byte für Byte. Nur so
+bleibt eine vorhandene Signatur gültig, und nur so ist die Mail im
+Postfach dieselbe wie die im Archiv.</p>
+"""
+
 _AUFRAEUMEN = """
 <h2>Postfach aufräumen</h2>
 
@@ -342,6 +382,7 @@ def kapitel() -> list[Kapitel]:
                    "Prüft die Kette und vergleicht das Protokoll mit dem, "
                    "was tatsächlich auf der Platte liegt.")
         ))),
+        Kapitel("zurueck", "Eine Mail zurückholen", _ZURUECK),
         Kapitel("aufraeumen", "Postfach aufräumen", _AUFRAEUMEN),
         Kapitel("fristen", "Geschäftsarchiv und Fristen", _FRISTEN),
     ]

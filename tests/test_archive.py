@@ -467,3 +467,78 @@ class MailsStattFundorteTest(unittest.TestCase):
         self.archive.add(probe("Zwei"), account="b", folder="INBOX")
 
         self.assertEqual(self.archive.index.account_totals(), {"a": 1, "b": 1})
+
+
+class RueckgabeTest(unittest.TestCase):
+    """Der Weg zurück: als Datei und ins Postfach."""
+
+    def setUp(self):
+        import pathlib
+        import tempfile
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.ziel = pathlib.Path(self.ordner.name)
+
+    def test_als_datei_bekommt_die_endung(self):
+        from mailburg.core.rueckgabe import als_datei
+
+        abgelegt = als_datei(b"From: a@example.org\r\n\r\nText", self.ziel / "Rechnung")
+
+        self.assertEqual(abgelegt.suffix, ".eml")
+        self.assertEqual(abgelegt.read_bytes(), b"From: a@example.org\r\n\r\nText")
+
+    def test_bytegenau_gespeichert(self):
+        # Kopfzeilen und Zeilenenden unverändert - sonst ist eine
+        # vorhandene DKIM-Signatur hinüber, und die Mail im Postfach wäre
+        # nicht mehr dieselbe wie die im Archiv.
+        from mailburg.core.rueckgabe import als_datei
+
+        roh = b"Received: von irgendwo\r\nSubject: Test\r\n\r\nZeile\r\nZeile\r\n"
+        abgelegt = als_datei(roh, self.ziel / "m.eml")
+
+        self.assertEqual(abgelegt.read_bytes(), roh)
+
+    def test_zeitstempel_kommt_aus_der_mail(self):
+        # Ohne diese Angabe setzt der Server das Datum von heute. Die Mail
+        # stünde im Mailprogramm ganz oben statt an ihrem Platz in der
+        # Zeit - bei zwanzig Jahre alter Post ein sinnloser Anblick.
+        from mailburg.core.rueckgabe import _zeitstempel
+
+        stempel = _zeitstempel(
+            b"Date: Tue, 15 Mar 2016 09:12:00 +0100\r\nSubject: Alt\r\n\r\nText"
+        )
+
+        self.assertIn("15-Mar-2016", stempel)
+
+    def test_ohne_datumszeile_wird_nicht_geraten(self):
+        from mailburg.core.rueckgabe import _zeitstempel
+
+        # Kein Absturz, kein erfundenes Datum aus der Mail - dann eben
+        # heute.
+        self.assertTrue(_zeitstempel(b"Subject: Ohne\r\n\r\nText"))
+
+    def test_leere_nachricht_wird_abgelehnt(self):
+        from unittest import mock
+
+        from mailburg.core.rueckgabe import RueckgabeFehler, ins_postfach
+
+        with self.assertRaises(RueckgabeFehler):
+            ins_postfach(mock.Mock(), "geheim", "INBOX", b"")
+
+    def test_ordner_mit_leerzeichen_wird_eingefasst(self):
+        from mailburg.core.rueckgabe import _ordner_kodieren
+
+        self.assertEqual(_ordner_kodieren("INBOX"), "INBOX")
+        self.assertEqual(_ordner_kodieren("Alte Post"), '"Alte Post"')
+
+    def test_dateiname_ohne_verbotene_zeichen(self):
+        # Windows verbietet \ / : * ? " < > |, und ein Doppelpunkt steht
+        # in fast jedem Betreff mit "Re:" oder "AW:".
+        from mailburg.ui.hauptfenster import _dateiname
+
+        name = _dateiname('Re: Angebot 3/2025 <wichtig?>')
+
+        self.assertNotIn(":", name.removesuffix(".eml"))
+        self.assertNotIn("/", name)
+        self.assertTrue(name.endswith(".eml"))

@@ -2307,3 +2307,89 @@ class ZweiZeitpunkteTest(OberflaechenTest):
 
         self.assertIn("m.date", versand)
         self.assertIn("m.archiviert", aufnahme)
+
+
+class WiederherstellenTest(OberflaechenTest):
+    """Der Weg zurück ins Postfach."""
+
+    def dialog(self, konten=("a@example.org", "b@example.org")):
+        from unittest import mock
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui import zurueck as modul
+
+        liste = [Konto(name=k, server="s", port=143, benutzer=k, ssl=False)
+                 for k in konten]
+        with mock.patch.object(modul, "Kontenliste",
+                               lambda: mock.Mock(konten=liste)):
+            fenster = modul.Zurueckdialog(b"Subject: Test\r\n\r\nText", "Rechnung")
+        self.addCleanup(fenster.close)
+        return fenster
+
+    def test_alle_eingerichteten_postfaecher_stehen_zur_wahl(self):
+        # Auch die, aus denen die Mail nicht stammt: Post überlebt
+        # Anbieter und Adressen, das Konto von damals gibt es vielleicht
+        # gar nicht mehr.
+        dialog = self.dialog()
+
+        self.assertEqual(dialog.konten.count(), 2)
+
+    def test_ziel_ist_immer_der_posteingang(self):
+        from mailburg.ui.zurueck import POSTEINGANG
+
+        # IMAP schreibt diesen Namen vor - er ist auf jedem Server
+        # derselbe, auch auf deutschsprachigen.
+        self.assertEqual(POSTEINGANG, "INBOX")
+
+    def test_ohne_postfach_wird_erklaert_statt_gesperrt(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        dialog = self.dialog(konten=())
+
+        self.assertFalse(
+            dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
+        self.assertIn("kein Postfach eingerichtet", dialog.stand.text())
+        self.assertIn("als Datei", dialog.stand.text())
+
+    def test_anhaenge_kommen_mit(self):
+        # Zurückgespielt wird die Nachricht Byte für Byte - Anhänge sind
+        # Teil der Nachricht und damit automatisch dabei. Der Test hält
+        # fest, dass niemand auf die Idee kommt, sie unterwegs zu
+        # zerlegen.
+        from mailburg.core.rueckgabe import als_datei
+
+        roh = (b"Subject: Mit Anhang\r\n"
+               b"Content-Type: multipart/mixed; boundary=xyz\r\n\r\n"
+               b"--xyz\r\nContent-Type: text/plain\r\n\r\nText\r\n"
+               b"--xyz\r\nContent-Disposition: attachment; "
+               b"filename=rechnung.pdf\r\n\r\n%PDF-1.4\r\n--xyz--\r\n")
+
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            abgelegt = als_datei(roh, pathlib.Path(ordner) / "m.eml")
+            self.assertEqual(abgelegt.read_bytes(), roh)
+            self.assertIn(b"rechnung.pdf", abgelegt.read_bytes())
+
+    def test_doppelklick_ist_verdrahtet(self):
+        import tempfile
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        with tempfile.TemporaryDirectory() as ordner:
+            ort = pathlib.Path(ordner) / "A"
+            Archive.create(ort).close()
+            fenster = Hauptfenster(ort)
+            self.addCleanup(fenster.close)
+
+            # Nicht jeder denkt bei einer Liste an die rechte Maustaste.
+            # Ein Doppelklick auf eine leere Liste darf dabei nichts tun
+            # und schon gar nicht stolpern.
+            gerufen = []
+            fenster._zuruecklegen = lambda *a: gerufen.append(1)
+            fenster.tabelle.doubleClicked.disconnect()
+            fenster.tabelle.doubleClicked.connect(fenster._zuruecklegen)
+            fenster.tabelle.doubleClicked.emit(fenster.modell.index(0, 0))
+
+            self.assertEqual(gerufen, [1])
