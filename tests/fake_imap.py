@@ -18,19 +18,38 @@ from __future__ import annotations
 
 import imaplib
 import re
+from datetime import date
 
 _BEREICH = re.compile(r"UID\s+(\d+):\*")
+_VOR = re.compile(r"BEFORE\s+(\d{2}-[A-Za-z]{3}-\d{4})")
+
+#: Monatskürzel, wie IMAP sie verlangt – englisch und unabhängig von der
+#: Spracheinstellung des Rechners.
+_MONATE = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def _datum_lesen(text: str) -> date:
+    """Wandelt ``07-Mar-2026`` in ein Datum."""
+    tag, monat, jahr = text.split("-")
+    return date(int(jahr), _MONATE.index(monat) + 1, int(tag))
 
 
 class FakeOrdner:
     """Ein Ordner im nachgebildeten Postfach."""
 
     def __init__(self, roh: str, mails: dict[int, bytes], uidvalidity: int = 1000,
-                 merkmale: str = "\\HasNoChildren") -> None:
+                 merkmale: str = "\\HasNoChildren",
+                 empfangen: dict[int, "date"] | None = None) -> None:
         self.roh = roh
         self.mails = dict(mails)
         self.uidvalidity = uidvalidity
         self.merkmale = merkmale
+
+        #: Wann die Mails beim Server ankamen – nur für ``BEFORE`` nötig.
+        #: Ohne Angabe gelten alle als alt: Wer den Abgleich prüft, will in
+        #: der Regel, dass sämtliche Mails in die Prüfung fallen.
+        self.empfangen = dict(empfangen or {})
 
 
 class FakeImap:
@@ -89,6 +108,17 @@ class FakeImap:
         vorhanden = sorted(self.aktuell.mails)
         if not vorhanden:
             return "OK", [b""]
+
+        vor = _VOR.search(ausdruck)
+        if vor:
+            # BEFORE bezieht sich auf den Zeitpunkt, zu dem die Mail beim
+            # Server ankam - nicht auf das Date: im Kopf.
+            grenze = _datum_lesen(vor.group(1))
+            gefunden = [
+                u for u in vorhanden
+                if self.aktuell.empfangen.get(u, date.min) < grenze
+            ]
+            return "OK", [" ".join(str(u) for u in gefunden).encode()]
 
         treffer = _BEREICH.search(ausdruck)
         if treffer:

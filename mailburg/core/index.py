@@ -470,6 +470,22 @@ class Index:
         ).fetchone()
         return int(row[0]) if row and row[0] is not None else 0
 
+    def uids_im_ordner(self, account: str, folder: str) -> set[int]:
+        """Alle UIDs, die aus diesem Ordner im Archiv liegen.
+
+        Für den Abgleich mit dem Postfach: Was der Server hat und hier
+        fehlt, ist noch nicht archiviert – und darf dort nicht gelöscht
+        werden.
+        """
+        return {
+            int(zeile[0])
+            for zeile in self.db.execute(
+                "SELECT uid FROM locations WHERE account = ? AND folder = ? "
+                "AND uid IS NOT NULL",
+                (account, folder),
+            )
+        }
+
     def statistics(self) -> dict[str, int]:
         """Kennzahlen für die Übersicht."""
         one = lambda sql: self.db.execute(sql).fetchone()[0]  # noqa: E731

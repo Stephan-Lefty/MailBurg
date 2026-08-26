@@ -551,6 +551,102 @@ def _texterkennung_nachschieben(archive, *, laut: bool, budget: float) -> None:
         print(f"Texterkennung: {stat.gelesen} Dokumente lesbar gemacht")
 
 
+def cmd_abgleich(args: argparse.Namespace) -> int:
+    """Prüft, ob alles vor einem Stichtag im Archiv liegt."""
+    from datetime import date
+
+    from mailburg.core import abgleich
+
+    if args.stichtag:
+        try:
+            stichtag = date.fromisoformat(args.stichtag)
+        except ValueError:
+            print(
+                f"'{args.stichtag}' ist kein Datum. Erwartet: 2026-02-26",
+                file=sys.stderr,
+            )
+            return 2
+    else:
+        stichtag = abgleich.stichtag_aus_tagen(args.aelter_als)
+
+    liste = Kontenliste()
+    if args.konto:
+        konto = liste.finden(args.konto)
+        if konto is None:
+            print(f"Ein Konto namens '{args.konto}' gibt es nicht.", file=sys.stderr)
+            return 2
+        konten = [konto]
+    else:
+        konten = liste.aktive()
+
+    if not konten:
+        print("Kein aktives Konto.", file=sys.stderr)
+        return 2
+
+    print(f"Stichtag: {stichtag.strftime('%d.%m.%Y')}")
+    print("Geprüft wird, was der Server hat und im Archiv fehlt.\n")
+
+    bedenklich = 0
+    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+        zustand = Abrufzustand(archive.uuid)
+
+        for konto in konten:
+            print(f"{konto.beschreibung()}")
+            try:
+                quelle = ImapSource(konto, _passwort_besorgen(konto))
+            except ImapFehler as exc:
+                print(f"  FEHLER: {exc}\n", file=sys.stderr)
+                bedenklich += 1
+                continue
+
+            try:
+                befund = abgleich.pruefen(
+                    archive, quelle, konto.name, stichtag, zustand=zustand
+                )
+            finally:
+                quelle.close()
+
+            for eintrag in befund.ordner:
+                if eintrag.uidvalidity_geaendert:
+                    zeichen, lage = "!", "Nummerierung geändert – kein Vergleich möglich"
+                elif eintrag.fehlend:
+                    zeichen, lage = "!", f"{len(eintrag.fehlend)} FEHLEN"
+                elif eintrag.auf_dem_server:
+                    zeichen, lage = "✓", "alle im Archiv"
+                else:
+                    zeichen, lage = " ", "nichts so altes vorhanden"
+
+                print(
+                    f"  {zeichen} {eintrag.ordner:<38} "
+                    f"{eintrag.auf_dem_server:>6}  {lage}"
+                )
+                if eintrag.fehlend and args.ausführlich:
+                    nummern = ", ".join(str(u) for u in eintrag.fehlend[:20])
+                    weitere = (
+                        f" … und {len(eintrag.fehlend) - 20} weitere"
+                        if len(eintrag.fehlend) > 20
+                        else ""
+                    )
+                    print(f"      UID {nummern}{weitere}")
+
+            for warnung in befund.warnungen:
+                print(f"  Hinweis: {warnung}", file=sys.stderr)
+
+            print()
+            print("  " + abgleich.urteil(befund).replace("\n", "\n  "))
+            print()
+
+            if not befund.unbedenklich:
+                bedenklich += 1
+
+    if bedenklich:
+        print(
+            f"Bei {bedenklich} von {len(konten)} Postfächern sollte nichts "
+            f"aufgeräumt werden."
+        )
+    return 1 if bedenklich else 0
+
+
 def cmd_texterkennung(args: argparse.Namespace) -> int:
     """Macht eingescannte PDF durchsuchbar."""
     from mailburg.core import erkennung
@@ -873,6 +969,29 @@ def build_parser() -> argparse.ArgumentParser:
              "(Standard: 120)",
     )
     p.set_defaults(func=cmd_abrufen)
+
+    p = subparsers.add_parser(
+        "abgleich",
+        help="prüfen, ob alles Ältere im Archiv ist",
+        description="Fragt den Server, welche Mails älter als ein Stichtag "
+                    "sind, und hält jede gegen das Archiv. Der Nachweis, den "
+                    "man braucht, bevor man im Mailprogramm aufräumen lässt.",
+    )
+    p.add_argument("archiv")
+    p.add_argument("--konto", help="nur dieses Konto prüfen")
+    p.add_argument(
+        "--aelter-als",
+        type=int,
+        default=180,
+        metavar="TAGE",
+        help="Stichtag als Abstand von heute (Standard: 180)",
+    )
+    p.add_argument(
+        "--stichtag",
+        metavar="JJJJ-MM-TT",
+        help="fester Stichtag statt einer Tageszahl",
+    )
+    p.set_defaults(func=cmd_abgleich)
 
     p = subparsers.add_parser(
         "texterkennung",

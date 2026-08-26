@@ -477,6 +477,33 @@ class ImapSource(Source):
 
     # -------------------------------------------------------------- Sonstiges
 
+    def uids_vor(self, stichtag) -> Iterator[tuple[str, set[int]]]:
+        """Sagt je Ordner, welche Mails älter als der Stichtag sind.
+
+        Für den Abgleich vor dem Aufräumen im Mailclient. Gefragt wird nach
+        ``BEFORE``, und das bezieht sich auf den Zeitpunkt, zu dem die Mail
+        beim Server ankam – nicht auf das ``Date:`` im Kopf. Das ist auch
+        die richtige Bezugsgröße: Aufräumregeln in Mailprogrammen rechnen
+        genauso, und ein gefälschtes Absendedatum soll hier nichts
+        verschieben.
+        """
+        # IMAP will den Monat englisch abgekürzt, unabhängig von der
+        # Spracheinstellung des Rechners - deshalb die feste Liste statt
+        # strftime, das sich nach der Umgebung richtet.
+        monate = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        datum = f"{stichtag.day:02d}-{monate[stichtag.month - 1]}-{stichtag.year}"
+
+        for roh, anzeige in self._alle_ordner():
+            status, daten = self._verbindung.select(f'"{roh}"', readonly=True)
+            if status != "OK":
+                self._melden(f"Ordner '{anzeige}' übersprungen: {daten}")
+                continue
+            try:
+                yield anzeige, set(self._suchen(f"BEFORE {datum}"))
+            except (ImapFehler, imaplib.IMAP4.error, OSError) as exc:
+                self._melden(f"Ordner '{anzeige}' übersprungen: {exc}")
+
     def _melden(self, text: str) -> None:
         """Sammelt Warnungen, die kein Abbruch sind."""
         self.warnungen.append(text)
