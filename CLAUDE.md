@@ -3,7 +3,60 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
-## Hier war Schluss (Stand 2026-08-25, spätabends)
+## Hier war Schluss (Stand 2026-08-26, vormittags)
+
+Der dritte Tag war der erste im echten Betrieb – und dabei ist ein
+Dutzend Fehler aufgefallen, die keine Testsuite gefunden hätte. Das ist
+die Lehre des Tages: **Diese Oberfläche musste einmal von jemandem
+benutzt werden, der sie nicht gebaut hat.**
+
+478 Tests, alles auf GitHub. Zwei Archive laufen produktiv auf der
+externen Platte `Linux-Mobil`: ein Geschäftsarchiv (AT) mit sieben
+Postfächern samt Proton über die Bridge, und ein Privatarchiv mit 1.557
+Mails aus Thunderbirds lokalen Ordnern.
+
+**Die drei lehrreichsten Fehler:**
+
+1. **Ein Lambda an einem Signal aus dem Arbeitsfaden.** Qt kann einem
+   Lambda keinen Faden zuordnen und ruft es deshalb sofort auf – im
+   Arbeitsfaden. Die Zeilen darunter fassten Widgets an und öffneten
+   einen modalen Dialog, der nie gezeichnet wurde, aber jede Eingabe
+   schluckte. Für Stephan sah das so aus: Fenster verschiebbar, innen
+   tot. Die Regel steht jetzt in `ui/arbeit.py`, ein Test verbietet
+   Lambdas an diesen Signalen.
+2. **`validatePage` warf sich selbst wieder an.** Sie prüft nebenläufig,
+   sagt erst Nein und schickt die Seite weiter, sobald die Antworten da
+   sind – was `validatePage` erneut aufrief. Sichtbar als flackernde
+   Zustandsspalte; unsichtbar bekam der Mailserver bei jedem Umlauf drei
+   frische Anmeldungen.
+3. **`saveGeometry()` unter Wayland.** Dort darf ein Fenster seine
+   Position nicht kennen; Qt schreibt Platzhalter, und
+   `restoreGeometry()` stellt sie treu wieder her. Bei jedem Start
+   dasselbe 720×720. Größe wird jetzt als Zahl gespeichert.
+
+**Was als Prüfmuster bleibt:** Zustand, der zu früh gesichert wird, ist
+falsch – `saveState()` beim Aufbau hält die Breite eines Fensters fest,
+das seine Größe noch nicht hat. Und was der Anwender sieht, muss aus
+derselben Quelle stammen wie das, was gilt: Der Postfachbaum addierte
+Fundorte, die Statuszeile zählte Mails, und beide behaupteten eine
+Gesamtzahl.
+
+**Neu an diesem Tag:** Handbuch mit Kapiteln (`ui/hilfe.py`, ein Test
+liest die Menüpunkte aus dem echten Menü), Hintergrundabruf aus der
+Oberfläche (`core/zeitplan.py`), der Weg zurück ins Postfach
+(`core/rueckgabe.py`, `ui/zurueck.py`), sortierbare Trefferliste,
+taggenaue Suche mit `seit:`/`bis:`/`am:`.
+
+**Offen und als Nächstes dran:**
+
+1. `docs/postfach-entlasten.md` fehlt weiterhin, obwohl
+   `docs/zeitsteuerung.md` darauf verweist. Das Handbuch in der
+   Oberfläche hat das Kapitel inzwischen, die Doku nicht.
+2. Zweite Testumgebung GuideOS/Cinnamon – der apt-Zweig von
+   `install.sh`, gnome-keyring, der manuelle Weg ohne Thunderbird.
+3. Texterkennung für die 40 eingescannten PDF im Privatarchiv.
+
+## Vom zweiten Tag (Stand 2026-08-25, spätabends)
 
 Der zweite Tag ging fast vollständig in die Oberfläche. Sie steht jetzt:
 Einrichtungsassistent, Hauptfenster mit Suche und Vorschau, Startbefehl
