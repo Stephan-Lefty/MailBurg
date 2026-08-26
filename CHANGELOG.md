@@ -9,6 +9,33 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+- **Grafische Oberfläche.** Einrichtungsassistent, Hauptfenster mit
+  Postfachbaum, Trefferliste und Vorschau, Suchmaske (Strg+F). Startbefehl
+  `mailburg-gui`, Menüeintrag unter Büroprogrammen.
+- **`mailburg abgleich`** belegt vor dem Aufräumen im Mailprogramm, dass alles
+  vor einem Stichtag im Archiv liegt. Im Zweifel kein grünes Licht: Bei
+  geändertem `UIDVALIDITY` oder einem Fehler bleibt der Befund offen.
+- **Abruf im Hintergrund aus der Oberfläche.** Ankreuzfeld und Abstand von
+  15 Minuten bis täglich, in der Abschlussseite und unter „Post → Abruf im
+  Hintergrund …". MailBurg muss dafür weder geöffnet bleiben noch in den
+  Autostart; nötig ist nur die Anmeldung, weil daran der Schlüsselbund hängt.
+- **Bestand und letzter Abruf** stehen dauerhaft in der Statuszeile. Vermerkt
+  wird erst ein durchgelaufener Abruf – ein Lauf, der an einem stummen Server
+  scheitert, darf das Archiv nicht als aktuell ausweisen.
+- **Taggenaue Suche** mit `seit:`, `bis:` und `am:`, wahlweise `26.08.2026`
+  oder `2026-08-26`. Schrägstriche werden abgelehnt: `08/09/2026` ist hier der
+  8. September und in den USA der 9. August, und diesen Irrtum bemerkt bei
+  einer Suche im eigenen Archiv niemand.
+- **Texterkennung für eingescannte PDF** über pdftoppm und tesseract, in
+  Häppchen nach jedem Abruf statt in einem nächtlichen Lauf – nicht jeder lässt
+  den Rechner über Nacht an.
+- **Vorschlag statt Ausnahme bei Zertifikatsfehlern.** Läuft der Mailserver
+  unter dem Namen eines Massenhosters, sieht MailBurg nach, für welchen Namen
+  das Zertifikat gilt, und bietet ihn an. Danach ist die Verbindung vollständig
+  geprüft – statt einer Ausnahme, die für immer bestehen bliebe.
+- **Fenstergröße und Aufteilung** werden gemerkt, „Ansicht → Fenster auf
+  Standard zurücksetzen" holt die Vorgabe zurück.
+
 ### Neu
 
 - **IMAP-Abruf.** Mails werden direkt aus dem Postfach geholt, für beliebig
@@ -57,11 +84,65 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Geändert
 
+- **Datumsangaben folgen der Systemsprache** statt dem Speicherformat. Die
+  Trefferliste zeigte `2026-08-26`, die Vorschau darunter `25.08.2026`.
+  Jahreszahlen bleiben dabei vierstellig – in einem Archiv stünden Post von
+  1998 und Post von 2098 sonst beide als „98" da.
+- **Die Postfachliste zeigt die Mailadresse** statt des frei gewählten Namens,
+  samt Gesamtzahl je Postfach.
+- **Übergangene Postfächer werden nicht mehr aufgezählt.** Der Hinweis nannte
+  Mailadressen – eine Zeile, die man versehentlich mit einem Bildschirmfoto
+  weitergibt, und was das Mailprogramm kennt, gehört nicht zwangsläufig hierher.
+
 - `importieren()` übergibt dem Fehler-Rückruf jetzt die ganze Nachricht statt
   nur ihren Ordner. Der IMAP-Abruf braucht die UID, um die gescheiterte Mail
   vormerken zu können.
 
 ### Behoben
+
+- **Die Oberfläche fror bei der Einrichtung ein.** Die Anmeldeprobe lief
+  richtig im Hintergrund, ihre Antwort wurde aber über ein Lambda
+  entgegengenommen. Einem Lambda kann Qt keinen Faden zuordnen und ruft es
+  deshalb sofort auf – im Arbeitsfaden. Die Zeilen darunter fassten Widgets an
+  und öffneten Dialoge. Für den Anwender ließ sich das Fenster noch verschieben
+  (das macht der Fenstermanager), aber innen ging nichts mehr: Ein modaler
+  Dialog, im falschen Faden entstanden, schluckte jede Eingabe, ohne je
+  sichtbar zu werden.
+
+- **Die Kontenseite prüfte endlos im Kreis.** `validatePage` prüft nebenläufig,
+  sagt deshalb erst Nein und schickt die Seite selbst weiter, sobald alle
+  Antworten da sind – was `validatePage` erneut aufrief. Prüfen,
+  weiterschicken, prüfen. Sichtbar als flackernde Zustandsspalte; unsichtbar
+  bekam der Mailserver bei jedem Umlauf neue Anmeldungen.
+
+- **Gescheiterte Verbindungen blieben offen.** Schlug die Anmeldung fehl, wurde
+  die halbfertige Verbindung nie geschlossen – drei abgelehnte Anmeldungen,
+  drei tote Verbindungen zum Server, die erst mit dem Programm verschwanden.
+
+- **Wer einen Teil seiner Postfächer ausließ, kam nicht weiter.** Weitergehen
+  war nur erlaubt, wenn *alle* gefundenen Postfächer eingerichtet waren – bei
+  acht Postfächern und zweien, die man bewusst überspringt, also nie.
+
+- **MailBurg fragte nach Passwörtern, die im Schlüsselbund lagen.** Ein
+  eingerichtetes Postfach zeigt sein Passwort nicht im Eingabefeld; die Seite
+  schaute nur aufs leere Feld und hielt es für vergessen.
+
+- **Der Rat, die Sperrdatei zu löschen, kam auch während eines Abrufs.**
+  Meistens hält sie kein Absturz, sondern der geplante Abruf im Hintergrund.
+  Wer dem Rat folgte, hatte zwei Läufe gleichzeitig am selben Journal – genau
+  das, wovor die Sperre schützt. Die PID stand längst in der Datei, sie wurde
+  nur nicht ausgewertet.
+
+- **MailBurg stand zweimal im Anwendungsmenü**, unter Büroprogrammen und unter
+  Dienstprogrammen: zwei Hauptkategorien im Desktop-Eintrag.
+
+- **Zustandsfarben waren im dunklen Thema kaum lesbar.** „Anmeldung
+  gescheitert" erreichte ein Kontrastverhältnis von 2,7 statt der geforderten
+  4,5 – ausgerechnet die Meldung, deren Übersehen bedeutet, dass ein Postfach
+  stillschweigend nicht archiviert wird.
+
+- **Das Merken des Archivs löschte die gemerkte Fenstergröße.** Die
+  Einstellungsdatei wurde jedes Mal komplett neu geschrieben.
 
 - **Unter Windows lief MailBurg überhaupt nicht.** Das Journal zwingt seine
   Einträge mit `fsync` auf die Platte und öffnete die Datei dafür nur lesend.
