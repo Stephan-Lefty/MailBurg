@@ -24,7 +24,15 @@ BLOCK = 200
 class Trefferliste(QAbstractTableModel):
     """Die Suchergebnisse eines Archivs."""
 
-    SPALTEN = ("", "Datum", "Absender", "Betreff", "Größe")
+    SPALTEN = ("📎", "Datum", "Absender", "Betreff", "Größe")
+
+    #: Was in der Kopfzeile zu schmal ist, muss wenigstens vorgelesen
+    #: werden können. Ein Spaltenkopf ohne Text ist für einen Screenreader
+    #: eine namenlose Spalte.
+    SPALTENNAMEN = ("Anhang", "Datum", "Absender", "Betreff", "Größe")
+
+    #: Die Sortierfelder des Index, in der Reihenfolge der Spalten.
+    SORTIERUNG = ("anhang", "datum", "absender", "betreff", "groesse")
 
     def __init__(self, suchindex=None) -> None:
         super().__init__()
@@ -36,6 +44,8 @@ class Trefferliste(QAbstractTableModel):
         self.ausdruck = ""
         self.treffer: list = []
         self.gesamt = 0
+        self.sortierung = "datum"
+        self.absteigend = True
 
     # ------------------------------------------------------------- Abfragen
 
@@ -47,7 +57,10 @@ class Trefferliste(QAbstractTableModel):
         self.gesamt = 0
         if self.suchindex is not None:
             self.gesamt = self.suchindex.count(ausdruck)
-            self.treffer = self.suchindex.search(ausdruck, limit=BLOCK)
+            self.treffer = self.suchindex.search(
+                ausdruck, limit=BLOCK,
+                sortierung=self.sortierung, absteigend=self.absteigend,
+            )
         self.endResetModel()
 
     def treffer_bei(self, zeile: int):
@@ -70,7 +83,8 @@ class Trefferliste(QAbstractTableModel):
         if eltern.isValid() or self.suchindex is None:
             return
         nachschub = self.suchindex.search(
-            self.ausdruck, limit=BLOCK, offset=len(self.treffer)
+            self.ausdruck, limit=BLOCK, offset=len(self.treffer),
+            sortierung=self.sortierung, absteigend=self.absteigend,
         )
         if not nachschub:
             # Sonst fragte Qt endlos nach, wenn die Gesamtzahl nicht mehr
@@ -83,9 +97,28 @@ class Trefferliste(QAbstractTableModel):
         self.endInsertRows()
 
     def headerData(self, abschnitt: int, richtung, rolle=Qt.DisplayRole):
-        if richtung == Qt.Horizontal and rolle == Qt.DisplayRole:
+        if richtung != Qt.Horizontal:
+            return None
+        if rolle == Qt.DisplayRole:
             return self.SPALTEN[abschnitt]
+        if rolle in (Qt.ToolTipRole, Qt.AccessibleTextRole):
+            return self.SPALTENNAMEN[abschnitt]
         return None
+
+    def sort(self, spalte: int, reihenfolge=Qt.AscendingOrder) -> None:
+        """Sortiert neu – im Index, nicht in der geladenen Liste.
+
+        Die Liste enthält immer nur die ersten paar hundert Treffer und
+        lädt beim Blättern nach. Sie an Ort und Stelle umzusortieren
+        ordnete deshalb nur diesen Ausschnitt: Die alphabetisch erste Mail
+        des Archivs stünde nicht oben, sondern irgendwo - je nachdem, wie
+        weit jemand vorher gescrollt hat.
+        """
+        if not 0 <= spalte < len(self.SORTIERUNG):
+            return
+        self.sortierung = self.SORTIERUNG[spalte]
+        self.absteigend = reihenfolge == Qt.DescendingOrder
+        self.suchen(self.ausdruck)
 
     def data(self, stelle: QModelIndex, rolle=Qt.DisplayRole):
         if not stelle.isValid():

@@ -400,7 +400,20 @@ class Index:
 
     # --------------------------------------------------------------- Suchen
 
-    def search(self, expression: str, limit: int = 200, offset: int = 0) -> list[Hit]:
+    #: Wonach sich sortieren lässt, und die Spalte dahinter. Als feste
+    #: Zuordnung und nicht als durchgereichter Text: Ein Sortierfeld
+    #: landet ungeschützt im SQL, weil es sich nicht als Parameter binden
+    #: lässt. Was hier nicht steht, kommt nicht in die Abfrage.
+    SORTIERFELDER = {
+        "datum": "m.date",
+        "absender": "lower(coalesce(nullif(m.from_name, ''), m.from_addr))",
+        "betreff": "lower(m.subject)",
+        "groesse": "m.size",
+        "anhang": "m.has_attachments",
+    }
+
+    def search(self, expression: str, limit: int = 200, offset: int = 0,
+               sortierung: str = "datum", absteigend: bool = True) -> list[Hit]:
         """Führt eine vorbereitete Suchanfrage aus.
 
         Erwartet den fertigen SQL-Baustein aus
@@ -409,12 +422,17 @@ class Index:
         from mailburg.search.query import build
 
         where, params = build(expression)
+        feld = self.SORTIERFELDER.get(sortierung, self.SORTIERFELDER["datum"])
+        richtung = "DESC" if absteigend else "ASC"
+        # Das Datum als zweiter Schlüssel: Bei gleichem Absender oder
+        # gleicher Größe wäre die Reihenfolge sonst beliebig und änderte
+        # sich beim Nachladen - die Liste sprünge dem Anwender weg.
         rows = self.db.execute(
             f"""SELECT m.hash, m.bucket, m.subject, m.from_addr, m.from_name,
                        m.date, m.size, m.has_attachments
                 FROM messages m
                 WHERE {where}
-                ORDER BY m.date DESC
+                ORDER BY {feld} {richtung}, m.date DESC
                 LIMIT ? OFFSET ?""",
             (*params, limit, offset),
         ).fetchall()

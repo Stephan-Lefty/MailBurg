@@ -203,8 +203,10 @@ class TrefferlisteTest(OberflaechenTest):
             def count(self, ausdruck):
                 return self.gesamt
 
-            def search(self, ausdruck, limit=200, offset=0):
+            def search(self, ausdruck, limit=200, offset=0,
+                       sortierung="datum", absteigend=True):
                 self.abfragen += 1
+                self.zuletzt_sortiert = (sortierung, absteigend)
                 from mailburg.core.index import Hit
 
                 return [
@@ -1924,3 +1926,100 @@ class HandbuchTest(OberflaechenTest):
         self.addCleanup(fenster.close)
 
         self.assertEqual(fenster.liste.currentItem().text(), "Das Journal")
+
+
+class SortierungTest(OberflaechenTest):
+    """Klick auf den Spaltenkopf sortiert – im Index, nicht in der Liste."""
+
+    def modell(self):
+        from mailburg.ui.modelle import Trefferliste
+
+        class GefaelschterIndex:
+            def __init__(self):
+                self.zuletzt = None
+
+            def count(self, ausdruck):
+                return 3
+
+            def search(self, ausdruck, limit=200, offset=0,
+                       sortierung="datum", absteigend=True):
+                from mailburg.core.index import Hit
+
+                self.zuletzt = (sortierung, absteigend)
+                return [
+                    Hit(hash=f"h{i}", bucket="b", subject=f"Betreff {i}",
+                        from_addr="a@example.org", from_name="Absender",
+                        date="2026-08-25T10:00:00", size=1024,
+                        has_attachments=False)
+                    for i in range(3)
+                ]
+
+        suchindex = GefaelschterIndex()
+        return Trefferliste(suchindex), suchindex
+
+    def test_klick_auf_den_kopf_sortiert_nach_diesem_feld(self):
+        from PySide6.QtCore import Qt
+
+        modell, suchindex = self.modell()
+        modell.suchen("")
+
+        modell.sort(2, Qt.AscendingOrder)  # Absender
+
+        self.assertEqual(suchindex.zuletzt, ("absender", False))
+
+    def test_nochmal_klicken_dreht_die_richtung_um(self):
+        from PySide6.QtCore import Qt
+
+        modell, suchindex = self.modell()
+        modell.sort(3, Qt.AscendingOrder)
+        self.assertEqual(suchindex.zuletzt, ("betreff", False))
+
+        modell.sort(3, Qt.DescendingOrder)
+        self.assertEqual(suchindex.zuletzt, ("betreff", True))
+
+    def test_nachladen_behaelt_die_sortierung(self):
+        # Sonst kämen die nachgeladenen Treffer in einer anderen Ordnung
+        # als die schon sichtbaren - und die Liste wäre in der Mitte
+        # anders sortiert als oben.
+        from PySide6.QtCore import Qt
+
+        modell, suchindex = self.modell()
+        modell.sort(4, Qt.AscendingOrder)  # Größe
+        modell.gesamt = 500
+        modell.fetchMore()
+
+        self.assertEqual(suchindex.zuletzt, ("groesse", False))
+
+    def test_unbekannte_spalte_aendert_nichts(self):
+        from PySide6.QtCore import Qt
+
+        modell, _ = self.modell()
+        modell.sort(99, Qt.AscendingOrder)
+
+        self.assertEqual(modell.sortierung, "datum")
+
+
+class SpaltenkopfTest(OberflaechenTest):
+    """Auch die schmale Anhangspalte braucht einen Namen."""
+
+    def test_anhangspalte_ist_benannt(self):
+        from PySide6.QtCore import Qt
+
+        from mailburg.ui.modelle import Trefferliste
+
+        modell = Trefferliste()
+        # Ein Spaltenkopf ohne Text ist für einen Screenreader eine
+        # namenlose Spalte - und mit der Maus weiß auch niemand, was
+        # dort steht.
+        self.assertEqual(
+            modell.headerData(0, Qt.Horizontal, Qt.ToolTipRole), "Anhang")
+        self.assertEqual(
+            modell.headerData(0, Qt.Horizontal, Qt.AccessibleTextRole), "Anhang")
+        self.assertTrue(modell.headerData(0, Qt.Horizontal, Qt.DisplayRole))
+
+    def test_alle_spalten_haben_einen_namen(self):
+        from mailburg.ui.modelle import Trefferliste
+
+        self.assertEqual(len(Trefferliste.SPALTENNAMEN),
+                         len(Trefferliste.SPALTEN))
+        self.assertTrue(all(Trefferliste.SPALTENNAMEN))

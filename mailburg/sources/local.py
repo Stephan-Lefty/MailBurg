@@ -109,11 +109,30 @@ class ThunderbirdSource(Source):
         self._roots = [
             d for d in (self.profile / "Mail", self.profile / "ImapMail") if d.is_dir()
         ]
+        if not self._roots and self._enthaelt_ordnerdateien(self.profile):
+            # Auch ein Verzeichnis, das die Ordnerdateien direkt enthält.
+            # Wer in Thunderbird "Lokale Ordner" führt - der übliche Ort
+            # für Post, die aus einem anderen Archivprogramm übernommen
+            # wurde -, zeigt beim Import genau dorthin und nicht auf das
+            # Profil darüber. Die Verschachtelung mit .sbd ist dieselbe.
+            self._roots = [self.profile]
         if not self._roots:
             raise ValueError(
-                f"In {self.profile} liegen weder Mail/ noch ImapMail/ – "
-                f"das ist kein Thunderbird-Profil."
+                f"In {self.profile} liegen weder Mail/ noch ImapMail/ noch "
+                f"Ordnerdateien – das ist kein Thunderbird-Profil und auch "
+                f"kein Ordnerverzeichnis."
             )
+
+    @staticmethod
+    def _enthaelt_ordnerdateien(verzeichnis: Path) -> bool:
+        """Ob dort MBOX-Ordnerdateien liegen, wie Thunderbird sie anlegt.
+
+        Erkannt am Beiwerk: Zu jeder Ordnerdatei legt Thunderbird eine
+        gleichnamige ``.msf`` an. Am Inhalt zu prüfen wäre teurer und
+        nicht sicherer – eine leere Ordnerdatei sieht aus wie jede andere
+        leere Datei.
+        """
+        return any(verzeichnis.glob("*.msf")) or any(verzeichnis.glob("*.sbd"))
 
     def _mbox_files(self) -> Iterator[tuple[Path, str]]:
         """Findet alle Ordnerdateien samt ihres Pfades in der Anzeige."""
@@ -229,9 +248,14 @@ def open_path(path: Path, account: str = "") -> Source:
             return ThunderbirdSource(path, account)
         if (path / "cur").is_dir():
             return MaildirSource(path, account)
+        if ThunderbirdSource._enthaelt_ordnerdateien(path):
+            # Ein Verzeichnis voller Ordnerdateien, etwa "Local Folders".
+            return ThunderbirdSource(path, account)
         raise ValueError(
-            f"{path} ist weder Thunderbird-Profil noch Maildir. Erwartet wird "
-            f"ein Verzeichnis mit Mail/ bzw. ImapMail/ oder mit cur/."
+            f"{path} ist weder Thunderbird-Profil noch Maildir noch ein "
+            f"Verzeichnis mit Ordnerdateien. Erwartet wird ein Verzeichnis "
+            f"mit Mail/ bzw. ImapMail/, eines mit cur/ oder eines, in dem "
+            f"Thunderbirds Ordnerdateien liegen."
         )
 
     return MboxSource(path, account)

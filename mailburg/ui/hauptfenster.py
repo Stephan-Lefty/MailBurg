@@ -102,7 +102,9 @@ class Hauptfenster(QMainWindow):
         self.tabelle.setAlternatingRowColors(True)
         self.tabelle.verticalHeader().setVisible(False)
         self.tabelle.setAccessibleName("Trefferliste")
-        self.tabelle.setSortingEnabled(False)
+        # Klick auf den Spaltenkopf sortiert, nochmal klicken dreht um.
+        self.tabelle.setSortingEnabled(True)
+        self.tabelle.horizontalHeader().setSortIndicator(1, Qt.DescendingOrder)
 
         self._spalten_einrichten()
         self._baumspalten_einrichten()
