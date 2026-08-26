@@ -196,11 +196,11 @@ class Entpacklauf(Auftrag):
 
 
 class Rueckholdialog(QDialog):
-    """Eine Sicherung wieder zu einem Archiv machen."""
+    """Eine Sicherung wieder zu einem eigenen Archiv machen."""
 
     def __init__(self, eltern=None) -> None:
         super().__init__(eltern)
-        self.setWindowTitle("Sicherung zurückholen")
+        self.setWindowTitle("Sicherung in neues Archiv")
         self.setMinimumWidth(640)
         self.ziel: Path | None = None
         self._laeufer = None
@@ -279,3 +279,115 @@ class Rueckholdialog(QDialog):
         self.balken.setVisible(False)
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(True)
         self.stand.setText(f"<b>Nicht zurückgeholt:</b> {text}")
+
+
+class Uebernahmelauf(Auftrag):
+    """Nimmt die Mails einer Sicherung ins offene Archiv auf."""
+
+    def __init__(self, archiv, datei: Path) -> None:
+        super().__init__()
+        self.archiv = archiv
+        self.datei = datei
+
+    def ausfuehren(self):
+        from mailburg.core import sicherung
+
+        self.meldung.emit("Entpacke die Sicherung …")
+        return sicherung.uebernehmen(
+            self.archiv,
+            self.datei,
+            fortschritt=lambda n, von: self.fortschritt.emit(n, von),
+            abbruch=lambda: self.abgebrochen,
+        )
+
+
+class Uebernahmedialog(QDialog):
+    """Mails aus einer Sicherung in das geöffnete Archiv holen."""
+
+    def __init__(self, archiv, eltern=None) -> None:
+        super().__init__(eltern)
+        self.setWindowTitle("Sicherung importieren")
+        self.setMinimumWidth(640)
+        self.archiv = archiv
+        self._laeufer = None
+
+        erklaerung = QLabel(
+            f"<p>Die Mails aus einer gesicherten Datei kommen in Ihr "
+            f"<b>geöffnetes Archiv</b> – {archiv.name}. Sie behalten "
+            f"dabei ihr Postfach und ihren Ordner, denn das steht im "
+            f"Protokoll der Sicherung.</p>"
+            f"<p><b>Doppelte müssen Sie nicht fürchten.</b> Eine Mail, "
+            f"die schon da ist, wird nicht zweimal abgelegt. Sie können "
+            f"dieselbe Sicherung gefahrlos zweimal einlesen.</p>"
+            f"<p>Soll aus der Datei stattdessen ein eigenes, neues Archiv "
+            f"werden, nehmen Sie <i>Sicherung in neues Archiv …</i></p>"
+        )
+        erklaerung.setWordWrap(True)
+        erklaerung.setTextFormat(Qt.RichText)
+
+        self.balken = QProgressBar()
+        self.balken.setFormat("%v von %m Mails")
+        self.balken.setVisible(False)
+
+        self.stand = QLabel("")
+        self.stand.setWordWrap(True)
+        self.stand.setTextFormat(Qt.RichText)
+
+        self.knoepfe = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        self.knoepfe.button(QDialogButtonBox.Ok).setText("Datei wählen …")
+        self.knoepfe.button(QDialogButtonBox.Cancel).setText("Abbrechen")
+        self.knoepfe.accepted.connect(self._waehlen)
+        self.knoepfe.rejected.connect(self._abbrechen)
+
+        aufbau = QVBoxLayout(self)
+        aufbau.addWidget(erklaerung)
+        aufbau.addWidget(self.balken)
+        aufbau.addWidget(self.stand)
+        aufbau.addWidget(self.knoepfe)
+        aufbau.setSizeConstraint(QLayout.SetMinimumSize)
+
+    def _waehlen(self) -> None:
+        datei, _ = QFileDialog.getOpenFileName(
+            self, "Sicherung öffnen", str(Path.home()),
+            "Gesicherte Archive (*.tar.zst *.tar.xz);;Alle Dateien (*)",
+        )
+        if not datei:
+            return
+
+        self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
+        self.balken.setVisible(True)
+        auftrag = Uebernahmelauf(self.archiv, Path(datei))
+        auftrag.meldung.connect(self.stand.setText)
+        auftrag.fortschritt.connect(self._schritt)
+        auftrag.fertig.connect(self._fertig)
+        auftrag.gescheitert.connect(self._gescheitert)
+        self._laeufer = Läufer(auftrag)
+        self._laeufer.starten()
+
+    def _schritt(self, erledigt: int, gesamt: int) -> None:
+        if gesamt:
+            self.balken.setRange(0, gesamt)
+        self.balken.setValue(erledigt)
+        self.stand.setText("")
+
+    def _fertig(self, befund) -> None:
+        self.balken.setVisible(False)
+        self.knoepfe.button(QDialogButtonBox.Cancel).setText("Schließen")
+        zeilen = [f"<b>{befund.dateien} Mails eingelesen.</b>"]
+        if befund.warnungen:
+            # Nicht verschweigen: Was nicht gelesen werden konnte, fehlt.
+            zeilen.append("Nicht lesbar waren:")
+            zeilen.extend(befund.warnungen[:5])
+        self.stand.setText("<br>".join(zeilen))
+
+    def _gescheitert(self, text: str) -> None:
+        self.balken.setVisible(False)
+        self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(True)
+        self.stand.setText(f"<b>Nicht eingelesen:</b> {text}")
+
+    def _abbrechen(self) -> None:
+        if self._laeufer is not None:
+            self._laeufer.auftrag.abbrechen()
+        self.reject()

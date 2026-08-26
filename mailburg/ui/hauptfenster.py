@@ -210,7 +210,17 @@ class Hauptfenster(QMainWindow):
         sichern.triggered.connect(self._sichern)
         archiv.addAction(sichern)
 
-        zurueckholen = QAction("Sicherung zurückholen …", self)
+        uebernehmen = QAction("Sicherung importieren …", self)
+        uebernehmen.setStatusTip(
+            "Die Mails einer Sicherung in das geöffnete Archiv aufnehmen."
+        )
+        uebernehmen.triggered.connect(self._sicherung_uebernehmen)
+        archiv.addAction(uebernehmen)
+
+        zurueckholen = QAction("Sicherung in neues Archiv …", self)
+        zurueckholen.setStatusTip(
+            "Aus einer Sicherung ein eigenes, neues Archiv machen."
+        )
         zurueckholen.triggered.connect(self._zurueckholen)
         archiv.addAction(zurueckholen)
 
@@ -945,6 +955,17 @@ class Hauptfenster(QMainWindow):
         if self.archiv is None:
             return
         Sicherungsdialog(self.archiv, self).exec()
+
+    def _sicherung_uebernehmen(self) -> None:
+        from mailburg.ui.sichern import Uebernahmedialog
+
+        if self.archiv is None:
+            return
+        Uebernahmedialog(self.archiv, self).exec()
+        self._baum_fuellen()
+        self._bestand_zeigen()
+        self._offene_pdf_zeigen()
+        self._suchen()
 
     def _zurueckholen(self) -> None:
         from mailburg.ui.sichern import Rueckholdialog

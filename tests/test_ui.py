@@ -2737,3 +2737,44 @@ class TippsTest(OberflaechenTest):
         from mailburg.ui.hilfe import kapitel
 
         self.assertIn("Tipps", [k.titel for k in kapitel()])
+
+
+class WeiterlesenNachRestTest(TexterkennungDialogTest):
+    """Ein Lauf endet auch mit Rest – dann muss man weitermachen können."""
+
+    def test_knopf_geht_wieder_an(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        class Stat:
+            gelesen = 39
+            gescheitert = 1
+            offen_danach = 4
+            fehler = []
+
+        dialog = self._dialog(57)
+        dialog.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
+
+        dialog._fertig(Stat())
+
+        # Wer nach einem Lauf mit Rest nicht erneut starten kann, kommt
+        # nie ans Ende seiner eingescannten PDF.
+        self.assertTrue(dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
+        self.assertEqual(
+            dialog.knoepfe.button(QDialogButtonBox.Ok).text(), "Weiterlesen")
+        self.assertIn("4 warten noch", dialog.stand.text())
+
+    def test_ohne_rest_bleibt_er_aus(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        class Stat:
+            gelesen = 57
+            gescheitert = 0
+            offen_danach = 0
+            fehler = []
+
+        dialog = self._dialog(57)
+        dialog.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
+
+        dialog._fertig(Stat())
+
+        self.assertFalse(dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())

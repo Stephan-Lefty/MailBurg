@@ -176,8 +176,17 @@ class Texterkennungsdialog(QDialog):
     def _fertig(self, stat) -> None:
         self.balken.setVisible(False)
         zeilen = [f"<b>{stat.gelesen} Dokumente gelesen.</b>"]
-        if getattr(stat, "offen_danach", 0):
-            zeilen.append(f"{stat.offen_danach} warten noch.")
+        rest = getattr(stat, "offen_danach", 0)
+        if rest:
+            zeilen.append(
+                f"{rest} warten noch – ein weiterer Lauf holt sie."
+            )
+            # Der Knopf muss wieder angehen. Ein Lauf endet auch mit
+            # Rest: Reißt bei einem Dokument die Zeitgrenze, hört er
+            # auf, statt sich daran festzubeißen. Wer dann nicht erneut
+            # starten kann, kommt nie ans Ende.
+            self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(True)
+            self.knoepfe.button(QDialogButtonBox.Ok).setText("Weiterlesen")
         if getattr(stat, "fehler", None):
             # Nicht verschweigen: Ein PDF, das sich nicht lesen ließ,
             # bleibt unauffindbar, und das soll man wissen.

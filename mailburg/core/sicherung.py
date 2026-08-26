@@ -175,6 +175,60 @@ def entpacken(datei: Path, ziel: Path, *, fortschritt=None) -> Befund:
     return befund
 
 
+def uebernehmen(ziel_archiv, datei: Path, *, fortschritt=None,
+                abbruch=None) -> Befund:
+    """Nimmt die Mails einer Sicherung in ein vorhandenes Archiv auf.
+
+    Anders als :func:`entpacken` entsteht kein zweites Archiv: Die
+    Nachrichten wandern in das gerade geöffnete, mit ihrem
+    ursprünglichen Postfach und Ordner. Woher sie stammen, steht im
+    Protokoll der Sicherung – deshalb braucht es dafür keinen Suchindex,
+    der ja ohnehin nicht mitgesichert wird.
+
+    **Doppelte erkennt das Archiv selbst.** Eine Mail, die schon da ist,
+    wird nicht zweimal abgelegt; sie bekommt höchstens einen weiteren
+    Fundort. Man kann dieselbe Sicherung also gefahrlos zweimal
+    einlesen.
+    """
+    import tempfile
+
+    from mailburg.core.archive import Archive
+
+    datei = Path(datei)
+    befund = Befund(ziel=Path(getattr(ziel_archiv, "root", "")))
+
+    with tempfile.TemporaryDirectory(prefix="mailburg-sicherung-") as zwischen:
+        ausgepackt = Path(zwischen) / "archiv"
+        entpacken(datei, ausgepackt)
+
+        # Nur lesend und ohne Index: Wir brauchen die Rohdaten und die
+        # Angaben aus dem Protokoll, sonst nichts.
+        with Archive.open(ausgepackt, exclusive=False) as quelle:
+            eintraege = [
+                e for e in quelle.journal.read_all()
+                if e.get("op") == "add" and e.get("hash")
+            ]
+            for nummer, eintrag in enumerate(eintraege, 1):
+                if abbruch is not None and abbruch():
+                    break
+                try:
+                    roh = quelle.store.get(eintrag["hash"], eintrag.get("bucket", ""))
+                except (OSError, KeyError) as exc:
+                    befund.warnungen.append(
+                        f"{eintrag.get('subject', '(ohne Betreff)')}: {exc}"
+                    )
+                    continue
+                ziel_archiv.add(
+                    roh,
+                    account=eintrag.get("account", "Sicherung"),
+                    folder=eintrag.get("folder", ""),
+                )
+                befund.dateien += 1
+                if fortschritt:
+                    fortschritt(nummer, len(eintraege))
+    return befund
+
+
 def _lesestream(datei: Path):
     """Öffnet eine Sicherung zum Lesen, passend zu ihrer Endung."""
     if datei.suffix == ".zst":

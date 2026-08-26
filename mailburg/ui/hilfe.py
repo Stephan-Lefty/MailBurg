@@ -534,10 +534,15 @@ def kapitel() -> list[Kapitel]:
             _menue("Archiv → Archiv sichern …",
                    "Packt das ganze Archiv in eine Datei mit Datum im "
                    "Namen. Der Suchindex kommt nicht mit.")
-            + _menue("Archiv → Sicherung zurückholen …",
-                     "Macht aus einer solchen Datei wieder ein Archiv. Das "
-                     "Zielverzeichnis muss leer sein, und der Suchindex "
-                     "wird anschließend neu aufgebaut.")
+            + _menue("Archiv → Sicherung importieren …",
+                     "Nimmt die Mails einer Sicherung in das geöffnete "
+                     "Archiv auf – mit ihrem ursprünglichen Postfach und "
+                     "Ordner. Doppelte werden erkannt, dieselbe Sicherung "
+                     "lässt sich also gefahrlos zweimal einlesen.")
+            + _menue("Archiv → Sicherung in neues Archiv …",
+                     "Macht aus einer Sicherung ein eigenes, neues Archiv. "
+                     "Das Zielverzeichnis muss leer sein, und der "
+                     "Suchindex wird anschließend neu aufgebaut.")
         ))),
     ]
 
