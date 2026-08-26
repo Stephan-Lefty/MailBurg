@@ -202,6 +202,19 @@ class Hauptfenster(QMainWindow):
         self._zuletzt_fuellen()
 
         archiv.addSeparator()
+        sichern = QAction("Archiv sichern …", self)
+        sichern.setStatusTip(
+            "Das ganze Archiv in eine Datei packen – für die Cloud oder "
+            "eine zweite Platte."
+        )
+        sichern.triggered.connect(self._sichern)
+        archiv.addAction(sichern)
+
+        zurueckholen = QAction("Sicherung zurückholen …", self)
+        zurueckholen.triggered.connect(self._zurueckholen)
+        archiv.addAction(zurueckholen)
+
+        archiv.addSeparator()
         # "Journal prüfen", nicht "Hash-Kette prüfen": Die Hash-Kette ist
         # das Mittel, das Journal die Sache. Wer den Menüpunkt sucht,
         # sucht nicht nach einem Verfahren, sondern nach der Antwort auf
@@ -925,6 +938,26 @@ class Hauptfenster(QMainWindow):
         QMessageBox.critical(self, "Abruf gescheitert", text)
 
     # --------------------------------------------------------------- Sonst
+
+    def _sichern(self) -> None:
+        from mailburg.ui.sichern import Sicherungsdialog
+
+        if self.archiv is None:
+            return
+        Sicherungsdialog(self.archiv, self).exec()
+
+    def _zurueckholen(self) -> None:
+        from mailburg.ui.sichern import Rueckholdialog
+
+        dialog = Rueckholdialog(self)
+        if dialog.exec() and dialog.ziel is not None:
+            antwort = QMessageBox.question(
+                self, "Zurückgeholtes Archiv öffnen?",
+                f"Soll MailBurg jetzt zu {dialog.ziel} wechseln?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if antwort == QMessageBox.Yes:
+                self._wechseln(dialog.ziel)
 
     def _pruefen(self) -> None:
         if self.archiv is None:

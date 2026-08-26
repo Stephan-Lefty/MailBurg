@@ -647,3 +647,98 @@ class ErkennungsreihenfolgeTest(unittest.TestCase):
         self.assertLess(ocr.AUFLOESUNG_GROSS, ocr.AUFLOESUNG)
         # Unter 200 dpi wird tesseract unsicher.
         self.assertGreaterEqual(ocr.AUFLOESUNG_GROSS, 200)
+
+
+class SicherungTest(unittest.TestCase):
+    """Packen und wieder herausholen - beides muss verlässlich sein."""
+
+    def setUp(self):
+        import pathlib
+        import tempfile
+
+        from mailburg.core.archive import Archive
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = pathlib.Path(self.ordner.name)
+        self.archiv = Archive.create(self.wo / "A", name="Probe")
+        for betreff in ("Eins", "Zwei", "Drei"):
+            self.archiv.add(probe(betreff), account="a", folder="INBOX")
+        self.archiv.close()
+
+    def test_rundlauf_erhaelt_die_kette(self):
+        # Der eigentliche Beweis: Was wieder herauskommt, lässt sich
+        # prüfen. Eine Sicherung, von der niemand weiß, ob sie lesbar
+        # ist, ist nur eine halbe.
+        from mailburg.core import sicherung
+        from mailburg.core.archive import Archive
+
+        paket = self.wo / "sicherung.tar.zst"
+        sicherung.packen(self.wo / "A", paket)
+        sicherung.entpacken(paket, self.wo / "Zurueck")
+
+        with Archive.open(self.wo / "Zurueck", exclusive=False) as zurueck:
+            bericht = zurueck.verify()
+        self.assertTrue(bericht["chain_ok"])
+        self.assertEqual(bericht["expected"], 3)
+        self.assertEqual(bericht["on_disk"], 3)
+
+    def test_die_sperrdatei_wird_nicht_mitgepackt(self):
+        # Sie beschreibt einen Zustand, kein Archivgut - und im Ziel
+        # würde sie ein Archiv als geöffnet ausweisen, das niemand
+        # geöffnet hat.
+        import tarfile
+
+        from mailburg.core import sicherung
+
+        (self.wo / "A" / ".mailburg-lock").write_text("{}", encoding="utf-8")
+        paket = self.wo / "s.tar.xz"
+        sicherung.packen(self.wo / "A", paket)
+
+        import lzma
+
+        with lzma.open(paket, "rb") as roh, tarfile.open(fileobj=roh, mode="r|") as b:
+            namen = [e.name for e in b]
+        self.assertNotIn(".mailburg-lock", namen)
+
+    def test_nicht_in_ein_volles_verzeichnis(self):
+        # Zwei Protokolle ineinander ergäben eines, das sich nicht mehr
+        # prüfen lässt.
+        from mailburg.core import sicherung
+        from mailburg.core.sicherung import SicherungFehler
+
+        paket = self.wo / "s.tar.zst"
+        sicherung.packen(self.wo / "A", paket)
+
+        with self.assertRaises(SicherungFehler) as fehler:
+            sicherung.entpacken(paket, self.wo / "A")
+        self.assertIn("nicht leer", str(fehler.exception))
+
+    def test_ohne_archiv_wird_nichts_gepackt(self):
+        from mailburg.core import sicherung
+        from mailburg.core.sicherung import SicherungFehler
+
+        leer = self.wo / "leer"
+        leer.mkdir()
+        with self.assertRaises(SicherungFehler):
+            sicherung.packen(leer, self.wo / "x.tar.zst")
+
+    def test_dateiname_traegt_das_datum(self):
+        from datetime import date
+
+        from mailburg.core import sicherung
+
+        name = sicherung.vorschlag(self.wo / "A", "Mailarchiv")
+        self.assertIn(date.today().isoformat(), name)
+        self.assertTrue(name.endswith((".tar.zst", ".tar.xz")))
+
+    def test_pfade_aus_dem_ziel_heraus_werden_uebergangen(self):
+        # Ein Bündel aus fremder Hand könnte "../../etc/…" enthalten;
+        # tarfile folgt dem bereitwillig.
+        import inspect
+
+        from mailburg.core import sicherung
+
+        quelle = inspect.getsource(sicherung.entpacken)
+        self.assertIn('".." in Path(', quelle)
+        self.assertIn('filter="data"', quelle)

@@ -346,8 +346,15 @@ nicht akademisch: Ihr Archiv liegt auf <i>einer</i> Platte. Geht die
 kaputt, ist alles weg. Eine Sicherung ist eine Kopie an einem
 <i>zweiten</i> Ort – auf einer anderen Platte oder in der Cloud.</p>
 
-<p>Ein Archiv ist ein gewöhnlicher Ordner; kopieren genügt. Zwei Dinge
-dabei:</p>
+<p>MailBurg packt das Archiv auf Wunsch in eine einzige Datei. Kleiner
+wird sie kaum – Ihre Mails liegen schon komprimiert –, aber statt
+tausender einzelner Dateien haben Sie eine, und Cloud-Programme kommen
+damit um ein Vielfaches schneller zurecht. Der Dateiname trägt das
+Datum, jeder Stand ist also eine Datei.</p>
+
+{menue}
+
+<p>Zwei Dinge dabei:</p>
 
 <p><b>Den Suchindex brauchen Sie nicht mitzusichern.</b> Er liegt
 ohnehin außerhalb des Archivordners und lässt sich jederzeit aus dem
@@ -523,7 +530,15 @@ def kapitel() -> list[Kapitel]:
         Kapitel("zurueck", "Eine Mail zurückholen", _ZURUECK),
         Kapitel("aufraeumen", "Postfach aufräumen", _AUFRAEUMEN),
         Kapitel("fristen", "Geschäftsarchiv und Fristen", _FRISTEN),
-        Kapitel("tipps", "Tipps", _TIPPS),
+        Kapitel("tipps", "Tipps", _TIPPS.format(menue=(
+            _menue("Archiv → Archiv sichern …",
+                   "Packt das ganze Archiv in eine Datei mit Datum im "
+                   "Namen. Der Suchindex kommt nicht mit.")
+            + _menue("Archiv → Sicherung zurückholen …",
+                     "Macht aus einer solchen Datei wieder ein Archiv. Das "
+                     "Zielverzeichnis muss leer sein, und der Suchindex "
+                     "wird anschließend neu aufgebaut.")
+        ))),
     ]
 
 
