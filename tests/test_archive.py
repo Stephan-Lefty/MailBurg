@@ -838,3 +838,81 @@ class OhneBudgetDurchlaufenTest(unittest.TestCase):
 
         self.assertIn("(budget_dokumente * 4)",
                       inspect.getsource(erkennung.durchlauf))
+
+
+class LoeschbefehlTest(unittest.TestCase):
+    """Mails eines Postfachs wieder aus dem Archiv nehmen.
+
+    Nötig geworden, weil ein Programmfehler in beide Archive dieselben
+    Postfächer geholt hatte (2026-08-26). Der Befehl räumt so etwas auf –
+    und muss dabei genau das Gegenteil dessen tun, was ein unbedachtes
+    »alles von diesem Konto weg« täte.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name) / "A"
+        self.archive = Archive.create(self.wo, name="Probe")
+
+    def _befehl(self, konto: str, wirklich: bool = True) -> int:
+        """Ruft den Befehl auf – der öffnet das Archiv selbst, exklusiv.
+
+        Deshalb muss unseres vorher zu sein. Genau das ist im Betrieb
+        auch so: Der Befehl läuft, während die Oberfläche geschlossen ist.
+        """
+        import argparse
+
+        from mailburg.__main__ import cmd_loeschen
+
+        self.archive.close()
+        try:
+            return cmd_loeschen(argparse.Namespace(
+                archiv=str(self.wo), konto=konto,
+                grund="irrtuemlich_archiviert", notiz="", wirklich=wirklich,
+            ))
+        finally:
+            self.archive = Archive.open(self.wo)
+            self.addCleanup(self.archive.close)
+
+    def _zeilen(self):
+        return self.archive.index.db.execute(
+            "SELECT COUNT(*) FROM messages"
+        ).fetchone()[0]
+
+    def test_nur_was_ausschliesslich_dort_haengt(self) -> None:
+        """Eine Mail, die auch anderswo liegt, verlöre sonst zu viel.
+
+        Sie steht in zwei Postfächern – etwa, weil sie an beide ging.
+        Wer das Konto aufräumt, will den Fundort loswerden, nicht die
+        Nachricht.
+        """
+        beide = probe("An beide")
+        self.archive.add(beide, account="Firma", folder="INBOX")
+        self.archive.add(beide, account="Privat", folder="INBOX")
+        self.archive.add(probe("Nur Firma"), account="Firma", folder="INBOX")
+
+        self.assertEqual(self._zeilen(), 2)
+
+        self._befehl("Firma")
+
+        # Die gemeinsame bleibt, die alleinige geht.
+        uebrig = [r[0] for r in self.archive.index.db.execute(
+            "SELECT subject FROM messages")]
+        self.assertEqual(uebrig, ["An beide"])
+
+    def test_der_trockenlauf_ist_die_voreinstellung(self) -> None:
+        """Wer löscht, tut es einmal – wer sich vertut, merkt es später."""
+        self.archive.add(probe("Bleibt"), account="Firma", folder="INBOX")
+
+        self._befehl("Firma", wirklich=False)
+
+        self.assertEqual(self._zeilen(), 1)
+
+    def test_ein_unbekanntes_postfach_ist_kein_fehler(self) -> None:
+        self.archive.add(probe("Da"), account="Firma", folder="INBOX")
+
+        ergebnis = self._befehl("Gibtsnicht")
+
+        self.assertEqual(ergebnis, 0)
+        self.assertEqual(self._zeilen(), 1)

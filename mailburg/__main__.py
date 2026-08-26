@@ -391,6 +391,79 @@ def cmd_konten_pruefen(args: argparse.Namespace) -> int:
     return 1 if fehler else 0
 
 
+def cmd_loeschen(args: argparse.Namespace) -> int:
+    """Nimmt Mails eines Postfachs wieder aus dem Archiv.
+
+    **Der Trockenlauf ist die Voreinstellung.** Wer löscht, tut es
+    einmal; wer sich vertut, merkt es beim zwanzigsten Mal. Also zeigt
+    der Befehl erst, was er täte, und tut es erst auf ausdrückliche
+    Ansage.
+    """
+    with Archive.open(Path(args.archiv)) as archive:
+        zeilen = archive.index.db.execute(
+            """SELECT DISTINCT m.hash, m.bucket, m.subject
+                 FROM messages m JOIN locations l ON l.msg_id = m.id
+                WHERE l.account = ?""",
+            (args.konto,),
+        ).fetchall()
+        if not zeilen:
+            print(f"Zu '{args.konto}' liegt in diesem Archiv nichts.")
+            return 0
+
+        # Nur, was ausschließlich an diesem Postfach hängt. Eine Mail,
+        # die auch anderswo gefunden wurde, verlöre sonst mehr als den
+        # einen Fundort.
+        nur_hier = []
+        for digest, bucket, betreff in zeilen:
+            andere = archive.index.db.execute(
+                """SELECT COUNT(*) FROM locations l JOIN messages m ON m.id = l.msg_id
+                    WHERE m.hash = ? AND l.account <> ?""",
+                (digest, args.konto),
+            ).fetchone()[0]
+            if not andere:
+                nur_hier.append((digest, bucket, betreff))
+
+        auch_anderswo = len(zeilen) - len(nur_hier)
+        print(f"Postfach '{args.konto}' in '{archive.name}':")
+        print(f"  {len(zeilen)} Mails, davon {len(nur_hier)} nur hier zu finden.")
+        if auch_anderswo:
+            print(f"  {auch_anderswo} liegen auch unter einem anderen Postfach "
+                  f"und bleiben unangetastet.")
+
+        if not args.wirklich:
+            print()
+            for _, _, betreff in nur_hier[:10]:
+                print(f"   – {(betreff or '(ohne Betreff)')[:66]}")
+            if len(nur_hier) > 10:
+                print(f"   … und {len(nur_hier) - 10} weitere")
+            print()
+            print("Das war ein Trockenlauf. Nichts wurde entfernt.")
+            print("Zum Ausführen dasselbe noch einmal mit --wirklich.")
+            return 0
+
+        if archive.mode.is_business:
+            print()
+            print("Dies ist ein Geschäftsarchiv: Jede Löschung hinterlässt "
+                  "einen Grabstein im Journal.")
+
+        entfernt = 0
+        gesperrt = 0
+        for digest, bucket, _ in nur_hier:
+            try:
+                archive.delete(digest, bucket, reason=args.grund,
+                               note=args.notiz)
+                entfernt += 1
+            except Exception as exc:  # Fristen, fehlende Datei
+                gesperrt += 1
+                if gesperrt <= 3:
+                    print(f"  bleibt liegen: {exc}", file=sys.stderr)
+        archive.index.commit()
+        print(f"\nEntfernt: {entfernt}")
+        if gesperrt:
+            print(f"Nicht entfernt: {gesperrt} (Aufbewahrungsfrist oder Fehler)")
+    return 0
+
+
 def cmd_konten_zuordnen(args: argparse.Namespace) -> int:
     """Weist ein Postfach einem Archiv zu – oder nimmt es wieder heraus."""
     liste = Kontenliste()
@@ -1283,6 +1356,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--leise", action="store_true", help="nur bei Fehlern melden")
     p.set_defaults(func=cmd_sichern)
+
+    p = subparsers.add_parser(
+        "loeschen",
+        help="Mails eines Postfachs wieder aus dem Archiv nehmen",
+        description=(
+            "Entfernt, was ausschließlich an diesem Postfach hängt. Mails, "
+            "die auch unter einem anderen Postfach gefunden wurden, bleiben "
+            "unangetastet – sie verlören sonst mehr als den einen Fundort. "
+            "Ohne --wirklich ist es ein Trockenlauf."
+        ),
+    )
+    p.add_argument("archiv", help="Verzeichnis des Archivs")
+    p.add_argument("--konto", required=True, help="Name des Postfachs")
+    p.add_argument(
+        "--grund", default="irrtuemlich_archiviert",
+        help="warum gelöscht wird – steht so im Journal",
+    )
+    p.add_argument("--notiz", default="", help="Erläuterung fürs Journal")
+    p.add_argument(
+        "--wirklich", action="store_true",
+        help="tatsächlich löschen statt nur zeigen",
+    )
+    p.set_defaults(func=cmd_loeschen)
 
     p = subparsers.add_parser("suchhilfe", help="die Suchsprache erklären")
     p.set_defaults(func=cmd_hilfe_suche)
