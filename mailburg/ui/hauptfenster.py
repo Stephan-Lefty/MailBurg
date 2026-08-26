@@ -131,6 +131,11 @@ class Hauptfenster(QMainWindow):
     def _menue(self) -> None:
         archiv = self.menuBar().addMenu("&Archiv")
 
+        anlegen = QAction("Neues Archiv anlegen …", self)
+        anlegen.setShortcut(QKeySequence.New)
+        anlegen.triggered.connect(self._neues_archiv)
+        archiv.addAction(anlegen)
+
         oeffnen = QAction("Archiv öffnen …", self)
         oeffnen.setShortcut(QKeySequence.Open)
         oeffnen.triggered.connect(self._archiv_waehlen)
@@ -184,6 +189,27 @@ class Hauptfenster(QMainWindow):
         self.setWindowTitle(f"{APP_NAME} – {self.archiv.name}")
         self._baum_fuellen()
         self._suchen()
+
+    def _neues_archiv(self) -> None:
+        """Führt den Einrichtungsassistenten für ein weiteres Archiv.
+
+        Ohne diesen Weg käme man an den Assistenten nur beim allerersten
+        Start heran – wer ein zweites Archiv anlegen will, etwa auf einer
+        externen Platte, stünde vor verschlossener Tür.
+        """
+        from mailburg.ui.assistent import Einrichtungsassistent
+
+        assistent = Einrichtungsassistent(self)
+        if not assistent.exec() or assistent.archiv_pfad is None:
+            return
+
+        self._oeffnen(assistent.archiv_pfad)
+        if self.archiv is not None:
+            from mailburg.ui.app import merken
+
+            merken(assistent.archiv_pfad)
+            if getattr(assistent, "soll_abrufen", False):
+                self._abrufen()
 
     def _archiv_waehlen(self) -> None:
         from PySide6.QtWidgets import QFileDialog
