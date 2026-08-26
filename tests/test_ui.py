@@ -2253,3 +2253,57 @@ class SortierhinweisTest(OberflaechenTest):
         self.assertEqual(
             modell.headerData(2, Qt.Horizontal, Qt.AccessibleTextRole),
             "Absender")
+
+
+class ZweiZeitpunkteTest(OberflaechenTest):
+    """Versanddatum und Archivdatum dürfen nicht zu verwechseln sein.
+
+    Eine Mail von 2016 kann heute ins Archiv gekommen sein. Wer nach dem
+    einen sucht und das andere bekommt, hält das Ergebnis für
+    vollständig - und es ist das falsche.
+    """
+
+    def test_die_maske_benennt_beide_getrennt(self):
+        from PySide6.QtWidgets import QLabel
+
+        from mailburg.ui.suchmaske import Suchmaske
+
+        maske = Suchmaske()
+        self.addCleanup(maske.close)
+        beschriftungen = [w.text() for w in maske.findChildren(QLabel) if w.text()]
+
+        self.assertTrue(any("Verschickt oder empfangen" in b
+                            for b in beschriftungen))
+        self.assertTrue(any("Ins Archiv aufgenommen" in b
+                            for b in beschriftungen))
+
+    def test_der_zeitraum_sucht_nach_dem_versand(self):
+        from PySide6.QtCore import QDate
+
+        from mailburg.ui.suchmaske import Suchmaske
+
+        maske = Suchmaske()
+        self.addCleanup(maske.close)
+        maske.zeitraum_an.setChecked(True)
+        maske.datum_von.setDate(QDate(2016, 1, 1))
+        maske.datum_bis.setDate(QDate(2016, 12, 31))
+
+        # seit:/bis: gehen auf das Versanddatum, archiviert: auf die
+        # Aufnahme. Hier ist der Versand gemeint.
+        self.assertIn("seit:", maske.ausdruck())
+        self.assertNotIn("archiviert:", maske.ausdruck())
+
+    def test_die_suchhilfe_sagt_worauf_sich_zeiten_beziehen(self):
+        from mailburg.search.query import describe_syntax
+
+        text = describe_syntax()
+        self.assertIn("beziehen sich auf den Versand", text)
+
+    def test_beide_filter_meinen_verschiedene_spalten(self):
+        from mailburg.search.query import build
+
+        versand, _ = build("am:26.08.2026")
+        aufnahme, _ = build("archiviert:26.08.2026")
+
+        self.assertIn("m.date", versand)
+        self.assertIn("m.archiviert", aufnahme)

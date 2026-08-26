@@ -105,7 +105,7 @@ class Suchmaske(QDialog):
         # Ein Kalender statt eines Eingabefelds: Wer einen Zeitraum
         # sucht, weiß meist "Anfang März bis Ostern" und nicht das genaue
         # Datum. Im Kalender sieht er es.
-        self.zeitraum_an = QCheckBox("Nur aus einem Zeitraum")
+        self.zeitraum_an = QCheckBox("Nur aus einem bestimmten Zeitraum")
         self.zeitraum_an.toggled.connect(self._zeitraum_umschalten)
 
         heute = QDate.currentDate()
@@ -127,7 +127,14 @@ class Suchmaske(QDialog):
         zeitraum.addStretch()
 
         self.archiviert = QLineEdit()
-        self.archiviert.setPlaceholderText("2026 · 2026-08 · 26.08.2026")
+        self.archiviert.setPlaceholderText(
+            "nur falls gesucht: 2026 · 2026-08 · 26.08.2026"
+        )
+        self.archiviert.setToolTip(
+            "Wann MailBurg die Mail geholt hat – nicht, wann sie "
+            "geschrieben wurde. Eine Mail von 2016 kann heute ins Archiv "
+            "gekommen sein."
+        )
 
         self.mit_anhang = QCheckBox("Nur Nachrichten mit Anhang")
         self.typ = QLineEdit()
@@ -159,14 +166,23 @@ class Suchmaske(QDialog):
         unten = QFormLayout()
         unten.addRow("Postfach:", self.konto)
         unten.addRow("Ordner:", self.ordner)
+        # Zwei verschiedene Zeitpunkte, und die Beschriftung muss sie
+        # auseinanderhalten: Wann die Mail geschrieben wurde, ist fast
+        # immer gemeint. Wann sie ins Archiv kam, weiß meist nur, wer
+        # nach einem bestimmten Abruf sucht - und ist bei alter Post ein
+        # ganz anderes Jahr.
+        unten.addRow("<b>Verschickt oder empfangen</b>", QLabel(""))
         unten.addRow("Jahr:", jahre)
         unten.addRow("", self.zeitraum_an)
-        unten.addRow("Zeitraum:", zeitraum)
-        unten.addRow("Ins Archiv gekommen:", self.archiviert)
+        unten.addRow("Genauer Zeitraum:", zeitraum)
         unten.addRow("", self.mit_anhang)
         unten.addRow("Anhang vom Typ:", self.typ)
         unten.addRow("Größe:", groesse)
         unten.addRow("Wichtigkeit:", self.wichtigkeit)
+        # Ganz unten und nicht unter "Verschickt oder empfangen": Dort
+        # sähe es aus, als gehörte es dazu - dabei ist es der andere
+        # Zeitpunkt, und Verwechslung war ja gerade das Problem.
+        unten.addRow("Ins Archiv aufgenommen:", self.archiviert)
         unten.addRow("Ohne:", self.ohne)
 
         eingrenzen = QGroupBox("Eingrenzen")
@@ -188,6 +204,10 @@ class Suchmaske(QDialog):
 
         knoepfe = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         knoepfe.button(QDialogButtonBox.Ok).setText("Suchen")
+        # Ausdrücklich, wie beim Handbuch: Qts eigene Übersetzung greift
+        # nur mit vorhandenen Sprachdateien - sonst steht "Cancel"
+        # mitten im deutschen Fenster.
+        knoepfe.button(QDialogButtonBox.Cancel).setText("Abbrechen")
         knoepfe.accepted.connect(self.accept)
         knoepfe.rejected.connect(self.reject)
 

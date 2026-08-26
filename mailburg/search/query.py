@@ -345,9 +345,12 @@ def describe_syntax() -> str:
   datei:Müller*.doc         beginnt mit Müller, endet auf .doc
   typ:pdf                   Anhang mit dieser Endung
 
+Zeitangaben beziehen sich auf den Versand, nicht auf die Aufnahme:
+
   jahr:2025 · jahr:2020-2025
   seit:01.01.2026 · bis:31.03.2026 · am:26.08.2026
-  archiviert:2026-08        wann die Mail ins Archiv kam
+
+  archiviert:2026-08        wann MailBurg die Mail geholt hat
   archiviert:26.08.2026     auch tagesgenau
   groesse:>5MB              auch <100KB, >=2GB; ohne Zeichen: mindestens
   wichtigkeit:hoch          hoch, normal oder niedrig
