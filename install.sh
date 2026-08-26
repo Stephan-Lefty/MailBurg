@@ -151,12 +151,39 @@ if [[ $MIT_PAKETEN -eq 1 ]]; then
     else
         hinweis "Vorgesehen: ${PAKETE[*]}"
         hinweis "Befehl:     $BEFEHL ${PAKETE[*]}"
+        hinweis ""
+        hinweis "Wozu: tesseract liest eingescannte PDF - Rechnungen, die als"
+        hinweis "Foto einer Seite ankommen. Ohne bleibt deren Inhalt für die"
+        hinweis "Suche unsichtbar, und das merkt man erst, wenn man vergeblich"
+        hinweis "danach sucht."
         read -r -p "  Installieren? [J/n] " antwort
         if [[ ! "$antwort" =~ ^([nN]|[nN]ein)$ ]]; then
             $BEFEHL "${PAKETE[@]}"
         else
-            hinweis "Übersprungen. MailBurg läuft auch ohne, nur langsamer bei PDF."
+            # Nicht verharmlosen: "läuft auch ohne" stimmt, sagt aber
+            # nicht, was fehlt. Eingescannte PDF sind ohne tesseract
+            # nicht langsamer durchsuchbar, sondern gar nicht.
+            hinweis "Übersprungen."
+            hinweis "MailBurg läuft, aber eingescannte PDF bleiben unlesbar -"
+            hinweis "ihr Inhalt ist dann nicht auffindbar. Nachrüsten geht"
+            hinweis "jederzeit:  $BEFEHL ${PAKETE[*]}"
         fi
+    fi
+
+    # Nachsehen statt annehmen: Ein Paket kann fehlschlagen, ohne dass
+    # das Skript stehenbleibt - etwa weil das Sprachpaket in dieser
+    # Fassung anders heißt. Wer das nicht prüft, hält die Texterkennung
+    # für eingerichtet und wundert sich Monate später.
+    if command -v tesseract >/dev/null 2>&1; then
+        SPRACHEN="$(tesseract --list-langs 2>/dev/null | tail -n +2 | tr '\n' ' ')"
+        if [[ "$SPRACHEN" == *deu* ]]; then
+            hinweis "Texterkennung bereit (Sprachen: $SPRACHEN)"
+        else
+            hinweis "Achtung: tesseract ist da, aber ohne deutsche Sprachdaten."
+            hinweis "Eingescannte deutsche Dokumente werden schlecht erkannt."
+        fi
+    else
+        hinweis "Hinweis: tesseract fehlt - eingescannte PDF bleiben unlesbar."
     fi
 fi
 

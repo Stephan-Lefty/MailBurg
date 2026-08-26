@@ -72,19 +72,35 @@ dafür, dass ein Fehler in MailBurg Ihre Post nicht vernichtet.
 
 ## Thunderbird: alte Nachrichten automatisch entfernen
 
-Thunderbird kann das je Ordner erledigen.
+Thunderbird nennt das **Aufbewahrungsregeln**. Sie gelten je Konto:
 
-1. Rechtsklick auf den Ordner → **Eigenschaften**
-2. Reiter **Aufräumen** (in älteren Fassungen: *Speicherplatz*)
-3. **Nachrichten löschen, die älter sind als …** anhaken und die Tage eintragen
+1. **Konten-Einstellungen** öffnen (Rechtsklick auf das Konto → *Einstellungen*,
+   oder über das Menü)
+2. Beim gewünschten Konto auf **Synchronisation & Speicherplatz**
+3. Unten auf **Aufbewahrungsregeln**
+4. Dort einstellen, wie lange Nachrichten bleiben sollen
 
-Die Zahl sollte **großzügiger sein als Ihr Abrufabstand**. Wer alle 30 Minuten
-abruft, ist mit 180 Tagen auf der sicheren Seite – der Abstand ist dann so
-groß, dass selbst ein Rechner, der zwei Wochen aus war, nichts verpasst.
+**Achtung, das wirkt auf dem Server.** Thunderbird schreibt dazu selbst: *„Um
+Speicherplatz zurückzugewinnen, können alte Nachrichten dauerhaft gelöscht
+werden, und zwar sowohl lokale Kopien als auch die Originale auf dem
+Remote-Server."* Genau das wollen Sie hier – aber eben erst, nachdem
+`mailburg abgleich` grünes Licht gegeben hat.
 
-**Fangen Sie mit einem unwichtigen Ordner an**, nicht mit dem Posteingang. So
-sehen Sie einmal in Ruhe, was passiert, bevor es um die Post geht, an der
-etwas hängt.
+Einzelne Ordner abweichend behandeln geht über die Schaltfläche
+**Erweitert …** im selben Fenster. Dort lässt sich auch festlegen, welche
+Ordner überhaupt lokal vorgehalten werden.
+
+Die Frist sollte **großzügiger sein als Ihr Abrufabstand**. Wer alle 30
+Minuten abruft, ist mit 180 Tagen auf der sicheren Seite – der Abstand ist
+dann so groß, dass selbst ein Rechner, der zwei Wochen aus war, nichts
+verpasst.
+
+**Fangen Sie mit einem unwichtigen Konto an**, nicht mit dem, an dem Ihre
+Geschäftspost hängt. So sehen Sie einmal in Ruhe, was passiert.
+
+> Nachgesehen an Thunderbird 128 (2026). Die Menüs ändern sich dort von
+> Fassung zu Fassung; heißt bei Ihnen etwas anders, suchen Sie nach dem Wort
+> *Aufbewahrungsregeln*.
 
 ## Was ist mit Post, die noch keine 180 Tage alt ist?
 

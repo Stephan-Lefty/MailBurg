@@ -132,6 +132,85 @@ def ablegen(widget, name: str) -> None:
     print(f"  {ziel.relative_to(WURZEL)}")
 
 
+def _erfundene_konten():
+    """Postfächer für alle Fenster, die die echte Kontenliste lesen."""
+    from mailburg.core.accounts import Konto
+
+    return [
+        Konto(name="martha@mailburg.example", server="imap.mailburg.example",
+              benutzer="martha@mailburg.example", port=993, ssl=True),
+        Konto(name="buero@mailburg.example", server="imap.mailburg.example",
+              benutzer="buero@mailburg.example", port=993, ssl=True),
+        Konto(name="martha@web-anbieter.example",
+              server="imap.web-anbieter.example",
+              benutzer="martha@web-anbieter.example", port=143, ssl=False),
+    ]
+
+
+def _zurueckbild(rohdaten: bytes, betreff: str) -> None:
+    """Der Wiederherstellen-Dialog – ebenfalls mit erfundenen Konten.
+
+    Auch er liest die Kontenliste des Rechners. Dieselbe Falle wie bei
+    der Postfachverwaltung, an derselben Stelle übersehen.
+    """
+    from unittest import mock
+
+    from mailburg.ui import zurueck as modul
+
+    konten = _erfundene_konten()
+
+    class Liste:
+        konten = None
+
+    Liste.konten = konten
+    with mock.patch.object(modul, "Kontenliste", Liste):
+        fenster = modul.Zurueckdialog(rohdaten, betreff)
+        fenster.resize(620, 360)
+        fenster.show()
+        ablegen(fenster, "wiederherstellen")
+        fenster.close()
+
+
+def _kontenbild(eltern) -> None:
+    """Die Postfachverwaltung – mit erfundenen Konten.
+
+    **Hier lag ein Datenleck.** Die Verwaltung liest die Kontenliste des
+    Rechners, auf dem sie läuft, nicht das Beispielarchiv. Ohne diesen
+    Umweg zeigte das Bild die echten Postfächer dessen, der die
+    Anleitung erzeugt – Mailadressen, Server, alles.
+
+    Die Lehre gilt über dieses Bild hinaus: Jedes Fenster, das seine
+    Daten woanders herholt als aus dem Beispielarchiv, braucht eigens
+    erfundene Daten. Verlassen kann man sich darauf nur, wenn man jedes
+    Bild einmal ansieht.
+    """
+    from unittest import mock
+
+    from mailburg.core.accounts import Konto
+    from mailburg.ui import konten as modul
+
+    erfunden = _erfundene_konten() + [
+        Konto(name="alte-firma", server="imap.alte-firma.example",
+              benutzer="m.muster@alte-firma.example", port=993, ssl=True,
+              aktiv=False),
+    ]
+
+    class Liste:
+        konten = erfunden
+
+        def finden(self, name):
+            return next((k for k in erfunden if k.name == name), None)
+
+    with mock.patch.object(modul, "Kontenliste", Liste), \
+         mock.patch.object(modul.accounts, "passwort_holen",
+                           lambda konto: "vorhanden"):
+        fenster = modul.Kontenverwaltung(eltern)
+        fenster.resize(820, 420)
+        fenster.show()
+        ablegen(fenster, "postfaecher")
+        fenster.close()
+
+
 def _assistent_bilder() -> None:
     """Die Seiten der Ersteinrichtung – der erste Eindruck zählt doppelt.
 
@@ -167,7 +246,24 @@ def _assistent_bilder() -> None:
         for konto in konten:
             selbst._zeile_anlegen(konto)
 
-    with mock.patch.object(modul.KontenSeite, "_aus_thunderbird_laden", erfundene):
+    # Auch die Ortsauswahl braucht erfundene Angaben: Sie zeigt sonst
+    # den Benutzernamen und die Namen der angeschlossenen Platten.
+    from mailburg.core import orte
+
+    erfundene_orte = [
+        orte.Ort("Im Benutzerordner", Path("/home/martha/Mailarchiv"),
+                 "benutzer", frei=98 * 10**9, gesamt=233 * 10**9,
+                 auf_systemplatte=True),
+        orte.Ort('Externe Platte »Sicherung«',
+                 Path("/media/martha/Sicherung/Mailarchiv"), "laufwerk",
+                 frei=1_900 * 10**9, gesamt=2_000 * 10**9),
+        orte.Ort("Cloud-Ordner (Nextcloud)",
+                 Path("/home/martha/Nextcloud/Mailarchiv"), "cloud",
+                 frei=48 * 10**9, gesamt=100 * 10**9),
+    ]
+
+    with mock.patch.object(modul.KontenSeite, "_aus_thunderbird_laden", erfundene), \
+         mock.patch.object(modul.orte, "vorschlagen", lambda: erfundene_orte):
         assistent = modul.Einrichtungsassistent()
         assistent.resize(900, 720)
         for nummer, kennung in enumerate(assistent.pageIds()):
@@ -262,25 +358,62 @@ def main() -> int:
         lesen.show()
         ablegen(lesen, "lesefenster")
 
-        from mailburg.ui.zurueck import Zurueckdialog
+        _zurueckbild(roh, treffer.subject)
 
-        zurueck = Zurueckdialog(roh, treffer.subject)
-        zurueck.resize(620, 340)
-        zurueck.show()
-        ablegen(zurueck, "wiederherstellen")
-
-        from mailburg.ui.konten import Kontenverwaltung
-
-        konten = Kontenverwaltung(fenster)
-        konten.resize(760, 420)
-        konten.show()
-        ablegen(konten, "postfaecher")
+        _kontenbild(fenster)
 
         fenster.close()
     finally:
         shutil.rmtree(zwischen, ignore_errors=True)
 
-    print(f"\nFertig. Alle Namen und Adressen erfunden ({len(POST)} Beispielmails).")
+    print(f"\nFertig. {len(POST)} Beispielmails, alle Namen erfunden.")
+    return _nachsehen()
+
+
+#: Wonach die Selbstkontrolle sucht. Zwei Fenster lasen anfangs die
+#: echte Kontenliste des Rechners statt des Beispielarchivs, und beide
+#: Bilder lagen schon auf GitHub, bevor es jemandem auffiel. Seitdem
+#: liest dieses Skript seine eigenen Bilder noch einmal.
+VERRAETERISCH = (
+    "protonmail", "gmail", "gmx", "web.de", "outlook",
+    "@t-online", "kasserver", "goserver", "hostedoffice",
+)
+
+
+def _nachsehen() -> int:
+    """Liest die erzeugten Bilder und sucht nach echten Daten.
+
+    Ein Bild ist undurchsichtig: Was darauf steht, sieht man nur, wenn
+    man hinsieht – und Anleitungen sieht sich niemand Zeile für Zeile
+    an. Deshalb liest tesseract sie hier noch einmal.
+
+    Die Liste kann nicht vollständig sein; sie deckt die großen Anbieter
+    ab und die Muster, die im Betrieb aufgefallen sind. Ein Blick auf
+    die Bilder ersetzt sie nicht.
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("tesseract"):
+        print("Hinweis: Ohne tesseract keine Selbstkontrolle der Bilder.")
+        return 0
+
+    beanstandet = []
+    for bild in sorted(BILDER.glob("*.png")):
+        gelesen = subprocess.run(
+            ["tesseract", str(bild), "stdout", "-l", "deu+eng"],
+            capture_output=True, text=True, check=False,
+        ).stdout.lower()
+        treffer = [wort for wort in VERRAETERISCH if wort in gelesen]
+        if treffer:
+            beanstandet.append((bild.name, treffer))
+
+    if beanstandet:
+        print("\nACHTUNG – möglicherweise echte Daten auf einem Bild:")
+        for name, treffer in beanstandet:
+            print(f"  {name}: {', '.join(treffer)}")
+        return 1
+    print("Selbstkontrolle: keine bekannten Anbieternamen auf den Bildern.")
     return 0
 
 

@@ -34,11 +34,52 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 
 Einzelheiten in [MailBurg unter Windows](windows.md).
 
-### Was Sie sonst noch brauchen
+### Zwei Werkzeuge, die MailBurg mitbringt
 
-Für die Suche in eingescannten PDF: `tesseract` mit deutschem Sprachpaket und
-`poppler-utils`. Das Installationsskript schlägt beides vor. Ohne läuft
-MailBurg vollständig – nur Bilder von Seiten bleiben dann unlesbar.
+`install.sh` bietet an, zwei Systempakete mitzuinstallieren, und antwortet man
+nicht ausdrücklich mit Nein, tut es das auch:
+
+| Paket | wofür |
+|---|---|
+| **poppler** | holt Text aus PDF – schnell und zuverlässig |
+| **tesseract** samt deutschen Sprachdaten | liest *eingescannte* PDF, also Rechnungen, die als Foto einer Seite ankommen |
+
+**Sagen Sie hier möglichst Ja.** Ohne tesseract ist der Inhalt eingescannter
+Dokumente für die Suche unsichtbar – nicht langsamer auffindbar, sondern gar
+nicht. Und das merkt man erst, wenn man Jahre später vergeblich nach einer
+Rechnung sucht, die im Archiv liegt.
+
+Zum Nachrüsten, falls Sie beim ersten Mal abgelehnt haben:
+
+```bash
+# Debian, Ubuntu, GuideOS, Mint
+sudo apt install poppler-utils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
+
+# Arch, Manjaro
+sudo pacman -S poppler tesseract tesseract-data-deu tesseract-data-eng
+
+# Fedora
+sudo dnf install poppler-utils tesseract tesseract-langpack-deu
+
+# openSUSE
+sudo zypper install poppler-tools tesseract-ocr tesseract-ocr-traineddata-german
+
+# macOS
+brew install poppler tesseract tesseract-lang
+```
+
+Ob es geklappt hat, sagt Ihnen:
+
+```bash
+tesseract --list-langs
+```
+
+Steht dort `deu`, ist alles bereit. Unter Windows sind beide Werkzeuge im
+Installationsskript enthalten; Einzelheiten in
+[MailBurg unter Windows](windows.md).
+
+**Ohne diese Pakete läuft MailBurg vollständig** – Abrufen, Suchen,
+Aufbewahrungsfristen, Sicherung. Nur Bilder von Seiten bleiben stumm.
 
 ## 2. Der erste Start
 
