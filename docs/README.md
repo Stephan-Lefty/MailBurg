@@ -2,6 +2,10 @@
 
 # Anleitungen
 
+- **[Erste Schritte](erste-schritte.md)** – von der Installation bis zum
+  ersten durchsuchbaren Archiv, Schritt für Schritt mit Bildern.
+- **[Die Oberfläche](oberflaeche.md)** – jedes Fenster und jeder Menüpunkt,
+  mit Bild und Erklärung.
 - **[Postfächer einrichten](postfaecher-einrichten.md)** – IMAP-Konten anlegen,
   App-Passwörter bei den großen Anbietern, was archiviert wird und was nicht.
 - **[Regelmäßig abrufen](zeitsteuerung.md)** – nächtlicher Abruf unter Linux,
@@ -25,4 +29,4 @@ Wie das Archiv aufgebaut ist und warum, steht in der
 Schweiz – Aufbewahrungsfristen, GoBD, DSGVO – siehe
 [RECHTLICHES.md](../RECHTLICHES.md).
 
-Screenshots kommen, sobald die grafische Oberfläche steht.
+Die Abbildungen entstehen aus `werkzeuge/screenshots.py` – mit erfundenen Postfächern, damit nie fremde Post darin steht, und damit sie nicht veralten, wenn sich die Oberfläche ändert.

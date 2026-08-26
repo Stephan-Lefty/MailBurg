@@ -1,4 +1,4 @@
-[Übersicht](../README.md) | [Anleitungen](README.md) | [Postfach entlasten](postfach-entlasten.md) | [Regelmäßig abrufen](zeitsteuerung.md) | [Windows](windows.md)
+[Übersicht](../README.md) | [Anleitungen](README.md) | [Erste Schritte](erste-schritte.md) | [Postfach entlasten](postfach-entlasten.md) | [Regelmäßig abrufen](zeitsteuerung.md) | [Windows](windows.md)
 
 # Das Archiv sichern
 
@@ -108,7 +108,7 @@ curl -T MailBurg-Archiv.tar.zst \
 
 Ein Backup, an das jemand denken muss, ist irgendwann keines mehr.
 
-In der Oberfläche: **Post → Was von selbst laufen soll …**, dort das Häkchen
+In der Oberfläche: **Einstellungen → Was von selbst laufen soll (Automatisierung) …**, dort das Häkchen
 bei *Das Archiv regelmäßig in eine Datei sichern*, Takt und Zielordner
 wählen. MailBurg legt dafür einen systemd-Timer im Benutzerverzeichnis an –
 kein Verwaltungsrecht nötig.

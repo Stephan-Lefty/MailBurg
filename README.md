@@ -26,6 +26,8 @@ aufräumen.
   <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer, Mailprogramme und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile." width="960">
 </p>
 
+**Neu hier?** [Erste Schritte](docs/erste-schritte.md) führt mit Bildern von der Installation bis zum ersten durchsuchbaren Archiv. [Die Oberfläche](docs/oberflaeche.md) erklärt jedes Fenster und jeden Menüpunkt.
+
 ## Warum
 
 Es gibt gute Programme für diese Aufgabe, aber sie haben Grenzen: Sie laufen

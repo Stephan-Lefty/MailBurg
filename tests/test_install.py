@@ -71,3 +71,44 @@ class AnleitungenTest(unittest.TestCase):
                 continue
             with self.subTest(datei=datei.name):
                 self.assertIn(datei.name, verzeichnis)
+
+
+class BeispieldatenTest(unittest.TestCase):
+    """In der Anleitung darf keine Adresse stehen, die jemandem gehört."""
+
+    def test_nur_reservierte_endungen(self):
+        # Stünde in der Anleitung eines öffentlichen Programms eine echte
+        # Domain, bekäme deren Inhaber Post von allen, die das Beispiel
+        # ausprobieren. RFC 2606 reserviert .example, .test, .invalid und
+        # example.com/net/org genau dafür.
+        import re
+
+        skript = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "werkzeuge" / "screenshots.py"
+        ).read_text(encoding="utf-8")
+
+        erlaubt = (".example", ".test", ".invalid",
+                   "example.com", "example.net", "example.org")
+        for adresse in re.findall(r"[\w.+-]+@[\w-]+\.[\w.-]+", skript):
+            with self.subTest(adresse=adresse):
+                self.assertTrue(
+                    adresse.rstrip('">').endswith(erlaubt),
+                    f"{adresse} ist keine reservierte Beispieladresse",
+                )
+
+    def test_keine_echten_adressen_in_der_doku(self):
+        import re
+
+        wurzel = pathlib.Path(__file__).resolve().parent.parent
+        erlaubt = (".example", ".test", ".invalid", "example.com",
+                   "example.net", "example.org", "@meine-firma", "@ihre-firma")
+        for datei in (wurzel / "docs").glob("*.md"):
+            text = datei.read_text(encoding="utf-8")
+            for adresse in re.findall(r"[\w.+-]+@[\w-]+\.[\w.-]+", text):
+                sauber = adresse.rstrip(">`.,)")
+                with self.subTest(datei=datei.name, adresse=sauber):
+                    self.assertTrue(
+                        sauber.endswith(erlaubt),
+                        f"{datei.name}: {sauber} ist keine Beispieladresse",
+                    )
