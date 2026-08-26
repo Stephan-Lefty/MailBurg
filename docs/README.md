@@ -6,6 +6,9 @@
   App-Passwörter bei den großen Anbietern, was archiviert wird und was nicht.
 - **[Regelmäßig abrufen](zeitsteuerung.md)** – nächtlicher Abruf unter Linux,
   Windows und macOS, und warum der Schlüsselbund dabei der Haken ist.
+- **[Postfach entlasten](postfach-entlasten.md)** – der eigentliche Zweck:
+  nachweisen, dass alles im Archiv ist, und erst dann beim Anbieter aufräumen
+  lassen. Mit der Einstellung in Thunderbird und einer Liste zum Abhaken.
 - **[MailBurg unter Windows](windows.md)** – Einrichtung, Ablageorte,
   Thunderbird und Outlook.
 

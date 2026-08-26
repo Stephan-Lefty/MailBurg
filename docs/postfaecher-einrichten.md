@@ -1,4 +1,4 @@
-[Übersicht](../README.md) | [Anleitungen](README.md) | [Zeitsteuerung](zeitsteuerung.md) | [Windows](windows.md)
+[Übersicht](../README.md) | [Anleitungen](README.md) | [Zeitsteuerung](zeitsteuerung.md) | [Windows](windows.md) | [Postfach entlasten](postfach-entlasten.md)
 
 # Postfächer einrichten
 
