@@ -1710,3 +1710,80 @@ class EigeneAnsichtTest(FenstergroesseTest):
 
         self.assertEqual(len(gesagt), 1)
         self.assertIn("Eigene Ansicht speichern", gesagt[0])
+
+
+class SuchmeldungTest(OberflaechenTest):
+    """Das Suchergebnis muss man sehen, ohne danach zu suchen."""
+
+    def _fenster_mit(self, treffer):
+        import tempfile
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        ort = pathlib.Path(ordner.name) / "Archiv"
+        Archive.create(ort).close()
+        fenster = Hauptfenster(ort)
+        self.addCleanup(fenster.close)
+
+        # Am Objekt statt an der Klasse: gesamt ist ein Instanzattribut,
+        # und ein globales patch.stopall risse den übrigen Tests die
+        # eigenen Flicken weg.
+        def suchen(ausdruck, _t=treffer):
+            fenster.modell.gesamt = _t
+
+        fenster.modell.suchen = suchen
+        return fenster
+
+    def _text(self, fenster):
+        import re
+
+        return re.sub("<[^>]+>", "", fenster.suchmeldung.text())
+
+    def test_treffer_werden_gemeldet(self):
+        fenster = self._fenster_mit(191)
+        fenster.suchfeld.setText("rechnung")
+        fenster._suchen()
+
+        self.assertEqual(self._text(fenster), "MailBurg hat 191 Treffer.")
+
+    def test_ohne_treffer_steht_das_da(self):
+        # Sonst sucht jemand weiter in einer Liste, die noch von der
+        # vorigen Suche stammt.
+        fenster = self._fenster_mit(0)
+        fenster.suchfeld.setText("gibtsnicht")
+        fenster._suchen()
+
+        self.assertIn("nichts gefunden", self._text(fenster))
+        self.assertIn("color:", fenster.suchmeldung.text())
+
+    def test_waehrend_der_suche_steht_es_auch_da(self):
+        fenster = self._fenster_mit(5)
+        fenster.suchfeld.setText("rechnung")
+        fenster._tippen()
+
+        self.assertEqual(self._text(fenster), "MailBurg sucht …")
+
+    def test_ohne_suchausdruck_wird_nichts_behauptet(self):
+        # Wer nichts gesucht hat, bekommt kein Suchergebnis.
+        fenster = self._fenster_mit(2078)
+        fenster.suchfeld.setText("")
+        fenster._suchen()
+
+        self.assertEqual(fenster.suchmeldung.text(), "")
+
+    def test_ein_falscher_ausdruck_wird_erklaert(self):
+        from mailburg.search.query import QueryError
+
+        fenster = self._fenster_mit(0)
+
+        def stolpern(ausdruck):
+            raise QueryError("'neulich' ist keine Jahreszahl")
+
+        fenster.modell.suchen = stolpern
+        fenster.suchfeld.setText("jahr:neulich")
+        fenster._suchen()
+
+        self.assertIn("stimmt nicht", self._text(fenster))

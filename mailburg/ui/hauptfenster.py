@@ -80,7 +80,7 @@ TREFFERANTEIL = 0.42
 from mailburg.core.accounts import Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked
 from mailburg.search.query import QueryError, describe_syntax
-from mailburg.ui import datum
+from mailburg.ui import datum, farben
 from mailburg.ui.arbeit import Abruflauf, Läufer, alle_beenden
 from mailburg.ui.modelle import Trefferliste
 from mailburg.ui.vorschau import Mailvorschau
@@ -162,7 +162,17 @@ class Hauptfenster(QMainWindow):
         mitte = QWidget()
         aufbau = QVBoxLayout(mitte)
         aufbau.setContentsMargins(8, 8, 8, 0)
+        # Gleich unter dem Suchfeld, nicht unten in der Statuszeile: Bei
+        # zweitausend Mails ist die Suche in Millisekunden durch. Wer
+        # dabei auf das Suchfeld schaut - und das tut man beim Tippen -,
+        # bemerkt eine Zahl am unteren Fensterrand überhaupt nicht.
+        self.suchmeldung = QLabel("")
+        self.suchmeldung.setTextFormat(Qt.RichText)
+        self.suchmeldung.setAccessibleName("Suchergebnis")
+        self.suchmeldung.setContentsMargins(2, 2, 2, 4)
+
         aufbau.addWidget(self.suchfeld)
+        aufbau.addWidget(self.suchmeldung)
         aufbau.addWidget(teiler, 1)
         self.setCentralWidget(mitte)
 
@@ -552,6 +562,8 @@ class Hauptfenster(QMainWindow):
     # -------------------------------------------------------------- Suchen
 
     def _tippen(self) -> None:
+        if self.suchfeld.text().strip():
+            self.suchmeldung.setText("MailBurg sucht …")
         self.tipp_uhr.start(TIPPAUSE)
 
     def _suchen(self) -> None:
@@ -563,22 +575,46 @@ class Hauptfenster(QMainWindow):
         try:
             self.modell.suchen(ausdruck)
         except QueryError as exc:
-            self.stand.setText(f"Suchausdruck: {exc}")
+            self._suchmeldung_setzen(f"Der Suchausdruck stimmt nicht: {exc}", False)
             return
         except Exception as exc:  # noqa: BLE001
-            self.stand.setText(f"Suche gescheitert: {exc}")
+            self._suchmeldung_setzen(f"Die Suche ist gescheitert: {exc}", False)
             return
 
         self.vorschau.leeren()
         anzahl = f"{self.modell.gesamt:,}".replace(",", ".")
-        if self.modell.gesamt:
-            self.stand.setText(f"{anzahl} Treffer")
-        else:
+
+        if not ausdruck:
+            # Ohne Suchausdruck ist nichts gesucht worden; dann steht dort
+            # auch kein Ergebnis, sondern gar nichts.
+            self.suchmeldung.setText("")
             self.stand.setText(
-                "Keine Treffer. F1 erklärt die Suchsprache."
-                if ausdruck
+                f"{anzahl} Mails" if self.modell.gesamt
                 else "Das Archiv ist noch leer."
             )
+            return
+
+        if self.modell.gesamt:
+            wort = "Treffer" if self.modell.gesamt > 1 else "Treffer"
+            self._suchmeldung_setzen(f"MailBurg hat {anzahl} {wort}.", True)
+        else:
+            self._suchmeldung_setzen(
+                "MailBurg hat nichts gefunden. F1 erklärt die Suchsprache.",
+                False,
+            )
+        self.stand.setText(f"{anzahl} Treffer")
+
+    def _suchmeldung_setzen(self, text: str, fuendig: bool) -> None:
+        """Schreibt das Suchergebnis hin – deutlich genug, um es zu sehen.
+
+        Fett, weil es sonst zwischen Suchfeld und Trefferliste untergeht.
+        Farbe nur, wenn nichts gefunden wurde: Ein Treffer ist der
+        Normalfall und braucht kein Signal, ein Fehlschlag dagegen schon –
+        sonst sucht jemand weiter in einer Liste, die von der vorigen
+        Suche stammt.
+        """
+        farbe = "" if fuendig else f"color: {farben.schlecht()};"
+        self.suchmeldung.setText(f"<span style='{farbe}'><b>{text}</b></span>")
 
     def _ordner_gewaehlt(self, eintrag: QTreeWidgetItem) -> None:
         vorgabe = eintrag.data(0, Qt.UserRole) or ""
