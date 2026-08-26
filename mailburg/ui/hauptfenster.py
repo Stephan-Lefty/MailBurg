@@ -64,6 +64,11 @@ class Hauptfenster(QMainWindow):
         self.laeufer: Läufer | None = None
         self.ocr_laeufer: Läufer | None = None
 
+        from PySide6.QtWidgets import QApplication
+
+        self._grundgroesse = QApplication.font().pointSizeF()
+        self.schriftstufe = 0
+
         self.setWindowTitle(APP_NAME)
 
         self._aufbauen()
@@ -71,6 +76,13 @@ class Hauptfenster(QMainWindow):
         # Erst nach dem Aufbau: Wiederhergestellt werden auch die
         # Aufteilungen, und die gibt es vorher noch nicht.
         self._groesse_herstellen()
+
+        from mailburg.ui.app import gemerktes
+
+        stufe = gemerktes().get("schriftstufe", 0)
+        if isinstance(stufe, int) and stufe:
+            self._schrift_setzen(stufe)
+
         self._oeffnen(archiv_pfad)
 
     # ------------------------------------------------------------- Aufbau
@@ -273,6 +285,22 @@ class Hauptfenster(QMainWindow):
         ansicht.addAction(zuruecksetzen)
 
         ansicht.addSeparator()
+        groesser = QAction("Schrift größer", self)
+        groesser.setShortcuts([QKeySequence.ZoomIn, QKeySequence("Ctrl++")])
+        groesser.triggered.connect(lambda: self._schrift_aendern(+1))
+        ansicht.addAction(groesser)
+
+        kleiner = QAction("Schrift kleiner", self)
+        kleiner.setShortcuts([QKeySequence.ZoomOut, QKeySequence("Ctrl+-")])
+        kleiner.triggered.connect(lambda: self._schrift_aendern(-1))
+        ansicht.addAction(kleiner)
+
+        normal = QAction("Schrift zurücksetzen", self)
+        normal.setShortcut(QKeySequence("Ctrl+0"))
+        normal.triggered.connect(lambda: self._schrift_setzen(0))
+        ansicht.addAction(normal)
+
+        ansicht.addSeparator()
         hoch = QAction("Postfach nach oben", self)
         hoch.setShortcut("Ctrl+Up")
         hoch.triggered.connect(lambda: self.baum.verschieben(-1))
@@ -360,6 +388,7 @@ class Hauptfenster(QMainWindow):
 
         self.modell.suchindex = self.archiv.index
         self.setWindowTitle(f"{APP_NAME} – {self.archiv.name}")
+        self._index_pruefen()
         self._baum_fuellen()
         self._bestand_zeigen()
         self._offene_pdf_zeigen()
@@ -538,6 +567,39 @@ class Hauptfenster(QMainWindow):
         self._groesse_herstellen()
         self.stand.setText("Eigene Ansicht geladen.")
 
+    def _schrift_aendern(self, schritte: int) -> None:
+        self._schrift_setzen(self.schriftstufe + schritte)
+
+    def _schrift_setzen(self, stufe: int) -> None:
+        """Vergrößert oder verkleinert die Schrift im ganzen Fenster.
+
+        Auf einem 14-Zoll-Bildschirm ist die Vorgabe vieler
+        Arbeitsumgebungen schlicht zu klein, und ein Archiv liest man
+        nicht im Vorbeigehen – man sucht darin nach einer Zahl in einer
+        Rechnung. Wer schlecht sieht, stellt die Schrift des ganzen
+        Systems groß; wer nur hier mehr braucht, soll es hier bekommen.
+        """
+        from PySide6.QtWidgets import QApplication
+
+        self.schriftstufe = max(-3, min(8, stufe))
+        schrift = QApplication.font()
+        # Von der Systemgröße aus rechnen, nicht von der zuletzt
+        # gesetzten: Sonst wächst die Schrift bei jedem Aufruf weiter,
+        # auch wenn der Anwender zurückstellen wollte.
+        schrift.setPointSizeF(max(6.0, self._grundgroesse + self.schriftstufe))
+        self.setFont(schrift)
+        for teil in self.findChildren(QWidget):
+            teil.setFont(schrift)
+        self.menuBar().setFont(schrift)
+
+        from mailburg.ui.app import merken_unter
+
+        merken_unter("schriftstufe", self.schriftstufe)
+        self.stand.setText(
+            "Schriftgröße zurückgesetzt." if not self.schriftstufe
+            else f"Schrift {self.schriftstufe:+d} Punkte."
+        )
+
     def _standardansicht(self, nur_aufbauen: bool = False) -> None:  # noqa: ARG002
         """Die Ansicht, mit der MailBurg das erste Mal aufgeht.
 
@@ -635,6 +697,95 @@ class Hauptfenster(QMainWindow):
         kopf.setSectionResizeMode(3, QHeaderView.Stretch)
         kopf.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self.tabelle.setColumnWidth(2, 220)
+
+    def _index_pruefen(self) -> None:
+        """Merkt, wenn der Suchindex fehlt, obwohl Mails da sind.
+
+        Ein leerer Index sieht aus wie ein leeres Archiv – dieselbe
+        Anzeige, dieselbe Null. Für den Anwender ist das der Anblick
+        eines Datenverlusts, dabei liegen seine Mails unversehrt
+        daneben; nur das Verzeichnis dazu fehlt.
+
+        Genau das ist passiert: Ein gelöschtes Indexverzeichnis, und
+        MailBurg meldete stumm »0 Mails im Archiv«. Wer das sieht,
+        denkt nicht an einen Neuaufbau, sondern an das Schlimmste.
+        """
+        if self.archiv is None:
+            return
+        try:
+            im_index = self.archiv.index.count()
+            if im_index:
+                return
+            # Nicht das Protokoll zählen, sondern die Dateien: Ein frisch
+            # angelegtes Archiv hat einen create-Eintrag im Journal und
+            # trotzdem keine einzige Mail. Wer danach ginge, fragte bei
+            # jedem neuen Archiv, ob der Index aufgebaut werden soll.
+            auf_der_platte = sum(1 for _ in self.archiv.store.iter_all())
+        except Exception:  # noqa: BLE001 – eine Warnung darf nie selbst scheitern
+            return
+        if not auf_der_platte:
+            return
+
+        antwort = QMessageBox.question(
+            self,
+            "Der Suchindex fehlt",
+            f"<p><b>Ihre Mails sind da – nur das Verzeichnis dazu fehlt.</b></p>"
+            f"<p>In diesem Archiv liegen {auf_der_platte:,} Nachrichten, "
+            f"aber der Suchindex ist leer. Das passiert, wenn er gelöscht "
+            f"wurde oder das Archiv von einem anderen Rechner kommt.</p>"
+            f"<p>Der Index lässt sich aus dem Protokoll neu aufbauen. Das "
+            f"dauert bei diesem Bestand einige Minuten – gerechnet mit "
+            f"etwa vier Minuten je zehntausend Nachrichten.</p>"
+            f"<p>Jetzt aufbauen?</p>".replace(",", "."),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if antwort == QMessageBox.Yes:
+            self._neuaufbau()
+
+    def _neuaufbau(self) -> None:
+        """Baut den Suchindex neu – mit Fortschritt, denn es dauert."""
+        from mailburg.ui.arbeit import Auftrag, Läufer
+
+        class Aufbau(Auftrag):
+            def __init__(self, pfad):
+                super().__init__()
+                self.pfad = pfad
+
+            def ausfuehren(self):
+                from mailburg.core.archive import Archive
+
+                with Archive.open(self.pfad) as archiv:
+                    return archiv.rebuild_index(progress=self._melden)
+
+            def _melden(self, erledigt, gesamt):
+                self.fortschritt.emit(erledigt, gesamt)
+
+        pfad = self.archiv.root
+        # Das eigene Handle muss weg: Der Aufbau schreibt in den Index.
+        self.archiv.close()
+        self.archiv = None
+        self.modell.suchindex = None
+
+        self.stand.setText("Baue den Suchindex neu …")
+        self.balken.setFormat("%v von %m Mails")
+        self.balken.show()
+
+        auftrag = Aufbau(pfad)
+        # Gebundene Methoden, keine Lambdas - siehe die Regel in
+        # ui/arbeit.py. Welches Archiv gemeint ist, steht am Fenster.
+        self._aufbau_pfad = pfad
+        auftrag.fortschritt.connect(self._erkennung_schritt)
+        auftrag.fertig.connect(self._nach_neuaufbau)
+        auftrag.gescheitert.connect(self._abruf_gescheitert)
+        self.aufbau_laeufer = Läufer(auftrag)
+        self.aufbau_laeufer.starten()
+
+    def _nach_neuaufbau(self, _anzahl=None) -> None:
+        self.balken.hide()
+        self.balken.setFormat("%p%")
+        self._oeffnen(self._aufbau_pfad)
+        self.stand.setText("Der Suchindex ist wieder aufgebaut.")
 
     def _bestand_zeigen(self) -> None:
         """Wie viel im Archiv liegt und wann zuletzt geholt wurde.

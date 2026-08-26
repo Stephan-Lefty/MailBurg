@@ -26,6 +26,22 @@ _HELL = {"gut": "#2e7d32", "schlecht": "#c62828"}
 #: 8,0 und 7,3. Dieselben Farbtöne, nur aufgehellt – Grün bleibt Grün.
 _DUNKEL = {"gut": "#81c784", "schlecht": "#ef9a9a"}
 
+#: Verweise. Qts Standardblau (#0000ff) hat auf dunklem Grund ein
+#: Kontrastverhältnis von 2,4 – ein Link, den man nur findet, wenn man
+#: weiß, dass er da ist. Auf hellem Grund ist dasselbe Blau in Ordnung.
+_LINK_HELL = "#0645ad"
+_LINK_DUNKEL = "#6cb6ff"
+
+
+def link() -> str:
+    """Farbe für Verweise, passend zum Thema."""
+    return _LINK_DUNKEL if dunkles_thema() else _LINK_HELL
+
+
+def verweis(adresse: str, beschriftung: str) -> str:
+    """Ein Verweis, der auf hellem wie dunklem Grund lesbar ist."""
+    return f"<a href='{adresse}' style='color: {link()}'>{beschriftung}</a>"
+
 
 def dunkles_thema() -> bool:
     """Ob die Oberfläche gerade dunkel eingestellt ist.

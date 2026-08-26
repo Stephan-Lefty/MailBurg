@@ -24,6 +24,7 @@ lange er bereit ist zu warten, und bekommt zurück, wie weit es gekommen ist.
 from __future__ import annotations
 
 import shutil
+import os
 import subprocess
 import tempfile
 from collections.abc import Callable
@@ -215,6 +216,11 @@ def text_aus_pdf(
                     capture_output=True,
                     timeout=ZEITGRENZE_SEITE,
                     check=False,
+                    # Ein Faden je Aufruf. Tesseract nimmt sich sonst
+                    # alle Kerne - was allein schneller ist, sich aber
+                    # selbst im Weg steht, sobald mehrere Dokumente
+                    # gleichzeitig gelesen werden.
+                    env={**os.environ, "OMP_THREAD_LIMIT": "1"},
                 )
                 teile.append(gelesen.stdout.decode("utf-8", errors="replace"))
                 ergebnis.seiten += 1

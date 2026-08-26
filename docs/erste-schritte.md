@@ -21,6 +21,11 @@ Das Skript legt eine eigene Python-Umgebung an, installiert MailBurg samt
 Oberfläche und trägt einen Menüeintrag unter *Büroprogramme* ein. Es fragt
 vorher, was es tut, und braucht keine Verwaltungsrechte.
 
+**Rechnen Sie mit fünf bis fünfzehn Minuten.** Der längste Teil ist die
+grafische Oberfläche: PySide6 ist rund 150 MB, und je nach Python-Fassung
+werden einzelne Pakete erst für Ihr System übersetzt. Der Fortschritt läuft
+dabei mit – solange sich etwas bewegt, ist alles in Ordnung.
+
 Danach steht `mailburg` in der Eingabeaufforderung bereit und **MailBurg** im
 Anwendungsmenü.
 

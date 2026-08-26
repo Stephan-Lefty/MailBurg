@@ -521,6 +521,15 @@ def kapitel() -> list[Kapitel]:
                    "Größe und Aufteilung so, wie MailBurg das erste Mal "
                    "aufging. Ihre gespeicherte eigene Ansicht bleibt dabei "
                    "erhalten.")
+            + _menue("Ansicht → Schrift größer (Strg++)",
+                     "Vergrößert die Schrift im ganzen Fenster. Auf einem "
+                     "kleinen Bildschirm ist die Vorgabe vieler "
+                     "Arbeitsumgebungen zu klein – und ein Archiv liest man "
+                     "nicht im Vorbeigehen.")
+            + _menue("Ansicht → Schrift kleiner (Strg+−)",
+                     "Wieder zurück, Schritt für Schritt.")
+            + _menue("Ansicht → Schrift zurücksetzen (Strg+0)",
+                     "Zurück auf die Größe, die Ihr System vorgibt.")
             + _menue("Ansicht → Postfach nach oben (Strg+Auf)",
                      "Rückt das gewählte Postfach eine Stelle nach oben.")
             + _menue("Ansicht → Postfach nach unten (Strg+Ab)",
@@ -578,6 +587,15 @@ class Hilfefenster(QDialog):
         self.liste.currentRowChanged.connect(self._zeigen)
 
         self.text = QTextBrowser()
+        # Verweise über das Stylesheet einfärben, nicht Stück für Stück:
+        # Qts Standardblau erreicht auf dunklem Grund ein
+        # Kontrastverhältnis von 1,8 - ein Link, den man nur findet, wenn
+        # man weiß, dass er da ist.
+        from mailburg.ui import farben
+
+        self.text.document().setDefaultStyleSheet(
+            f"a {{ color: {farben.link()}; }}"
+        )
         self.text.setOpenLinks(False)
         self.text.setAccessibleName("Hilfetext")
         # Querverweise springen ins Kapitel, statt einen Browser zu öffnen.

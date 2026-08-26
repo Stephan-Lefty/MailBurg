@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,6 +47,16 @@ BUDGET_DOKUMENTE = 30
 
 #: Um so viel wird die eigene Priorität gesenkt. Wer nebenher arbeitet,
 #: soll nichts davon merken – die Erkennung nimmt sich, was übrig ist.
+#: Wie viele Dokumente gleichzeitig gelesen werden. Die Arbeit steckt in
+#: zwei fremden Programmen – pdftoppm und tesseract –, und die laufen als
+#: eigene Prozesse. Nebeneinander bringt das fast linear mehr Durchsatz.
+#:
+#: Nicht alle Kerne: Zwei bleiben für die Oberfläche und alles andere
+#: frei, sonst wird der Rechner unbenutzbar, während im Hintergrund
+#: gelesen wird. Bei vierhundert wartenden Dokumenten ist das der
+#: Unterschied zwischen einer knappen Stunde und einer Viertelstunde.
+GLEICHZEITIG = max(1, (os.cpu_count() or 2) - 2)
+
 NACHRANG = 10
 
 #: Ab so vielen Zeichen gilt der Anhangstext als brauchbar. Darunter ist ein
@@ -179,7 +190,7 @@ class Warteschlange:
             self.index.db.execute("DROP TABLE ocr_vermerk")
         self.index.db.executescript(_SCHEMA)
 
-    #: Der gemeinsame Teil beider Abfragen: ein umfangreiches PDF, aus dem
+    #: Der gemeinsame Teil beider Abfragen: ein umfangreiges PDF, aus dem
     #: kein Text kam, ohne bereits vorliegenden Vermerk.
     _BEDINGUNG = """
           FROM messages a_m
@@ -333,54 +344,66 @@ def durchlauf(
     # ergab genau 40 - der Lauf hörte nach vierzig Dokumenten auf und
     # fragte, ob er weitermachen soll. Wer die Texterkennung
     # unbeaufsichtigt laufen lässt, fand sie danach wartend vor.
-    for digest, bucket, dateiname in warteschlange.offen(
+    kandidaten = warteschlange.offen(
         grenze=(budget_dokumente * 4) if budget_dokumente else 100_000
-    ):
-        if zeit_um() or (
-            budget_dokumente and stat.gelesen + stat.gescheitert >= budget_dokumente
-        ):
-            stat.abgebrochen = True
-            break
+    )
 
+    def vorbereiten(auftrag):
+        """Holt die Rohdaten eines Anhangs – im Hauptfaden, aus dem Archiv."""
+        digest, bucket, dateiname = auftrag
         if digest not in zwischenspeicher:
             try:
                 roh = archiv.store.get(digest, bucket)
-                zwischenspeicher = {
-                    digest: message_modul.parse(roh, with_payloads=True)
-                }
-            except (FileNotFoundError, ValueError, OSError) as exc:
-                warteschlange.vermerken(
-                    digest, dateiname, "gescheitert", grund=f"nicht lesbar: {exc}"
+                zwischenspeicher.clear()
+                zwischenspeicher[digest] = message_modul.parse(
+                    roh, with_payloads=True
                 )
-                stat.gescheitert += 1
-                continue
-
+            except (FileNotFoundError, ValueError, OSError) as exc:
+                return None, f"nicht lesbar: {exc}"
         zerlegt = zwischenspeicher[digest]
         anhang = next(
-            (a for a in zerlegt.attachments if a.filename == dateiname and a.payload),
+            (a for a in zerlegt.attachments
+             if a.filename == dateiname and a.payload),
             None,
         )
         if anhang is None:
-            warteschlange.vermerken(
-                digest, dateiname, "gescheitert", grund="Anhang nicht gefunden"
-            )
-            stat.gescheitert += 1
-            continue
+            return None, "Anhang nicht gefunden"
+        return anhang.payload, ""
 
+    def lesen(auftrag):
+        """Der teure Teil: pdftoppm und tesseract. Läuft nebenläufig."""
+        digest, _bucket, dateiname = auftrag
+        nutzlast, fehler = vorbereitet[digest, dateiname]
+        if nutzlast is None:
+            return auftrag, None, fehler
         ergebnis = ocr.text_aus_pdf(
-            anhang.payload,
+            nutzlast,
             abbruch=zeit_um,
             je_seite=(
                 (lambda nr, von, name=dateiname: je_seite(name, nr, von))
                 if je_seite else None
             ),
         )
+        return auftrag, ergebnis, ""
+
+    def verbuchen(auftrag, ergebnis, fehler) -> bool:
+        """Schreibt das Ergebnis fort. Nur hier, nur im Hauptfaden.
+
+        Der Index und das Protokoll vertragen keinen Zugriff aus mehreren
+        Fäden. Gelesen wird nebenläufig, geschrieben nacheinander – der
+        teure Teil ist ohnehin das Lesen.
+        """
+        digest, _bucket, dateiname = auftrag
+        if ergebnis is None:
+            warteschlange.vermerken(digest, dateiname, "gescheitert", grund=fehler)
+            stat.gescheitert += 1
+            return True
 
         if ergebnis.abgebrochen and not ergebnis.text:
-            # Nichts geschafft – ohne Vermerk, damit es beim nächsten Mal
+            # Nichts geschafft - ohne Vermerk, damit es beim nächsten Mal
             # von vorn versucht wird.
             stat.abgebrochen = True
-            break
+            return False
 
         if ergebnis.text:
             speicher.schreiben(f"{digest}-{_kennung(dateiname)}", ergebnis.text)
@@ -403,12 +426,38 @@ def durchlauf(
         archiv.index.commit()
         if fortschritt:
             fortschritt(stat)
+        return True
 
-        if weiter is not None and not weiter():
+    # Häppchenweise, damit die Rohdaten nicht alle zugleich im Speicher
+    # liegen: Ein Bündel von Anhängen kann hundert Megabyte wiegen.
+    vorbereitet: dict = {}
+    for anfang in range(0, len(kandidaten), GLEICHZEITIG):
+        if zeit_um() or (
+            budget_dokumente and stat.gelesen + stat.gescheitert >= budget_dokumente
+        ):
             stat.abgebrochen = True
             break
 
-        if ergebnis.abgebrochen:
+        buendel = kandidaten[anfang:anfang + GLEICHZEITIG]
+        vorbereitet = {
+            (d, n): vorbereiten((d, b, n)) for d, b, n in buendel
+        }
+
+        weiterlaufen = True
+        if len(buendel) == 1:
+            auftrag, ergebnis, fehler = lesen(buendel[0])
+            weiterlaufen = verbuchen(auftrag, ergebnis, fehler)
+        else:
+            # Fäden genügen: Die Arbeit steckt in fremden Prozessen, und
+            # das Warten darauf gibt den GIL frei.
+            with ThreadPoolExecutor(max_workers=len(buendel)) as pool:
+                for auftrag, ergebnis, fehler in pool.map(lesen, buendel):
+                    if not verbuchen(auftrag, ergebnis, fehler):
+                        weiterlaufen = False
+        if not weiterlaufen:
+            break
+
+        if weiter is not None and not weiter():
             stat.abgebrochen = True
             break
 

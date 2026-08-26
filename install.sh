@@ -202,6 +202,7 @@ hinweis "Python $(python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3
 # lassen pip gar nicht mehr an die Systempakete (PEP 668), und ein Archiv-
 # programm hat in den Systemverzeichnissen ohnehin nichts verloren.
 mkdir -p "$ZIEL"
+hinweis "Lege eine eigene Python-Umgebung an …"
 python3 -m venv --upgrade-deps "$VENV" >/dev/null
 hinweis "Eigene Python-Umgebung unter $VENV"
 
@@ -211,11 +212,25 @@ hinweis "Eigene Python-Umgebung unter $VENV"
 VERWEIS=""
 [[ $ENTWICKLUNG -eq 1 ]] && VERWEIS="-e"
 
+# Ausdrücklich ohne -q. Die grafische Oberfläche allein ist rund 150 MB,
+# und je nach Python-Fassung wird das eine oder andere Paket erst
+# übersetzt. Das dauert Minuten - und wer dabei eine leere Zeile
+# anstarrt, hält das Skript für abgestürzt und bricht ab. Auf einem
+# Debian-Rechner waren es gemessen zehn Minuten Stille.
 if [[ $MIT_KUER -eq 1 ]]; then
-    "$VENV/bin/pip" install -q $VERWEIS "$QUELLE[alles]"
+    hinweis ""
+    hinweis "Jetzt wird die Oberfläche geholt. Das dauert – rechnen Sie mit"
+    hinweis "fünf bis fünfzehn Minuten, je nach Leitung und Rechner."
+    hinweis "PySide6 allein ist etwa 150 MB, und manche Pakete werden für"
+    hinweis "Ihre Python-Fassung erst übersetzt."
+    hinweis ""
+    "$VENV/bin/pip" install --progress-bar on $VERWEIS "$QUELLE[alles]" \
+        || fehler "Die Einrichtung ist gescheitert – die Ausgabe oben sagt, woran."
     hinweis "MailBurg mit allem eingerichtet: IMAP, Anhänge im Volltext, Zstandard."
 else
-    "$VENV/bin/pip" install -q $VERWEIS "$QUELLE"
+    hinweis "Hole die Bestandteile – das dauert ein bis zwei Minuten."
+    "$VENV/bin/pip" install --progress-bar on $VERWEIS "$QUELLE" \
+        || fehler "Die Einrichtung ist gescheitert – die Ausgabe oben sagt, woran."
     hinweis "MailBurg im Kern eingerichtet – ohne IMAP-Schlüsselbund und PDF-Text."
 fi
 

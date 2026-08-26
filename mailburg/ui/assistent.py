@@ -257,7 +257,7 @@ class WillkommenSeite(QWizardPage):
             "das nicht. Der Preis dafür: Sie erfahren von neuen Fassungen "
             "nicht von selbst, sondern müssen gelegentlich nachsehen.</p>"
             f"<p><b>Transparenz ist uns wichtig:</b> Der gesamte "
-            f"<a href='{QUELLTEXT_URL}'>Quelltext</a> ist offen einsehbar – "
+            f"{farben.verweis(QUELLTEXT_URL, 'Quelltext')} ist offen einsehbar – "
             f"wer nachprüfen möchte, was das Programm tut, kann es tun, und "
             f"wer es selbst nicht kann, kann jemanden fragen, der es kann. "
             f"Das ist der Unterschied zu einem Versprechen.</p>"
@@ -458,7 +458,7 @@ class ArchivSeite(QWizardPage):
         gebiet = self.rechtsraum.currentData()
         bezeichnung, adresse = QUELLEN[gebiet]
         self.quelle.setText(
-            f"Maßgeblich ist <a href='{adresse}'>{bezeichnung}</a>. "
+            f"Maßgeblich ist {farben.verweis(adresse, bezeichnung)}. "
             f"MailBurg rechnet danach – entscheiden müssen Sie oder Ihre "
             f"Steuerberatung."
         )

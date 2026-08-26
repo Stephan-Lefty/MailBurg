@@ -3010,3 +3010,151 @@ class MenuereihenfolgeTest(OberflaechenTest):
             menues,
             ["Archiv", "Post", "Suchen", "Ansicht", "Einstellungen", "Hilfe"],
         )
+
+
+class FehlenderIndexTest(OberflaechenTest):
+    """Ein leerer Index sieht aus wie ein verlorenes Archiv."""
+
+    def _archiv_mit_mails(self, ordner):
+        from mailburg.core.archive import Archive
+
+        ort = pathlib.Path(ordner) / "A"
+        archiv = Archive.create(ort)
+        for n in range(3):
+            archiv.add(
+                f"Subject: Mail {n}\r\nFrom: a@example.org\r\n\r\nText".encode(),
+                account="a", folder="INBOX",
+            )
+        archiv.close()
+        return ort
+
+    def test_bei_leerem_index_wird_gefragt(self):
+        # Für den Anwender ist "0 Mails im Archiv" der Anblick eines
+        # Datenverlusts - dabei liegen seine Mails unversehrt daneben.
+        import tempfile
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        with tempfile.TemporaryDirectory() as ordner:
+            ort = self._archiv_mit_mails(ordner)
+            # Index leeren, Journal behalten - genau die Lage nach einem
+            # gelöschten Indexverzeichnis.
+            from mailburg.core.archive import Archive
+
+            with Archive.open(ort) as archiv:
+                archiv.index.db.execute("DELETE FROM messages")
+                archiv.index.commit()
+
+            gefragt = []
+            with mock.patch.object(QMessageBox, "question",
+                                   lambda *a, **k: gefragt.append(a[2])
+                                   or QMessageBox.No):
+                fenster = Hauptfenster(ort)
+                self.addCleanup(fenster.close)
+
+        self.assertEqual(len(gefragt), 1)
+        self.assertIn("Ihre Mails sind da", gefragt[0])
+        self.assertIn("Minuten", gefragt[0])
+
+    def test_bei_wirklich_leerem_archiv_keine_frage(self):
+        # Ein frisch angelegtes Archiv ist zu Recht leer.
+        import tempfile
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        with tempfile.TemporaryDirectory() as ordner:
+            ort = pathlib.Path(ordner) / "Leer"
+            Archive.create(ort).close()
+
+            gefragt = []
+            with mock.patch.object(QMessageBox, "question",
+                                   lambda *a, **k: gefragt.append(1)):
+                fenster = Hauptfenster(ort)
+                self.addCleanup(fenster.close)
+
+        self.assertEqual(gefragt, [])
+
+    def test_bei_gefuelltem_index_keine_frage(self):
+        import tempfile
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        with tempfile.TemporaryDirectory() as ordner:
+            ort = self._archiv_mit_mails(ordner)
+
+            gefragt = []
+            with mock.patch.object(QMessageBox, "question",
+                                   lambda *a, **k: gefragt.append(1)):
+                fenster = Hauptfenster(ort)
+                self.addCleanup(fenster.close)
+
+        self.assertEqual(gefragt, [])
+
+
+class VerweisfarbeTest(OberflaechenTest):
+    """Ein Link, den man nur findet, wenn man weiß, dass er da ist."""
+
+    @staticmethod
+    def _kontrast(vordergrund: str, hintergrund: str) -> float:
+        def linear(anteil: float) -> float:
+            return anteil / 12.92 if anteil <= 0.03928 else (
+                ((anteil + 0.055) / 1.055) ** 2.4
+            )
+
+        def helligkeit(farbe: str) -> float:
+            r, g, b = (int(farbe[i:i + 2], 16) / 255 for i in (1, 3, 5))
+            return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+
+        a, b = helligkeit(vordergrund), helligkeit(hintergrund)
+        return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+
+    def test_beide_linkfarben_sind_lesbar(self):
+        # Qts Standardblau erreicht auf dunklem Grund 1,8 - gefordert
+        # sind 4,5 für gewöhnlichen Text.
+        from mailburg.ui.farben import _LINK_DUNKEL, _LINK_HELL
+
+        self.assertGreaterEqual(self._kontrast(_LINK_HELL, "#ffffff"), 4.5)
+        self.assertGreaterEqual(self._kontrast(_LINK_DUNKEL, "#232629"), 4.5)
+
+    def test_verweis_traegt_seine_farbe_mit(self):
+        from mailburg.ui import farben
+
+        html = farben.verweis("https://example.org", "Quelltext")
+
+        self.assertIn("https://example.org", html)
+        self.assertIn("color:", html)
+        self.assertIn("Quelltext", html)
+
+    def test_keine_farblosen_verweise_mehr(self):
+        # Ein <a href> ohne Farbangabe erbt Qts Standardblau. Im
+        # Handbuch übernimmt das ein Stylesheet für alle Verweise auf
+        # einmal; überall sonst muss die Farbe am Verweis stehen.
+        import re
+
+        wurzel = pathlib.Path(__file__).resolve().parent.parent / "mailburg" / "ui"
+        for datei in wurzel.glob("*.py"):
+            if datei.name == "hilfe.py":
+                continue
+            text = datei.read_text(encoding="utf-8")
+            for treffer in re.findall(r"<a href=[^>]*>", text):
+                with self.subTest(datei=datei.name, verweis=treffer):
+                    self.assertIn("color", treffer)
+
+    def test_das_handbuch_faerbt_seine_verweise_geschlossen(self):
+        from mailburg.ui.hilfe import Hilfefenster
+
+        fenster = Hilfefenster()
+        self.addCleanup(fenster.close)
+
+        self.assertIn("a {", fenster.text.document().defaultStyleSheet())
+        self.assertIn("color", fenster.text.document().defaultStyleSheet())
