@@ -113,12 +113,13 @@ def _sperre_erklaeren(lock: "Path", held: dict) -> str:
     laeuft = _laeuft_noch(held)
 
     if laeuft is True:
+        # Kein Wort über Sperrdateien, Prozesse oder Journale. Das ist
+        # kein Fehler, den jemand beheben müsste, sondern der normale
+        # Betrieb - und wer in diesem Moment eine Anleitung zum Löschen
+        # von Dateien bekäme, richtete damit Schaden an.
         return (
-            "Das Archiv ist gerade in Gebrauch – wahrscheinlich läuft der "
-            "Abruf im Hintergrund.\n"
-            "Bitte einen Augenblick warten und es dann noch einmal "
-            "versuchen. Die Sperrdatei darf jetzt nicht gelöscht werden: "
-            "Zwei Abrufe gleichzeitig würden sich ins Gehege kommen."
+            "Es werden gerade neue Mails abgerufen.\n"
+            "Bitte haben Sie einen Augenblick Geduld."
         )
     if laeuft is False:
         return (

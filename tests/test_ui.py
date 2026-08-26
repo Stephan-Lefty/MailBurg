@@ -1418,3 +1418,75 @@ class DatumsformatTest(OberflaechenTest):
 
         QLocale.setDefault(QLocale("de_DE"))
         self.assertEqual(datum.tag("2026-08-26"), "26.08.2026")
+
+
+class AbrufmeldungTest(OberflaechenTest):
+    """»Alle Mails sind im Archiv« darf nur dastehen, wenn es stimmt."""
+
+    def _fenster(self):
+        import tempfile
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        ort = pathlib.Path(ordner.name) / "Archiv"
+        Archive.create(ort).close()
+        fenster = Hauptfenster(ort)
+        self.addCleanup(fenster.close)
+        return fenster
+
+    def _melden(self, ergebnisse):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        gesagt = []
+        fenster = self._fenster()
+        with mock.patch.object(QMessageBox, "information",
+                               lambda *a, **k: gesagt.append(("gut", a[2]))), \
+             mock.patch.object(QMessageBox, "warning",
+                               lambda *a, **k: gesagt.append(("warnung", a[2]))):
+            fenster._abruf_fertig(ergebnisse)
+        return gesagt
+
+    def test_nach_gelungenem_abruf_kommt_die_entwarnung(self):
+        class Stat:
+            neu = 12
+
+        gesagt = self._melden({"a@example.org": Stat()})
+
+        self.assertEqual(len(gesagt), 1)
+        art, text = gesagt[0]
+        self.assertEqual(art, "gut")
+        self.assertIn("Alle Mails sind im Archiv", text)
+        self.assertIn("12", text)
+
+    def test_bei_einem_gescheiterten_postfach_keine_entwarnung(self):
+        # Die falsche Entwarnung ist in einem Archivprogramm der teuerste
+        # Fehler: Wer sie glaubt, räumt sein Postfach auf - und dann fehlt
+        # die Post an beiden Stellen.
+        class Stat:
+            neu = 3
+
+        gesagt = self._melden({
+            "a@example.org": Stat(),
+            "b@example.org": OSError("Server antwortet nicht"),
+        })
+
+        self.assertEqual(len(gesagt), 1)
+        art, text = gesagt[0]
+        self.assertEqual(art, "warnung")
+        self.assertNotIn("Alle Mails sind im Archiv", text)
+        self.assertIn("b@example.org", text)
+        self.assertIn("noch nicht auf", text)
+
+    def test_ohne_neues_wird_das_auch_gesagt(self):
+        class Stat:
+            neu = 0
+
+        art, text = self._melden({"a@example.org": Stat()})[0]
+
+        self.assertEqual(art, "gut")
+        self.assertIn("nichts Neues", text)

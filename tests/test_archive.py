@@ -406,8 +406,12 @@ class SperrmeldungTest(unittest.TestCase):
 
         text = self.erklaerung(pid=os.getpid())
 
-        self.assertIn("warten", text.lower())
-        self.assertNotIn("gelöscht werden.", text.replace("nicht gelöscht werden", ""))
+        self.assertIn("Geduld", text)
+        # Das Entscheidende: kein Wort, das jemanden zum Löschen verleitet.
+        # Wer hier eine Anleitung bekäme, hätte zwei Abrufe gleichzeitig
+        # am selben Journal.
+        for wort in ("löschen", "gelöscht", "entfernen", ".mailburg-lock"):
+            self.assertNotIn(wort, text.lower().replace("löschen", "löschen"))
 
     def test_toter_vorgang_darf_weggeraeumt_werden(self):
         # Eine PID, die es sicher nicht gibt.

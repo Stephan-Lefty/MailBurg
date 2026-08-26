@@ -483,13 +483,34 @@ class Hauptfenster(QMainWindow):
         self.stand.setText(
             f"{neu} neue Nachrichten" if neu else "Nichts Neues"
         )
-        if fehler:
-            QMessageBox.warning(
-                self, "Nicht alle Postfächer erreichbar", "\n\n".join(fehler)
-            )
         self._baum_fuellen()
         self._bestand_zeigen()
         self._suchen()
+
+        # Wer selbst auf "Jetzt abrufen" geklickt hat, wartet auf eine
+        # Antwort. Der Abruf im Hintergrund meldet sich dagegen nie - er
+        # hat kein Fenster und soll auch keines aufmachen.
+        if fehler:
+            # Dann eben *nicht* "alle Mails sind im Archiv". In einem
+            # Archivprogramm ist die falsche Entwarnung der teuerste
+            # Fehler: Wer sie glaubt, räumt sein Postfach auf.
+            QMessageBox.warning(
+                self,
+                "Nicht alle Postfächer erreichbar",
+                "Diese Postfächer konnten nicht abgerufen werden – ihre "
+                "Mails fehlen also noch:\n\n" + "\n\n".join(fehler)
+                + "\n\nBitte räumen Sie diese Postfächer im Mailprogramm "
+                "noch nicht auf.",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "Abruf abgeschlossen",
+            "Alle Mails sind im Archiv."
+            + (f"\n\n{neu} neu hinzugekommen." if neu else
+               "\n\nEs war nichts Neues da."),
+        )
 
     def _abruf_gescheitert(self, text: str) -> None:
         self.laeufer = None
