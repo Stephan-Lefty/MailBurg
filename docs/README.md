@@ -9,6 +9,8 @@
 - **[Postfach entlasten](postfach-entlasten.md)** – der eigentliche Zweck:
   nachweisen, dass alles im Archiv ist, und erst dann beim Anbieter aufräumen
   lassen. Mit der Einstellung in Thunderbird und einer Liste zum Abhaken.
+- **[Das Archiv sichern](sicherung.md)** – warum ein Archiv kein Backup ist,
+  wie aus zehntausend Dateien eine wird, und wie sie in die Cloud kommt.
 - **[MailBurg unter Windows](windows.md)** – Einrichtung, Ablageorte,
   Thunderbird und Outlook.
 

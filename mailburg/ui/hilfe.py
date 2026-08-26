@@ -375,6 +375,11 @@ abgelegt, ihr Protokolleintrag aber noch nicht geschrieben ist. Die
 Prüfung würde das in der Kopie bemängeln. Die nächste Sicherung räumt
 das von selbst auf.</p>
 
+<p>Wie die Datei zu Ihrem Cloud-Anbieter kommt – synchronisierter
+Ordner, Weboberfläche, rclone oder WebDAV –, steht ausführlich in der
+Anleitung <i>Das Archiv sichern</i> im Ordner <i>docs</i> des
+Projekts.</p>
+
 <p><b>Nach dem Zurückholen einmal prüfen.</b> Haben Sie eine Sicherung
 zurückgespielt, gehen Sie auf <i>Archiv → Journal prüfen</i>. Eine
 Cloud-Synchronisation lässt schon einmal eine Datei aus, und bei einem
