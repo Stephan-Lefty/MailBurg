@@ -2027,8 +2027,8 @@ class SpaltenkopfTest(OberflaechenTest):
         # Ein Spaltenkopf ohne Text ist für einen Screenreader eine
         # namenlose Spalte - und mit der Maus weiß auch niemand, was
         # dort steht.
-        self.assertEqual(
-            modell.headerData(0, Qt.Horizontal, Qt.ToolTipRole), "Anhang")
+        self.assertIn(
+            "Anhang", modell.headerData(0, Qt.Horizontal, Qt.ToolTipRole))
         self.assertEqual(
             modell.headerData(0, Qt.Horizontal, Qt.AccessibleTextRole), "Anhang")
         self.assertTrue(modell.headerData(0, Qt.Horizontal, Qt.DisplayRole))
@@ -2186,3 +2186,70 @@ class ArchiviertMitDeutschemDatumTest(unittest.TestCase):
 
         _, werte = build("archiviert:2026-08")
         self.assertEqual(werte, ["2026-08%"])
+
+
+class SortierhinweisTest(OberflaechenTest):
+    """Dass sich sortieren lässt, muss man sehen können."""
+
+    def modell(self):
+        from mailburg.ui.modelle import Trefferliste
+
+        return Trefferliste()
+
+    def test_sortierbare_spalten_tragen_ein_zeichen(self):
+        from PySide6.QtCore import Qt
+
+        from mailburg.ui.modelle import Trefferliste
+
+        modell = self.modell()
+        # Wer nicht auf die Idee kommt, versuchsweise draufzuklicken,
+        # sortiert sonst nie.
+        betreff = modell.headerData(3, Qt.Horizontal, Qt.DisplayRole)
+        self.assertIn(Trefferliste.SORTIERBAR.strip(), betreff)
+
+    def test_die_aktive_spalte_traegt_es_nicht(self):
+        from PySide6.QtCore import Qt
+
+        from mailburg.ui.modelle import Trefferliste
+
+        modell = self.modell()  # sortiert von Haus aus nach Datum
+        datum = modell.headerData(1, Qt.Horizontal, Qt.DisplayRole)
+
+        # Dort zeichnet Qt seinen eigenen Pfeil; zwei nebeneinander sagen
+        # weniger als einer.
+        self.assertNotIn(Trefferliste.SORTIERBAR.strip(), datum)
+        self.assertEqual(datum, "Datum")
+
+    def test_das_zeichen_wandert_beim_umsortieren(self):
+        from PySide6.QtCore import Qt
+
+        from mailburg.ui.modelle import Trefferliste
+
+        modell = self.modell()
+        modell.sort(3, Qt.AscendingOrder)  # nach Betreff
+
+        self.assertEqual(
+            modell.headerData(3, Qt.Horizontal, Qt.DisplayRole), "Betreff")
+        self.assertIn(
+            Trefferliste.SORTIERBAR.strip(),
+            modell.headerData(1, Qt.Horizontal, Qt.DisplayRole))
+
+    def test_der_tooltip_sagt_es_in_worten(self):
+        from PySide6.QtCore import Qt
+
+        modell = self.modell()
+
+        self.assertEqual(
+            modell.headerData(0, Qt.Horizontal, Qt.ToolTipRole),
+            "Anhang – klicken zum Sortieren")
+
+    def test_vorlesetext_bleibt_der_reine_name(self):
+        # Ein Screenreader soll "Anhang" sagen, nicht "Anhang Pfeil
+        # aufwärts abwärts klicken zum Sortieren".
+        from PySide6.QtCore import Qt
+
+        modell = self.modell()
+
+        self.assertEqual(
+            modell.headerData(2, Qt.Horizontal, Qt.AccessibleTextRole),
+            "Absender")

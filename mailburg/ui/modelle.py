@@ -34,6 +34,14 @@ class Trefferliste(QAbstractTableModel):
     #: Die Sortierfelder des Index, in der Reihenfolge der Spalten.
     SORTIERUNG = ("anhang", "datum", "absender", "betreff", "groesse")
 
+    #: Steht hinter jeder Spalte, nach der sich sortieren ließe, es
+    #: gerade aber nicht tut. Dass eine Tabelle sortierbar ist, sieht man
+    #: ihr sonst erst an, wenn man versuchsweise draufklickt – und wer
+    #: nicht auf die Idee kommt, sortiert eben nie. In der aktiven Spalte
+    #: steht das Zeichen nicht: Dort zeichnet Qt seinen eigenen Pfeil,
+    #: und zwei Pfeile nebeneinander sagen weniger als einer.
+    SORTIERBAR = " ⇅"
+
     def __init__(self, suchindex=None) -> None:
         super().__init__()
         # Nicht "index" nennen: index() ist eine Kernmethode von Qts
@@ -100,8 +108,13 @@ class Trefferliste(QAbstractTableModel):
         if richtung != Qt.Horizontal:
             return None
         if rolle == Qt.DisplayRole:
-            return self.SPALTEN[abschnitt]
-        if rolle in (Qt.ToolTipRole, Qt.AccessibleTextRole):
+            name = self.SPALTEN[abschnitt]
+            if self.SORTIERUNG[abschnitt] != self.sortierung:
+                return f"{name}{self.SORTIERBAR}"
+            return name
+        if rolle == Qt.ToolTipRole:
+            return f"{self.SPALTENNAMEN[abschnitt]} – klicken zum Sortieren"
+        if rolle == Qt.AccessibleTextRole:
             return self.SPALTENNAMEN[abschnitt]
         return None
 
@@ -119,6 +132,9 @@ class Trefferliste(QAbstractTableModel):
         self.sortierung = self.SORTIERUNG[spalte]
         self.absteigend = reihenfolge == Qt.DescendingOrder
         self.suchen(self.ausdruck)
+        # Der Hinweispfeil wandert mit: Er verschwindet aus der Spalte,
+        # nach der jetzt sortiert wird, und taucht in der vorigen auf.
+        self.headerDataChanged.emit(Qt.Horizontal, 0, len(self.SPALTEN) - 1)
 
     def data(self, stelle: QModelIndex, rolle=Qt.DisplayRole):
         if not stelle.isValid():
