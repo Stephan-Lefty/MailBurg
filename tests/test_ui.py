@@ -1372,3 +1372,49 @@ class BestandsanzeigeTest(unittest.TestCase):
             zustand.lauf_beendet()
             zustand.speichern()
             self.assertTrue(Abrufzustand("egal", datei=datei).zuletzt)
+
+
+class DatumsformatTest(OberflaechenTest):
+    """Datumsangaben folgen der Systemsprache, nicht dem Speicherformat."""
+
+    def setUp(self):
+        from PySide6.QtCore import QLocale
+
+        self.addCleanup(QLocale.setDefault, QLocale())
+
+    def _mit(self, sprache, was):
+        from PySide6.QtCore import QLocale
+
+        from mailburg.ui import datum
+
+        QLocale.setDefault(QLocale(sprache))
+        return getattr(datum, was)("2026-08-26T21:14:03+02:00")
+
+    def test_die_reihenfolge_folgt_der_sprache(self):
+        self.assertEqual(self._mit("de_DE", "tag"), "26.08.2026")
+        self.assertEqual(self._mit("en_US", "tag"), "8/26/2026")
+        self.assertEqual(self._mit("en_GB", "tag"), "26/08/2026")
+
+    def test_jahreszahlen_bleiben_vierstellig(self):
+        # Qts Kurzformat kürzt auf zwei Stellen. In einem Mailarchiv ist
+        # das ein handfestes Problem: Post von 1998 und Post von 2098
+        # stünden beide als "98" da.
+        for sprache in ("de_DE", "en_US", "en_GB", "fr_FR", "it_IT"):
+            with self.subTest(sprache=sprache):
+                self.assertIn("2026", self._mit(sprache, "tag"))
+
+    def test_kaputte_datumsangaben_stuerzen_nicht_ab(self):
+        # Kopfzeilen aus zwanzig Jahren Mailverkehr enthalten alles.
+        from mailburg.ui import datum
+
+        for unsinn in ("", None, "kaputt", "0000-00-00", "26. August"):
+            with self.subTest(wert=unsinn):
+                self.assertEqual(datum.tag(unsinn), "")
+
+    def test_datum_ohne_uhrzeit_geht_auch(self):
+        from PySide6.QtCore import QLocale
+
+        from mailburg.ui import datum
+
+        QLocale.setDefault(QLocale("de_DE"))
+        self.assertEqual(datum.tag("2026-08-26"), "26.08.2026")

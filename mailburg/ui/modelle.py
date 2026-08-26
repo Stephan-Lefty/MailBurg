@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
+from mailburg.ui import datum
+
 #: So viele Treffer werden auf einmal nachgeladen. Groß genug, dass beim
 #: Rollen keine Lücke entsteht, klein genug für eine sofortige Anzeige.
 BLOCK = 200
@@ -96,7 +98,9 @@ class Trefferliste(QAbstractTableModel):
                 return "📎" if treffer.has_attachments else ""
             if spalte == 1:
                 # Nur der Tag; die Uhrzeit interessiert in einer Liste nicht.
-                return (treffer.date or "")[:10]
+                # In der Sprache des Systems, nicht als ISO-Zeichenkette.
+                # Sortiert wird ohnehin in SQL, nicht über diesen Text.
+                return datum.tag(treffer.date)
             if spalte == 2:
                 return treffer.from_name or treffer.from_addr
             if spalte == 3:

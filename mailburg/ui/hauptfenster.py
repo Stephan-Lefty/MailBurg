@@ -43,6 +43,7 @@ TREFFERANTEIL = 0.42
 from mailburg.core.accounts import Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked
 from mailburg.search.query import QueryError, describe_syntax
+from mailburg.ui import datum
 from mailburg.ui.arbeit import Abruflauf, Läufer, alle_beenden
 from mailburg.ui.modelle import Trefferliste
 from mailburg.ui.vorschau import Mailvorschau
@@ -588,7 +589,7 @@ def _abrufzeit(iso: str) -> str:
     elif (heute - tag).days == 1:
         wortlaut = "gestern"
     else:
-        wortlaut = wann.strftime("%d.%m.%Y")
+        wortlaut = datum.tag(wann)
     return f"zuletzt abgerufen: {wortlaut} {wann:%H:%M}"
 
 

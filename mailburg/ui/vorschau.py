@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from mailburg.ui import datum
 from mailburg.ui.modelle import menschenlesbar
 
 #: Breite, auf die Bildvorschauen gebracht werden.
@@ -183,7 +184,7 @@ class Mailvorschau(QWidget):
         if zerlegt.cc_addrs:
             zeilen.append(f"<b>Kopie:</b> {_sicher(', '.join(zerlegt.cc_addrs))}")
         if zerlegt.date:
-            zeilen.append(f"<b>Datum:</b> {zerlegt.date.strftime('%d.%m.%Y %H:%M')}")
+            zeilen.append(f"<b>Datum:</b> {datum.tag_und_zeit(zerlegt.date)}")
         if getattr(zerlegt, "wichtigkeit", "normal") != "normal":
             zeilen.append(f"<b>Wichtigkeit:</b> {zerlegt.wichtigkeit}")
         self.kopf.setText("<br>".join(zeilen))
