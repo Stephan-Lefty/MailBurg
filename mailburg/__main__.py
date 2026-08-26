@@ -951,7 +951,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = subparsers.add_parser("importieren", help="Mails aus einer Quelle einlesen")
     p.add_argument("archiv", help="Verzeichnis des Archivs")
-    p.add_argument("quelle", help="Thunderbird-Profil, Maildir oder MBOX-Datei")
+    p.add_argument("quelle",
+        help="Thunderbird-Profil, Maildir, MBOX-Datei oder ein Verzeichnis "
+             "mit .eml-Dateien")
     p.add_argument("--konto", help="Name, unter dem die Mails erscheinen sollen")
     p.add_argument(
         "--ohne-anhangstext",

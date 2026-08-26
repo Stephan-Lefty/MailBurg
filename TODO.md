@@ -72,6 +72,13 @@ wurde.
   Systempalette lösen lässt – eigene Farben zu setzen bricht
   Hochkontrast-Themen, und das wäre für dieselbe Zielgruppe schlimmer.
 
+- [ ] **Wie stabil läuft MailBurg im Dauerbetrieb?** Die Frage, an der
+  alles Weitere hängt (Stephan, 2026-08-26). Zwei Archive laufen seit dem
+  2026-08-26 mit Zeitplan; zu beobachten sind Abrufe, die hängenbleiben,
+  Speicherverbrauch über Tage, das Verhalten nach einem Neustart und ob
+  der Suchindex nach Wochen noch stimmt. Erst danach der Test am
+  Firmenarchiv.
+
 ### Danach
 
 - [ ] **Das Archiv selbst als IMAP-Server anbieten – als abschaltbare
@@ -153,11 +160,16 @@ wurde.
   dass die Tests und die Einrichtung über `install.ps1` durchlaufen.
 
   Nicht belegt ist der Betrieb: kein Testgerät, kein echtes Postfach, keine
-  Oberfläche unter Windows gestartet. Dieselbe Lücke gilt für macOS. Die
-  Entscheidung aus CLAUDE.md steht also weiter an – entweder wird auf beiden
-  wirklich gearbeitet, oder das README sagt, was erprobt ist. Dass die CI grün
-  ist, beantwortet die Frage nicht – sie war es ja gerade nicht, und trotzdem
-  stand das Versprechen schon im README.
+  Oberfläche unter Windows gestartet. Dieselbe Lücke gilt für macOS. Dass die
+  CI grün ist, beantwortet die Frage nicht – sie war es ja gerade nicht, und
+  trotzdem stand das Versprechen schon im README.
+
+  **Stephan testet Windows selbst** (2026-08-26), sobald die Arbeit an
+  seinem Linux-Rechner abgeschlossen ist. Bis dahin bleibt das README, wie
+  es ist. Wird daraus nichts, muss dort stehen, was erprobt ist – ein
+  Versprechen, das niemand eingelöst hat, ist schlimmer als eine Lücke,
+  zu der man sich bekennt. macOS bleibt davon unberührt und ohne Aussicht
+  auf ein Testgerät.
 
 - [ ] **Wie verhält sich der Nextcloud-Client bei laufender Archivierung?**
   Die Sperrdatei verhindert, dass zwei Rechner gleichzeitig schreiben. Ungeklärt
@@ -175,6 +187,12 @@ wurde.
   Hochgerechnet auf 500.000 Mails wären das rund 9 GB Index. Offen bleibt,
   ob die Suchzeit dann noch unter 200 ms liegt; FTS5 sollte das packen,
   gemessen ist es aber nicht. Dafür braucht es einen Bestand dieser Größe.
+
+  **Der Test am Firmenarchiv (rund 700.000 Mails) wartet auf den
+  Dauerbetrieb** (Stephan, 2026-08-26): Erst muss sich zeigen, wie stabil
+  MailBurg auf einem einzelnen Rechner über Wochen läuft. Das ist die
+  richtige Reihenfolge – ein Lasttest an einem Bestand, den man nicht
+  ersetzen kann, beweist wenig, solange die Grundlage nicht steht.
 
 - [ ] **Was passiert, wenn jemand einen IMAP-Ordner umbenennt?** MailBurg
   merkt sich den Fundort unter dem angezeigten Namen. Aus »Kunden« wird
