@@ -621,3 +621,29 @@ class SeitenfortschrittTest(unittest.TestCase):
         vermerk = quelle.index("archiv.index.commit()")
         self.assertLess(vermerk, vor_abbruch,
                         "erst festschreiben, dann abbrechen")
+
+
+class ErkennungsreihenfolgeTest(unittest.TestCase):
+    """Kleine Dokumente zuerst - sonst steht die Anzeige minutenlang still."""
+
+    def test_sortiert_nach_groesse(self):
+        import inspect
+
+        from mailburg.core.erkennung import Warteschlange
+
+        quelle = inspect.getsource(Warteschlange.offen)
+        # Ein einseitiger Scan ist in vier Sekunden gelesen, ein
+        # zwanzigseitiger Brocken braucht eine halbe Stunde. Bei einem
+        # Lauf mit Zeitbudget entscheidet die Reihenfolge, wie viel
+        # überhaupt geschafft wird.
+        self.assertIn("ORDER BY a.size ASC", quelle)
+
+    def test_grosse_scans_werden_groeber_gerastert(self):
+        # 23 MB bei 300 dpi ergeben Bilder von dreißig Megabyte, und eine
+        # einzige Seite braucht dann zwei Minuten - genau so lange, wie
+        # die Zeitgrenze erlaubt.
+        from mailburg.extract import ocr
+
+        self.assertLess(ocr.AUFLOESUNG_GROSS, ocr.AUFLOESUNG)
+        # Unter 200 dpi wird tesseract unsicher.
+        self.assertGreaterEqual(ocr.AUFLOESUNG_GROSS, 200)

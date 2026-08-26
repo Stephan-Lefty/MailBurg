@@ -35,6 +35,14 @@ from pathlib import Path
 #: spürbar, darüber steigt nur die Rechenzeit.
 AUFLOESUNG = 300
 
+#: Ab dieser Dateigröße wird gröber gerastert. Ein 23-MB-Scan ergibt bei
+#: 300 dpi Bilder von dreißig Megabyte, und eine einzige Seite braucht
+#: dann zwei Minuten – genau so lange, wie die Zeitgrenze erlaubt. Mit
+#: 200 dpi liest tesseract solche Seiten immer noch zuverlässig; unter
+#: 200 wird es unsicher, deshalb nicht weiter herunter.
+GROSS_AB = 8 * 1024 * 1024
+AUFLOESUNG_GROSS = 200
+
 #: So viele Seiten je Dokument, mehr nicht. Ein zweihundertseitiges
 #: eingescanntes Handbuch würde sonst eine Stunde binden – und wer danach
 #: sucht, findet es über die ersten Seiten genauso.
@@ -172,6 +180,7 @@ def text_aus_pdf(
 
         ergebnis.seiten_gesamt = _seitenzahl(quelle)
         letzte = min(max_seiten, ergebnis.seiten_gesamt or max_seiten)
+        raster = AUFLOESUNG_GROSS if len(daten) >= GROSS_AB else AUFLOESUNG
 
         teile: list[str] = []
         for nummer in range(1, letzte + 1):
@@ -185,7 +194,7 @@ def text_aus_pdf(
                 # Dutzend Bilder zu 300 dpi wären über hundert Megabyte,
                 # und beim Abbruch wäre die Arbeit dafür umsonst gewesen.
                 subprocess.run(
-                    ["pdftoppm", "-png", "-r", str(AUFLOESUNG),
+                    ["pdftoppm", "-png", "-r", str(raster),
                      "-f", str(nummer), "-l", str(nummer),
                      "-singlefile", str(quelle), str(bild)],
                     capture_output=True,

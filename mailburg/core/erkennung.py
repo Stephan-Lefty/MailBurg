@@ -198,6 +198,14 @@ class Warteschlange:
     def offen(self, grenze: int = 100) -> list[tuple[str, str, str]]:
         """Die nächsten Kandidaten: Hash, Ablagefach und Dateiname.
 
+        **Die kleinsten zuerst.** Ein einseitiger Scan ist in vier
+        Sekunden gelesen, ein zwanzigseitiger Brocken braucht eine halbe
+        Stunde. Nach Datum sortiert erwischt man den Brocken irgendwann
+        mittendrin – und dann steht die Anzeige minutenlang still, obwohl
+        vierzig kleine Dokumente in derselben Zeit fertig geworden wären.
+        Bei einem Lauf mit Zeitbudget entscheidet die Reihenfolge sogar,
+        wie viel überhaupt geschafft wird.
+
         Zwei Fälle stecken in der Bedingung. Neue Indizes wissen je Anhang,
         wie viel Text er hergab – dann ist ``text_zeichen = 0`` das klare
         Zeichen. Ältere Indizes wissen das nicht (``-1``); für die bleibt
@@ -208,7 +216,7 @@ class Warteschlange:
             for r in self.index.db.execute(
                 f"""SELECT a_m.hash, a_m.bucket, a.filename
                     {self._BEDINGUNG}
-                    ORDER BY a_m.date DESC
+                    ORDER BY a.size ASC, a_m.date DESC
                     LIMIT ?""",
                 (GROESSENSCHWELLE, TEXTSCHWELLE, grenze),
             )
