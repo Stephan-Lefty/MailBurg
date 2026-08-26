@@ -8,13 +8,21 @@ der Text, die zweite das Auswahlfeld.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
+    QLineEdit,
+    QPushButton,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -105,15 +113,121 @@ class Zeitplanwahl(QWidget):
         return zeitplan.einrichten(archiv, self.takt.currentData())
 
 
-class Zeitplandialog(QDialog):
-    """Dieselbe Wahl, später aus dem Hauptfenster heraus."""
+class Sicherungswahl(QWidget):
+    """Wie oft das Archiv weggepackt wird – und wohin."""
 
     def __init__(self, eltern=None, archiv=None) -> None:
         super().__init__(eltern)
-        self.setWindowTitle("Abruf im Hintergrund")
-        self.setMinimumWidth(560)
+        self.archiv = archiv
+        stand = zeitplan.sicherung_zustand()
+
+        self.an = QCheckBox("Das Archiv regelmäßig in eine Datei sichern")
+        self.an.setChecked(stand.laeuft)
+        self.an.toggled.connect(self._umschalten)
+
+        self.takt = QComboBox()
+        for bezeichnung in zeitplan.TAKTE_SICHERUNG:
+            self.takt.addItem(bezeichnung, bezeichnung)
+        self.takt.setAccessibleName("Wie oft gesichert wird")
+
+        self.ziel = QLineEdit(stand.archiv or "")
+        self.ziel.setPlaceholderText(
+            "Ordner für die Sicherungen – am besten in der Cloud"
+        )
+        self.suchen = QPushButton("Auswählen …")
+        self.suchen.clicked.connect(self._ordner_waehlen)
+
+        self.behalten = QSpinBox()
+        self.behalten.setRange(1, 99)
+        self.behalten.setValue(7)
+        self.behalten.setSuffix(" Stände")
+        self.behalten.setToolTip(
+            "Ältere werden entfernt. Ohne Grenze läuft die Platte "
+            "irgendwann voll, und dann scheitert ausgerechnet die "
+            "Sicherung, auf die es ankäme."
+        )
+
+        reihe = QHBoxLayout()
+        reihe.addSpacing(24)
+        reihe.addWidget(QLabel("Wie oft:"))
+        reihe.addWidget(self.takt)
+        reihe.addWidget(QLabel("behalten:"))
+        reihe.addWidget(self.behalten)
+        reihe.addStretch()
+
+        zielreihe = QHBoxLayout()
+        zielreihe.addSpacing(24)
+        zielreihe.addWidget(QLabel("Ordner:"))
+        zielreihe.addWidget(self.ziel, 1)
+        zielreihe.addWidget(self.suchen)
+
+        hinweis = QLabel(
+            "<p style='margin-left:24px'>Gepackt wird das ganze Archiv in "
+            "<b>eine Datei</b> mit Datum im Namen. Viel kleiner wird sie "
+            "nicht – Ihre Mails liegen schon komprimiert –, aber ein "
+            "Cloud-Programm kommt mit einer Datei um ein Vielfaches "
+            "schneller zurecht als mit zehntausend.</p>"
+            "<p style='margin-left:24px'><b>Nicht auf dieselbe Platte wie "
+            "das Archiv.</b> Eine Sicherung, die neben dem Original liegt, "
+            "geht mit ihm zusammen verloren.</p>"
+        )
+        hinweis.setWordWrap(True)
+        hinweis.setTextFormat(Qt.RichText)
+
+        aufbau = QVBoxLayout(self)
+        aufbau.setContentsMargins(0, 0, 0, 0)
+        aufbau.addWidget(self.an)
+        aufbau.addLayout(reihe)
+        aufbau.addLayout(zielreihe)
+        aufbau.addWidget(hinweis)
+
+        if not stand.moeglich:
+            self.an.setChecked(False)
+            self.an.setEnabled(False)
+        self._umschalten(self.an.isChecked())
+
+    def _umschalten(self, an: bool) -> None:
+        for teil in (self.takt, self.behalten, self.ziel, self.suchen):
+            teil.setEnabled(an)
+
+    def _ordner_waehlen(self) -> None:
+        gewaehlt = QFileDialog.getExistingDirectory(
+            self, "Ordner für die Sicherungen", self.ziel.text() or str(Path.home())
+        )
+        if gewaehlt:
+            self.ziel.setText(gewaehlt)
+
+    def anwenden(self) -> tuple[bool, str]:
+        if not self.an.isEnabled():
+            return True, ""
+        if not self.an.isChecked():
+            return zeitplan.sicherung_abschalten()
+
+        archiv = self.archiv
+        if archiv is None:
+            from mailburg.ui.app import zuletzt_gemerkt
+
+            archiv = zuletzt_gemerkt()
+        if archiv is None:
+            return False, "Es ist kein Archiv eingerichtet."
+        if not self.ziel.text().strip():
+            return False, "Bitte einen Ordner für die Sicherungen wählen."
+        return zeitplan.sicherung_einrichten(
+            archiv, self.ziel.text().strip(),
+            self.takt.currentData(), self.behalten.value(),
+        )
+
+
+class Zeitplandialog(QDialog):
+    """Abruf und Sicherung – beides, was von selbst laufen soll."""
+
+    def __init__(self, eltern=None, archiv=None) -> None:
+        super().__init__(eltern)
+        self.setWindowTitle("Was von selbst laufen soll")
+        self.setMinimumWidth(620)
 
         self.wahl = Zeitplanwahl(archiv=archiv)
+        self.sicherung = Sicherungswahl(archiv=archiv)
         self.meldung = QLabel()
         self.meldung.setWordWrap(True)
 
@@ -125,13 +239,21 @@ class Zeitplandialog(QDialog):
         knoepfe.accepted.connect(self._übernehmen)
         knoepfe.rejected.connect(self.reject)
 
+        trenner = QFrame()
+        trenner.setFrameShape(QFrame.HLine)
+
         aufbau = QVBoxLayout(self)
         aufbau.addWidget(self.wahl)
+        aufbau.addWidget(trenner)
+        aufbau.addWidget(self.sicherung)
         aufbau.addWidget(self.meldung)
         aufbau.addWidget(knoepfe)
+        aufbau.setSizeConstraint(QLayout.SetMinimumSize)
 
     def _übernehmen(self) -> None:
         geklappt, text = self.wahl.anwenden()
+        if geklappt:
+            geklappt, text = self.sicherung.anwenden()
         if geklappt:
             self.accept()
             return

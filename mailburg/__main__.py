@@ -828,6 +828,66 @@ def cmd_hilfe_suche(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_sichern(args) -> int:
+    """Packt das Archiv in eine Datei – für den Zeitplan gedacht."""
+    from mailburg.core import sicherung
+    from mailburg.core.archive import Archive
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+    ziel = Path(args.ziel).expanduser()
+
+    # Ein Verzeichnis als Ziel: Dann wird der Name selbst gewählt. So
+    # lässt sich derselbe Befehl täglich aufrufen, ohne dass eine
+    # Sicherung die vorige überschreibt.
+    if ziel.is_dir() or not ziel.suffix:
+        with Archive.open(archiv_pfad, exclusive=False) as archiv:
+            name = archiv.name
+        ziel = ziel / sicherung.vorschlag(archiv_pfad, name)
+
+    try:
+        befund = sicherung.packen(archiv_pfad, ziel)
+    except sicherung.SicherungFehler as exc:
+        print(f"Fehler: {exc}", file=sys.stderr)
+        return 1
+
+    if not args.leise:
+        print(f"Gesichert: {befund.ziel}")
+        print(
+            f"  {befund.dateien} Dateien, "
+            f"{befund.ziel_bytes / 1024 / 1024:.0f} MB "
+            f"({befund.ersparnis}% kleiner als das Original)"
+        )
+
+    if args.behalten > 0:
+        weg = _alte_sicherungen_entfernen(ziel.parent, args.behalten)
+        if weg and not args.leise:
+            print(f"  {len(weg)} ältere Sicherung(en) entfernt")
+    return 0
+
+
+def _alte_sicherungen_entfernen(ordner: Path, behalten: int) -> list[Path]:
+    """Räumt ältere Sicherungen weg – die jüngsten bleiben.
+
+    Ohne das läuft jede Platte irgendwann voll, und dann scheitert
+    ausgerechnet die Sicherung, auf die es ankäme. Gelöscht wird
+    ausschließlich, was aussieht wie eine von uns angelegte Sicherung.
+    """
+    kandidaten = sorted(
+        (p for p in ordner.glob("*.tar.*")
+         if p.is_file() and p.suffix in (".zst", ".xz")),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    entfernt = []
+    for alt in kandidaten[behalten:]:
+        try:
+            alt.unlink()
+        except OSError:
+            continue
+        entfernt.append(alt)
+    return entfernt
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mailburg",
@@ -1048,6 +1108,28 @@ def build_parser() -> argparse.ArgumentParser:
     p = subparsers.add_parser("info", help="Kennzahlen des Archivs zeigen")
     p.add_argument("archiv")
     p.set_defaults(func=cmd_info)
+
+    p = subparsers.add_parser(
+        "sichern",
+        help="das Archiv in eine Datei packen",
+        description=(
+            "Packt das ganze Archiv in eine einzelne Datei – für die Cloud "
+            "oder eine zweite Platte. Kleiner wird dabei kaum etwas, die "
+            "Mails liegen schon komprimiert; der Gewinn ist, dass aus "
+            "tausenden Dateien eine wird."
+        ),
+    )
+    p.add_argument("archiv")
+    p.add_argument("ziel", help="Zieldatei oder -verzeichnis")
+    p.add_argument(
+        "--behalten", type=int, default=0, metavar="ANZAHL",
+        help=(
+            "nur die letzten ANZAHL Sicherungen im Zielverzeichnis behalten "
+            "(0 = alle behalten)"
+        ),
+    )
+    p.add_argument("--leise", action="store_true", help="nur bei Fehlern melden")
+    p.set_defaults(func=cmd_sichern)
 
     p = subparsers.add_parser("suchhilfe", help="die Suchsprache erklären")
     p.set_defaults(func=cmd_hilfe_suche)

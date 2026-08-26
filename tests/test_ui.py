@@ -2788,3 +2788,111 @@ class EinzahlTest(TexterkennungDialogTest):
 
     def test_mehrere_im_plural(self):
         self.assertIn("Minuten", self._dialog(57).erklaerung.text())
+
+
+class SicherungsplanTest(OberflaechenTest):
+    """Ein Backup, an das jemand denken muss, ist irgendwann keines."""
+
+    def setUp(self):
+        import subprocess
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import zeitplan
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = pathlib.Path(self.ordner.name)
+        self.aufrufe = []
+
+        for flicken in (
+            mock.patch.object(zeitplan, "DIENSTE", self.wo / "systemd"),
+            mock.patch.object(zeitplan, "moeglich", lambda: (True, "")),
+            mock.patch.object(
+                zeitplan, "_systemctl",
+                lambda *a: self.aufrufe.append(a)
+                or subprocess.CompletedProcess(a, 0, "", ""),
+            ),
+        ):
+            flicken.start()
+            self.addCleanup(flicken.stop)
+
+        self.archiv = self.wo / "Archiv"
+        self.archiv.mkdir()
+        (self.archiv / "archive.json").write_text("{}", encoding="utf-8")
+
+    def test_zeitplan_wird_angelegt(self):
+        from mailburg.core import zeitplan
+
+        geklappt, text = zeitplan.sicherung_einrichten(
+            self.archiv, self.wo / "Cloud", "täglich", 7
+        )
+
+        self.assertTrue(geklappt, text)
+        dienst = (self.wo / "systemd" / "mailburg-sicherung.service").read_text(
+            encoding="utf-8")
+        self.assertIn("sichern", dienst)
+        self.assertIn("--behalten 7", dienst)
+        uhr = (self.wo / "systemd" / "mailburg-sicherung.timer").read_text(
+            encoding="utf-8")
+        self.assertIn("OnCalendar=daily", uhr)
+
+    def test_nicht_ins_archiv_selbst(self):
+        # Eine Sicherung neben dem Original geht mit ihm zusammen
+        # verloren - dann ist sie keine.
+        from mailburg.core import zeitplan
+
+        geklappt, text = zeitplan.sicherung_einrichten(
+            self.archiv, self.archiv / "Sicherungen"
+        )
+
+        self.assertFalse(geklappt)
+        self.assertIn("nicht im Archiv selbst", text)
+
+    def test_gestreut_statt_schlag_mitternacht(self):
+        # Wenn alle Zeitpläne zugleich anlaufen, steht der Rechner.
+        from mailburg.core import zeitplan
+
+        zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud")
+        uhr = (self.wo / "systemd" / "mailburg-sicherung.timer").read_text(
+            encoding="utf-8")
+
+        self.assertIn("RandomizedDelaySec", uhr)
+        self.assertIn("Persistent=true", uhr)
+
+    def test_alte_staende_werden_weggeraeumt(self):
+        # Ohne Grenze läuft die Platte voll, und dann scheitert
+        # ausgerechnet die Sicherung, auf die es ankäme.
+        import time
+
+        from mailburg.__main__ import _alte_sicherungen_entfernen
+
+        ordner = self.wo / "Cloud"
+        ordner.mkdir()
+        for n in range(5):
+            datei = ordner / f"Archiv-2026-08-{20 + n}.tar.zst"
+            datei.write_bytes(b"x")
+            import os
+            os.utime(datei, (time.time() - (5 - n) * 86400,) * 2)
+
+        entfernt = _alte_sicherungen_entfernen(ordner, 3)
+
+        self.assertEqual(len(entfernt), 2)
+        uebrig = sorted(p.name for p in ordner.glob("*.tar.zst"))
+        self.assertEqual(len(uebrig), 3)
+        # Die jüngsten bleiben.
+        self.assertIn("Archiv-2026-08-24.tar.zst", uebrig)
+
+    def test_fremde_dateien_bleiben_liegen(self):
+        # Gelöscht wird ausschließlich, was aussieht wie eine von uns
+        # angelegte Sicherung.
+        from mailburg.__main__ import _alte_sicherungen_entfernen
+
+        ordner = self.wo / "Cloud"
+        ordner.mkdir()
+        (ordner / "wichtig.pdf").write_bytes(b"x")
+        (ordner / "Archiv-2026-08-20.tar.zst").write_bytes(b"x")
+
+        _alte_sicherungen_entfernen(ordner, 0)
+
+        self.assertTrue((ordner / "wichtig.pdf").exists())

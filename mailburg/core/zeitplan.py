@@ -33,6 +33,19 @@ STANDARDTAKT = 30
 
 DIENSTE = Path.home() / ".config" / "systemd" / "user"
 EINHEIT = "mailburg-abruf"
+EINHEIT_SICHERUNG = "mailburg-sicherung"
+
+#: Wie oft gesichert wird, wenn niemand etwas anderes sagt. Täglich ist
+#: bei Mail angemessen: Mehr bringt wenig, weniger lässt im Ernstfall
+#: mehrere Tage Arbeit im Nichts verschwinden.
+STANDARDTAKT_SICHERUNG = "täglich"
+
+#: Was systemd unter den Bezeichnungen versteht.
+TAKTE_SICHERUNG = {
+    "täglich": "daily",
+    "wöchentlich": "weekly",
+    "monatlich": "monthly",
+}
 
 
 @dataclass
@@ -154,6 +167,97 @@ def abschalten() -> tuple[bool, str]:
         (DIENSTE / datei).unlink(missing_ok=True)
     _systemctl("daemon-reload")
     return True, "Der regelmäßige Abruf ist abgeschaltet."
+
+
+def sicherung_einrichten(archiv: Path | str, ziel: Path | str,
+                         takt: str = STANDARDTAKT_SICHERUNG,
+                         behalten: int = 7) -> tuple[bool, str]:
+    """Legt einen Zeitplan an, der das Archiv regelmäßig wegpackt.
+
+    Ein Backup, an das jemand denken muss, ist irgendwann keines mehr.
+    """
+    geht, grund = moeglich()
+    if not geht:
+        return False, grund
+
+    archiv = Path(archiv).expanduser().resolve()
+    ziel = Path(ziel).expanduser().resolve()
+    if not (archiv / "archive.json").is_file():
+        return False, f"In {archiv} liegt kein Archiv."
+    if ziel.is_relative_to(archiv):
+        # Eine Sicherung neben dem Original geht mit ihm zusammen
+        # verloren - dann ist sie keine.
+        return False, "Das Ziel darf nicht im Archiv selbst liegen."
+
+    ziel.mkdir(parents=True, exist_ok=True)
+    DIENSTE.mkdir(parents=True, exist_ok=True)
+    (DIENSTE / f"{EINHEIT_SICHERUNG}.service").write_text(
+        f"""[Unit]
+Description=MailBurg: Archiv sichern
+
+[Service]
+Type=oneshot
+ExecStart={_mailburg_befehl()} sichern --leise --behalten {behalten} \
+    "{archiv}" "{ziel}"
+""",
+        encoding="utf-8",
+    )
+    (DIENSTE / f"{EINHEIT_SICHERUNG}.timer").write_text(
+        f"""[Unit]
+Description=MailBurg-Sicherung ({takt})
+
+[Timer]
+OnCalendar={TAKTE_SICHERUNG.get(takt, "daily")}
+# Nicht Schlag Mitternacht: Wenn alle Zeitpläne zugleich anlaufen,
+# steht der Rechner. Eine halbe Stunde Streuung genügt.
+RandomizedDelaySec=30m
+# Holt nach, was verpasst wurde, während der Rechner aus war.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+""",
+        encoding="utf-8",
+    )
+
+    _systemctl("daemon-reload")
+    ergebnis = _systemctl("enable", "--now", f"{EINHEIT_SICHERUNG}.timer")
+    if ergebnis.returncode != 0:
+        return False, (ergebnis.stderr or "").strip() or "Ließ sich nicht einschalten."
+    return True, f"Sicherung eingerichtet: {takt} nach {ziel}"
+
+
+def sicherung_abschalten() -> tuple[bool, str]:
+    """Nimmt den Sicherungsplan zurück."""
+    geht, grund = moeglich()
+    if not geht:
+        return False, grund
+    _systemctl("disable", "--now", f"{EINHEIT_SICHERUNG}.timer")
+    for datei in (f"{EINHEIT_SICHERUNG}.timer", f"{EINHEIT_SICHERUNG}.service"):
+        (DIENSTE / datei).unlink(missing_ok=True)
+    _systemctl("daemon-reload")
+    return True, "Die regelmäßige Sicherung ist abgeschaltet."
+
+
+def sicherung_zustand() -> Zustand:
+    """Was für die Sicherung eingerichtet ist."""
+    geht, grund = moeglich()
+    stand = Zustand(moeglich=geht, grund=grund)
+    if not geht:
+        return stand
+
+    stand.laeuft = _systemctl(
+        "is-enabled", f"{EINHEIT_SICHERUNG}.timer"
+    ).stdout.strip() == "enabled"
+
+    dienst = DIENSTE / f"{EINHEIT_SICHERUNG}.service"
+    if dienst.is_file():
+        teile = [
+            t for t in dienst.read_text(encoding="utf-8").split('"') if t.strip()
+        ]
+        if len(teile) >= 2:
+            stand.archiv = teile[-1].strip()
+    return stand
 
 
 def zustand() -> Zustand:

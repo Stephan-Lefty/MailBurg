@@ -250,7 +250,7 @@ class Hauptfenster(QMainWindow):
         postfaecher.triggered.connect(self._postfaecher)
         post.addAction(postfaecher)
 
-        hintergrund = QAction("Abruf im Hintergrund …", self)
+        hintergrund = QAction("Was von selbst laufen soll …", self)
         hintergrund.triggered.connect(self._zeitplan)
         post.addAction(hintergrund)
 
