@@ -113,9 +113,10 @@ class Hauptfenster(QMainWindow):
         # Ein Archiv, aus dem nichts wieder herauskommt, ist ein Grab.
         self.tabelle.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tabelle.customContextMenuRequested.connect(self._trefferminue)
-        # Doppelklick ebenso: Nicht jeder denkt bei einer Liste an die
-        # rechte Maustaste, und der Doppelklick war bisher ohne Wirkung.
-        self.tabelle.doubleClicked.connect(self._zuruecklegen)
+        # Doppelklick öffnet die Nachricht zum Lesen. Das ist, was man
+        # bei einer Liste erwartet - und die Vorschau unten ist zum
+        # Überfliegen da, nicht zum Lesen.
+        self.tabelle.doubleClicked.connect(self._oeffnen_zum_lesen)
 
         self.vorschau = Mailvorschau()
 
@@ -732,11 +733,21 @@ class Hauptfenster(QMainWindow):
             return
 
         menue = QMenu(self)
+        lesen = menue.addAction("Öffnen")
+        lesen.triggered.connect(self._oeffnen_zum_lesen)
+        menue.addSeparator()
         zurueck = menue.addAction("Im Postfach wiederherstellen …")
         zurueck.triggered.connect(self._zuruecklegen)
         speichern = menue.addAction("Als Datei speichern …")
         speichern.triggered.connect(self._als_datei)
         menue.exec(self.tabelle.viewport().mapToGlobal(stelle))
+
+    def _oeffnen_zum_lesen(self) -> None:
+        from mailburg.ui.lesefenster import oeffnen
+
+        treffer = self._gewaehlter_treffer()
+        if treffer is not None:
+            oeffnen(treffer, self.archiv, self)
 
     def _gewaehlter_treffer(self):
         stellen = self.tabelle.selectionModel().selectedRows()

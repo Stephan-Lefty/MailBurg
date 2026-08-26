@@ -82,13 +82,9 @@ Die Zahl sollte **großzügiger sein als Ihr Abrufabstand**. Wer alle 30 Minuten
 abruft, ist mit 180 Tagen auf der sicheren Seite – der Abstand ist dann so
 groß, dass selbst ein Rechner, der zwei Wochen aus war, nichts verpasst.
 
-Zwei Dinge zum Posteingang:
-
-- **Fangen Sie mit einem unwichtigen Ordner an**, nicht mit dem Posteingang.
-  So sehen Sie einmal in Ruhe, was passiert.
-- **Prüfen Sie, ob Ihr Papierkorb sich mit leert.** Manche Anbieter behalten
-  gelöschte Nachrichten dort noch Wochen – das ist ein Sicherheitsnetz, aber
-  auch der Grund, warum das Postfach trotz Aufräumens voll bleibt.
+**Fangen Sie mit einem unwichtigen Ordner an**, nicht mit dem Posteingang. So
+sehen Sie einmal in Ruhe, was passiert, bevor es um die Post geht, an der
+etwas hängt.
 
 ## Was ist mit Post, die noch keine 180 Tage alt ist?
 

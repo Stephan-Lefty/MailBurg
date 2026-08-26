@@ -240,8 +240,13 @@ Irgendwann braucht man eine alte Rechnung wieder im Mailprogramm – um
 sie zu beantworten, weiterzuleiten oder einfach im gewohnten Ordner zu
 haben.</p>
 
-<p><b>Doppelklick</b> auf eine Nachricht in der Trefferliste – oder ein
-Klick mit der rechten Maustaste. Zwei Wege stehen offen:</p>
+<p>Ein <b>Doppelklick</b> auf eine Nachricht öffnet sie in einem eigenen
+Fenster – die Vorschau unten ist zum Überfliegen da, nicht zum Lesen.
+Mehrere Fenster gleichzeitig sind möglich, etwa um zwei Rechnungen zu
+vergleichen; Strg+W oder Esc schließt sie wieder.</p>
+
+<p>Ein Klick mit der <b>rechten Maustaste</b> auf eine Nachricht führt
+weiter:</p>
 
 <p><b>Im Postfach wiederherstellen.</b> MailBurg legt die Nachricht in
 den <b>Posteingang</b> des gewählten Postfachs – vollständig, mit allen

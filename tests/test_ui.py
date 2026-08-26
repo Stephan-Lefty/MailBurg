@@ -2393,3 +2393,95 @@ class WiederherstellenTest(OberflaechenTest):
             fenster.tabelle.doubleClicked.emit(fenster.modell.index(0, 0))
 
             self.assertEqual(gerufen, [1])
+
+
+class LesefensterTest(OberflaechenTest):
+    """Doppelklick öffnet die Nachricht zum Lesen."""
+
+    def _archiv_mit_mail(self):
+        import tempfile
+
+        from mailburg.core.archive import Archive
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        archiv = Archive.create(pathlib.Path(ordner.name) / "A")
+        self.addCleanup(archiv.close)
+        archiv.add(
+            b"Subject: Rechnung 2016\r\nFrom: a@example.org\r\n"
+            b"Date: Tue, 15 Mar 2016 09:12:00 +0100\r\n\r\nText",
+            account="a", folder="INBOX",
+        )
+        return archiv
+
+    def test_fenster_traegt_den_betreff(self):
+        from mailburg.ui.lesefenster import oeffnen
+
+        archiv = self._archiv_mit_mail()
+        treffer = archiv.index.search("", limit=1)[0]
+
+        fenster = oeffnen(treffer, archiv)
+        self.addCleanup(fenster.close)
+
+        self.assertEqual(fenster.windowTitle(), "Rechnung 2016")
+
+    def test_mehrere_fenster_gleichzeitig(self):
+        # Wer zwei Rechnungen vergleicht, braucht beide nebeneinander.
+        from mailburg.ui.lesefenster import _OFFEN, oeffnen
+
+        archiv = self._archiv_mit_mail()
+        treffer = archiv.index.search("", limit=1)[0]
+
+        erstes = oeffnen(treffer, archiv)
+        zweites = oeffnen(treffer, archiv)
+        self.addCleanup(erstes.close)
+        self.addCleanup(zweites.close)
+
+        self.assertEqual(len({erstes, zweites} & _OFFEN), 2)
+
+    def test_geschlossene_fenster_werden_abgemeldet(self):
+        # Sonst wächst die Liste mit jedem Blick in eine Mail.
+        from mailburg.ui.lesefenster import _OFFEN, oeffnen
+
+        archiv = self._archiv_mit_mail()
+        treffer = archiv.index.search("", limit=1)[0]
+
+        fenster = oeffnen(treffer, archiv)
+        fenster.close()
+
+        self.assertNotIn(fenster, _OFFEN)
+
+
+class HtmlMitAbsaetzenTest(unittest.TestCase):
+    """Eine Mail, die nur als HTML vorliegt, darf keine Textwurst werden."""
+
+    def test_absaetze_bleiben_fuer_die_anzeige(self):
+        # Bei Proton der Regelfall: Die Nachricht hat gar keinen
+        # Klartextteil, und ohne Umbrüche lief sie zu einem Block
+        # zusammen.
+        from mailburg.extract.message import parse
+
+        roh = (b"Subject: Rechnung\r\nContent-Type: text/html; charset=utf-8\r\n\r\n"
+               b"<p>Sehr geehrter Herr M\xc3\xbcller,</p>"
+               b"<p>anbei die Rechnung.</p>"
+               b"<p>Mit freundlichen Gr\xc3\xbc\xc3\x9fen<br>Beispiel GmbH</p>")
+
+        zerlegt = parse(roh)
+
+        self.assertGreater(len(zerlegt.body.splitlines()), 3)
+        self.assertIn("Sehr geehrter Herr Müller,", zerlegt.body)
+        self.assertTrue(zerlegt.body.startswith("Sehr geehrter"))
+
+    def test_hoechstens_eine_leerzeile_am_stueck(self):
+        # HTML-Mails aus Newslettern bringen sonst zwanzig davon mit.
+        from mailburg.extract.message import html_to_text
+
+        text = html_to_text("<p>A</p><div><br></div><div><br></div><p>B</p>",
+                            absaetze=True)
+
+        self.assertNotIn("\n\n\n", text)
+
+    def test_fuer_den_index_bleibt_es_eine_wortfolge(self):
+        from mailburg.extract.message import html_to_text
+
+        self.assertEqual(html_to_text("<p>Eins</p><p>Zwei</p>"), "Eins Zwei")

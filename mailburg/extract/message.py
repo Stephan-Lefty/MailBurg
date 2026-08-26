@@ -228,18 +228,33 @@ class _TextFromHTML(HTMLParser):
 
     _SKIP = {"script", "style", "head"}
 
-    def __init__(self) -> None:
+    #: Marken, hinter denen im Original eine neue Zeile beginnt. Für den
+    #: Suchindex ist das gleichgültig – dort wird ohnehin alles zu einer
+    #: Wortfolge. Für die Anzeige ist es der Unterschied zwischen einer
+    #: lesbaren Mail und einer Textwurst: Ohne diese Umbrüche läuft eine
+    #: Nachricht mit zehn Absätzen zu einem einzigen Block zusammen.
+    _UMBRUCH = {
+        "p", "br", "div", "tr", "li", "h1", "h2", "h3", "h4", "h5", "h6",
+        "blockquote", "pre", "table", "ul", "ol", "hr", "section",
+    }
+
+    def __init__(self, absaetze: bool = False) -> None:
         super().__init__(convert_charrefs=True)
         self._parts: list[str] = []
         self._depth = 0
+        self._absaetze = absaetze
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in self._SKIP:
             self._depth += 1
+        elif self._absaetze and tag in self._UMBRUCH:
+            self._parts.append("\n")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in self._SKIP and self._depth:
             self._depth -= 1
+        elif self._absaetze and tag in self._UMBRUCH:
+            self._parts.append("\n")
 
     def handle_data(self, data: str) -> None:
         if not self._depth:
@@ -247,12 +262,25 @@ class _TextFromHTML(HTMLParser):
 
     @property
     def text(self) -> str:
-        return re.sub(r"\s+", " ", " ".join(self._parts)).strip()
+        roh = "".join(self._parts) if self._absaetze else " ".join(self._parts)
+        if not self._absaetze:
+            return re.sub(r"\s+", " ", roh).strip()
+        # Leerraum je Zeile zusammenfassen, aber die Zeilen behalten. Und
+        # höchstens eine Leerzeile am Stück: HTML-Mails aus Newslettern
+        # bringen sonst zwanzig davon mit.
+        zeilen = [re.sub(r"[^\S\n]+", " ", z).strip() for z in roh.split("\n")]
+        text = "\n".join(zeilen)
+        return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
-def html_to_text(html: str) -> str:
-    """Reduziert HTML auf seinen sichtbaren Text."""
-    parser = _TextFromHTML()
+def html_to_text(html: str, absaetze: bool = False) -> str:
+    """Reduziert HTML auf seinen sichtbaren Text.
+
+    Mit ``absaetze=True`` bleiben die Zeilenumbrüche erhalten – das ist
+    die Fassung für die Anzeige. Ohne bleibt eine einzige Wortfolge, und
+    genau die will der Suchindex: Dort stört jeder Umbruch nur.
+    """
+    parser = _TextFromHTML(absaetze=absaetze)
     try:
         parser.feed(html)
         parser.close()
@@ -437,7 +465,11 @@ def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
     # umgewandelte Text herhalten.
     text = "\n".join(p for p in body_parts if p).strip()
     if not text and html_parts:
-        text = html_to_text("\n".join(html_parts))
+        # Mit Absätzen. Eine Mail, die nur als HTML vorliegt - bei Proton
+        # der Regelfall -, lief sonst zu einem einzigen Block zusammen.
+        # Dem Suchindex ist das gleichgültig: Sein Tokenizer trennt an
+        # Leerraum, und ein Zeilenumbruch ist Leerraum.
+        text = html_to_text("\n".join(html_parts), absaetze=True)
 
     result.body = text[:MAX_BODY_CHARS]
     return result
