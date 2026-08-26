@@ -32,6 +32,13 @@ from PySide6.QtWidgets import (
 )
 
 from mailburg import APP_NAME
+
+#: Wie sich die Fläche in der Standardansicht verteilt. Abgenommen an
+#: der Aufteilung, die sich im Betrieb als brauchbar erwiesen hat: Der
+#: Postfachbaum braucht Platz für verschachtelte Ordnernamen, und die
+#: Vorschau mehr als die Trefferliste – gelesen wird unten, gesucht oben.
+BAUMANTEIL = 0.20
+TREFFERANTEIL = 0.42
 from mailburg.core.accounts import Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked
 from mailburg.search.query import QueryError, describe_syntax
@@ -171,6 +178,14 @@ class Hauptfenster(QMainWindow):
         hintergrund.triggered.connect(self._zeitplan)
         post.addAction(hintergrund)
 
+        ansicht = self.menuBar().addMenu("&Ansicht")
+        zuruecksetzen = QAction("Fenster auf Standard zurücksetzen", self)
+        zuruecksetzen.setStatusTip(
+            "Größe und Aufteilung so, wie MailBurg das erste Mal aufging."
+        )
+        zuruecksetzen.triggered.connect(self._standardansicht)
+        ansicht.addAction(zuruecksetzen)
+
         suchen_menue = self.menuBar().addMenu("&Suchen")
         ausfuehrlich = QAction("Ausführlich suchen …", self)
         ausfuehrlich.setShortcut("Ctrl+F")
@@ -236,29 +251,22 @@ class Hauptfenster(QMainWindow):
     def _groesse_herstellen(self) -> None:
         """Stellt die Ansicht her, die der Anwender zuletzt eingestellt hat.
 
-        Beim allerersten Start gibt es nichts herzustellen. Dann ist eine
-        großzügige Vorgabe richtig: Ein Archiv lebt von der Übersicht –
-        Postfächer, Trefferliste und Vorschau nebeneinander. Ein knappes
-        Fenster zwingt beim ersten Blick zum Ziehen an den Rändern, bevor
-        man überhaupt etwas erkennt.
+        Beim allerersten Start gibt es nichts herzustellen – dann gilt die
+        Standardansicht.
         """
         from mailburg.ui.app import gemerktes
 
         stand = gemerktes()
         wieder = stand.get("fenster")
 
-        if wieder and self.restoreGeometry(QByteArray.fromBase64(wieder.encode())):
-            if stand.get("maximiert"):
-                self.showMaximized()
-        else:
-            flaeche = self.screen().availableGeometry()
-            # Nicht ganz bis an den Rand: Ein Fenster, das den Bildschirm
-            # ausfüllt, sieht aus wie ein Fehler, wenn es keiner ist.
-            self.resize(
-                min(1600, int(flaeche.width() * 0.9)),
-                min(1000, int(flaeche.height() * 0.9)),
-            )
-            self.move(flaeche.center() - self.rect().center())
+        if not (wieder and self.restoreGeometry(
+            QByteArray.fromBase64(wieder.encode())
+        )):
+            self._standardansicht(nur_aufbauen=True)
+            return
+
+        if stand.get("maximiert"):
+            self.showMaximized()
 
         for name, teiler in (("waagerecht", self.waagerecht),
                              ("senkrecht", self.senkrecht)):
@@ -271,6 +279,42 @@ class Hauptfenster(QMainWindow):
             self.tabelle.horizontalHeader().restoreState(
                 QByteArray.fromBase64(kopf.encode())
             )
+
+    def _standardansicht(self, nur_aufbauen: bool = False) -> None:
+        """Die Ansicht, mit der MailBurg das erste Mal aufgeht.
+
+        Ein Archiv lebt von der Übersicht: Postfächer links, Trefferliste
+        und Vorschau rechts übereinander. Deshalb großzügig – ein knappes
+        Fenster zwingt beim ersten Blick zum Ziehen an den Rändern, bevor
+        man überhaupt etwas erkennt.
+
+        Die Verhältnisse sind Anteile, keine festen Pixel: Auf einem
+        kleinen Bildschirm wäre eine feste Baumbreite die halbe Ansicht,
+        auf einem großen ein Streifen.
+        """
+        if self.isMaximized():
+            self.showNormal()
+
+        flaeche = self.screen().availableGeometry()
+        # Nicht ganz bis an den Rand: Ein Fenster, das den Bildschirm
+        # ausfüllt, sieht aus wie ein Fehler, wenn es keiner ist.
+        self.resize(
+            min(1600, int(flaeche.width() * 0.9)),
+            min(1000, int(flaeche.height() * 0.9)),
+        )
+        self.move(flaeche.center() - self.rect().center())
+
+        breite, hoehe = self.width(), self.height()
+        self.waagerecht.setSizes([
+            int(breite * BAUMANTEIL), breite - int(breite * BAUMANTEIL),
+        ])
+        self.senkrecht.setSizes([
+            int(hoehe * TREFFERANTEIL), hoehe - int(hoehe * TREFFERANTEIL),
+        ])
+        self.tabelle.setColumnWidth(2, 220)
+
+        if not nur_aufbauen:
+            self._groesse_merken()
 
     def _groesse_merken(self) -> None:
         from mailburg.ui.app import merken_unter

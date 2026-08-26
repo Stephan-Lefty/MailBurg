@@ -1287,3 +1287,45 @@ class FenstergroesseTest(OberflaechenTest):
         stand = gemerktes()
         self.assertIn("fenster", stand)
         self.assertIn("archiv", stand)
+
+
+class StandardansichtTest(FenstergroesseTest):
+    """Zurück zur Vorgabe, wenn man sich die Ansicht verstellt hat."""
+
+    def test_zuruecksetzen_stellt_die_verhaeltnisse_wieder_her(self):
+        fenster = self._fenster()
+        fenster.waagerecht.setSizes([900, 100])  # Baum absurd breit gezogen
+
+        fenster._standardansicht()
+
+        links, rechts = fenster.waagerecht.sizes()
+        anteil = links / (links + rechts)
+        # Kein fester Wert: Auf einem schmalen Bildschirm setzt die
+        # Mindestbreite des Baums die Untergrenze, nicht der Anteil.
+        # Geprüft wird, was zählt - die Trefferliste bekommt den Platz.
+        self.assertLess(anteil, 0.4, "der Baum nimmt immer noch zu viel ein")
+        self.assertGreater(anteil, 0.1, "der Baum ist zum Streifen geschrumpft")
+
+    def test_zuruecksetzen_wird_auch_gemerkt(self):
+        # Sonst käme beim nächsten Start die verstellte Ansicht zurück,
+        # und das Zurücksetzen wäre nur für diese Sitzung wahr gewesen.
+        from mailburg.ui.app import gemerktes
+
+        fenster = self._fenster()
+        fenster.resize(640, 480)
+        fenster._groesse_merken()
+        vorher = gemerktes()["fenster"]
+
+        fenster._standardansicht()
+
+        self.assertNotEqual(gemerktes()["fenster"], vorher)
+
+    def test_aus_dem_vollbild_heraus_zuruecksetzen(self):
+        # Ohne showNormal bliebe das Fenster maximiert, und resize liefe
+        # ins Leere - man klickte auf "Standard" und nichts geschähe.
+        fenster = self._fenster()
+        fenster.showMaximized()
+
+        fenster._standardansicht()
+
+        self.assertFalse(fenster.isMaximized())
