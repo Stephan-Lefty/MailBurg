@@ -2829,11 +2829,11 @@ class SicherungsplanTest(OberflaechenTest):
         )
 
         self.assertTrue(geklappt, text)
-        dienst = (self.wo / "systemd" / "mailburg-sicherung.service").read_text(
+        dienst = (self.wo / "systemd" / "mailburg-sicherung-archiv.service").read_text(
             encoding="utf-8")
         self.assertIn("sichern", dienst)
         self.assertIn("--behalten 7", dienst)
-        uhr = (self.wo / "systemd" / "mailburg-sicherung.timer").read_text(
+        uhr = (self.wo / "systemd" / "mailburg-sicherung-archiv.timer").read_text(
             encoding="utf-8")
         self.assertIn("OnCalendar=daily", uhr)
 
@@ -2854,7 +2854,7 @@ class SicherungsplanTest(OberflaechenTest):
         from mailburg.core import zeitplan
 
         zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud")
-        uhr = (self.wo / "systemd" / "mailburg-sicherung.timer").read_text(
+        uhr = (self.wo / "systemd" / "mailburg-sicherung-archiv.timer").read_text(
             encoding="utf-8")
 
         self.assertIn("RandomizedDelaySec", uhr)
@@ -2909,7 +2909,7 @@ class ErsetzenStattSammelnTest(SicherungsplanTest):
 
         zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud",
                                       "wöchentlich", behalten=0)
-        dienst = (self.wo / "systemd" / "mailburg-sicherung.service").read_text(
+        dienst = (self.wo / "systemd" / "mailburg-sicherung-archiv.service").read_text(
             encoding="utf-8")
 
         self.assertIn("--ersetzen", dienst)
@@ -2920,7 +2920,7 @@ class ErsetzenStattSammelnTest(SicherungsplanTest):
 
         zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud",
                                       "täglich", behalten=7)
-        dienst = (self.wo / "systemd" / "mailburg-sicherung.service").read_text(
+        dienst = (self.wo / "systemd" / "mailburg-sicherung-archiv.service").read_text(
             encoding="utf-8")
 
         self.assertIn("--behalten 7", dienst)
@@ -2931,7 +2931,57 @@ class ErsetzenStattSammelnTest(SicherungsplanTest):
 
         zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud",
                                       "wöchentlich")
-        uhr = (self.wo / "systemd" / "mailburg-sicherung.timer").read_text(
+        uhr = (self.wo / "systemd" / "mailburg-sicherung-archiv.timer").read_text(
             encoding="utf-8")
 
         self.assertIn("OnCalendar=weekly", uhr)
+
+
+class EinPlanJeArchivTest(SicherungsplanTest):
+    """Zwei Archive brauchen zwei Zeitpläne."""
+
+    def test_getrennte_einheiten(self):
+        # Mit einer festen Einheit überschriebe das Einrichten des
+        # zweiten Archivs den ersten Plan - und nur eines von beiden
+        # würde je gesichert. Bemerkt hätte das niemand: Es liegt ja
+        # eine Sicherung da.
+        from mailburg.core import zeitplan
+
+        zweites = self.wo / "Privat"
+        zweites.mkdir()
+        (zweites / "archive.json").write_text("{}", encoding="utf-8")
+
+        zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud")
+        zeitplan.sicherung_einrichten(zweites, self.wo / "Cloud")
+
+        angelegt = sorted(p.name for p in (self.wo / "systemd").glob("*.timer"))
+        self.assertEqual(len(angelegt), 2, angelegt)
+        self.assertIn("mailburg-sicherung-archiv.timer", angelegt)
+        self.assertIn("mailburg-sicherung-privat.timer", angelegt)
+
+    def test_abschalten_trifft_nur_das_eigene(self):
+        from mailburg.core import zeitplan
+
+        zweites = self.wo / "Privat"
+        zweites.mkdir()
+        (zweites / "archive.json").write_text("{}", encoding="utf-8")
+        zeitplan.sicherung_einrichten(self.archiv, self.wo / "Cloud")
+        zeitplan.sicherung_einrichten(zweites, self.wo / "Cloud")
+
+        zeitplan.sicherung_abschalten(zweites)
+
+        uebrig = sorted(p.name for p in (self.wo / "systemd").glob("*.timer"))
+        self.assertEqual(uebrig, ["mailburg-sicherung-archiv.timer"])
+
+    def test_der_dateiname_wird_durchgereicht(self):
+        # Sonst heißt die wöchentliche Sicherung wieder nach dem
+        # Archivnamen statt nach dem, was der Anwender wollte.
+        from mailburg.core import zeitplan
+
+        zeitplan.sicherung_einrichten(
+            self.archiv, self.wo / "Cloud", name="Geschaeftsarchiv"
+        )
+        dienst = (self.wo / "systemd" / "mailburg-sicherung-archiv.service"
+                  ).read_text(encoding="utf-8")
+
+        self.assertIn('--name "Geschaeftsarchiv"', dienst)

@@ -119,7 +119,7 @@ class Sicherungswahl(QWidget):
     def __init__(self, eltern=None, archiv=None) -> None:
         super().__init__(eltern)
         self.archiv = archiv
-        stand = zeitplan.sicherung_zustand()
+        stand = zeitplan.sicherung_zustand(archiv)
 
         self.an = QCheckBox("Das Archiv regelmäßig in eine Datei sichern")
         self.an.setChecked(stand.laeuft)
@@ -205,9 +205,6 @@ class Sicherungswahl(QWidget):
     def anwenden(self) -> tuple[bool, str]:
         if not self.an.isEnabled():
             return True, ""
-        if not self.an.isChecked():
-            return zeitplan.sicherung_abschalten()
-
         archiv = self.archiv
         if archiv is None:
             from mailburg.ui.app import zuletzt_gemerkt
@@ -215,6 +212,8 @@ class Sicherungswahl(QWidget):
             archiv = zuletzt_gemerkt()
         if archiv is None:
             return False, "Es ist kein Archiv eingerichtet."
+        if not self.an.isChecked():
+            return zeitplan.sicherung_abschalten(archiv)
         if not self.ziel.text().strip():
             return False, "Bitte einen Ordner für die Sicherungen wählen."
         return zeitplan.sicherung_einrichten(

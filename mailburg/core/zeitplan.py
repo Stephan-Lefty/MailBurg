@@ -169,12 +169,28 @@ def abschalten() -> tuple[bool, str]:
     return True, "Der regelmäßige Abruf ist abgeschaltet."
 
 
+def _einheitsname(archiv: Path) -> str:
+    """Eine eigene Einheit je Archiv.
+
+    Wer zwei Archive führt – ein geschäftliches und ein privates –,
+    braucht zwei Zeitpläne. Mit einer festen Einheit überschriebe das
+    Einrichten des zweiten den ersten, und nur eines der beiden Archive
+    würde je gesichert. Bemerkt hätte das niemand: Es liegt ja eine
+    Sicherung da.
+    """
+    kurz = "".join(z if z.isalnum() else "-" for z in archiv.name).strip("-")
+    return f"{EINHEIT_SICHERUNG}-{kurz.lower() or 'archiv'}"
+
+
 def sicherung_einrichten(archiv: Path | str, ziel: Path | str,
                          takt: str = STANDARDTAKT_SICHERUNG,
-                         behalten: int = 7) -> tuple[bool, str]:
+                         behalten: int = 7, name: str = "") -> tuple[bool, str]:
     """Legt einen Zeitplan an, der das Archiv regelmäßig wegpackt.
 
     Ein Backup, an das jemand denken muss, ist irgendwann keines mehr.
+
+    ``name`` bestimmt den Dateinamen der Sicherung; ohne Angabe nimmt
+    MailBurg den Namen des Archivs.
     """
     geht, grund = moeglich()
     if not geht:
@@ -191,19 +207,21 @@ def sicherung_einrichten(archiv: Path | str, ziel: Path | str,
 
     ziel.mkdir(parents=True, exist_ok=True)
     DIENSTE.mkdir(parents=True, exist_ok=True)
-    (DIENSTE / f"{EINHEIT_SICHERUNG}.service").write_text(
+    einheit = _einheitsname(archiv)
+    benennung = f' --name "{name}"' if name else ""
+    (DIENSTE / f"{einheit}.service").write_text(
         f"""[Unit]
-Description=MailBurg: Archiv sichern
+Description=MailBurg: {archiv.name} sichern
 
 [Service]
 Type=oneshot
-ExecStart={_mailburg_befehl()} sichern --leise {_haltung(behalten)} "{archiv}" "{ziel}"
+ExecStart={_mailburg_befehl()} sichern --leise {_haltung(behalten)}{benennung} "{archiv}" "{ziel}"
 """,
         encoding="utf-8",
     )
-    (DIENSTE / f"{EINHEIT_SICHERUNG}.timer").write_text(
+    (DIENSTE / f"{einheit}.timer").write_text(
         f"""[Unit]
-Description=MailBurg-Sicherung ({takt})
+Description=MailBurg-Sicherung {archiv.name} ({takt})
 
 [Timer]
 OnCalendar={TAKTE_SICHERUNG.get(takt, "daily")}
@@ -231,30 +249,32 @@ def _haltung(behalten: int) -> str:
     return "--ersetzen" if behalten <= 0 else f"--behalten {behalten}"
 
 
-def sicherung_abschalten() -> tuple[bool, str]:
-    """Nimmt den Sicherungsplan zurück."""
+def sicherung_abschalten(archiv: Path | str) -> tuple[bool, str]:
+    """Nimmt den Sicherungsplan dieses Archivs zurück."""
     geht, grund = moeglich()
     if not geht:
         return False, grund
-    _systemctl("disable", "--now", f"{EINHEIT_SICHERUNG}.timer")
-    for datei in (f"{EINHEIT_SICHERUNG}.timer", f"{EINHEIT_SICHERUNG}.service"):
+    einheit = _einheitsname(Path(archiv).expanduser().resolve())
+    _systemctl("disable", "--now", f"{einheit}.timer")
+    for datei in (f"{einheit}.timer", f"{einheit}.service"):
         (DIENSTE / datei).unlink(missing_ok=True)
     _systemctl("daemon-reload")
     return True, "Die regelmäßige Sicherung ist abgeschaltet."
 
 
-def sicherung_zustand() -> Zustand:
-    """Was für die Sicherung eingerichtet ist."""
+def sicherung_zustand(archiv: Path | str | None = None) -> Zustand:
+    """Was für die Sicherung dieses Archivs eingerichtet ist."""
     geht, grund = moeglich()
     stand = Zustand(moeglich=geht, grund=grund)
-    if not geht:
+    if not geht or archiv is None:
         return stand
 
+    einheit = _einheitsname(Path(archiv).expanduser().resolve())
     stand.laeuft = _systemctl(
-        "is-enabled", f"{EINHEIT_SICHERUNG}.timer"
+        "is-enabled", f"{einheit}.timer"
     ).stdout.strip() == "enabled"
 
-    dienst = DIENSTE / f"{EINHEIT_SICHERUNG}.service"
+    dienst = DIENSTE / f"{einheit}.service"
     if dienst.is_file():
         teile = [
             t for t in dienst.read_text(encoding="utf-8").split('"') if t.strip()
