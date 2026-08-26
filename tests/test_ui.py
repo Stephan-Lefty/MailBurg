@@ -17,6 +17,7 @@ Nebenläufigkeit hält.
 from __future__ import annotations
 
 import os
+import pathlib
 import unittest
 
 # Ohne Bildschirm - läuft auch in der CI und öffnet nie ein Fenster.
@@ -1031,3 +1032,78 @@ class SchluesselbundStattNachfrageTest(OberflaechenTest):
         self.assertEqual(gefragt, [],
                          "weder Nachfrage noch erneute Anmeldung nötig")
         self.assertTrue(weiter, "es geht weiter")
+
+
+class ZeitplanTest(unittest.TestCase):
+    """Der Hintergrundabruf muss sich aus der Oberfläche einrichten lassen.
+
+    Bisher stand am Ende der Einrichtung der Rat, dafür ins Terminal zu
+    wechseln und ./install.sh --zeitsteuerung aufzurufen - ein Skript, das
+    im Quellverzeichnis liegt und das niemand zur Hand hat, der MailBurg
+    installiert hat.
+    """
+
+    def setUp(self):
+        import tempfile
+
+        from mailburg.core import zeitplan
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.archiv = pathlib.Path(self.ordner.name) / "Archiv"
+        self.archiv.mkdir()
+        (self.archiv / "archive.json").write_text("{}", encoding="utf-8")
+
+        self.dienste = pathlib.Path(self.ordner.name) / "systemd"
+        self.aufrufe = []
+        self.zeitplan = zeitplan
+
+        import unittest.mock as mock
+
+        for flicken in (
+            mock.patch.object(zeitplan, "DIENSTE", self.dienste),
+            mock.patch.object(zeitplan, "_systemctl",
+                              lambda *a: self.aufrufe.append(a) or
+                              __import__("subprocess").CompletedProcess(a, 0, "", "")),
+            mock.patch.object(zeitplan, "moeglich", lambda: (True, "")),
+        ):
+            flicken.start()
+            self.addCleanup(flicken.stop)
+
+    def test_zeitplan_wird_angelegt_und_eingeschaltet(self):
+        geklappt, text = self.zeitplan.einrichten(self.archiv, 30)
+
+        self.assertTrue(geklappt, text)
+        dienst = (self.dienste / "mailburg-abruf.service").read_text(encoding="utf-8")
+        uhr = (self.dienste / "mailburg-abruf.timer").read_text(encoding="utf-8")
+
+        self.assertIn(str(self.archiv), dienst)
+        self.assertIn("OnUnitActiveSec=30min", uhr)
+        # Ohne vollen Pfad liefe der Abruf nie: Ein Dienst startet ohne die
+        # PATH-Ergänzungen einer Anmeldesitzung.
+        self.assertIn("/", dienst.split("ExecStart=")[1].split()[0])
+        self.assertIn(("enable", "--now", "mailburg-abruf.timer"), self.aufrufe)
+
+    def test_abschalten_raeumt_die_dateien_weg(self):
+        self.zeitplan.einrichten(self.archiv, 30)
+        geklappt, _ = self.zeitplan.abschalten()
+
+        self.assertTrue(geklappt)
+        self.assertFalse((self.dienste / "mailburg-abruf.timer").exists())
+        self.assertFalse((self.dienste / "mailburg-abruf.service").exists())
+
+    def test_ohne_archiv_wird_nichts_angelegt(self):
+        leer = pathlib.Path(self.ordner.name) / "leer"
+        leer.mkdir()
+        geklappt, text = self.zeitplan.einrichten(leer, 30)
+
+        self.assertFalse(geklappt)
+        self.assertIn("kein Archiv", text)
+        self.assertFalse(self.dienste.exists())
+
+    def test_takt_wird_wieder_ausgelesen(self):
+        self.zeitplan.einrichten(self.archiv, 240)
+        stand = self.zeitplan.zustand()
+
+        self.assertEqual(stand.takt, 240)
+        self.assertEqual(stand.archiv, str(self.archiv))

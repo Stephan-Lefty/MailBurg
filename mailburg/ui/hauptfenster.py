@@ -163,6 +163,10 @@ class Hauptfenster(QMainWindow):
         postfaecher.triggered.connect(self._postfaecher)
         post.addAction(postfaecher)
 
+        hintergrund = QAction("Abruf im Hintergrund …", self)
+        hintergrund.triggered.connect(self._zeitplan)
+        post.addAction(hintergrund)
+
         suchen_menue = self.menuBar().addMenu("&Suchen")
         ausfuehrlich = QAction("Ausführlich suchen …", self)
         ausfuehrlich.setShortcut("Ctrl+F")
@@ -377,6 +381,12 @@ class Hauptfenster(QMainWindow):
 
         art = QMessageBox.information if bericht["ok"] else QMessageBox.warning
         art(self, "Prüfung", "\n".join(zeilen))
+
+    def _zeitplan(self) -> None:
+        from mailburg.ui.zeitplan import Zeitplandialog
+
+        pfad = self.archiv.root if self.archiv is not None else None
+        Zeitplandialog(self, archiv=pfad).exec()
 
     def _postfaecher(self) -> None:
         """Postfächer hinzufügen, stilllegen oder entfernen."""

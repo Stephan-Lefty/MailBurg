@@ -44,6 +44,7 @@ from mailburg.core.archive import Archive, ArchiveError, Mode
 from mailburg.core.retention import QUELLEN, Jurisdiction
 from mailburg.ui import bilder
 from mailburg.ui.arbeit import Anmeldeprobe, Läufer, alle_abbrechen
+from mailburg.ui.zeitplan import Zeitplanwahl
 
 
 def _schluesselbund_satz() -> str:
@@ -1162,10 +1163,44 @@ class AbschlussSeite(QWizardPage):
         self.gleich_abrufen.setChecked(True)
 
         aufbau = QVBoxLayout(self)
+        # Der Hintergrundabruf wurde bisher als Terminalbefehl empfohlen -
+        # mitten in einer grafischen Einrichtung, und noch dazu einer, der
+        # das Quellverzeichnis voraussetzt. Wer MailBurg installiert hat,
+        # hat es gerade nicht. Angelegt werden zwei Textdateien im eigenen
+        # Benutzerverzeichnis; das kann das Programm selbst.
+        self.plan = Zeitplanwahl()
+
+        ueberschrift = QLabel("<b>Damit es von allein weiterläuft</b>")
+        ueberschrift.setTextFormat(Qt.RichText)
+
         aufbau.addWidget(self.text)
         aufbau.addSpacing(12)
+        aufbau.addWidget(ueberschrift)
+        aufbau.addWidget(self.plan)
+        aufbau.addSpacing(12)
         aufbau.addWidget(self.gleich_abrufen)
+
+        # Ganz zum Schluss, nicht mittendrin: Der Satz nimmt dem Ganzen die
+        # Endgültigkeit, und das wirkt erst, wenn alles gesagt ist.
+        nachsatz = QLabel(
+            "<i>Alles hier Eingestellte lässt sich später ändern. Postfächer "
+            "kommen hinzu oder fallen weg, der Abstand ist verstellbar, das "
+            "Archiv darf umziehen.</i>"
+        )
+        nachsatz.setWordWrap(True)
+        nachsatz.setTextFormat(Qt.RichText)
+        aufbau.addSpacing(12)
+        aufbau.addWidget(nachsatz)
         aufbau.addStretch()
+
+    def validatePage(self) -> bool:
+        # Erst hier anlegen, nicht schon beim Anklicken: Wer den Assistenten
+        # noch abbricht, soll keinen Zeitplan hinterlassen haben.
+        self.plan.archiv = self.wizard().archiv_pfad
+        geklappt, text = self.plan.anwenden()
+        if not geklappt and text:
+            QMessageBox.information(self, "Abruf im Hintergrund", text)
+        return True
 
     def initializePage(self) -> None:
         assistent = self.wizard()
@@ -1187,15 +1222,6 @@ class AbschlussSeite(QWizardPage):
             "<p>Danach wird nur noch geholt, was neu dazugekommen ist. Das "
             "dauert dann Sekunden.</p>"
 
-            "<p style='margin-top:12px'><b>Damit es von allein weiterläuft</b></p>"
-            "<p>Sinnvoll ist ein regelmäßiger Abruf im Hintergrund – sonst "
-            "muss jemand daran denken. Eingerichtet wird er einmalig mit "
-            "<i>./install.sh --zeitsteuerung</i>; die Anleitung dazu liegt "
-            "im Ordner <i>docs</i>.</p>"
-
-            "<p style='margin-top:12px'><i>Alles hier Eingestellte lässt sich "
-            "später ändern. Postfächer kommen hinzu oder fallen weg, das "
-            "Archiv darf umziehen.</i></p>"
         )
 
 
