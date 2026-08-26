@@ -1490,3 +1490,39 @@ class AbrufmeldungTest(OberflaechenTest):
 
         self.assertEqual(art, "gut")
         self.assertIn("nichts Neues", text)
+
+
+class StandardTrotzTraegemFensterTest(FenstergroesseTest):
+    """Die Aufteilung darf nicht davon abhängen, wann resize wirkt.
+
+    resize() setzt die Größe nicht sofort - unter Wayland bestätigt der
+    Compositor sie erst. Wer direkt danach self.width() liest, rechnet
+    mit der alten Breite, und "Fenster auf Standard" tut sichtbar nicht,
+    was es verspricht.
+    """
+
+    def test_verhaeltnis_stimmt_auch_ohne_wirksames_resize(self):
+        from unittest import mock
+
+        fenster = self._fenster()
+        fenster.waagerecht.setSizes([900, 100])
+
+        # Ein Fenster, das seine Größe hartnäckig nicht ändert.
+        with mock.patch.object(type(fenster), "resize", lambda *a: None):
+            fenster._standardansicht()
+
+        links, rechts = fenster.waagerecht.sizes()
+        self.assertLess(links / (links + rechts), 0.4)
+
+
+class SpaltenAufStandardTest(FenstergroesseTest):
+    """»Auf Standard« muss auch verzogene Spalten wieder geraderücken."""
+
+    def test_spaltenbreiten_kommen_zurueck(self):
+        fenster = self._fenster()
+        vorher = fenster.tabelle.columnWidth(1)
+        fenster.tabelle.setColumnWidth(1, vorher + 300)
+
+        fenster._standardansicht()
+
+        self.assertEqual(fenster.tabelle.columnWidth(1), vorher)

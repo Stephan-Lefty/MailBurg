@@ -111,6 +111,12 @@ class Hauptfenster(QMainWindow):
         kopf.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self.tabelle.setColumnWidth(2, 220)
 
+        # Einmal festhalten, wie die Spalten aussehen, bevor jemand daran
+        # gezogen hat. Ohne das ließe sich "auf Standard" für die Spalten
+        # gar nicht erfüllen - man kann nur wiederherstellen, was man
+        # sich gemerkt hat.
+        self._spalten_ausgangs = self.tabelle.horizontalHeader().saveState()
+
         self.tabelle.selectionModel().selectionChanged.connect(self._treffer_gewaehlt)
 
         self.vorschau = Mailvorschau()
@@ -315,14 +321,19 @@ class Hauptfenster(QMainWindow):
         )
         self.move(flaeche.center() - self.rect().center())
 
-        breite, hoehe = self.width(), self.height()
+        # Verhältniszahlen, nicht Pixel: ``resize`` wirkt nicht sofort -
+        # unter Wayland muss der Compositor die neue Größe erst
+        # bestätigen. Wer hier ``self.width()`` liest, rechnet mit der
+        # alten Breite, und die Aufteilung bleibt sichtbar falsch. Ein
+        # QSplitter verteilt die Zahlen ohnehin nur nach ihrem Verhältnis
+        # zueinander, die Summe muss nichts bedeuten.
         self.waagerecht.setSizes([
-            int(breite * BAUMANTEIL), breite - int(breite * BAUMANTEIL),
+            round(BAUMANTEIL * 1000), round((1 - BAUMANTEIL) * 1000),
         ])
         self.senkrecht.setSizes([
-            int(hoehe * TREFFERANTEIL), hoehe - int(hoehe * TREFFERANTEIL),
+            round(TREFFERANTEIL * 1000), round((1 - TREFFERANTEIL) * 1000),
         ])
-        self.tabelle.setColumnWidth(2, 220)
+        self.tabelle.horizontalHeader().restoreState(self._spalten_ausgangs)
 
         if not nur_aufbauen:
             self._groesse_merken()
