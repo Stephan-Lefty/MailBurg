@@ -346,8 +346,8 @@ nicht akademisch: Ihr Archiv liegt auf <i>einer</i> Platte. Geht die
 kaputt, ist alles weg. Eine Sicherung ist eine Kopie an einem
 <i>zweiten</i> Ort – auf einer anderen Platte oder in der Cloud.</p>
 
-<p><b>Am besten von selbst.</b> Unter <i>Post → Was von selbst laufen
-soll …</i> lässt sich einstellen, dass MailBurg täglich, wöchentlich
+<p><b>Am besten von selbst.</b> Unter <i>Einstellungen → Was von selbst
+laufen soll (Automatisierung) …</i> lässt sich einstellen, dass MailBurg täglich, wöchentlich
 oder monatlich eine Sicherung anlegt und dabei die letzten Stände
 behält. Ein Backup, an das jemand denken muss, ist irgendwann
 keines.</p>
@@ -492,7 +492,7 @@ def kapitel() -> list[Kapitel]:
                      "läuft davon unabhängig weiter.")
         ))),
         Kapitel("postfaecher", "Postfächer", _POSTFAECHER.format(menue=(
-            _menue("Post → Postfächer verwalten …",
+            _menue("Einstellungen → Postfächer verwalten …",
                    "Postfächer hinzufügen, Passwörter ändern, ein Postfach "
                    "stilllegen oder entfernen. Ein stillgelegtes Postfach "
                    "bleibt eingerichtet, wird beim Abruf aber übergangen. "
@@ -503,7 +503,8 @@ def kapitel() -> list[Kapitel]:
             _menue("Post → Jetzt abrufen (F5)",
                    "Holt sofort, was neu ist. Am Ende steht, ob alle "
                    "Postfächer erreichbar waren.")
-            + _menue("Post → Was von selbst laufen soll …",
+            + _menue("Einstellungen → Was von selbst laufen soll "
+                     "(Automatisierung) …",
                      "Richtet den regelmäßigen Abruf ein – alle 15 Minuten "
                      "bis einmal täglich – und die regelmäßige Sicherung "
                      "des Archivs in einen Ordner Ihrer Wahl.")

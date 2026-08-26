@@ -246,14 +246,6 @@ class Hauptfenster(QMainWindow):
         post.addAction(self.abrufen_aktion)
 
         post.addSeparator()
-        postfaecher = QAction("Postfächer verwalten …", self)
-        postfaecher.triggered.connect(self._postfaecher)
-        post.addAction(postfaecher)
-
-        hintergrund = QAction("Was von selbst laufen soll …", self)
-        hintergrund.triggered.connect(self._zeitplan)
-        post.addAction(hintergrund)
-
         post.addSeparator()
         # Mit der Zahl im Text: Ein eingescanntes PDF meldet sich nicht
         # von selbst. Wer nicht weiß, dass ein Teil seines Archivs
@@ -261,6 +253,30 @@ class Hauptfenster(QMainWindow):
         self.ocr_aktion = QAction("Eingescannte PDF lesen …", self)
         self.ocr_aktion.triggered.connect(self._texterkennung)
         post.addAction(self.ocr_aktion)
+
+        # Einstellungen sind kein Handeln: Was hier steht, gilt fort,
+        # bis es jemand ändert. Unter "Post" stand es zwischen "Jetzt
+        # abrufen" und "Eingescannte PDF lesen" - beides Dinge, die man
+        # anstößt und die dann vorbei sind.
+        einstellungen = self.menuBar().addMenu("&Einstellungen")
+
+        postfaecher = QAction("Postfächer verwalten …", self)
+        postfaecher.setStatusTip(
+            "Postfächer hinzufügen, Passwörter ändern, stilllegen oder "
+            "entfernen."
+        )
+        postfaecher.triggered.connect(self._postfaecher)
+        einstellungen.addAction(postfaecher)
+
+        # Der Klammerzusatz ist keine Doppelung: "Was von selbst laufen
+        # soll" sagt, was gemeint ist, und "Automatisierung" ist das
+        # Wort, unter dem viele danach suchen.
+        hintergrund = QAction("Was von selbst laufen soll (Automatisierung) …", self)
+        hintergrund.setStatusTip(
+            "Regelmäßiger Abruf und regelmäßige Sicherung des Archivs."
+        )
+        hintergrund.triggered.connect(self._zeitplan)
+        einstellungen.addAction(hintergrund)
 
         ansicht = self.menuBar().addMenu("&Ansicht")
         zuruecksetzen = QAction("Fenster auf Standard zurücksetzen", self)
