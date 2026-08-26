@@ -1267,7 +1267,7 @@ class FenstergroesseTest(OberflaechenTest):
         # statt uns.
         fenster = self._fenster()
         fenster.resize(640, 480)
-        fenster._groesse_merken()
+        fenster._ansicht_speichern()
 
         zweites = self._fenster()
         self.assertEqual((zweites.width(), zweites.height()), (640, 480))
@@ -1285,7 +1285,7 @@ class FenstergroesseTest(OberflaechenTest):
         merken(pathlib.Path(self.ordner.name) / "Archiv")
 
         stand = gemerktes()
-        self.assertIn("fenster", stand)
+        self.assertEqual(stand["breite"], 1111)
         self.assertIn("archiv", stand)
 
 
@@ -1306,19 +1306,19 @@ class StandardansichtTest(FenstergroesseTest):
         self.assertLess(anteil, 0.4, "der Baum nimmt immer noch zu viel ein")
         self.assertGreater(anteil, 0.1, "der Baum ist zum Streifen geschrumpft")
 
-    def test_zuruecksetzen_wird_auch_gemerkt(self):
-        # Sonst käme beim nächsten Start die verstellte Ansicht zurück,
-        # und das Zurücksetzen wäre nur für diese Sitzung wahr gewesen.
+    def test_zuruecksetzen_ruehrt_die_eigene_ansicht_nicht_an(self):
+        # "Auf Standard" ist eine Ansicht für jetzt, kein Löschbefehl.
+        # Wer sich eine eigene Ansicht abgelegt hat, soll sie über
+        # "Eigene Ansicht laden" zurückbekommen.
         from mailburg.ui.app import gemerktes
 
         fenster = self._fenster()
         fenster.resize(640, 480)
-        fenster._groesse_merken()
-        vorher = gemerktes()["fenster"]
+        fenster._ansicht_speichern()
 
         fenster._standardansicht()
 
-        self.assertNotEqual(gemerktes()["fenster"], vorher)
+        self.assertEqual(gemerktes()["breite"], 640)
 
     def test_aus_dem_vollbild_heraus_zuruecksetzen(self):
         # Ohne showNormal bliebe das Fenster maximiert, und resize liefe
@@ -1658,3 +1658,55 @@ class JournalhilfeTest(unittest.TestCase):
 
         self.assertIn("Journal prüfen", JOURNAL_ERKLAERT)
         self.assertNotIn("Hash-Kette prüfen", JOURNAL_ERKLAERT)
+
+
+class EigeneAnsichtTest(FenstergroesseTest):
+    """Die eingestellte Größe muss den Neustart überleben – auch unter Wayland."""
+
+    def test_groesse_wird_als_zahl_gemerkt(self):
+        # Nicht als saveGeometry(): Unter Wayland darf ein Fenster seine
+        # Position nicht kennen, Qt schreibt dort Platzhalter, und
+        # restoreGeometry() stellt anschließend gehorsam 720x720 an
+        # Position 40,40 her. Die eingestellte Größe war nie gespeichert.
+        from mailburg.ui.app import gemerktes
+
+        fenster = self._fenster()
+        fenster.resize(640, 480)
+        fenster._ansicht_speichern()
+
+        stand = gemerktes()
+        self.assertEqual(stand["breite"], 640)
+        self.assertEqual(stand["hoehe"], 480)
+        self.assertNotIn("fenster", stand)
+
+    def test_gespeicherte_ansicht_kommt_beim_neustart_zurueck(self):
+        fenster = self._fenster()
+        fenster.resize(640, 480)
+        fenster._ansicht_speichern()
+
+        zweites = self._fenster()
+        self.assertEqual((zweites.width(), zweites.height()), (640, 480))
+
+    def test_laden_holt_die_eigene_ansicht_zurueck(self):
+        fenster = self._fenster()
+        fenster.resize(640, 480)
+        fenster._ansicht_speichern()
+        fenster._standardansicht()
+
+        fenster._ansicht_laden()
+
+        self.assertEqual((fenster.width(), fenster.height()), (640, 480))
+
+    def test_ohne_gespeicherte_ansicht_wird_erklaert_statt_nichts_zu_tun(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        fenster = self._fenster()
+        gesagt = []
+        with mock.patch.object(QMessageBox, "information",
+                               lambda *a, **k: gesagt.append(a[2])):
+            fenster._ansicht_laden()
+
+        self.assertEqual(len(gesagt), 1)
+        self.assertIn("Eigene Ansicht speichern", gesagt[0])

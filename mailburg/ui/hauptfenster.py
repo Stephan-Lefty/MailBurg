@@ -232,6 +232,19 @@ class Hauptfenster(QMainWindow):
         zuruecksetzen.triggered.connect(self._standardansicht)
         ansicht.addAction(zuruecksetzen)
 
+        ansicht.addSeparator()
+        merken = QAction("Eigene Ansicht speichern", self)
+        merken.setStatusTip(
+            "Die jetzige Größe und Aufteilung als eigene Ansicht ablegen."
+        )
+        merken.triggered.connect(self._ansicht_speichern)
+        ansicht.addAction(merken)
+
+        laden = QAction("Eigene Ansicht laden", self)
+        laden.setStatusTip("Zur gespeicherten eigenen Ansicht zurückkehren.")
+        laden.triggered.connect(self._ansicht_laden)
+        ansicht.addAction(laden)
+
         suchen_menue = self.menuBar().addMenu("&Suchen")
         ausfuehrlich = QAction("Ausführlich suchen …", self)
         ausfuehrlich.setShortcut("Ctrl+F")
@@ -309,14 +322,13 @@ class Hauptfenster(QMainWindow):
         from mailburg.ui.app import gemerktes
 
         stand = gemerktes()
-        wieder = stand.get("fenster")
+        breite, hoehe = stand.get("breite"), stand.get("hoehe")
 
-        if not (wieder and self.restoreGeometry(
-            QByteArray.fromBase64(wieder.encode())
-        )):
+        if not (isinstance(breite, int) and isinstance(hoehe, int)):
             self._standardansicht(nur_aufbauen=True)
             return
 
+        self.resize(breite, hoehe)
         if stand.get("maximiert"):
             self.showMaximized()
 
@@ -338,7 +350,36 @@ class Hauptfenster(QMainWindow):
                 ),
             )
 
-    def _standardansicht(self, nur_aufbauen: bool = False) -> None:
+    def _ansicht_speichern(self) -> None:
+        """Legt die jetzige Ansicht ausdrücklich ab.
+
+        Gemerkt wird zwar ohnehin beim Schließen. Aber wer das Fenster
+        gerade so hat, wie er es haben will, soll das festhalten können,
+        ohne es dafür zu schließen – und ohne darauf zu vertrauen, dass
+        beim Beenden schon alles gutgeht.
+        """
+        self._groesse_merken()
+        self.stand.setText("Eigene Ansicht gespeichert.")
+
+    def _ansicht_laden(self) -> None:
+        """Kehrt zur gespeicherten eigenen Ansicht zurück."""
+        from mailburg.ui.app import gemerktes
+
+        if "breite" not in gemerktes():
+            QMessageBox.information(
+                self,
+                "Noch keine eigene Ansicht",
+                "Es ist noch keine eigene Ansicht gespeichert. Stellen Sie "
+                "das Fenster so ein, wie Sie es möchten, und wählen Sie "
+                "dann »Eigene Ansicht speichern«.",
+            )
+            return
+        if self.isMaximized():
+            self.showNormal()
+        self._groesse_herstellen()
+        self.stand.setText("Eigene Ansicht geladen.")
+
+    def _standardansicht(self, nur_aufbauen: bool = False) -> None:  # noqa: ARG002
         """Die Ansicht, mit der MailBurg das erste Mal aufgeht.
 
         Ein Archiv lebt von der Übersicht: Postfächer links, Trefferliste
@@ -377,16 +418,19 @@ class Hauptfenster(QMainWindow):
         self._spalten_einrichten()
         self._baumspalten_einrichten()
 
-        if not nur_aufbauen:
-            self._groesse_merken()
-
     def _groesse_merken(self) -> None:
         from mailburg.ui.app import merken_unter
 
-        # Im maximierten Zustand liefert saveGeometry die Größe davor -
-        # genau richtig, sonst käme das Fenster beim Wiederherstellen nie
-        # aus der Vollbildgröße heraus.
-        merken_unter("fenster", bytes(self.saveGeometry().toBase64()).decode())
+        # Breite und Höhe als schlichte Zahlen, nicht als saveGeometry().
+        # Unter Wayland darf ein Fenster seine Position nicht kennen; Qt
+        # schreibt dort Platzhalter, und restoreGeometry() stellt sie
+        # anschließend gehorsam wieder her. Herauskam immer dasselbe
+        # 720x720 an Position 40,40 - die eingestellte Größe war nie
+        # gespeichert. Die Position überlassen wir dem Fenstermanager;
+        # unter Wayland ist das ohnehin dessen Sache.
+        gemessen = self.normalGeometry().size()
+        merken_unter("breite", gemessen.width())
+        merken_unter("hoehe", gemessen.height())
         merken_unter("maximiert", self.isMaximized())
         merken_unter("waagerecht",
                      bytes(self.waagerecht.saveState().toBase64()).decode())
@@ -697,8 +741,12 @@ class Hauptfenster(QMainWindow):
         fenster.exec()
 
     def closeEvent(self, ereignis) -> None:
-        # Zuerst merken, solange das Fenster noch steht.
-        self._groesse_merken()
+        # Hier wird ausdrücklich *nichts* gemerkt. Die eigene Ansicht legt
+        # ab, wer sie ablegen will - über "Ansicht > Eigene Ansicht
+        # speichern". Würde das Schließen automatisch mitschreiben,
+        # überschriebe jedes versehentliche Verziehen kurz vor Feierabend
+        # die Ansicht, die jemand sich eingerichtet hat. Und "auf Standard
+        # zurücksetzen" hätte sie gleich mit gelöscht.
         # Nicht nur den eigenen Abruf: Auch Prüfungen aus Dialogen können
         # noch laufen, und ein Faden ohne Fenster beendet das Programm.
         alle_beenden(3000)
