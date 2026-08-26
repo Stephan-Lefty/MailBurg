@@ -156,6 +156,19 @@ wurde.
 
 ### Offene Fragen
 
+- [ ] **Die Tests scheitern unter Windows – vollständig.** Am 2026-08-25 lief
+  die CI 35-mal, und jedes Mal brach unter Windows praktisch jeder Test mit
+  `ERROR` ab (`test_abruf`, `test_archive`, alles). Gesehen hat es niemand,
+  weil die roten Läufe untergingen. Verdacht: Pfadtrennzeichen oder Dateien,
+  die unter Windows noch offen sind, während der Test sie wegräumen will –
+  `PermissionError` beim Aufräumen von Temp-Verzeichnissen ist der Klassiker.
+
+  Das hängt an einer Entscheidung, die ohnehin ansteht (siehe CLAUDE.md): Das
+  README verspricht Linux, Windows und macOS. Erprobt ist keines der beiden
+  letzteren, ein Testgerät gibt es für keines. Entweder wird Windows repariert
+  und dann auch wirklich benutzt – oder das Versprechen wird auf das
+  zurückgenommen, was belegt ist. Ein drittes gibt es nicht.
+
 - [ ] **Wie verhält sich der Nextcloud-Client bei laufender Archivierung?**
   Die Sperrdatei verhindert, dass zwei Rechner gleichzeitig schreiben. Ungeklärt
   ist, was passiert, wenn der Client eine Datei anfasst, während MailBurg sie

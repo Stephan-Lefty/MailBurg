@@ -143,6 +143,16 @@ Archivkennung – nicht nach dem Pfad, damit er eine umgehängte externe Platte
 Andersherum entstünde bei einem Absturz ein Eintrag ohne Inhalt – und der sieht
 aus wie eine Manipulation.
 
+**Die CI läuft je Push nur auf Linux.** Das Repository ist privat, dort kosten
+Actions-Minuten Geld – und mehr, als die Laufzeiten vermuten lassen: GitHub
+rundet *jeden einzelnen Job* auf volle Minuten auf, rechnet macOS zehnfach und
+Windows zweifach. Die erste Fassung startete dreizehn Jobs je Push und
+verbrauchte an einem einzigen Arbeitstag das Monatskontingent des Kontos
+(1.800 von 2.000 Minuten). Deshalb: ein Job je Push, alle Schritte darin
+gebündelt, die teuren Systeme montags. Wer hier einen Job hinzufügt, sollte
+vorher rechnen – ein zusätzlicher macOS-Job kostet zehn Minuten, auch wenn er
+nach neun Sekunden fertig ist.
+
 **Keine AGPL- oder GPL-Abhängigkeiten.** Das Projekt ist MIT und soll als
 Binärpaket verteilt werden. Also PySide6 statt PyQt6, pypdf statt PyMuPDF.
 
