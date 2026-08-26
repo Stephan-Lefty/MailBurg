@@ -75,6 +75,66 @@ class Mode(StrEnum):
         return self is Mode.GESCHAEFTLICH
 
 
+def _laeuft_noch(held: dict) -> bool | None:
+    """Läuft der Prozess, der die Sperre hält, auf diesem Rechner noch?
+
+    ``None`` heißt: nicht zu beantworten – die Sperre stammt von einem
+    anderen Rechner. Über dessen Prozesse lässt sich von hier aus nichts
+    sagen, und Raten wäre hier schlimmer als Schweigen.
+    """
+    if held.get("host") != socket.gethostname():
+        return None
+    pid = held.get("pid")
+    if not isinstance(pid, int):
+        return None
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # Es gibt ihn, er gehört nur jemand anderem.
+        return True
+    except OSError:
+        return None
+    return True
+
+
+def _sperre_erklaeren(lock: "Path", held: dict) -> str:
+    """Sagt, was wirklich los ist – und rät nur dann zum Löschen.
+
+    Die frühere Fassung riet in jedem Fall dazu, die Sperrdatei von Hand
+    zu entfernen. Das ist gefährlich: Meistens hält sie kein Absturz,
+    sondern der Abruf im Hintergrund, der planmäßig alle halbe Stunde
+    läuft. Wer dann löscht, hat zwei Läufe gleichzeitig am selben Journal
+    – genau das, was die Sperre verhindern soll.
+    """
+    host = held.get("host", "unbekannt")
+    since = held.get("since", "unbekannt")
+    laeuft = _laeuft_noch(held)
+
+    if laeuft is True:
+        return (
+            "Das Archiv ist gerade in Gebrauch – wahrscheinlich läuft der "
+            "Abruf im Hintergrund.\n"
+            "Bitte einen Augenblick warten und es dann noch einmal "
+            "versuchen. Die Sperrdatei darf jetzt nicht gelöscht werden: "
+            "Zwei Abrufe gleichzeitig würden sich ins Gehege kommen."
+        )
+    if laeuft is False:
+        return (
+            f"Das Archiv ist seit {since} als geöffnet vermerkt, aber der "
+            f"Vorgang, der es hielt, läuft nicht mehr – vermutlich ein "
+            f"Überbleibsel eines Absturzes.\n"
+            f"Die Datei {lock} kann gelöscht werden."
+        )
+    return (
+        f"Das Archiv ist seit {since} auf '{host}' geöffnet.\n"
+        f"Läuft dort noch MailBurg, bitte dort erst schließen. Ist der "
+        f"Rechner längst aus, kann die Datei {lock} von Hand gelöscht "
+        f"werden."
+    )
+
+
 class ArchiveLocked(RuntimeError):
     """Ein anderer Rechner oder Vorgang hat das Archiv gerade offen."""
 
@@ -209,13 +269,7 @@ class Archive:
                 held = json.loads(lock.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 held = {}
-            host = held.get("host", "unbekannt")
-            since = held.get("since", "unbekannt")
-            raise ArchiveLocked(
-                f"Das Archiv ist seit {since} auf '{host}' geöffnet.\n"
-                f"Ist das ein Überbleibsel eines Absturzes, kann die Datei "
-                f"{lock} von Hand gelöscht werden."
-            ) from None
+            raise ArchiveLocked(_sperre_erklaeren(lock, held)) from None
         # Gelesen wird oben ausdrücklich als UTF-8, also muss auch so
         # geschrieben werden. Ohne die Angabe nimmt Python die Kodierung des
         # Systems – cp1252 unter Windows, ASCII bei LC_ALL=C. Ein Rechnername

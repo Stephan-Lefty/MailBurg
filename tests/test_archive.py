@@ -381,3 +381,49 @@ class TestSperre(ArchiveTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SperrmeldungTest(unittest.TestCase):
+    """Zum Löschen der Sperrdatei darf nur geraten werden, wenn es stimmt.
+
+    Meistens hält sie kein Absturz, sondern der geplante Abruf im
+    Hintergrund. Wer dann löscht, hat zwei Läufe gleichzeitig am selben
+    Journal - genau das, was die Sperre verhindern soll.
+    """
+
+    def erklaerung(self, **held):
+        import pathlib
+        import socket
+
+        from mailburg.core.archive import _sperre_erklaeren
+
+        held.setdefault("host", socket.gethostname())
+        held.setdefault("since", "2026-08-26T07:37:03+00:00")
+        return _sperre_erklaeren(pathlib.Path("/wo/auch/immer/.mailburg-lock"), held)
+
+    def test_laufender_vorgang_wird_nicht_zum_loeschen_empfohlen(self):
+        import os
+
+        text = self.erklaerung(pid=os.getpid())
+
+        self.assertIn("warten", text.lower())
+        self.assertNotIn("gelöscht werden.", text.replace("nicht gelöscht werden", ""))
+
+    def test_toter_vorgang_darf_weggeraeumt_werden(self):
+        # Eine PID, die es sicher nicht gibt.
+        text = self.erklaerung(pid=4_000_000)
+
+        self.assertIn("Überbleibsel", text)
+        self.assertIn("gelöscht werden", text)
+
+    def test_fremder_rechner_bekommt_keine_ferndiagnose(self):
+        # Über die Prozesse eines anderen Rechners lässt sich von hier aus
+        # nichts sagen. Raten wäre schlimmer als Schweigen.
+        text = self.erklaerung(host="anderer-rechner", pid=1)
+
+        self.assertIn("anderer-rechner", text)
+        self.assertIn("dort erst schließen", text)
+
+    def test_alte_sperrdatei_ohne_pid(self):
+        text = self.erklaerung()
+        self.assertIn("2026-08-26", text)
