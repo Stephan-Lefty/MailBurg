@@ -80,6 +80,14 @@ Betriebssystem.</b> Geht die kaputt, wäre sonst beides weg. Eine externe
 Platte oder ein Ordner, den Ihre Cloud abgleicht, ist die bessere
 Wahl.</p>
 
+<p><b>Mehrere Archive sind möglich und oft sinnvoll.</b> Geschäftliche
+Post gehört in ein Geschäftsarchiv mit Fristen, private in ein
+Privatarchiv ohne. Für Arzt- oder Krankenkassenpost ist das kein
+Schönheitsfehler: Ein Geschäftsarchiv bremst das Löschen jahrelang,
+während die DSGVO für solche Daten das Gegenteil verlangt. Die
+Postfächer selbst sind dabei gemeinsam – Sie entscheiden beim Abruf,
+in welches Archiv geholt wird.</p>
+
 <p>Der Suchindex gehört ausdrücklich nicht in diesen Ordner. Er liegt
 getrennt und lässt sich jederzeit neu aufbauen – aus dem Protokoll,
 das die eigentliche Wahrheit ist (siehe <a href="#journal">Das
@@ -276,8 +284,12 @@ def kapitel() -> list[Kapitel]:
         Kapitel("archiv", "Das Archiv", _ARCHIV.format(menue=(
             _menue("Archiv → Archiv anlegen …",
                    "Legt ein neues, leeres Archiv an.")
-            + _menue("Archiv → Archiv öffnen …",
+            + _menue("Archiv → Archiv wechseln …",
                      "Wechselt zu einem vorhandenen Archiv.")
+            + _menue("Archiv → Zuletzt benutzt",
+                     "Die zuletzt geöffneten Archive mit ihrem Namen. Wer "
+                     "ein geschäftliches und ein privates Archiv führt, "
+                     "wechselt hierüber, ohne den Pfad zu suchen.")
             + _menue("Archiv → Archiv schließen",
                      "Schließt das Archiv, ohne das Programm zu beenden.")
         ))),

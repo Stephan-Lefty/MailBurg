@@ -2023,3 +2023,78 @@ class SpaltenkopfTest(OberflaechenTest):
         self.assertEqual(len(Trefferliste.SPALTENNAMEN),
                          len(Trefferliste.SPALTEN))
         self.assertTrue(all(Trefferliste.SPALTENNAMEN))
+
+
+class ArchivwechselTest(OberflaechenTest):
+    """Zwischen zwei Archiven wechselt man oft – das darf nicht mühsam sein."""
+
+    def setUp(self):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        flicken = mock.patch.object(
+            paths, "config_dir", lambda: pathlib.Path(self.ordner.name)
+        )
+        flicken.start()
+        self.addCleanup(flicken.stop)
+
+    def _archiv(self, name, anzeigename):
+        from mailburg.core.archive import Archive
+
+        ort = pathlib.Path(self.ordner.name) / name
+        Archive.create(ort, name=anzeigename).close()
+        return ort
+
+    def test_zuletzt_benutzte_stehen_im_menue(self):
+        from mailburg.ui.app import merken, zuletzt_benutzte
+
+        geschaeftlich = self._archiv("G", "Geschäftsarchiv")
+        privat = self._archiv("P", "Privatarchiv Familie")
+        merken(geschaeftlich)
+        merken(privat)
+
+        self.assertEqual([p.name for p in zuletzt_benutzte()], ["P", "G"])
+
+    def test_verschwundene_archive_stehen_nicht_im_menue(self):
+        # Eine externe Platte kann abgezogen sein. Ein Menüeintrag, der
+        # ins Leere führt, ist ärgerlicher als ein fehlender.
+        import shutil
+
+        from mailburg.ui.app import merken, zuletzt_benutzte
+
+        weg = self._archiv("W", "Weg")
+        merken(weg)
+        shutil.rmtree(weg)
+
+        self.assertEqual(zuletzt_benutzte(), [])
+
+    def test_dasselbe_archiv_steht_nur_einmal_da(self):
+        from mailburg.ui.app import merken, zuletzt_benutzte
+
+        eins = self._archiv("E", "Eins")
+        merken(eins)
+        merken(eins)
+
+        self.assertEqual(len(zuletzt_benutzte()), 1)
+
+    def test_der_anzeigename_steht_im_menue_nicht_der_pfad(self):
+        from mailburg.ui.hauptfenster import _archivname
+
+        privat = self._archiv("P", "Privatarchiv Familie")
+
+        # "Privatarchiv Familie" sagt mehr als
+        # /mnt/usb-Hersteller_Portable_XXXXXXXX-0:0-part2.
+        self.assertEqual(_archivname(privat), "Privatarchiv Familie")
+
+    def test_ohne_lesbare_kennzeichnung_hilft_der_ordnername(self):
+        from mailburg.ui.hauptfenster import _archivname
+
+        kaputt = pathlib.Path(self.ordner.name) / "Kaputt"
+        kaputt.mkdir()
+        (kaputt / "archive.json").write_text("kein JSON", encoding="utf-8")
+
+        self.assertEqual(_archivname(kaputt), "Kaputt")

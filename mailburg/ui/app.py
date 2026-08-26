@@ -60,8 +60,35 @@ def zuletzt_gemerkt() -> Path | None:
     return ort if (ort / "archive.json").exists() else None
 
 
+#: So viele Archive stehen im Menü. Wenige genug, dass die Liste nicht
+#: selbst zur Suche wird.
+ZULETZT = 6
+
+
 def merken(pfad: Path) -> None:
     merken_unter("archiv", str(pfad))
+
+    # Die zuletzt benutzten obenauf, ohne Doppelungen. Wer zwei Archive
+    # führt - ein geschäftliches und ein privates -, wechselt ständig
+    # zwischen ihnen und soll dafür keinen Dateidialog brauchen.
+    liste = [str(pfad)] + [p for p in zuletzt_benutzte_pfade() if p != str(pfad)]
+    merken_unter("zuletzt", liste[:ZULETZT])
+
+
+def zuletzt_benutzte_pfade() -> list[str]:
+    """Die zuletzt geöffneten Archive, ungeprüft."""
+    liste = gemerktes().get("zuletzt", [])
+    return [p for p in liste if isinstance(p, str)]
+
+
+def zuletzt_benutzte() -> list[Path]:
+    """Die zuletzt geöffneten Archive, die es auch heute noch gibt.
+
+    Eine externe Platte kann abgezogen, ein Ordner umbenannt sein. Ein
+    Menüeintrag, der ins Leere führt, ist ärgerlicher als ein fehlender.
+    """
+    return [Path(p) for p in zuletzt_benutzte_pfade()
+            if (Path(p) / "archive.json").exists()]
 
 
 def main(argv: list[str] | None = None) -> int:

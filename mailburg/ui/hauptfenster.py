@@ -165,10 +165,19 @@ class Hauptfenster(QMainWindow):
         anlegen.triggered.connect(self._neues_archiv)
         archiv.addAction(anlegen)
 
-        oeffnen = QAction("Archiv öffnen …", self)
+        oeffnen = QAction("Archiv wechseln …", self)
         oeffnen.setShortcut(QKeySequence.Open)
+        oeffnen.setStatusTip(
+            "Zu einem anderen Archiv wechseln – etwa vom geschäftlichen "
+            "zum privaten."
+        )
         oeffnen.triggered.connect(self._archiv_waehlen)
         archiv.addAction(oeffnen)
+
+        # Wer zwei Archive führt, wechselt ständig zwischen ihnen. Dafür
+        # jedes Mal den Pfad zusammenzusuchen wäre Arbeit für nichts.
+        self.zuletzt_menue = archiv.addMenu("Zuletzt benutzt")
+        self._zuletzt_fuellen()
 
         archiv.addSeparator()
         # "Journal prüfen", nicht "Hash-Kette prüfen": Die Hash-Kette ist
@@ -280,6 +289,10 @@ class Hauptfenster(QMainWindow):
         self._baum_fuellen()
         self._bestand_zeigen()
         self._suchen()
+        if hasattr(self, "zuletzt_menue"):
+            # Das gerade geöffnete Archiv gehört nicht in die Liste der
+            # anderen - man wechselt nicht dorthin, wo man schon ist.
+            self._zuletzt_fuellen()
 
     def _neues_archiv(self) -> None:
         """Führt den Einrichtungsassistenten für ein weiteres Archiv.
@@ -301,6 +314,35 @@ class Hauptfenster(QMainWindow):
             merken(assistent.archiv_pfad)
             if getattr(assistent, "soll_abrufen", False):
                 self._abrufen()
+
+    def _zuletzt_fuellen(self) -> None:
+        from mailburg.ui.app import zuletzt_benutzte
+
+        self.zuletzt_menue.clear()
+        andere = [
+            p for p in zuletzt_benutzte()
+            if self.archiv is None or p.resolve() != self.archiv.root.resolve()
+        ]
+        if not andere:
+            leer = self.zuletzt_menue.addAction("(noch keine weiteren)")
+            leer.setEnabled(False)
+            return
+        for pfad in andere:
+            # Der Name des Archivs, nicht der Pfad: "Privatarchiv Familie"
+            # sagt mehr als /mnt/usb-Hersteller_Portable_XXXXXXXX-0:0-part2.
+            eintrag = self.zuletzt_menue.addAction(_archivname(pfad))
+            eintrag.setStatusTip(str(pfad))
+            eintrag.triggered.connect(
+                lambda _geklickt=False, p=pfad: self._wechseln(p)
+            )
+
+    def _wechseln(self, pfad) -> None:
+        from mailburg.ui.app import merken
+
+        self._oeffnen(pfad)
+        if self.archiv is not None:
+            merken(pfad)
+            self._zuletzt_fuellen()
 
     def _archiv_waehlen(self) -> None:
         from PySide6.QtWidgets import QFileDialog
@@ -875,6 +917,17 @@ class Postfachbaum(QTreeWidget):
             for i in range(1, self.topLevelItemCount())
             if self.topLevelItem(i).data(0, Qt.UserRole + 1)
         ]
+
+
+def _archivname(pfad) -> str:
+    """Der Anzeigename eines Archivs, ohne es dafür zu öffnen."""
+    import json
+
+    try:
+        meta = json.loads((pfad / "archive.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return pfad.name
+    return meta.get("name") or pfad.name
 
 
 def _abrufzeit(iso: str) -> str:
