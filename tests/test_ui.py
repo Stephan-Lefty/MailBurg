@@ -2778,3 +2778,13 @@ class WeiterlesenNachRestTest(TexterkennungDialogTest):
         dialog._fertig(Stat())
 
         self.assertFalse(dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
+
+
+class EinzahlTest(TexterkennungDialogTest):
+    """»1 Minuten« liest sich, als hätte niemand hingesehen."""
+
+    def test_eine_minute_im_singular(self):
+        self.assertIn("1 Minute<", self._dialog(4).erklaerung.text())
+
+    def test_mehrere_im_plural(self):
+        self.assertIn("Minuten", self._dialog(57).erklaerung.text())

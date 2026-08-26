@@ -138,6 +138,7 @@ class Texterkennungsdialog(QDialog):
         # Fünf Sekunden je Seite, gemessen; ein PDF hat im Schnitt zwei bis
         # drei. Lieber großzügig schätzen als den Anwender überraschen.
         minuten = max(1, round(offen * 12 / 60))
+        dauer = f"{minuten} Minute" if minuten == 1 else f"{minuten} Minuten"
         return (
             f"<p><b>{offen} eingescannte PDF warten.</b> Das sind Dokumente "
             f"ohne Textebene – ein Foto einer Seite. Für die Suche sind sie "
@@ -146,7 +147,7 @@ class Texterkennungsdialog(QDialog):
             f"<p>Die Texterkennung liest sie und legt das Ergebnis in den "
             f"Suchindex. <b>Das Archiv selbst bleibt unangetastet</b> – die "
             f"PDF werden nicht verändert.</p>"
-            f"<p>Das dauert grob <b>{minuten} Minuten</b>. Sie können "
+            f"<p>Das dauert grob <b>{dauer}</b>. Sie können "
             f"jederzeit abbrechen; was gelesen ist, bleibt gelesen.</p>"
         )
 
