@@ -1142,6 +1142,8 @@ class KeineFremdenAdressenTest(OberflaechenTest):
                  fund("chef@firma.example", False),
              ]):
             seite = KontenSeite()
+            # Geladen wird erst, wenn die Seite an die Reihe kommt.
+            seite.initializePage()
 
         gesamt = seite.herkunft.text()
         self.assertNotIn("geheim@firma.example", gesamt)
