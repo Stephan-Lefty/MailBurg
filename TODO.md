@@ -8,6 +8,14 @@ wurde.
 
 ## Offen
 
+### Nicht anfassen
+
+- **Die Zeitpläne stehen so, wie Stephan sie will** (2026-08-26): Abruf
+  ins Geschäftsarchiv alle 30 Minuten, ins Privatarchiv einmal täglich,
+  Sicherung beider monatlich mit zwei Ständen. Das ist keine
+  Fehleinstellung, sondern Absicht – geschäftlich wartet jemand auf
+  Antwort, privat eilt nichts.
+
 ### Plan für den 2026-08-27
 
 In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
