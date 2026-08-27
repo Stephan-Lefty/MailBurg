@@ -230,6 +230,21 @@ class Texterkennungsdialog(QDialog):
             # starten kann, kommt nie ans Ende.
             self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(True)
             self.knoepfe.button(QDialogButtonBox.Ok).setText("Weiterlesen")
+        duenn = getattr(stat, "duenn", None)
+        if duenn:
+            # Erledigt, aber vermutlich vergeblich. Ohne diesen Hinweis
+            # erführe es niemand: Es steht ja etwas im Index.
+            namen = "<br>".join(
+                f"&nbsp;&nbsp;{n[:44]} – {s} S., {z} Zeichen"
+                for n, s, z in duenn[:5]
+            )
+            weitere = (f"<br>&nbsp;&nbsp;… und {len(duenn) - 5} weitere"
+                       if len(duenn) > 5 else "")
+            zeilen.append(
+                f"<br><b>{len(duenn)} Dokumente mit auffällig wenig Text.</b> "
+                f"Vermutlich schlechte Vorlagen – ihr Inhalt ist kaum "
+                f"auffindbar:<br>{namen}{weitere}"
+            )
         if getattr(stat, "fehler", None):
             # Nicht verschweigen: Ein PDF, das sich nicht lesen ließ,
             # bleibt unauffindbar, und das soll man wissen.

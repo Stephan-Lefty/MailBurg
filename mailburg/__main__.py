@@ -868,6 +868,18 @@ def cmd_texterkennung(args: argparse.Namespace) -> int:
         print(" " * 60, end="\r")
         print(f"Fertig: {stat}")
         print(f"Dauer: {stat.sekunden:.0f} s")
+
+        if stat.duenn:
+            # Diese Dokumente gelten als erledigt und werden nie wieder
+            # angefasst. Wer sie nicht kennt, sucht später vergeblich
+            # nach ihrem Inhalt und hält das Archiv für unvollständig -
+            # dabei ist nur die Vorlage schlecht gewesen.
+            print(f"\n{len(stat.duenn)} Dokumente haben auffällig wenig "
+                  f"Text ergeben. Vermutlich schlechte Vorlagen:")
+            for name, seiten, zeichen in stat.duenn[:10]:
+                print(f"   {name[:52]:54s} {seiten} S., {zeichen} Zeichen")
+            if len(stat.duenn) > 10:
+                print(f"   … und {len(stat.duenn) - 10} weitere")
         if stat.offen_danach:
             print(
                 f"\nNoch {stat.offen_danach} Dokumente offen. Sie kommen bei den "

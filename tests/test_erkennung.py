@@ -414,3 +414,69 @@ def _ergebnis(text: str, seiten: int):
     fertig.text = text
     fertig.seiten = seiten
     return fertig
+
+
+class TestDuenneErgebnisse(ErkennungsTestFall):
+    """Erledigt heißt nicht gelesen.
+
+    Eine eingescannte Briefseite ergibt tausend bis dreitausend Zeichen.
+    Kommen zwölf heraus, hat tesseract vielleicht den Briefkopf
+    erwischt, während der Rest Rauschen blieb. Das Dokument gilt danach
+    als erledigt und wird nie wieder angefasst – und niemand erfährt es,
+    weil ja etwas im Index steht.
+
+    Genau die stille Lücke, die dieses Programm sonst überall vermeidet.
+    """
+
+    def test_wenig_text_wird_gemeldet(self) -> None:
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Schlechter Scan", "S.pdf",
+                            b"%PDF-Schlecht" + b"s" * GROSS, tag=1),
+        ])
+
+        stat = self._lauf(archiv, text="Rausch", seiten=3)
+
+        self.assertEqual(len(stat.duenn), 1)
+        name, seiten, zeichen = stat.duenn[0]
+        self.assertEqual(name, "S.pdf")
+        self.assertEqual(seiten, 3)
+        self.assertEqual(zeichen, 6)
+        # Erledigt bleibt es trotzdem - gemeldet, nicht wiederholt.
+        self.assertEqual(stat.gelesen, 1)
+        self.assertEqual(stat.offen_danach, 0)
+
+    def test_ein_ordentliches_ergebnis_wird_nicht_gemeldet(self) -> None:
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Guter Scan", "G.pdf",
+                            b"%PDF-Gut" + b"g" * GROSS, tag=1),
+        ])
+
+        stat = self._lauf(archiv, text="X" * 3000, seiten=2)
+
+        self.assertEqual(stat.duenn, [])
+
+    def test_abschriften_werden_nicht_doppelt_gemeldet(self) -> None:
+        """Sonst stünde dasselbe Dokument fünfmal in der Liste."""
+        gleich = b"%PDF-Dublette" + b"d" * GROSS
+        archiv = self._archiv("A", [
+            mail_mit_anhang(f"Scan {i}", "S.pdf", gleich, tag=i)
+            for i in range(1, 4)
+        ])
+
+        stat = self._lauf(archiv, text="kurz", seiten=2, gleichzeitig=3)
+
+        self.assertEqual(len(stat.duenn), 1)
+        self.assertEqual(stat.doppelt, 2)
+
+    def test_die_zeichenzahl_bleibt_im_vermerk(self) -> None:
+        """Damit sich später fragen lässt, welche Dokumente dürftig sind."""
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Scan", "S.pdf", b"%PDF-Z" + b"z" * GROSS, tag=1),
+        ])
+
+        self._lauf(archiv, text="Zwölf Zeichen", seiten=1)
+
+        zeichen = archiv.index.db.execute(
+            "SELECT zeichen FROM ocr_vermerk"
+        ).fetchone()[0]
+        self.assertEqual(zeichen, len("Zwölf Zeichen"))

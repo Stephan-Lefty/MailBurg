@@ -68,6 +68,18 @@ TEXTSCHWELLE = 200
 #: Und ab dieser Dateigröße lohnt die Frage überhaupt.
 GROESSENSCHWELLE = 100_000
 
+#: Ab wie wenig Text je Seite ein Ergebnis fragwürdig ist.
+#:
+#: Eine eingescannte Briefseite ergibt tausend bis dreitausend Zeichen.
+#: Fünfzig sind eine Zeile – das kann ein Briefkopf sein, den tesseract
+#: gerade noch erwischt hat, während der Rest der Seite Rauschen blieb.
+#:
+#: Solche Dokumente gelten als erledigt und werden nie wieder angefasst.
+#: Genau das ist die stille Lücke, die dieses Programm sonst überall
+#: vermeidet: Es steht etwas im Index, also sucht niemand weiter – und
+#: der eigentliche Inhalt bleibt unauffindbar.
+DUENN_JE_SEITE = 50
+
 _SCHEMA = """
 -- Je Anhang, nicht je Mail. Eine Nachricht mit einem lesbaren Angebot und
 -- einem eingescannten Lieferschein gälte sonst als erledigt, und der
@@ -82,6 +94,7 @@ CREATE TABLE IF NOT EXISTS ocr_vermerk (
     zustand   TEXT NOT NULL,
     grund     TEXT,
     seiten    INTEGER NOT NULL DEFAULT 0,
+    zeichen   INTEGER NOT NULL DEFAULT -1,
     zeitpunkt TEXT,
     PRIMARY KEY (hash, dateiname)
 );
@@ -95,6 +108,13 @@ class Statistik:
     gelesen: int = 0
     gescheitert: int = 0
     seiten: int = 0
+    duenn: list[tuple[str, int, int]] = field(default_factory=list)
+    """Dokumente mit auffällig wenig Text: Name, Seiten, Zeichen.
+
+    Sie gelten als erledigt – aber wer sie kennt, kann nachsehen, ob die
+    Vorlage taugt. Ohne diese Liste erführe es niemand.
+    """
+
     doppelt: int = 0
     """Wie viele davon Abschriften eines schon gelesenen Anhangs waren.
 
@@ -115,6 +135,8 @@ class Statistik:
         teile = [f"{self.gelesen} Dokumente lesbar gemacht ({self.seiten} Seiten)"]
         if self.doppelt:
             teile.append(f"{self.doppelt} davon bereits bekannt")
+        if self.duenn:
+            teile.append(f"{len(self.duenn)} mit auffällig wenig Text")
         if self.gescheitert:
             teile.append(f"{self.gescheitert} ohne Ergebnis")
         if self.offen_danach:
@@ -200,6 +222,18 @@ class Warteschlange:
             self.index.db.execute("DROP TABLE ocr_vermerk")
         self.index.db.executescript(_SCHEMA)
 
+        # Die Zeichenzahl kam später dazu und lässt sich nachrüsten. ``-1``
+        # heißt »nicht erhoben«, nicht »nichts erkannt« – sonst gälten
+        # alle älteren Vermerke rückwirkend als dürftig.
+        vorhanden = {
+            zeile[1]
+            for zeile in self.index.db.execute("PRAGMA table_info(ocr_vermerk)")
+        }
+        if "zeichen" not in vorhanden:
+            self.index.db.execute(
+                "ALTER TABLE ocr_vermerk ADD COLUMN zeichen INTEGER NOT NULL DEFAULT -1"
+            )
+
     #: Der gemeinsame Teil beider Abfragen: ein umfangreiges PDF, aus dem
     #: kein Text kam, ohne bereits vorliegenden Vermerk.
     _BEDINGUNG = """
@@ -251,12 +285,12 @@ class Warteschlange:
         ).fetchone()[0]
 
     def vermerken(self, digest: str, dateiname: str, zustand: str, *,
-                  grund: str = "", seiten: int = 0) -> None:
+                  grund: str = "", seiten: int = 0, zeichen: int = -1) -> None:
         self.index.db.execute(
             """INSERT OR REPLACE INTO ocr_vermerk
-                   (hash, dateiname, zustand, grund, seiten, zeitpunkt)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (digest, dateiname, zustand, grund, seiten,
+                   (hash, dateiname, zustand, grund, seiten, zeichen, zeitpunkt)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (digest, dateiname, zustand, grund, seiten, zeichen,
              datetime.now(timezone.utc).isoformat(timespec="seconds")),
         )
 
@@ -434,9 +468,15 @@ def durchlauf(
             _in_index_schreiben(
                 archiv.index, digest, f"{dateiname}\n{ergebnis.text}"
             )
+            zeichen = len(ergebnis.text)
             warteschlange.vermerken(
-                digest, dateiname, "erledigt", seiten=ergebnis.seiten
+                digest, dateiname, "erledigt",
+                seiten=ergebnis.seiten, zeichen=zeichen,
             )
+            if not wiederholung and ergebnis.seiten:
+                je_seite_gelesen = zeichen / ergebnis.seiten
+                if je_seite_gelesen < DUENN_JE_SEITE:
+                    stat.duenn.append((dateiname, ergebnis.seiten, zeichen))
             stat.gelesen += 1
             if wiederholung:
                 stat.doppelt += 1
