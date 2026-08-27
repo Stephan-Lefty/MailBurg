@@ -409,13 +409,6 @@ class TestGescheiterteFreigeben(ErkennungsTestFall):
         self.assertEqual(erkennung.Warteschlange(archiv.index).anzahl(), 1)
 
 
-def _ergebnis(text: str, seiten: int):
-    fertig = ocr.Ergebnis()
-    fertig.text = text
-    fertig.seiten = seiten
-    return fertig
-
-
 class TestDuenneErgebnisse(ErkennungsTestFall):
     """Erledigt heißt nicht gelesen.
 
@@ -480,3 +473,71 @@ class TestDuenneErgebnisse(ErkennungsTestFall):
             "SELECT zeichen FROM ocr_vermerk"
         ).fetchone()[0]
         self.assertEqual(zeichen, len("Zwölf Zeichen"))
+
+    def test_die_zeichenzahl_laesst_sich_nachtragen(self) -> None:
+        """Ohne die Erkennung zu wiederholen.
+
+        Der Text liegt im Nebenspeicher; nachzuschlagen ist er dort in
+        Millisekunden. Ein zweiter Durchlauf durch tesseract wären
+        Stunden – für eine Zahl, die schon feststeht.
+        """
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Scan", "S.pdf", b"%PDF-N" + b"n" * GROSS, tag=1),
+        ])
+        self._lauf(archiv, text="knapp", seiten=4)
+        # Zurück auf »nicht erhoben« – so sehen ältere Vermerke aus.
+        archiv.index.db.execute("UPDATE ocr_vermerk SET zeichen = -1")
+        archiv.index.commit()
+
+        ergaenzt, duenn = erkennung.zeichen_nachtragen(archiv)
+
+        self.assertEqual(ergaenzt, 1)
+        self.assertEqual(duenn, 1)
+        self.assertEqual(
+            archiv.index.db.execute(
+                "SELECT zeichen FROM ocr_vermerk").fetchone()[0],
+            len("knapp"),
+        )
+
+    def test_duenne_ueber_den_ganzen_bestand(self) -> None:
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Gut", "G.pdf", b"%PDF-G" + b"g" * GROSS, tag=1),
+            mail_mit_anhang("Schlecht", "S.pdf", b"%PDF-S" + b"s" * GROSS, tag=2),
+        ])
+        with mock.patch.object(ocr, "bereit", return_value=(True, "")), \
+                mock.patch.object(
+                    ocr, "text_aus_pdf",
+                    side_effect=lambda n, **_: _ergebnis(
+                        "X" * 3000 if b"%PDF-G" in n else "kurz", 2)):
+            erkennung.durchlauf(archiv, budget_sekunden=0, budget_dokumente=0)
+
+        liste = erkennung.duenne(archiv)
+
+        self.assertEqual([n for n, _, _ in liste], ["S.pdf"])
+
+
+def _ergebnis(text: str, seiten: int):
+    fertig = ocr.Ergebnis()
+    fertig.text = text
+    fertig.seiten = seiten
+    return fertig
+
+
+class TestSchemaWirdHergerichtet(ErkennungsTestFall):
+    """Wer die Vermerktabelle abfragt, muss sie auch anlegen lassen.
+
+    Nur an echten Archiven aufgefallen: Im Test lief immer erst ein
+    Durchlauf, der die Warteschlange erzeugt – und mit ihr die Tabelle.
+    Ein Archiv, in dem die Texterkennung noch nie lief, hat sie nicht,
+    und die Abfrage scheiterte an einer Spalte, die es nicht gab.
+    """
+
+    def test_auswertung_auf_einem_unberuehrten_archiv(self) -> None:
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Ohne", "O.pdf", b"%PDF-O" + b"o" * GROSS, tag=1),
+        ])
+
+        # Kein Durchlauf davor - genau so sieht ein frisches Archiv aus.
+        self.assertEqual(erkennung.zeichen_nachtragen(archiv), (0, 0))
+        self.assertEqual(erkennung.duenne(archiv), [])
+        self.assertEqual(erkennung.gescheiterte_zuruecksetzen(archiv), 0)

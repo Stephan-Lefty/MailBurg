@@ -604,6 +604,72 @@ def durchlauf(
     return stat
 
 
+def zeichen_nachtragen(archiv) -> tuple[int, int]:
+    """Trägt die Textmenge für schon gelesene Dokumente nach.
+
+    Die Zeichenzahl kam später dazu; ältere Vermerke tragen ``-1`` für
+    »nicht erhoben«. Erneut erkennen muss man dafür nichts – der Text
+    liegt im Nebenspeicher, und dort steht er unter einem Schlüssel, der
+    sich aus Mail und Dateiname ergibt. Es ist also reines Nachschlagen.
+
+    Zurück kommt, wie viele Vermerke ergänzt wurden und wie viele
+    davon unter der Schwelle liegen.
+    """
+    # Die Vermerktabelle kann noch fehlen oder aus einer älteren Fassung
+    # stammen. Sie herzurichten ist Sache der Warteschlange - wer sie
+    # nicht anfasst, fragt eine Spalte ab, die es noch nicht gibt.
+    Warteschlange(archiv.index)
+
+    speicher = Textspeicher()
+    offen = archiv.index.db.execute(
+        "SELECT hash, dateiname, seiten FROM ocr_vermerk "
+        " WHERE zeichen < 0 AND zustand = 'erledigt'"
+    ).fetchall()
+
+    ergaenzt = 0
+    duenn = 0
+    for digest, dateiname, seiten in offen:
+        text = speicher.lesen(f"{digest}-{_kennung(dateiname)}")
+        if not text:
+            # Kein Text im Vorrat: Das Dokument kam aus der
+            # Dublettenprüfung und hat nie einen eigenen Eintrag bekommen.
+            # Ohne Grundlage wird nichts geschätzt.
+            continue
+        archiv.index.db.execute(
+            "UPDATE ocr_vermerk SET zeichen = ? WHERE hash = ? AND dateiname = ?",
+            (len(text), digest, dateiname),
+        )
+        ergaenzt += 1
+        if seiten and len(text) / seiten < DUENN_JE_SEITE:
+            duenn += 1
+    archiv.index.commit()
+    return ergaenzt, duenn
+
+
+def duenne(archiv) -> list[tuple[str, int, int]]:
+    """Alle bisher erkannten Dokumente mit auffällig wenig Text.
+
+    Anders als die Statistik eines einzelnen Laufs blickt das über den
+    ganzen Bestand – gefragt wird nicht »was kam heute heraus«, sondern
+    »wo steht seit Jahren kaum etwas«.
+    """
+    # Die Vermerktabelle kann noch fehlen oder aus einer älteren Fassung
+    # stammen. Sie herzurichten ist Sache der Warteschlange - wer sie
+    # nicht anfasst, fragt eine Spalte ab, die es noch nicht gibt.
+    Warteschlange(archiv.index)
+
+    return [
+        (r[0], r[1], r[2])
+        for r in archiv.index.db.execute(
+            "SELECT dateiname, seiten, zeichen FROM ocr_vermerk "
+            "  WHERE zustand = 'erledigt' AND zeichen >= 0 AND seiten > 0 "
+            "    AND CAST(zeichen AS REAL) / seiten < ? "
+            "  ORDER BY CAST(zeichen AS REAL) / seiten",
+            (DUENN_JE_SEITE,),
+        )
+    ]
+
+
 def gescheiterte_zuruecksetzen(archiv) -> int:
     """Gibt die aufgegebenen Dokumente für einen neuen Versuch frei.
 
@@ -619,6 +685,11 @@ def gescheiterte_zuruecksetzen(archiv) -> int:
 
     Zurück kommt, wie viele Dokumente wieder anstehen.
     """
+    # Die Vermerktabelle kann noch fehlen oder aus einer älteren Fassung
+    # stammen. Sie herzurichten ist Sache der Warteschlange - wer sie
+    # nicht anfasst, fragt eine Spalte ab, die es noch nicht gibt.
+    Warteschlange(archiv.index)
+
     zeiger = archiv.index.db.execute(
         "DELETE FROM ocr_vermerk WHERE zustand = 'gescheitert'"
     )

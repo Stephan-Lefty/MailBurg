@@ -814,6 +814,18 @@ def cmd_vorrat(args: argparse.Namespace) -> int:
 
         print(" " * 60, end="\r")
         print(f"Fertig: {abgelegt} Dokumente im Vorrat.")
+
+        # Bei der Gelegenheit die Textmenge nachtragen: Sie steht in
+        # denselben Dateien, und ohne sie lässt sich nicht sagen, welche
+        # Dokumente nur scheinbar gelesen wurden.
+        ergaenzt, duenn = erkennung.zeichen_nachtragen(archive)
+        if ergaenzt:
+            print(f"Textmenge für {ergaenzt} Dokumente nachgetragen.")
+        if duenn:
+            print(f"\nDavon {duenn} mit auffällig wenig Text – "
+                  f"vermutlich schlechte Vorlagen:")
+            for name, seiten, zeichen in erkennung.duenne(archive)[:10]:
+                print(f"   {name[:52]:54s} {seiten} S., {zeichen} Zeichen")
         if ohne:
             # Kein Fehler, aber erwähnenswert: Meist sind es Vermerke zu
             # Mails, die inzwischen gelöscht wurden.
