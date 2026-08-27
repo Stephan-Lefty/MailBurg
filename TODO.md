@@ -44,6 +44,50 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
 
 ### Muss vor dem ersten echten Einsatz passieren
 
+- [ ] **Eine `.exe` für Windows.** Der wichtigste offene Punkt nach dem
+  Windows-Test vom 2026-08-27 – und Stephans eigenes Urteil: »Der
+  Windows-User braucht eine fertige Exe-Datei, und dann läuft alles
+  automatisch.«
+
+  Was er an dem Abend durchmachen musste, macht niemand mit: Python über
+  winget nachinstallieren, PowerShell als Administrator öffnen, Pfade
+  abtippen, Zusätze in eckigen Klammern kennen (`[oberflaeche,imap]`).
+  Unter Linux genügt ein Befehl; unter Windows waren es zwei Stunden.
+
+  **Weg:** PyInstaller packt Python, PySide6 und MailBurg in eine Datei.
+  Gebaut in der CI auf einem Windows-Läufer, angehängt an die
+  Release-Seite. Drei Dinge sind dabei zu bedenken:
+
+  *Die Größe.* PySide6 allein sind 77 MB, gepackt landet man bei 80 bis
+  120 MB. Normal für Qt, überrascht aber.
+
+  *SmartScreen.* Windows warnt bei jeder unsignierten Datei mit »Der
+  Computer wurde durch Windows geschützt«. Abstellen ließe sich das nur
+  mit einem Code-Signing-Zertifikat – 300 bis 400 Euro im Jahr, für ein
+  OV-Zertifikat mit Firmenprüfung. Ohne das muss in der Anleitung
+  stehen, wie man die Warnung wegklickt.
+
+  *Die CI-Minuten.* GitHub rechnet Windows doppelt, und dieses Konto hat
+  schon einmal an einem Tag sein Monatskontingent verbraucht. Der Build
+  darf deshalb **nur bei Releases** laufen, nicht bei jedem Push.
+
+  Offen ist außerdem, ob poppler und tesseract mitgeliefert werden. Das
+  wären nochmal 150 MB; dagegen spricht, dass eingescannte PDF die
+  Ausnahme sind – in Stephans Privatarchiv 323 von 16.360 Mails.
+
+- [ ] **Die Oberfläche soll den Schlüsselbund mitbringen.** Wer
+  `[oberflaeche]` installiert, bekommt ein Programm, das Postfächer
+  abrufen kann, aber keine Passwörter merkt – `keyring` steckt im
+  Zusatz `imap`. Die Meldung dazu ist obendrein irreführend: »Auf diesem
+  Rechner ist kein Schlüsselbund erreichbar« klingt nach einem Problem
+  des Systems, dabei fehlt nur ein Python-Paket. Am 2026-08-27 unter
+  Windows aufgefallen.
+
+- [ ] **Die Doku erwähnt die Zusätze nicht.** Weder `[oberflaeche]` noch
+  `[imap]` stehen in einer Anleitung. Wer nicht `install.sh` benutzt,
+  kommt von selbst nicht darauf.
+
+
 - [ ] **Was als Anhang gilt, soll der Anwender festlegen können.** Nicht
   als Endungsliste zum Tippen, sondern als Gruppen zum Ankreuzen in der
   Einrichtung: Dokumente (PDF, Office, ODF, RTF), Tabellen und Daten (CSV,
@@ -183,22 +227,6 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
 
 ### Offene Fragen
 
-- [ ] **Hält das Windows-Versprechen im README noch?** Die Tests laufen dort
-  seit dem 2026-08-26 grün – der Grund für den Totalausfall war `fsync` auf
-  einem nur lesend geöffneten Deskriptor, siehe CHANGELOG. Damit ist belegt,
-  dass die Tests und die Einrichtung über `install.ps1` durchlaufen.
-
-  Nicht belegt ist der Betrieb: kein Testgerät, kein echtes Postfach, keine
-  Oberfläche unter Windows gestartet. Dieselbe Lücke gilt für macOS. Dass die
-  CI grün ist, beantwortet die Frage nicht – sie war es ja gerade nicht, und
-  trotzdem stand das Versprechen schon im README.
-
-  **Stephan testet Windows selbst** (2026-08-26), sobald die Arbeit an
-  seinem Linux-Rechner abgeschlossen ist. Bis dahin bleibt das README, wie
-  es ist. Wird daraus nichts, muss dort stehen, was erprobt ist – ein
-  Versprechen, das niemand eingelöst hat, ist schlimmer als eine Lücke,
-  zu der man sich bekennt. macOS bleibt davon unberührt und ohne Aussicht
-  auf ein Testgerät.
 
 - [ ] **Wie verhält sich der Nextcloud-Client bei laufender Archivierung?**
   Die Sperrdatei verhindert, dass zwei Rechner gleichzeitig schreiben. Ungeklärt
@@ -246,6 +274,17 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   eingehängt. Bisher ungetestet.
 
 ## Erledigtes
+
+- [x] **Windows im Betrieb erprobt.** Erledigt am 2026-08-27, der erste
+  echte Lauf überhaupt. MailBurg startet, die Oberfläche erscheint, der
+  Assistent läuft durch, die Platzanzeige stimmt, und Passwörter landen
+  in der Anmeldeinformationsverwaltung. Vier Fehler kamen dabei zutage –
+  der Python-Platzhalter in `install.ps1`, eine falsche Fassungsnummer
+  in `pyproject.toml`, ein grauer Weiter-Knopf ohne Begründung und ein
+  Assistent, der die Postfächer keinem Archiv zuordnete. Alle behoben.
+
+  Damit ist das Windows-Versprechen im README belegt statt behauptet.
+  macOS bleibt unerprobt und ohne Aussicht auf ein Testgerät.
 
 - [x] **Dunkles Thema: die Bereiche abgrenzen.** Erledigt am 2026-08-27.
   Nachgemessen ergab sich, dass es kein Farb-, sondern ein
