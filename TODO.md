@@ -20,27 +20,6 @@ wurde.
 
 In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
 
-- [ ] **1. Eingescannte PDF vom iPhone lesbar machen.** Heute gefunden,
-  noch nicht behoben. Sechs Dokumente scheiterten mit »kein Text
-  erkannt«, zwei davon aus derselben Ursache: iOS legt Scans mit
-  riesigen Seitenmaßen an – 4507 × 6681 Punkte statt 595 × 842 bei A4.
-  MailBurg rendert stur mit 300 dpi, das wären 523 Megapixel; daran
-  erstickt tesseract. Belegt: Mit angepasster Auflösung liest es den
-  Wohnungsplan einwandfrei.
-
-  Die Lösung ist klein: `pdftoppm -scale-to 3500` statt `-r 300`. Damit
-  bekommt die längere Kante immer rund 3500 Pixel, was bei A4 genau 300
-  dpi entspricht – der Normalfall ändert sich also nicht.
-
-  Die beiden anderen sind **passwortgeschützte PDF**. Da kann MailBurg
-  nichts machen, soll es aber sagen: »verschlüsselt« statt »kein Text
-  erkannt«. Wer die Meldung liest, muss wissen, ob das Dokument kaputt
-  ist oder nur zu ist.
-
-- [ ] **2. Dunkles Thema auf kleinen Bildschirmen.** Siehe unten. Erst
-  die Systempalette ausmessen, dann Screenshots, dann Stephans Urteil,
-  dann sein Test auf dem Debian-Gerät.
-
 - [ ] **3. Mails aus MailStore Home holen – dafür zuerst eine
   Windows-VM.** MailStore Home läuft nur unter Windows; ohne VM kommt
   niemand an den Bestand heran (Stephan, 2026-08-26). Die VM ist damit
@@ -128,28 +107,6 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   Dann sollte die Doku wenigstens sagen, dass die Trennung an der Quelle
   vorzuziehen ist.
 
-- [ ] **Dunkles Thema auf kleinen Bildschirmen.** Am 2026-08-26 unter
-  GuideOS auf einem 14-Zoll-Gerät geprüft: Schriftgröße (Strg + / −) und
-  Verweisfarben sind nachgebessert, die **Abgrenzung der Bereiche** aber
-  nicht. Hintergrund, Menüleiste, Baum und Trefferliste liegen dort in
-  fast demselben Grau; wo das eine aufhört und das andere anfängt, ist
-  auf Armlänge kaum zu sehen. Zu klären ist, ob sich das über die
-  Systempalette lösen lässt – eigene Farben zu setzen bricht
-  Hochkontrast-Themen, und das wäre für dieselbe Zielgruppe schlimmer.
-
-  **Für den 2026-08-27 verabredet.** Vorgehen: Änderung und Screenshots
-  in hell und dunkel hier erzeugen, Stephan prüft die Bilder, und erst
-  danach installiert er einmal auf dem Debian-Rechner und sieht es am
-  14-Zoll-Gerät an. Ein Zyklus statt fünf – was sich von hier aus nicht
-  beurteilen lässt, ist die Wirkung auf dem echten Panel bei echtem
-  Sitzabstand.
-
-- [ ] **Wie stabil läuft MailBurg im Dauerbetrieb?** Die Frage, an der
-  alles Weitere hängt (Stephan, 2026-08-26). Zwei Archive laufen seit dem
-  2026-08-26 mit Zeitplan; zu beobachten sind Abrufe, die hängenbleiben,
-  Speicherverbrauch über Tage, das Verhalten nach einem Neustart und ob
-  der Suchindex nach Wochen noch stimmt. Erst danach der Test am
-  Firmenarchiv.
 
 ### Danach
 
@@ -289,6 +246,32 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   eingehängt. Bisher ungetestet.
 
 ## Erledigtes
+
+- [x] **Dunkles Thema: die Bereiche abgrenzen.** Erledigt am 2026-08-27.
+  Nachgemessen ergab sich, dass es kein Farb-, sondern ein
+  Kantenproblem war: Zwischen Fensterhintergrund und Inhaltsbereich
+  liegt ein Kontrastverhältnis von 1,15, in *jedem* Thema. Gezeichnet
+  werden jetzt Rahmen in der Systemfarbe ``Mid`` – für alle Fenster,
+  auch für die Gruppen der Ersteinrichtung, die Stephan als das
+  Schlimmste benannt hatte. Platzhaltertexte bekommen im Dunkeln 70
+  Prozent Deckkraft statt Qts 50.
+
+  **Am Gerät noch nicht geprüft**: Stephan sieht es sich später auf dem
+  14-Zoll-Laptop an. Ein einheitlicher Grauton für beide Themen wurde
+  durchgerechnet und verworfen – er käme auf 3,90 in beide Richtungen,
+  während die abgeleitete Lösung im Dunkeln 7,05 erreicht.
+- [x] **Scans mit riesigen Seitenmaßen.** Erledigt am 2026-08-27. Ein
+  Scan aus der iPhone-Kamera-App misst 4507 × 6681 Punkte; bei 300 dpi
+  wären das 523 Megapixel, woran tesseract stumm erstickte. Die
+  Auflösung richtet sich jetzt nach der Seitengröße. Passwortgeschützte
+  PDF melden das, statt sich als »kein Text erkannt« auszugeben.
+- [x] **Dokumente melden, aus denen kaum Text kam.** Erledigt am
+  2026-08-27. Erledigt heißt nicht gelesen – wer das nicht erfährt,
+  hält sein Archiv später für unvollständig.
+- [x] **Beim Öffnen steht die jüngste Nachricht oben.** Erledigt am
+  2026-08-27, für jedes Archiv gleich.
+- [x] **Menüpunkt »Hilfe → Info«.** Erledigt am 2026-08-27: Urheber,
+  Fassung und die beiden Wege für Fehlermeldungen.
 
 - [x] **Doppelte Anhänge nur einmal erkennen.** Erledigt am 2026-08-26.
   Ein Anhang, der an mehreren Mails hängt, ging mehrfach durch tesseract.

@@ -11,6 +11,33 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Scans mit riesigen Seitenmaßen blieben stumm.** Eine Seite aus der
+  iPhone-Kamera-App misst 4507 × 6681 Punkte statt 595 × 842 – bei 300
+  dpi wären das 523 Megapixel, woran tesseract erstickt, ohne einen
+  Fehler zu melden. Die Auflösung richtet sich jetzt nach der
+  Seitengröße; für A4 und A3 ändert sich nichts.
+- **Passwortgeschützte PDF** gaben sich als »kein Text erkannt« aus. Ein
+  Dokument, das nach einem Kennwort verlangt, ist nicht kaputt – es ist
+  zu, und der Unterschied gehört in die Meldung.
+- **Im dunklen Thema verschwammen die Bereiche.** Zwischen
+  Fensterhintergrund und Inhaltsbereich liegt ein Kontrastverhältnis
+  von 1,15 – kein Farbproblem, sondern eine fehlende Kante. Gezeichnet
+  werden jetzt Rahmen in der Systemfarbe, für alle Fenster.
+  Platzhaltertexte werden im Dunkeln aufgehellt.
+
+### Neu
+
+- **Hilfe → Info** nennt Urheber, Fassung und die Wege für
+  Fehlermeldungen.
+- **Dokumente mit auffällig wenig Text** werden nach der Erkennung
+  benannt. Erledigt heißt nicht gelesen.
+- **`texterkennung --nochmal`** versucht aufgegebene Dokumente erneut –
+  nötig, wenn die Erkennung selbst besser geworden ist.
+- **Beim Öffnen eines Archivs** steht die jüngste Nachricht oben.
+
+
+### Behoben
+
 - **Postfächer wurden in jedes Archiv geholt.** Die Kontenliste galt für
   das ganze Programm, das Archiv aber nicht: Jedes »Abrufen« holte alle
   eingerichteten Postfächer in das gerade geöffnete Archiv. Wer
