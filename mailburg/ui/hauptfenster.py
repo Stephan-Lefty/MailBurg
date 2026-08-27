@@ -39,6 +39,10 @@ from mailburg import APP_NAME
 #: der Aufteilung, die sich im Betrieb als brauchbar erwiesen hat: Der
 #: Postfachbaum braucht Platz für verschachtelte Ordnernamen, und die
 #: Vorschau mehr als die Trefferliste – gelesen wird unten, gesucht oben.
+#: Die Spalte mit dem Datum der Nachricht. Nach ihr wird beim Öffnen
+#: sortiert – siehe :meth:`Hauptfenster._neueste_zuerst`.
+SPALTE_DATUM = 1
+
 BAUMANTEIL = 0.20
 TREFFERANTEIL = 0.42
 from mailburg.core.accounts import Kontenliste
@@ -118,7 +122,9 @@ class Hauptfenster(QMainWindow):
         self.tabelle.setAccessibleName("Trefferliste")
         # Klick auf den Spaltenkopf sortiert, nochmal klicken dreht um.
         self.tabelle.setSortingEnabled(True)
-        self.tabelle.horizontalHeader().setSortIndicator(1, Qt.DescendingOrder)
+        self.tabelle.horizontalHeader().setSortIndicator(
+            SPALTE_DATUM, Qt.DescendingOrder
+        )
 
         self._spalten_einrichten()
         self._baumspalten_einrichten()
@@ -447,6 +453,7 @@ class Hauptfenster(QMainWindow):
         if self.archiv is not None:
             merken(pfad)
             self._zuletzt_fuellen()
+            self._neueste_zuerst()
 
     def _archiv_waehlen(self) -> None:
         gewaehlt = self._verzeichnis_waehlen("Archiv wechseln")
@@ -533,10 +540,38 @@ class Hauptfenster(QMainWindow):
             # stehen zusammengedrängt, bis jemand am Fensterrand zieht.
             QTimer.singleShot(
                 0,
-                lambda: self.tabelle.horizontalHeader().restoreState(
-                    QByteArray.fromBase64(kopf.encode())
-                ),
+                lambda: self._kopf_wiederherstellen(kopf),
             )
+
+    def _kopf_wiederherstellen(self, kopf: str) -> None:
+        """Stellt Spaltenbreiten wieder her – aber nicht die Sortierung."""
+        self.tabelle.horizontalHeader().restoreState(
+            QByteArray.fromBase64(kopf.encode())
+        )
+        self._neueste_zuerst()
+
+    def _neueste_zuerst(self) -> None:
+        """Die jüngste Nachricht steht oben. Immer.
+
+        Breiten und Reihenfolge der Spalten sind Geschmackssache und
+        werden gemerkt – die Sortierung nicht. Wer einmal nach Absender
+        sortiert hat, um etwas zu suchen, findet sonst Wochen später
+        immer noch diese Ordnung vor und übersieht, dass neue Post
+        angekommen ist. Beim Öffnen eines Archivs will man wissen, was
+        zuletzt hereinkam; alles andere stellt man sich für den Moment
+        ein, nicht auf Dauer.
+
+        Das gilt für jedes Archiv gleich: Wer zwischen geschäftlich und
+        privat wechselt, soll nicht die Sortierung des anderen erben.
+        """
+        kopf = self.tabelle.horizontalHeader()
+        kopf.setSortIndicator(SPALTE_DATUM, Qt.DescendingOrder)
+        # Und das Modell ausdrücklich dazu. ``setSortIndicator`` löst
+        # eine Sortierung nur aus, wenn sich der Pfeil *ändert* – steht
+        # er schon richtig, während die Liste anders geordnet ist, bliebe
+        # es beim falschen Zustand. Zweimal zu sortieren kostet nichts,
+        # einmal zu wenig kostet das Vertrauen in die Anzeige.
+        self.tabelle.model().sort(SPALTE_DATUM, Qt.DescendingOrder)
 
     def _ansicht_speichern(self) -> None:
         """Legt die jetzige Ansicht ausdrücklich ab.

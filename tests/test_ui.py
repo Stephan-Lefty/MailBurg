@@ -3425,3 +3425,77 @@ class SicherungseinheitTest(OberflaechenTest):
                 ("enable", "--now", erwartet), aufrufe,
                 f"eingeschaltet wurde etwas anderes: {aufrufe}",
             )
+
+
+class NeuesteZuerstTest(OberflaechenTest):
+    """Beim Öffnen eines Archivs steht die jüngste Nachricht oben.
+
+    Breiten und Reihenfolge der Spalten sind Geschmackssache und werden
+    gemerkt – die Sortierung nicht. Wer einmal nach Absender sortiert
+    hat, um etwas zu suchen, fände sonst Wochen später immer noch diese
+    Ordnung vor und übersähe, dass neue Post angekommen ist.
+
+    Und es gilt für jedes Archiv gleich: Wer zwischen geschäftlich und
+    privat wechselt, soll nicht die Sortierung des anderen erben.
+    """
+
+    def setUp(self):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        flicken = mock.patch.object(
+            paths, "config_dir", lambda: pathlib.Path(self.ordner.name)
+        )
+        flicken.start()
+        self.addCleanup(flicken.stop)
+
+    def _fenster(self):
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        ort = pathlib.Path(self.ordner.name) / "Archiv"
+        if not (ort / "archive.json").exists():
+            Archive.create(ort).close()
+        fenster = Hauptfenster(ort)
+        self.addCleanup(fenster.close)
+        return fenster
+
+    def test_die_voreinstellung_ist_datum_absteigend(self):
+        from PySide6.QtCore import Qt
+
+        from mailburg.ui.hauptfenster import SPALTE_DATUM
+
+        kopf = self._fenster().tabelle.horizontalHeader()
+
+        self.assertEqual(kopf.sortIndicatorSection(), SPALTE_DATUM)
+        self.assertEqual(kopf.sortIndicatorOrder(), Qt.DescendingOrder)
+
+    def test_eine_andere_sortierung_wird_zurueckgesetzt(self):
+        """Genau der Fall, der im Alltag stört."""
+        from PySide6.QtCore import Qt
+
+        from mailburg.ui.hauptfenster import SPALTE_DATUM
+
+        fenster = self._fenster()
+        kopf = fenster.tabelle.horizontalHeader()
+        kopf.setSortIndicator(2, Qt.AscendingOrder)  # nach Absender
+
+        fenster._neueste_zuerst()
+
+        self.assertEqual(kopf.sortIndicatorSection(), SPALTE_DATUM)
+        self.assertEqual(kopf.sortIndicatorOrder(), Qt.DescendingOrder)
+
+    def test_das_modell_sortiert_wirklich_mit(self):
+        """Der Pfeil allein genügt nicht – die Liste muss sich drehen."""
+        fenster = self._fenster()
+        fenster.tabelle.model().sortierung = "absender"
+        fenster.tabelle.model().absteigend = False
+
+        fenster._neueste_zuerst()
+
+        self.assertEqual(fenster.tabelle.model().sortierung, "datum")
+        self.assertTrue(fenster.tabelle.model().absteigend)
