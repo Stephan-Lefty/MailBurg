@@ -63,9 +63,15 @@ Sie in Ihrem Mailprogramm, und erst, wenn Sie sich vergewissert haben
 (siehe <a href="#aufraeumen">Postfach aufräumen</a>).</p>
 
 <p><b>Wo Sie Hilfe finden.</b> <i>Hilfe → Handbuch</i> (F1) öffnet
-dieses Verzeichnis. <i>Hilfe → Suchsprache</i>, <i>Hilfe → Was das Journal ist</i> und
-<i>Hilfe → Postfach aufräumen</i> führen zum selben Handbuch, nur
-gleich ans passende Kapitel.</p>
+dieses Verzeichnis. <i>Hilfe → Suchsprache</i>, <i>Hilfe → Was das Journal ist</i>,
+<i>Hilfe → Postfach aufräumen</i> und <i>Hilfe → Tipps</i> führen zum
+selben Handbuch, nur gleich ans passende Kapitel.</p>
+
+<p><b>Wenn etwas nicht stimmt.</b> <i>Hilfe → Info</i> nennt die Fassung
+des Programms, wer es gemacht hat und wohin Fehlermeldungen gehen. Ein
+Archivprogramm bekommt man selten zu Gesicht – gerade dann, wenn etwas
+fehlt, will man wissen, an wen man sich wenden kann. Bitte nennen Sie
+in einer Meldung die Fassung mit; sie steht in demselben Fenster.</p>
 
 <p><b>Ihre Daten bleiben bei Ihnen.</b> MailBurg sendet nichts an
 Dritte. Es verbindet sich ausschließlich mit den Mailservern, die Sie

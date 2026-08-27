@@ -377,6 +377,12 @@ class Hauptfenster(QMainWindow):
         tipps.triggered.connect(lambda: self._handbuch("tipps"))
         hilfe.addAction(tipps)
 
+        hilfe.addSeparator()
+        info = QAction("Info …", self)
+        info.setStatusTip("Wer das Programm gemacht hat, und wohin mit Fehlern.")
+        info.triggered.connect(self._info)
+        hilfe.addAction(info)
+
     # ------------------------------------------------------------- Archiv
 
     def _oeffnen(self, pfad: Path) -> None:
@@ -1328,6 +1334,17 @@ class Hauptfenster(QMainWindow):
             # von Hand weiterdrehen.
             self.suchfeld.setText(maske.ausdruck())
             self._suchen()
+
+    def _info(self) -> None:
+        """Wer das Programm gemacht hat – und wohin mit Fehlern und Ideen.
+
+        Eine gebundene Methode, kein Lambda: An dieser Stelle ist es
+        gleichgültig, aber die Regel gilt im ganzen Fenster, und eine
+        Ausnahme lädt zur nächsten ein.
+        """
+        from mailburg.ui import info
+
+        info.oeffnen(self)
 
     def _handbuch(self, kapitel: str = "ueberblick") -> None:
         from mailburg.ui.hilfe import oeffnen

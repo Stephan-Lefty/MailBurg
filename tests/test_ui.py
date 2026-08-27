@@ -3499,3 +3499,76 @@ class NeuesteZuerstTest(OberflaechenTest):
 
         self.assertEqual(fenster.tabelle.model().sortierung, "datum")
         self.assertTrue(fenster.tabelle.model().absteigend)
+
+
+class InfofensterTest(OberflaechenTest):
+    """Wer das Programm gemacht hat – und wohin mit Fehlern und Ideen.
+
+    Ein Archivprogramm bekommt man selten zu Gesicht; es läuft im
+    Hintergrund, und man sucht darin, wenn etwas fehlt. Gerade dann will
+    man wissen, wem man es anvertraut hat.
+    """
+
+    def _text(self):
+        from mailburg.ui.info import text
+
+        return text()
+
+    def test_der_urheber_wird_genannt(self):
+        text = self._text()
+
+        self.assertIn("Stephan Rösner", text)
+        self.assertIn("Claude", text)
+
+    def test_beide_wege_zur_meldung_stehen_drin(self):
+        from mailburg.ui.info import FEHLER_URL, KONTAKT
+
+        text = self._text()
+
+        self.assertIn(FEHLER_URL, text)
+        self.assertIn(KONTAKT, text)
+        # Als anklickbarer Verweis, nicht zum Abtippen. Wer einen Fehler
+        # melden will, gibt nach dem dritten Zeichen auf.
+        self.assertIn(f'href=\'mailto:{KONTAKT}\'', text)
+
+    def test_die_fassung_steht_dabei(self):
+        """Ohne sie ist eine Fehlermeldung halb so viel wert."""
+        from mailburg import __version__
+
+        self.assertIn(__version__, self._text())
+
+    def test_die_verweise_sind_auch_im_dunklen_lesbar(self):
+        """Qts Standardblau hat auf dunklem Grund ein Verhältnis von 2,4."""
+        from mailburg.ui import farben
+
+        self.assertIn(farben.link(), self._text())
+
+    def test_das_fenster_baut_sich_auf(self):
+        from mailburg.ui.info import Infofenster
+
+        fenster = Infofenster()
+        self.addCleanup(fenster.close)
+
+        self.assertIn("Stephan Rösner", fenster.inhalt.text())
+        self.assertTrue(fenster.inhalt.openExternalLinks())
+
+    def test_der_menuepunkt_ist_da(self):
+        """Sonst findet ihn niemand – ein Dialog ohne Weg dorthin."""
+        import tempfile
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        ort = pathlib.Path(ordner.name) / "Archiv"
+        Archive.create(ort).close()
+        fenster = Hauptfenster(ort)
+        self.addCleanup(fenster.close)
+
+        hilfe = next(
+            m for m in fenster.menuBar().actions() if "Hilfe" in m.text()
+        )
+        beschriftungen = [a.text() for a in hilfe.menu().actions()]
+
+        self.assertIn("Info …", beschriftungen)
