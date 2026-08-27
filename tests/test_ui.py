@@ -3601,16 +3601,55 @@ class BereichskantenTest(OberflaechenTest):
 
         self.assertEqual(farben.kante(), erwartet.name())
 
-    def test_das_stylesheet_setzt_nur_rahmen(self):
-        """Alles andere bleibt beim Thema des Systems."""
+    def test_das_stylesheet_faerbt_keine_flaechen_und_keine_schrift(self):
+        """Alles andere bleibt beim Thema des Systems.
+
+        Gesetzt werden ausschließlich Linien: Rahmen um die
+        Inhaltsbereiche und die Farbe waagerechter Trennstriche. Bei
+        einem ``QFrame`` mit ``HLine`` *ist* ``color`` die Linienfarbe –
+        deshalb steht sie hier, und nur dort.
+
+        Hintergründe oder Schriftfarben zu setzen wäre etwas anderes:
+        Damit bräche man Hochkontrast-Themen und träfe ausgerechnet die
+        Anwender, für die solche Themen gemacht sind.
+        """
         from mailburg.ui import farben
 
         regel = farben.bereichsrahmen()
 
         self.assertIn("border", regel)
-        for verboten in ("background", "color:", "font"):
+        for verboten in ("background", "font", "text-decoration"):
             with self.subTest(eigenschaft=verboten):
-                self.assertNotIn(verboten, regel.replace("1px solid", ""))
+                self.assertNotIn(verboten, regel)
+
+        # "color:" nur in der QFrame-Regel, nirgends sonst.
+        fuer_flaechen = [
+            zeile for zeile in regel.splitlines()
+            if "color:" in zeile and "QFrame" not in zeile
+        ]
+        self.assertEqual(fuer_flaechen, [], "hier wird Schrift eingefärbt")
+
+    def test_die_gruppen_der_einrichtung_bekommen_einen_rahmen(self):
+        """Der erste Eindruck wiegt am schwersten.
+
+        In der Ersteinrichtung entscheidet sich, ob jemand dem Programm
+        seine Post anvertraut – und dort standen die Gruppen im dunklen
+        Thema ohne sichtbare Grenze nebeneinander.
+        """
+        from mailburg.ui import farben
+
+        self.assertIn("QGroupBox", farben.bereichsrahmen())
+
+    def test_die_kanten_gelten_fuer_alle_fenster(self):
+        """Nicht nur fürs Hauptfenster – sonst bliebe der Assistent kahl."""
+        import inspect
+
+        from mailburg.ui import app
+
+        quelle = inspect.getsource(app.main)
+
+        self.assertIn("setStyleSheet", quelle)
+        self.assertIn("bereichsrahmen", quelle)
 
     def test_die_teiler_sind_zu_fassen(self):
         """Ein Teiler, den man nicht sieht, wird nicht gezogen."""
@@ -3633,3 +3672,59 @@ class BereichskantenTest(OberflaechenTest):
         for t in teiler:
             with self.subTest(teiler=t.objectName() or "unbenannt"):
                 self.assertGreaterEqual(t.handleWidth(), 4)
+
+
+class PlatzhalterTest(OberflaechenTest):
+    """Platzhaltertexte im dunklen Thema lesbar halten.
+
+    Qt setzt sie auf die Textfarbe mit halber Deckkraft. Auf hellem
+    Grund geht das auf – Schwarz auf Weiß mit 50 % ergibt ein mittleres
+    Grau. Auf dunklem nicht: Hellgrau auf Fast-Schwarz mit 50 % ergibt
+    ein dunkles Grau, das im selben Dunkel verschwindet. Ausgerechnet
+    der Hinweis, der beim ersten Öffnen erklärt, wofür das Feld da ist.
+    """
+
+    def _mit_thema(self, dunkel: bool):
+        from PySide6.QtGui import QColor, QPalette
+        from PySide6.QtWidgets import QApplication
+
+        from mailburg.ui import farben
+
+        app = QApplication.instance()
+        vorher = QPalette(app.palette())
+        self.addCleanup(app.setPalette, vorher)
+
+        palette = QPalette(vorher)
+        palette.setColor(QPalette.Window, QColor("#232629" if dunkel else "#efefef"))
+        palette.setColor(QPalette.Text, QColor("#eff0f1" if dunkel else "#000000"))
+        app.setPalette(palette)
+
+        farben.platzhalter_aufhellen(app)
+        return app.palette().color(QPalette.PlaceholderText)
+
+    def test_im_dunklen_wird_aufgehellt(self):
+        farbe = self._mit_thema(dunkel=True)
+
+        # Deutlich über Qts halber Deckkraft, aber nicht voll: Ein
+        # Platzhalter, der aussieht wie Inhalt, ist auch ein Fehler.
+        self.assertGreater(farbe.alphaF(), 0.6)
+        self.assertLess(farbe.alphaF(), 0.85)
+
+    def test_im_hellen_bleibt_alles_wie_es_war(self):
+        """Dort stimmt Qts Rechnung – ungefragt einzugreifen wäre falsch."""
+        from PySide6.QtGui import QPalette
+        from PySide6.QtWidgets import QApplication
+
+        vorher = QApplication.instance().palette().color(QPalette.PlaceholderText)
+
+        self.assertEqual(self._mit_thema(dunkel=False), vorher)
+
+    def test_die_farbe_stammt_aus_dem_thema(self):
+        """Ein fester Grauton säße bei Hochkontrast falsch."""
+        from PySide6.QtGui import QPalette
+        from PySide6.QtWidgets import QApplication
+
+        farbe = self._mit_thema(dunkel=True)
+        text = QApplication.instance().palette().color(QPalette.Text)
+
+        self.assertEqual(farbe.rgb() & 0xFFFFFF, text.rgb() & 0xFFFFFF)

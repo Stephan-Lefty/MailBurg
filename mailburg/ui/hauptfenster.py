@@ -566,7 +566,8 @@ class Hauptfenster(QMainWindow):
         Auch die Griffe der Teiler bekommen Breite: Ein Teiler, den man
         nicht sieht, wird nicht gezogen.
         """
-        self.setStyleSheet(farben.bereichsrahmen())
+        # Das Stylesheet setzt die Anwendung beim Start für alle
+        # Fenster; hier bleiben nur die Teiler.
         for teiler in self.findChildren(QSplitter):
             teiler.setHandleWidth(4)
 

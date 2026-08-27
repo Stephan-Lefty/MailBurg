@@ -16,7 +16,7 @@ im dunklen Thema also die am schlechtesten lesbare Zeile im Fenster.
 
 from __future__ import annotations
 
-from PySide6.QtGui import QPalette
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
 #: Für helle Themen. Nachgerechnet auf Weiß: 5,1 und 5,6.
@@ -89,10 +89,52 @@ def bereichsrahmen() -> str:
     Bewusst knapp: nur der Rahmen, keine Hintergründe, keine Schrift.
     Alles andere bleibt beim Thema des Systems.
     """
+    strich = kante()
     return (
-        f"QTreeView, QTableView, QTextBrowser, QTextEdit "
-        f"{{ border: 1px solid {kante()}; }}"
+        # Die Inhaltsbereiche: Baum, Trefferliste, Vorschau, Textfelder.
+        f"QTreeView, QTableView, QListView, QTextBrowser, QTextEdit, "
+        f"QPlainTextEdit, QLineEdit, QComboBox, QSpinBox "
+        f"{{ border: 1px solid {strich}; }}\n"
+        # Gruppen in der Einrichtung. Qt zeichnet sie je nach Thema mit
+        # einem Rahmen, der im Dunkeln nicht zu sehen ist - und gerade
+        # dort steht die Frage, wofür das Archiv sein soll.
+        f"QGroupBox {{ border: 1px solid {strich}; border-radius: 3px; "
+        f"margin-top: 0.7em; padding-top: 0.4em; }}\n"
+        f"QGroupBox::title {{ subcontrol-origin: margin; left: 0.6em; "
+        f"padding: 0 0.3em; }}\n"
+        # Der waagerechte Strich, mit dem der Assistent Kopf und Inhalt
+        # trennt.
+        f"QFrame[frameShape=\"4\"], QFrame[frameShape=\"5\"] "
+        f"{{ color: {strich}; }}"
     )
+
+
+def platzhalter_aufhellen(anwendung) -> None:
+    """Macht Platzhaltertexte im dunklen Thema lesbar.
+
+    Ein Platzhalter – »Suchen Sie nach …« im leeren Feld – ist absichtlich
+    gedämpft: Er soll als Hinweis erkennbar sein und nicht als Inhalt.
+    Qt setzt ihn dafür auf die Textfarbe mit halber Deckkraft.
+
+    **Auf hellem Grund geht diese Rechnung auf, auf dunklem nicht.**
+    Schwarz auf Weiß mit 50 % ergibt ein mittleres Grau, das gut zu lesen
+    bleibt. Hellgrau auf Fast-Schwarz mit 50 % ergibt ein dunkles Grau,
+    das im selben Dunkel verschwindet – der Hinweis, der beim ersten
+    Öffnen erklärt, wofür das Feld da ist, ist dann unsichtbar.
+
+    Deshalb hier eine höhere Deckkraft, und zwar nur im dunklen Thema.
+    Abgeleitet bleibt sie aus der Textfarbe des Systems: Ein fester
+    Grauton säße bei einem Hochkontrast-Thema falsch.
+    """
+    if not dunkles_thema():
+        return
+    palette = anwendung.palette()
+    farbe = QColor(palette.color(QPalette.Text))
+    # 70 statt 50 Prozent. Gedämpft genug, um Hinweis zu bleiben, hell
+    # genug, um gelesen zu werden.
+    farbe.setAlphaF(0.70)
+    palette.setColor(QPalette.PlaceholderText, farbe)
+    anwendung.setPalette(palette)
 
 
 def _waehlen(rolle: str) -> str:

@@ -120,6 +120,18 @@ def main(argv: list[str] | None = None) -> int:
     anwendung.setApplicationVersion(__version__)
     anwendung.setDesktopFileName("de.stephanlefty.MailBurg")
 
+    # **Kanten für alle Fenster, nicht nur fürs Hauptfenster.** Zwischen
+    # Fensterhintergrund und Inhaltsbereich liegt ein Kontrastverhältnis
+    # von 1,15 – das liest kein Auge als Grenze. Am schwersten wiegt das
+    # in der Ersteinrichtung: Sie ist der erste Eindruck, und dort
+    # entscheidet sich, ob jemand dem Programm seine Post anvertraut.
+    # Die Farbe kommt aus der Palette des Themas, damit
+    # Hochkontrast-Themen unangetastet bleiben.
+    from mailburg.ui import farben
+
+    anwendung.setStyleSheet(farben.bereichsrahmen())
+    farben.platzhalter_aufhellen(anwendung)
+
     symbol = _symbol()
     if symbol is not None:
         anwendung.setWindowIcon(symbol)
