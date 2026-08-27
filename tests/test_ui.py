@@ -3728,3 +3728,109 @@ class PlatzhalterTest(OberflaechenTest):
         text = QApplication.instance().palette().color(QPalette.Text)
 
         self.assertEqual(farbe.rgb() & 0xFFFFFF, text.rgb() & 0xFFFFFF)
+
+
+class OrdnerhinweisTest(OberflaechenTest):
+    """Warum »Weiter« grau ist, muss dastehen.
+
+    Das Archiv soll bewusst platziert werden, deshalb legt MailBurg
+    keinen Ordner von sich aus an – wer zwanzig Jahre Post irgendwohin
+    legt, soll diesen Ort ausgewählt haben. Nur sah man dem toten Knopf
+    das nicht an: Im Feld stand ein Pfad, der Knopf blieb grau, und der
+    naheliegende Schluss war »das Programm ist kaputt«.
+
+    Am 2026-08-27 unter Windows aufgefallen, wo der vorgeschlagene
+    Ordner regelmäßig noch nicht existiert.
+    """
+
+    def _seite(self):
+        import tempfile
+
+        from mailburg.ui.assistent import ArchivSeite
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        seite = ArchivSeite()
+        self.addCleanup(seite.deleteLater)
+        return seite
+
+    def test_ein_fehlender_ordner_wird_benannt(self):
+        seite = self._seite()
+
+        seite.pfad.setText(str(pathlib.Path(self.ordner.name) / "gibtsnicht"))
+
+        self.assertTrue(seite.ordnerhinweis.isVisibleTo(seite))
+        text = seite.ordnerhinweis.text()
+        self.assertIn("gibt es noch nicht", text)
+        # Und der Weg dorthin, nicht nur die Feststellung.
+        self.assertIn("Auswählen", text)
+
+    def test_bei_einem_vorhandenen_ordner_schweigt_er(self):
+        seite = self._seite()
+
+        seite.pfad.setText(self.ordner.name)
+
+        self.assertFalse(seite.ordnerhinweis.isVisibleTo(seite))
+
+    def test_ein_leeres_feld_wird_nicht_bemaengelt(self):
+        """Wer noch nichts eingetragen hat, macht nichts falsch."""
+        seite = self._seite()
+
+        seite.pfad.setText("")
+
+        self.assertFalse(seite.ordnerhinweis.isVisibleTo(seite))
+
+
+class AssistentZuordnungTest(OberflaechenTest):
+    """Die Einrichtung muss die Postfächer dem Archiv zuordnen.
+
+    Seit dem 2026-08-26 gehört jedes Postfach ausdrücklich in ein
+    Archiv – sonst landet geschäftliche Post im Privatarchiv. Umgestellt
+    wurden damals Abruf, Zeitplan und Hauptfenster; der
+    Einrichtungsassistent nicht.
+
+    Folge: Wer MailBurg neu einrichtete, hatte danach ein Postfach, das
+    nirgends zugeordnet war, und stand vor der Meldung »Diesem Archiv
+    ist kein Postfach zugeordnet«. Die Einrichtung führte in eine
+    Sackgasse. Aufgefallen am 2026-08-27 beim ersten Windows-Durchlauf –
+    wer neu einrichtet, merkt so etwas sofort; wer das Programm gebaut
+    hat, nie.
+    """
+
+    def test_die_kennung_wird_gemerkt(self):
+        """Die Kennung, nicht der Pfad – Platten wandern."""
+        import inspect
+
+        from mailburg.ui import assistent
+
+        quelle = inspect.getsource(assistent)
+
+        self.assertIn("archiv_kennung", quelle)
+        self.assertIn("archiv.uuid", quelle)
+
+    def test_beim_speichern_wird_zugeordnet(self):
+        import inspect
+
+        from mailburg.ui.assistent import KontenSeite
+
+        quelle = inspect.getsource(KontenSeite._speichern)
+
+        self.assertIn("zuordnen", quelle)
+        self.assertIn("archiv_kennung", quelle)
+
+    def test_nur_gewaehlte_postfaecher(self):
+        """Wer ein Postfach abwählt, will es auch nicht zugeordnet haben."""
+        import inspect
+
+        from mailburg.ui.assistent import KontenSeite
+
+        quelle = inspect.getsource(KontenSeite._speichern)
+        # Die Zuordnung steht in einer Schleife, die auf die Auswahl
+        # prüft - sonst bekäme auch ein abgewähltes Postfach sie.
+        nach_kennung = quelle.split("archiv_kennung", 1)[1]
+        self.assertIn("zeile.gewaehlt", nach_kennung)
+        self.assertLess(
+            nach_kennung.index("zeile.gewaehlt"),
+            nach_kennung.index("zuordnen"),
+            "zugeordnet wird, bevor die Auswahl geprüft ist",
+        )

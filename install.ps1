@@ -95,8 +95,34 @@ foreach ($kandidat in @("py", "python", "python3")) {
     # $a[1..($a.Length-1)] kehrt bei einelementigen Feldern die Reihenfolge
     # um, weil 1..0 in PowerShell rückwärts zählt.
     $zusatz = if ($kandidat -eq "py") { @("-3") } else { @() }
-    $fassung = & $kandidat @zusatz -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>$null
+
+    # **Windows liefert ein python.exe, das kein Python ist.** Unter
+    # "App-Ausfuehrungsaliase" liegt ein Platzhalter, der nur in den
+    # Microsoft Store fuehrt. Get-Command findet ihn, also sieht es aus,
+    # als waere Python da; beim Aufruf schreibt er "Python was not found"
+    # auf die Fehlerausgabe. PowerShell macht daraus einen
+    # NativeCommandError samt Zeilennummer aus diesem Skript - und wer
+    # MailBurg zum ersten Mal einrichtet, liest einen Stapelauszug statt
+    # der Auskunft, dass schlicht Python fehlt.
+    #
+    # Am 2026-08-27 auf einem frischen Windows 11 aufgefallen. Unter
+    # Linux gibt es Python immer, unter Windows nie - genau die Sorte
+    # Annahme, die nur im Echtbetrieb auffliegt.
+    $fassung = $null
+    try {
+        $vorher = $ErrorActionPreference
+        $ErrorActionPreference = "SilentlyContinue"
+        $fassung = & $kandidat @zusatz -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>$null
+    } catch {
+        $fassung = $null
+    } finally {
+        $ErrorActionPreference = $vorher
+        $global:LASTEXITCODE = 0
+    }
     if (-not $fassung) { continue }
+    # Der Platzhalter schreibt seinen Hinweis manchmal auf die
+    # Standardausgabe. Was keine Fassungsnummer ist, ist keine.
+    if ($fassung -notmatch '^\s*\d+\.\d+\s*$') { continue }
 
     $teile = $fassung.Trim().Split(".")
     if ([int]$teile[0] -ge 3 -and [int]$teile[1] -ge 11) {

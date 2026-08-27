@@ -333,9 +333,23 @@ class ArchivSeite(QWizardPage):
         zeile.addWidget(self.pfad, 1)
         zeile.addWidget(blaettern)
 
+
         self.platzhinweis = QLabel()
         self.platzhinweis.setWordWrap(True)
         self.platzhinweis.hide()
+
+        # **Warum »Weiter« grau ist.** Das Archiv soll bewusst platziert
+        # werden, deshalb legt MailBurg keinen Ordner von sich aus an -
+        # wer zwanzig Jahre Post irgendwohin legt, soll diesen Ort
+        # ausgewählt haben. Nur sah man dem toten Knopf das nicht an: Im
+        # Feld stand ein Pfad, der Knopf blieb grau, und der naheliegende
+        # Schluss war "das Programm ist kaputt". Am 2026-08-27 unter
+        # Windows aufgefallen, wo der vorgeschlagene Ordner regelmäßig
+        # noch nicht existiert.
+        self.ordnerhinweis = QLabel()
+        self.ordnerhinweis.setWordWrap(True)
+        self.ordnerhinweis.hide()
+        self.pfad.textChanged.connect(self._ordner_pruefen)
 
         hinweis = QLabel(
             "<p>Eine interne Platte, eine externe Platte oder ein Ordner, den "
@@ -425,6 +439,7 @@ class ArchivSeite(QWizardPage):
         innen.addWidget(self.ortswahl)
         innen.addWidget(self.pfad_beschriftung())
         innen.addLayout(zeile)
+        innen.addWidget(self.ordnerhinweis)
         innen.addWidget(self.platzhinweis)
         innen.addWidget(hinweis)
         innen.addSpacing(12)
@@ -467,6 +482,24 @@ class ArchivSeite(QWizardPage):
         beschriftung = QLabel("Vollständiger Pfad:")
         beschriftung.setBuddy(self.pfad)
         return beschriftung
+
+    def _ordner_pruefen(self, text: str) -> None:
+        """Sagt, wenn der gewählte Ordner noch nicht existiert.
+
+        Ohne Vorwurf und ohne Ausrufezeichen: Es ist kein Fehler, einen
+        Ordner noch nicht angelegt zu haben. Es muss nur dastehen.
+        """
+        wo = text.strip()
+        if wo and not Path(wo).expanduser().is_dir():
+            self.ordnerhinweis.setText(
+                "Diesen Ordner gibt es noch nicht. Wählen Sie über "
+                "<i>Auswählen …</i> einen vorhandenen aus oder legen Sie ihn "
+                "dort an – erst dann geht es weiter."
+            )
+            self.ordnerhinweis.setTextFormat(Qt.RichText)
+            self.ordnerhinweis.show()
+        else:
+            self.ordnerhinweis.hide()
 
     def _ort_gewaehlt(self, stelle: int) -> None:
         ort = self.ortswahl.itemData(stelle)
@@ -570,6 +603,10 @@ class ArchivSeite(QWizardPage):
             QMessageBox.critical(self, "Anlegen gescheitert", str(exc))
             return False
 
+        # Die Kennung merken, nicht nur den Pfad: Postfächer werden ihr
+        # zugeordnet, und ein Archiv auf einer externen Platte liegt
+        # morgen woanders.
+        self.wizard().archiv_kennung = archiv.uuid
         archiv.close()
         self.wizard().archiv_pfad = ziel
         return True
@@ -1008,6 +1045,21 @@ class KontenSeite(QWizardPage):
                 continue
             liste.hinzufuegen(zeile.konto)
             accounts.passwort_setzen(zeile.konto, zeile.passwort.text())
+
+        # **Und dem soeben angelegten Archiv zuordnen.** Ohne das steht
+        # der Anwender nach der Einrichtung vor der Meldung "Diesem
+        # Archiv ist kein Postfach zugeordnet" - die Einrichtung führte
+        # dann in eine Sackgasse.
+        #
+        # Am 2026-08-27 unter Windows aufgefallen, einen Tag nachdem die
+        # Zuordnung eingeführt wurde: Abruf, Zeitplan und Hauptfenster
+        # waren umgestellt, der Assistent nicht. Wer neu einrichtet,
+        # merkt so etwas sofort - wer das Programm gebaut hat, nie.
+        kennung = getattr(self.wizard(), "archiv_kennung", "")
+        if kennung:
+            for zeile in self.zeilen:
+                if zeile.gewaehlt:
+                    liste.zuordnen(zeile.konto.name, kennung)
         self.wizard().konten = [z.konto for z in self.zeilen if z.gewaehlt]
 
 
