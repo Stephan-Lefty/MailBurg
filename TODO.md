@@ -16,7 +16,22 @@ wurde.
   Fehleinstellung, sondern Absicht – geschäftlich wartet jemand auf
   Antwort, privat eilt nichts.
 
-### Plan für den 2026-08-27
+### Plan für den 2026-08-28
+
+- [ ] **1. Die `.exe` bauen** (siehe unten, ausführlich). Am Abend des
+  2026-08-27 verabredet: PyInstaller einrichten, in der CI auf einem
+  Windows-Läufer bauen, an die Release-Seite hängen.
+
+- [ ] **2. In der VM ausprobieren.** Die Windows-VM steht bereits
+  eingerichtet unter `/mnt/raid/VMs/windows11.qcow2` – Windows 11 25H2,
+  lokales Konto `test`, kein Python nötig, wenn die `.exe` hält, was sie
+  soll. Zu prüfen: ob SmartScreen sich meldet, ob der Assistent aus der
+  `.exe` heraus startet, wie lange der erste Start dauert.
+
+  **Die VM nie mit `destroy` beenden**, sondern:
+  `virsh -c qemu:///session shutdown windows11`
+
+### Alter Plan für den 2026-08-27
 
 In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
 
