@@ -44,6 +44,32 @@ AUFLOESUNG = 300
 GROSS_AB = 8 * 1024 * 1024
 AUFLOESUNG_GROSS = 200
 
+#: Wie viele Bildpunkte die längere Seitenkante höchstens bekommt.
+#:
+#: **Die Auflösung allein genügt nicht.** 300 dpi sind eine Angabe je
+#: Zoll – wie groß das Bild wird, hängt daran, wie groß die Seite ist.
+#: Ein A4-Blatt ergibt 2480 × 3508 Punkte, also knapp neun Megapixel.
+#: Ein Scan aus der iPhone-Kamera-App misst dagegen 4507 × 6681 Punkte
+#: statt 595 × 842 – bei 300 dpi wären das **523 Megapixel**. Daran
+#: erstickt tesseract; es liefert keinen Fehler, sondern nichts.
+#:
+#: Am 2026-08-26 an einem echten Archiv gefunden: Von sechs Dokumenten,
+#: die als »kein Text erkannt« liegengeblieben waren, gingen zwei
+#: hierauf zurück – ein Wohnungsgrundriss und eine Zeugnismappe. Mit
+#: passender Auflösung liest tesseract beide einwandfrei.
+#:
+#: 5000 ist gemessen, nicht geschätzt. Am selben Wohnungsgrundriss
+#: durchprobiert: bei 8 Megapixeln kommt der Text, bei 16 derselbe, bei
+#: 33 sogar etwas mehr. Die Grenze liegt also weit über dem, was nötig
+#: ist – und deutlich unter dem, was den Rechner lahmlegt, wenn sechs
+#: Dokumente nebeneinander gelesen werden.
+#:
+#: Der Wert ist zugleich so hoch, dass für alle üblichen Papierformate
+#: gar nichts eingegriffen wird: A4 braucht bei 300 dpi 3508 Punkte,
+#: A3 deren 4961. Erst darüber greift die Begrenzung.
+MAX_KANTE = 5000
+MAX_KANTE_GROSS = 3400
+
 #: So viele Seiten je Dokument, mehr nicht. Ein zweihundertseitiges
 #: eingescanntes Handbuch würde sonst eine Stunde binden – und wer danach
 #: sucht, findet es über die ersten Seiten genauso.
@@ -130,20 +156,79 @@ def bereit() -> tuple[bool, str]:
     return True, ""
 
 
-def _seitenzahl(pdf: Path) -> int:
+@dataclass
+class Seitenmasse:
+    """Was ``pdfinfo`` über ein Dokument sagt."""
+
+    seiten: int = 0
+    breite: float = 0.0
+    """Breite der ersten Seite in Punkten. 595 wäre A4 hochkant."""
+
+    hoehe: float = 0.0
+    verschluesselt: bool = False
+    """Ob ein Passwort verlangt wird – dann geht gar nichts."""
+
+
+def _pdfinfo(pdf: Path) -> Seitenmasse:
+    """Seitenzahl, Seitengröße und Verschlüsselung in einem Aufruf.
+
+    Alles drei kommt aus demselben ``pdfinfo``. Die Seitengröße wird
+    gebraucht, um die Auflösung zu wählen (siehe :data:`MAX_KANTE`); die
+    Verschlüsselung, um dem Anwender etwas anderes sagen zu können als
+    »kein Text erkannt«. Ein Dokument, das nach einem Passwort verlangt,
+    ist nicht kaputt – es ist zu.
+    """
+    masse = Seitenmasse()
     try:
         ergebnis = subprocess.run(
             ["pdfinfo", str(pdf)], capture_output=True, text=True, timeout=30
         )
     except (OSError, subprocess.TimeoutExpired):
-        return 0
+        return masse
+
+    if "Incorrect password" in (ergebnis.stderr or ""):
+        masse.verschluesselt = True
+        return masse
+
     for zeile in ergebnis.stdout.splitlines():
         if zeile.startswith("Pages:"):
             try:
-                return int(zeile.split(":", 1)[1].strip())
+                masse.seiten = int(zeile.split(":", 1)[1].strip())
             except ValueError:
-                return 0
-    return 0
+                pass
+        elif zeile.startswith("Page size:"):
+            # "Page size:  595.276 x 841.89 pts (A4)"
+            teile = zeile.split(":", 1)[1].split()
+            try:
+                masse.breite = float(teile[0])
+                masse.hoehe = float(teile[2])
+            except (IndexError, ValueError):
+                pass
+        elif zeile.startswith("Encrypted:") and "yes" in zeile:
+            # Verschlüsselt heißt nicht immer gesperrt: Viele PDF sind
+            # nur gegen Drucken geschützt und lassen sich lesen. Erst
+            # wenn pdfinfo gar nichts herausrückt, ist wirklich zu.
+            masse.verschluesselt = not masse.seiten
+    return masse
+
+
+def _aufloesung(masse: Seitenmasse, gross: bool) -> int:
+    """Die Auflösung, bei der das Seitenbild handhabbar bleibt.
+
+    Für alles in üblichen Papierformaten kommt hier der gewohnte Wert
+    heraus. Erst bei Seiten, die um ein Vielfaches größer sind, greift
+    die Begrenzung – und zwar so, dass die längere Kante ungefähr so
+    viele Bildpunkte bekommt wie ein A4-Blatt bei 300 dpi.
+    """
+    standard = AUFLOESUNG_GROSS if gross else AUFLOESUNG
+    kante_pt = max(masse.breite, masse.hoehe)
+    if kante_pt <= 0:
+        return standard
+    grenze = MAX_KANTE_GROSS if gross else MAX_KANTE
+    passend = int(grenze / (kante_pt / 72))
+    # Unter 30 dpi wird auch großer Text unleserlich. Lieber ein Bild,
+    # das tesseract vielleicht noch schafft, als sicher nichts.
+    return max(30, min(standard, passend))
 
 
 def text_aus_pdf(
@@ -179,9 +264,17 @@ def text_aus_pdf(
         quelle = ordner / "dokument.pdf"
         quelle.write_bytes(daten)
 
-        ergebnis.seiten_gesamt = _seitenzahl(quelle)
+        masse = _pdfinfo(quelle)
+        if masse.verschluesselt:
+            # Nicht als Fehlschlag verbuchen wie ein unlesbares Bild:
+            # Hier ist nichts kaputt, hier fehlt ein Passwort. Wer die
+            # Meldung liest, soll wissen, ob es sich lohnt nachzusehen.
+            ergebnis.fehler = "passwortgeschützt – ohne Kennwort nicht lesbar"
+            return ergebnis
+
+        ergebnis.seiten_gesamt = masse.seiten
         letzte = min(max_seiten, ergebnis.seiten_gesamt or max_seiten)
-        raster = AUFLOESUNG_GROSS if len(daten) >= GROSS_AB else AUFLOESUNG
+        raster = _aufloesung(masse, gross=len(daten) >= GROSS_AB)
 
         teile: list[str] = []
         for nummer in range(1, letzte + 1):

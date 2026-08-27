@@ -363,3 +363,54 @@ class TestReihenfolge(ErkennungsTestFall):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestGescheiterteFreigeben(ErkennungsTestFall):
+    """Ein Fehlschlag ist ein Vermerk, kein Urteil für immer.
+
+    Er verhindert, dass die Warteschlange bei jedem Lauf über dieselben
+    unlesbaren Dateien stolpert – richtig im Alltag, falsch, sobald die
+    Texterkennung selbst besser geworden ist. Bis zum 2026-08-27
+    scheiterten Scans aus der iPhone-Kamera-App an ihrer Seitengröße;
+    ohne diesen Weg lägen sie für immer da, obwohl sie lesbar sind.
+    """
+
+    def test_aufgegebene_stehen_wieder_an(self) -> None:
+        gleich = b"%PDF-Unlesbar" + b"u" * GROSS
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Scan", "S.pdf", gleich, tag=1),
+        ])
+        self._lauf(archiv, text="", seiten=0)
+        self.assertEqual(erkennung.Warteschlange(archiv.index).anzahl(), 0)
+
+        frei = erkennung.gescheiterte_zuruecksetzen(archiv)
+
+        self.assertEqual(frei, 1)
+        self.assertEqual(erkennung.Warteschlange(archiv.index).anzahl(), 1)
+
+    def test_erledigte_bleiben_erledigt(self) -> None:
+        """Nur die Fehlschläge – sonst liefe alles noch einmal durch."""
+        archiv = self._archiv("A", [
+            mail_mit_anhang("Gut", "G.pdf", b"%PDF-Gut" + b"g" * GROSS, tag=1),
+            mail_mit_anhang("Schlecht", "S.pdf", b"%PDF-Bad" + b"b" * GROSS, tag=2),
+        ])
+        # Erst der gute Lauf, dann ein gescheiterter für das zweite.
+        with mock.patch.object(ocr, "bereit", return_value=(True, "")), \
+                mock.patch.object(
+                    ocr, "text_aus_pdf",
+                    side_effect=lambda n, **_: _ergebnis(
+                        "Erkannt" if b"Gut" in n else "", 2
+                    )):
+            erkennung.durchlauf(archiv, budget_sekunden=0, budget_dokumente=0)
+
+        frei = erkennung.gescheiterte_zuruecksetzen(archiv)
+
+        self.assertEqual(frei, 1)
+        self.assertEqual(erkennung.Warteschlange(archiv.index).anzahl(), 1)
+
+
+def _ergebnis(text: str, seiten: int):
+    fertig = ocr.Ergebnis()
+    fertig.text = text
+    fertig.seiten = seiten
+    return fertig

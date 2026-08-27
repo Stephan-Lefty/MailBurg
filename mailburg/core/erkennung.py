@@ -564,6 +564,28 @@ def durchlauf(
     return stat
 
 
+def gescheiterte_zuruecksetzen(archiv) -> int:
+    """Gibt die aufgegebenen Dokumente für einen neuen Versuch frei.
+
+    Ein Fehlschlag wird vermerkt, damit die Warteschlange nicht bei
+    jedem Lauf über dieselben unlesbaren Dateien stolpert. Das ist im
+    Alltag richtig – aber falsch, sobald sich die Texterkennung selbst
+    verbessert hat.
+
+    Nach dem 2026-08-27 etwa: Bis dahin scheiterten Scans aus der
+    iPhone-Kamera-App, weil MailBurg sie stur mit 300 dpi rasterte und
+    daran über fünfhundert Megapixel je Seite entstanden. Der Vermerk
+    hätte sie für immer liegenlassen, obwohl sie inzwischen lesbar sind.
+
+    Zurück kommt, wie viele Dokumente wieder anstehen.
+    """
+    zeiger = archiv.index.db.execute(
+        "DELETE FROM ocr_vermerk WHERE zustand = 'gescheitert'"
+    )
+    archiv.index.commit()
+    return zeiger.rowcount or 0
+
+
 def vorrat_aufbauen(archiv, *, fortschritt=None) -> tuple[int, int]:
     """Legt bereits erkannten Text unter dem Fingerabdruck des Anhangs ab.
 

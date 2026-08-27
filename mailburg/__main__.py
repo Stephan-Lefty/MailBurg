@@ -832,6 +832,12 @@ def cmd_texterkennung(args: argparse.Namespace) -> int:
         return 2
 
     with Archive.open(Path(args.archiv)) as archive:
+        if args.nochmal:
+            # Nach einer Verbesserung an der Erkennung selbst: Was
+            # gestern unlesbar war, kann heute lesbar sein.
+            frei = erkennung.gescheiterte_zuruecksetzen(archive)
+            print(f"{frei} zuvor aufgegebene Dokumente stehen wieder an.")
+
         warteschlange = erkennung.Warteschlange(archive.index)
         offen = warteschlange.anzahl()
         if not offen:
@@ -1275,6 +1281,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=120,
         metavar="SEKUNDEN",
         help="Zeitgrenze für diesen Lauf (Standard: 120)",
+    )
+    p.add_argument(
+        "--nochmal", action="store_true",
+        help="zuvor aufgegebene Dokumente erneut versuchen – sinnvoll, "
+             "nachdem die Texterkennung selbst verbessert wurde",
     )
     p.set_defaults(func=cmd_texterkennung)
 

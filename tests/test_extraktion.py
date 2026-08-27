@@ -257,3 +257,114 @@ class AnhangsvermerkTest(unittest.TestCase):
         self.assertEqual(
             [a.filename for a in nachricht.attachments], ["a.txt", "b.txt", "c.png"]
         )
+
+
+class AufloesungTest(unittest.TestCase):
+    """Die Auflösung muss sich nach der Seitengröße richten.
+
+    300 dpi ist eine Angabe je Zoll – wie groß das Bild wird, hängt
+    daran, wie groß die Seite ist. Ein A4-Blatt ergibt knapp neun
+    Megapixel, ein Scan aus der iPhone-Kamera-App misst aber 4507 × 6681
+    Punkte statt 595 × 842: bei 300 dpi wären das 523 Megapixel. Daran
+    erstickt tesseract, und zwar stumm – es meldet keinen Fehler,
+    sondern liefert nichts.
+
+    Am 2026-08-26 an einem echten Archiv gefunden: Zwei von sechs
+    liegengebliebenen Dokumenten gingen hierauf zurück.
+    """
+
+    def _dpi(self, breite: float, hoehe: float, gross: bool = False) -> int:
+        from mailburg.extract.ocr import Seitenmasse, _aufloesung
+
+        return _aufloesung(
+            Seitenmasse(seiten=1, breite=breite, hoehe=hoehe), gross
+        )
+
+    def test_uebliche_papierformate_bleiben_unangetastet(self) -> None:
+        """Der Normalfall darf sich durch die Begrenzung nicht ändern."""
+        from mailburg.extract.ocr import AUFLOESUNG
+
+        for name, breite, hoehe in (
+            ("A4 hoch", 595, 842), ("A4 quer", 842, 595),
+            ("A3", 842, 1191), ("Letter", 612, 792),
+        ):
+            with self.subTest(format=name):
+                self.assertEqual(self._dpi(breite, hoehe), AUFLOESUNG)
+
+    def test_riesige_seiten_werden_gedrosselt(self) -> None:
+        from mailburg.extract.ocr import MAX_KANTE
+
+        dpi = self._dpi(4507, 6681)
+
+        self.assertLess(dpi, 100)
+        # Und zwar genau so weit, dass die längere Kante die Grenze
+        # ungefähr trifft - nicht weiter.
+        self.assertAlmostEqual(6681 / 72 * dpi, MAX_KANTE, delta=200)
+
+    def test_niemals_unter_die_lesbarkeitsgrenze(self) -> None:
+        """Ein absurd großes Dokument darf nicht zu Brei werden.
+
+        Lieber ein Bild, an dem tesseract vielleicht noch scheitert, als
+        eines, bei dem es sicher scheitert.
+        """
+        self.assertGreaterEqual(self._dpi(50_000, 80_000), 30)
+
+    def test_ohne_seitenmasse_gilt_der_standardwert(self) -> None:
+        """pdfinfo kann schweigen – dann wird nicht geraten."""
+        from mailburg.extract.ocr import AUFLOESUNG, AUFLOESUNG_GROSS
+
+        self.assertEqual(self._dpi(0, 0), AUFLOESUNG)
+        self.assertEqual(self._dpi(0, 0, gross=True), AUFLOESUNG_GROSS)
+
+    def test_grosse_dateien_bleiben_gröber(self) -> None:
+        from mailburg.extract.ocr import AUFLOESUNG_GROSS
+
+        self.assertEqual(self._dpi(595, 842, gross=True), AUFLOESUNG_GROSS)
+
+
+class VerschluesseltePdfTest(unittest.TestCase):
+    """Ein Dokument, das nach einem Passwort verlangt, ist nicht kaputt.
+
+    Es ist zu. Der Unterschied gehört in die Meldung: »kein Text
+    erkannt« schickt den Anwender auf die Suche nach einem Fehler, den
+    es nicht gibt.
+    """
+
+    def test_passwortschutz_wird_erkannt_und_benannt(self) -> None:
+        import subprocess
+        from unittest import mock
+
+        from mailburg.extract import ocr
+
+        antwort = subprocess.CompletedProcess(
+            [], 1, stdout="", stderr="Command Line Error: Incorrect password\n"
+        )
+        with mock.patch.object(subprocess, "run", return_value=antwort):
+            masse = ocr._pdfinfo(__import__("pathlib").Path("/tmp/egal.pdf"))
+
+        self.assertTrue(masse.verschluesselt)
+
+    def test_ein_schreibgeschuetztes_pdf_gilt_nicht_als_gesperrt(self) -> None:
+        """Viele PDF sind nur gegen Drucken geschützt und lesbar.
+
+        »Encrypted: yes« allein sagt also nichts. Erst wenn pdfinfo
+        obendrein keine Seitenzahl herausrückt, ist wirklich zu.
+        """
+        import subprocess
+        from unittest import mock
+
+        from mailburg.extract import ocr
+
+        antwort = subprocess.CompletedProcess(
+            [], 0,
+            stdout="Pages:          3\nEncrypted:      yes (print:no)\n"
+                   "Page size:      595.276 x 841.89 pts (A4)\n",
+            stderr="",
+        )
+        with mock.patch.object(subprocess, "run", return_value=antwort):
+            masse = ocr._pdfinfo(__import__("pathlib").Path("/tmp/egal.pdf"))
+
+        self.assertFalse(masse.verschluesselt)
+        self.assertEqual(masse.seiten, 3)
+        self.assertAlmostEqual(masse.breite, 595.276, places=2)
+        self.assertAlmostEqual(masse.hoehe, 841.89, places=2)
