@@ -24,7 +24,7 @@ from mailburg.ui.fliesstext import Fliesstext
 FEHLER_URL = "https://github.com/Stephan-Lefty/MailBurg/issues"
 
 #: Wohin alles andere geht.
-KONTAKT = "app-stephan-lefty@protonmail.com"
+KONTAKT = "Stephan-Lefty@Protonmail.com"
 
 
 def text() -> str:
