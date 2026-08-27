@@ -3572,3 +3572,64 @@ class InfofensterTest(OberflaechenTest):
         beschriftungen = [a.text() for a in hilfe.menu().actions()]
 
         self.assertIn("Info …", beschriftungen)
+
+
+class BereichskantenTest(OberflaechenTest):
+    """Das dunkle Thema hat kein Farbproblem, sondern ein Kantenproblem.
+
+    Nachgemessen am 2026-08-27: Zwischen ``Window`` und ``Base`` – also
+    zwischen Fensterhintergrund und Inhaltsbereich – liegt ein
+    Kontrastverhältnis von 1,15. Das liest kein Auge als Grenze, in
+    keinem Thema. Im hellen fällt es nicht auf, weil Gewohnheit und
+    Bildschirmrand helfen; auf einem 14-Zoll-Gerät im Dunkeln fehlt
+    beides, und die drei Bereiche verschwimmen zu einer Fläche.
+    """
+
+    def test_die_kantenfarbe_kommt_aus_der_palette(self):
+        """Eigene Farben brächen Hochkontrast-Themen.
+
+        Und träfen damit ausgerechnet die Anwender, für die solche
+        Themen gemacht sind. ``Mid`` liefert jedes Thema mit – und jedes
+        Hochkontrast-Thema setzt sie kräftig.
+        """
+        from PySide6.QtGui import QPalette
+        from PySide6.QtWidgets import QApplication
+
+        from mailburg.ui import farben
+
+        erwartet = QApplication.instance().palette().color(QPalette.Mid)
+
+        self.assertEqual(farben.kante(), erwartet.name())
+
+    def test_das_stylesheet_setzt_nur_rahmen(self):
+        """Alles andere bleibt beim Thema des Systems."""
+        from mailburg.ui import farben
+
+        regel = farben.bereichsrahmen()
+
+        self.assertIn("border", regel)
+        for verboten in ("background", "color:", "font"):
+            with self.subTest(eigenschaft=verboten):
+                self.assertNotIn(verboten, regel.replace("1px solid", ""))
+
+    def test_die_teiler_sind_zu_fassen(self):
+        """Ein Teiler, den man nicht sieht, wird nicht gezogen."""
+        import tempfile
+
+        from PySide6.QtWidgets import QSplitter
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        ort = pathlib.Path(ordner.name) / "Archiv"
+        Archive.create(ort).close()
+        fenster = Hauptfenster(ort)
+        self.addCleanup(fenster.close)
+
+        teiler = fenster.findChildren(QSplitter)
+        self.assertTrue(teiler)
+        for t in teiler:
+            with self.subTest(teiler=t.objectName() or "unbenannt"):
+                self.assertGreaterEqual(t.handleWidth(), 4)

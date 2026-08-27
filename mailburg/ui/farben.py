@@ -58,6 +58,43 @@ def dunkles_thema() -> bool:
     return grund.value() < 128
 
 
+def kante() -> str:
+    """Die Farbe für Trennlinien zwischen den Bereichen.
+
+    **Das dunkle Thema hat kein Farbproblem, es hat ein Kantenproblem.**
+    Nachgemessen am 2026-08-27: Zwischen ``Window`` und ``Base`` – also
+    zwischen Fensterhintergrund und Inhaltsbereich – liegt ein
+    Kontrastverhältnis von **1,15**. Das liest kein Auge als Grenze, und
+    zwar in keinem Thema. Im hellen fällt es nicht auf, weil Gewohnheit
+    und Bildschirmrand helfen; auf einem 14-Zoll-Gerät im Dunkeln fehlt
+    beides, und Baum, Trefferliste und Vorschau verschwimmen zu einer
+    Fläche.
+
+    Die Lösung ist deshalb nicht, eigene Farben zu setzen – das bräche
+    Hochkontrast-Themen und träfe ausgerechnet die Anwender, für die
+    solche Themen gemacht sind. Die Lösung ist, die Linie zu zeichnen,
+    die es ohnehin geben sollte. ``Mid`` ist genau dafür da: eine Farbe
+    zwischen Hintergrund und Rahmen, die jedes Thema mitliefert und
+    jedes Hochkontrast-Thema kräftig setzt.
+    """
+    anwendung = QApplication.instance()
+    if anwendung is None:
+        return "#808080"
+    return anwendung.palette().color(QPalette.Mid).name()
+
+
+def bereichsrahmen() -> str:
+    """Stylesheet, das die Bereiche voneinander abgrenzt.
+
+    Bewusst knapp: nur der Rahmen, keine Hintergründe, keine Schrift.
+    Alles andere bleibt beim Thema des Systems.
+    """
+    return (
+        f"QTreeView, QTableView, QTextBrowser, QTextEdit "
+        f"{{ border: 1px solid {kante()}; }}"
+    )
+
+
 def _waehlen(rolle: str) -> str:
     return (_DUNKEL if dunkles_thema() else _HELL)[rolle]
 

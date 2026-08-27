@@ -49,6 +49,7 @@ from mailburg.core.accounts import Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked
 from mailburg.search.query import QueryError
 from mailburg.ui import datum, farben
+from mailburg.ui import farben
 from mailburg.ui.arbeit import Abruflauf, Läufer, alle_beenden
 from mailburg.ui.modelle import Trefferliste
 from mailburg.ui.vorschau import Mailvorschau
@@ -128,6 +129,7 @@ class Hauptfenster(QMainWindow):
 
         self._spalten_einrichten()
         self._baumspalten_einrichten()
+        self._kanten_setzen()
 
         self.tabelle.selectionModel().selectionChanged.connect(self._treffer_gewaehlt)
         # Ein Archiv, aus dem nichts wieder herauskommt, ist ein Grab.
@@ -555,6 +557,18 @@ class Hauptfenster(QMainWindow):
             QByteArray.fromBase64(kopf.encode())
         )
         self._neueste_zuerst()
+
+    def _kanten_setzen(self) -> None:
+        """Grenzt die drei Bereiche sichtbar voneinander ab.
+
+        Ohne das verschwimmen Baum, Trefferliste und Vorschau zu einer
+        Fläche – siehe :func:`farben.kante` für die Messung dahinter.
+        Auch die Griffe der Teiler bekommen Breite: Ein Teiler, den man
+        nicht sieht, wird nicht gezogen.
+        """
+        self.setStyleSheet(farben.bereichsrahmen())
+        for teiler in self.findChildren(QSplitter):
+            teiler.setHandleWidth(4)
 
     def _neueste_zuerst(self) -> None:
         """Die jüngste Nachricht steht oben. Immer.
