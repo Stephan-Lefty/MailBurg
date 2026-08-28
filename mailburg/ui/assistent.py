@@ -675,6 +675,19 @@ class KontoZeile(QWidget):
         gitter.addWidget(self.zustand, oben, 2)
         gitter.addWidget(self.beschreibung, oben + 1, 0, 1, 3)
 
+        # **Der freie Platz gehört ganz nach unten.** Ohne diese Zeile
+        # verteilt QGridLayout ihn gleichmäßig auf alle Zeilen - bei
+        # einem einzigen Postfach steht der Name dann oben und die
+        # Beschreibung in der Mitte des Fensters, mit einer Handbreit
+        # Leere dazwischen. Am 2026-08-28 in der Windows-Fassung
+        # aufgefallen, wo genau ein Postfach eingetragen war.
+        # Die Dehnung wandert mit: Zeile `oben + 2` war beim vorigen
+        # Postfach noch das Ende der Liste und muss zurückgenommen
+        # werden, sonst klafft es mittendrin.
+        gitter.setRowStretch(oben, 0)
+        gitter.setRowStretch(oben + 1, 0)
+        gitter.setRowStretch(oben + 2, 1)
+
     @property
     def gewaehlt(self) -> bool:
         return self.ankreuz.isChecked()
@@ -1132,6 +1145,28 @@ class KontoDialog(QDialog):
         knoepfe.accepted.connect(self.accept)
         knoepfe.rejected.connect(self.reject)
 
+        # **Ein Ausweg für den Fall, dass der Server gerade nicht da ist.**
+        # Die Prüfung vor dem Übernehmen ist richtig - ein Postfach, das
+        # sich nicht anmelden kann, führt zu Abrufen, die immer scheitern,
+        # und irgendwann sieht niemand mehr hin.
+        #
+        # Sie ist aber nicht in jeder Lage zu erfüllen: Wer offline
+        # einrichtet, wer die Proton-Brücke noch nicht gestartet hat oder
+        # wessen Server gerade wartet, kam bisher gar nicht weiter - der
+        # Assistent verlangt mindestens ein Postfach. Am 2026-08-28 in der
+        # Windows-Fassung aufgefallen, als ein erfundener Server für die
+        # Anleitungsbilder eingetragen werden sollte.
+        #
+        # Deshalb ein zweiter Weg, deutlich als solcher gekennzeichnet.
+        self.ungeprueft_knopf = QPushButton("Ohne Prüfung übernehmen")
+        self.ungeprueft_knopf.setToolTip(
+            "Für den Fall, dass der Server gerade nicht erreichbar ist – "
+            "etwa ohne Netz oder wenn ein Brückenprogramm noch nicht läuft. "
+            "Beim ersten Abruf zeigt sich, ob die Angaben stimmen."
+        )
+        self.ungeprueft_knopf.clicked.connect(self._ohne_pruefung)
+        knoepfe.addButton(self.ungeprueft_knopf, QDialogButtonBox.ActionRole)
+
         aufbau = QVBoxLayout(self)
         aufbau.addLayout(formular)
         aufbau.addLayout(pruefzeile)
@@ -1154,6 +1189,36 @@ class KontoDialog(QDialog):
         self.uebernehmen_knopf.setEnabled(False)
         self.pruefstand.setText("Noch nicht geprüft")
         self.pruefstand.setStyleSheet("")
+
+    def _ohne_pruefung(self) -> None:
+        """Übernimmt das Postfach, ohne dass die Verbindung stand.
+
+        Mit Rückfrage: Wer hier landet, hat meist einen Tippfehler im
+        Servernamen – und der fiele sonst erst beim ersten Abruf auf,
+        wenn niemand mehr davorsitzt.
+        """
+        if not self.benutzer.text().strip() or not self.server.text().strip():
+            QMessageBox.information(
+                self,
+                "Angaben fehlen",
+                "Mailadresse und Server brauchen wir in jedem Fall.",
+            )
+            return
+
+        antwort = QMessageBox.question(
+            self,
+            "Ohne Prüfung übernehmen?",
+            f"Die Verbindung zu <b>{self.server.text().strip()}</b> wurde "
+            f"nicht geprüft.<br><br>"
+            f"Das ist sinnvoll, wenn der Server gerade nicht erreichbar ist – "
+            f"ohne Netz etwa, oder wenn ein Brückenprogramm noch nicht läuft. "
+            f"Stimmen die Angaben nicht, merken Sie es beim ersten Abruf.<br><br>"
+            f"Trotzdem übernehmen?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if antwort == QMessageBox.Yes:
+            self.accept()
 
     def _pruefen(self) -> None:
         """Meldet sich einmal an und holt die Ordnerliste."""

@@ -145,6 +145,11 @@ def main(argv: list[str] | None = None) -> int:
     if archiv is None:
         archiv = zuletzt_gemerkt()
 
+    # **Ob der Assistent lief und ob er abrufen soll.** Beim ersten Start
+    # wird beides hier entschieden; das Hauptfenster erfährt es sonst
+    # nicht.
+    gleich_abrufen = False
+
     if archiv is None:
         from mailburg.ui.assistent import Einrichtungsassistent
 
@@ -154,6 +159,7 @@ def main(argv: list[str] | None = None) -> int:
         archiv = assistent.archiv_pfad
         if archiv is None:
             return 0
+        gleich_abrufen = getattr(assistent, "soll_abrufen", False)
 
     from mailburg.ui.hauptfenster import Hauptfenster
 
@@ -163,6 +169,23 @@ def main(argv: list[str] | None = None) -> int:
 
     merken(archiv)
     fenster.show()
+
+    if gleich_abrufen:
+        # **Erst wenn die Ereignisschleife läuft.** Der Abruf zeigt
+        # Meldungen und einen Fortschrittsbalken; direkt hier aufgerufen
+        # hätte er kein Fenster, an dem er hängen kann. Der Umweg über
+        # den Zeitgeber stellt ihn hinter das erste Zeichnen.
+        #
+        # Am 2026-08-28 unter Windows aufgefallen: Das Häkchen »Jetzt
+        # den ersten Abruf starten« stand auf der Abschlussseite, war
+        # angekreuzt - und nichts geschah. Erst F5 holte die Post. Beim
+        # zweiten Archiv (Archiv -> Neues Archiv) hatte es immer
+        # funktioniert; nur der Weg, den jeder neue Anwender geht, war
+        # der ungeprüfte.
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(0, fenster._abrufen)
+
     return anwendung.exec()
 
 

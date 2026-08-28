@@ -3984,3 +3984,100 @@ class RollbalkenTest(OberflaechenTest):
                 self.assertNotEqual(
                     bereich.horizontalScrollBarPolicy(), Qt.ScrollBarAlwaysOn
                 )
+
+
+class KontozeileLayoutTest(OberflaechenTest):
+    """Der freie Platz gehört nach unten, nicht zwischen die Zeilen.
+
+    Ohne Dehnung am Ende verteilt QGridLayout ihn gleichmäßig auf alle
+    Zeilen. Bei einem einzigen Postfach stand der Name dann oben und
+    seine Beschreibung in der Mitte des Fensters, mit einer Handbreit
+    Leere dazwischen – als hätte jemand vergessen, sie zusammenzurücken.
+    """
+
+    def test_unter_der_letzten_zeile_wird_gedehnt(self):
+        from PySide6.QtWidgets import QGridLayout
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.assistent import KontoZeile
+
+        gitter = QGridLayout()
+        KontoZeile(
+            Konto(name="Privat", server="imap.example.org",
+                  benutzer="post@example.org"),
+            gitter, 0,
+        )
+
+        # Zeile 0 und 1 gehören dem Postfach, ab 2 kommt der Leerraum.
+        self.assertEqual(gitter.rowStretch(0), 0)
+        self.assertEqual(gitter.rowStretch(1), 0)
+        self.assertGreater(gitter.rowStretch(2), 0)
+
+    def test_bei_mehreren_postfaechern_ebenso(self):
+        """Die Dehnung wandert mit – sonst klafft es wieder mittendrin."""
+        from PySide6.QtWidgets import QGridLayout
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.assistent import KontoZeile
+
+        gitter = QGridLayout()
+        for nr in range(3):
+            KontoZeile(
+                Konto(name=f"Konto {nr}", server="imap.example.org",
+                      benutzer=f"post{nr}@example.org"),
+                gitter, nr,
+            )
+
+        for zeile in range(6):
+            with self.subTest(zeile=zeile):
+                self.assertEqual(gitter.rowStretch(zeile), 0)
+        self.assertGreater(gitter.rowStretch(6), 0)
+
+
+class ErsterAbrufTest(OberflaechenTest):
+    """Das Häkchen »Jetzt den ersten Abruf starten« muss auch greifen.
+
+    Am 2026-08-28 unter Windows aufgefallen: Es stand angekreuzt auf der
+    Abschlussseite, und nichts geschah – erst F5 holte die Post. Der
+    Grund war, dass ``main`` den Assistenten zwar aufrief, sein
+    ``soll_abrufen`` aber nie abfragte.
+
+    Bitter daran: Über *Archiv → Neues Archiv* funktionierte es die ganze
+    Zeit. Nur der Weg beim allerersten Start – der einzige, den ein neuer
+    Anwender überhaupt geht – war der ungeprüfte.
+    """
+
+    def test_main_fragt_den_wunsch_ab(self):
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "app.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("soll_abrufen", quelle)
+
+    def test_der_abruf_wartet_auf_die_ereignisschleife(self):
+        """Sonst hätte er kein Fenster, an dem seine Meldungen hängen."""
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "app.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("QTimer.singleShot", quelle)
+        # Und zwar nach dem Anzeigen des Fensters, nicht davor.
+        self.assertLess(
+            quelle.index("fenster.show()"),
+            quelle.index("QTimer.singleShot"),
+        )
+
+    def test_beide_wege_benutzen_denselben_namen(self):
+        """``soll_abrufen`` heißt an beiden Stellen gleich – sonst wieder still.
+
+        ``getattr(..., False)`` verzeiht einen Tippfehler klaglos: Der
+        Abruf bliebe aus, und niemand bekäme eine Fehlermeldung.
+        """
+        from mailburg.ui.assistent import Einrichtungsassistent
+
+        assistent = Einrichtungsassistent()
+        self.assertTrue(hasattr(assistent, "soll_abrufen"))
+        # Frisch angelegt ist das Häkchen gesetzt.
+        self.assertTrue(assistent.soll_abrufen)
