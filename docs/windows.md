@@ -42,6 +42,8 @@ zeigt für jede Fassung, aus welchem Stand sie entstanden ist.
 
 Doppelklick, und der Assistent führt durch vier Schritte:
 
+![Der Willkommensbildschirm des Einrichtungsassistenten unter Windows 11. Er erklärt, dass Postfächer nur gelesen werden, wohin die Post geht, dass keine Verbindung nach außen aufgebaut wird und wo die Passwörter liegen.](bilder/windows-willkommen.webp)
+
 1. **Wofür** — privat oder geschäftlich. Die Wahl entscheidet über
    Aufbewahrungsfristen und Löschregeln und lässt sich später nicht ohne
    Weiteres umstellen.
@@ -50,8 +52,16 @@ Doppelklick, und der Assistent führt durch vier Schritte:
 3. **Postfächer** — Serveradresse, Benutzername, Passwort. Der Verbindungstest
    sagt Ihnen sofort, ob die Anmeldung klappt und wie viele Ordner archiviert
    würden.
+
+   ![Der Schritt »Ihre Postfächer« im Assistenten. Da auf diesem Rechner kein Thunderbird-Profil gefunden wurde, ist die Liste leer; darunter der Knopf »Weiteres Postfach von Hand eintragen«.](bilder/windows-postfaecher.webp)
+
+   Findet MailBurg ein Thunderbird-Profil, stehen dessen Konten hier schon
+   drin und müssen nur noch angekreuzt werden. Sonst tragen Sie sie von Hand
+   ein.
 4. **Fertig** — mit dem Häkchen „Jetzt den ersten Abruf starten" läuft der
    erste Durchgang gleich los.
+
+   ![Die Abschlussseite des Assistenten. Sie nennt den Ort des Archivs, die Zahl der eingerichteten Postfächer und wo die Passwörter liegen; darunter die Einstellung für den regelmäßigen Abruf im Hintergrund.](bilder/windows-fertig.webp)
 
 Der erste Abruf holt **alles**, was in den Postfächern liegt. Bei einem
 gewachsenen Bestand kann das eine Stunde dauern. Jeder weitere Lauf holt nur
