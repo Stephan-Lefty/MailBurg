@@ -4081,3 +4081,46 @@ class ErsterAbrufTest(OberflaechenTest):
         self.assertTrue(hasattr(assistent, "soll_abrufen"))
         # Frisch angelegt ist das Häkchen gesetzt.
         self.assertTrue(assistent.soll_abrufen)
+
+
+class LeereKopfzeileTest(OberflaechenTest):
+    """Ein leeres Label verschwindet nicht von selbst.
+
+    Solange keine Nachricht gewählt war, klaffte zwischen Trefferliste
+    und Vorschau ein Streifen von gut fünfzig Pixeln – die Zeilenhöhe
+    und die Ränder der leeren Kopfzeile. Das sah aus, als sei das
+    Fenster falsch aufgeteilt, und der erste Verdacht fiel prompt auf
+    den Splitter.
+    """
+
+    def test_ohne_auswahl_bleibt_kein_loch(self):
+        from mailburg.ui.vorschau import Mailvorschau
+
+        vorschau = Mailvorschau()
+        self.assertFalse(vorschau.kopf.isVisibleTo(vorschau))
+
+    def test_mit_nachricht_steht_sie_wieder_da(self):
+        from mailburg.ui.vorschau import Mailvorschau
+
+        vorschau = Mailvorschau()
+        vorschau._kopf_setzen("Von: post@example.org")
+        self.assertTrue(vorschau.kopf.isVisibleTo(vorschau))
+        self.assertIn("example.org", vorschau.kopf.text())
+
+    def test_und_verschwindet_beim_leeren_wieder(self):
+        from mailburg.ui.vorschau import Mailvorschau
+
+        vorschau = Mailvorschau()
+        vorschau._kopf_setzen("Von: post@example.org")
+        vorschau.leeren()
+        self.assertFalse(vorschau.kopf.isVisibleTo(vorschau))
+
+    def test_der_text_wird_nur_an_einer_stelle_gesetzt(self):
+        """Sonst vergisst die nächste Stelle das Ausblenden wieder."""
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "vorschau.py"
+        ).read_text(encoding="utf-8")
+
+        # Einmal in _kopf_setzen selbst, sonst nirgends.
+        self.assertEqual(quelle.count("self.kopf.setText("), 1)

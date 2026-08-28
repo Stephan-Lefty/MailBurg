@@ -148,8 +148,22 @@ class Mailvorschau(QWidget):
 
         self.leeren()
 
+    def _kopf_setzen(self, text: str) -> None:
+        """Setzt die Kopfzeilen – und blendet sie aus, wenn keine da sind.
+
+        Ein leeres Label verschwindet nicht von selbst: Es behält seine
+        Zeilenhöhe und seine Ränder. Solange keine Nachricht gewählt ist,
+        klaffte deshalb zwischen Trefferliste und Vorschau ein Streifen
+        von gut fünfzig Pixeln, der aussah, als sei das Fenster falsch
+        aufgeteilt. Am 2026-08-28 auf einem Windows-Screenshot
+        aufgefallen – auf einem Bildschirm mit mehr Pixeldichte fällt er
+        entsprechend breiter aus.
+        """
+        self.kopf.setText(text)
+        self.kopf.setVisible(bool(text))
+
     def leeren(self) -> None:
-        self.kopf.setText("")
+        self._kopf_setzen("")
         self.text.setPlainText("Wählen Sie links eine Nachricht aus.")
         self._anhaenge_leeren()
         self.rollbar.hide()
@@ -168,7 +182,7 @@ class Mailvorschau(QWidget):
         try:
             roh = archiv.store.get(treffer.hash, treffer.bucket)
         except (FileNotFoundError, ValueError, OSError) as exc:
-            self.kopf.setText("")
+            self._kopf_setzen("")
             self.text.setPlainText(f"Diese Mail ist nicht lesbar: {exc}")
             self.rollbar.hide()
             return
@@ -187,7 +201,7 @@ class Mailvorschau(QWidget):
             zeilen.append(f"<b>Datum:</b> {datum.tag_und_zeit(zerlegt.date)}")
         if getattr(zerlegt, "wichtigkeit", "normal") != "normal":
             zeilen.append(f"<b>Wichtigkeit:</b> {zerlegt.wichtigkeit}")
-        self.kopf.setText("<br>".join(zeilen))
+        self._kopf_setzen("<br>".join(zeilen))
 
         self.text.setPlainText(zerlegt.body or "(kein Text)")
 
