@@ -11,6 +11,21 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Geändert
 
+- **`[oberflaeche]` bringt jetzt den Schlüsselbund mit.** Wer nur die
+  Oberfläche installierte, bekam ein Programm, das Postfächer einrichten
+  und abrufen kann, aber kein Passwort behält — `keyring` steckte allein
+  im Zusatz `imap`. Ein Assistent, der nach Passwörtern fragt und sie dann
+  vergisst, ist schlimmer als einer, der gar nicht erst fragt.
+
+  Die Meldung dazu unterscheidet nun auch die beiden Ursachen: fehlendes
+  Paket oder fehlender Speicher auf diesem System. »Auf diesem Rechner ist
+  kein Schlüsselbund erreichbar« war im ersten Fall falsch — der Rechner
+  hat einen, MailBurg wurde nur ohne den passenden Zusatz installiert.
+
+- **Die Zusätze stehen jetzt in der Anleitung.** Weder `[oberflaeche]` noch
+  `[imap]` wurden irgendwo erwähnt; wer nicht `install.sh` benutzte, kam
+  von selbst nicht darauf.
+
 - **`mailburg konten zuordnung` zeigt Archivnamen statt Kennungen** und
   gruppiert nach Archiv. Vorher stand je Postfach eine Zeile mit
   `c89fdf58-7ec8-4804-af89-915b71440b7b` – für einen Menschen keine

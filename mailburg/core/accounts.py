@@ -243,16 +243,46 @@ class Kontenliste:
 # ---------------------------------------------------------------- Passwörter
 
 
-def schluesselbund_verfuegbar() -> bool:
-    """Sagt, ob ein brauchbarer Schlüsselbund erreichbar ist."""
+def schluesselbund_lage() -> tuple[bool, str]:
+    """Ob Passwörter gespeichert werden können – und sonst warum nicht.
+
+    **Zwei Gründe, ein Ergebnis, aber völlig verschiedene Abhilfen.**
+    Entweder fehlt das Paket ``keyring``, dann hilft eine Installation.
+    Oder es ist da, findet auf diesem System aber keinen Speicher – dann
+    hilft nur eine andere Arbeitsumgebung oder ein Dienst wie
+    ``gnome-keyring``.
+
+    Bis zum 2026-08-28 stand in beiden Fällen »Auf diesem Rechner ist
+    kein Schlüsselbund erreichbar«. Im ersten Fall ist das schlicht
+    falsch: Der Rechner hat einen, MailBurg wurde nur ohne den passenden
+    Zusatz installiert. Wer das liest, sucht am falschen Ende – am
+    2026-08-27 unter Windows genau so passiert.
+    """
     try:
         import keyring
         from keyring.backends import fail
     except ImportError:
-        return False
+        return False, (
+            "Zum Speichern von Passwörtern fehlt das Paket »keyring«. "
+            "Das liegt nicht am Rechner, sondern an der Installation: "
+            "Nachrüsten mit  pip install \"mailburg[imap]\""
+        )
+
     # keyring liefert einen Platzhalter, wenn nichts Passendes gefunden
     # wurde. Der nimmt zwar Passwörter entgegen, verliert sie aber sofort.
-    return not isinstance(keyring.get_keyring(), fail.Keyring)
+    if isinstance(keyring.get_keyring(), fail.Keyring):
+        return False, (
+            "Auf diesem Rechner ist kein Schlüsselbund erreichbar. Unter "
+            "Linux liefert ihn die Arbeitsumgebung mit – auf einem Server "
+            "ohne Oberfläche fehlt er. Die Passwörter werden dann bei "
+            "jedem Abruf neu erfragt."
+        )
+    return True, ""
+
+
+def schluesselbund_verfuegbar() -> bool:
+    """Sagt, ob ein brauchbarer Schlüsselbund erreichbar ist."""
+    return schluesselbund_lage()[0]
 
 
 def schluesselbund_name() -> str:

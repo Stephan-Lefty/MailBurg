@@ -47,9 +47,14 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Frühe Fassung.** Der Unterbau steht, der Abruf aus IMAP-Postfächern läuft,
-beides ist getestet. Die grafische Oberfläche fehlt noch – was heute geht, geht
-über die Kommandozeile. Einzelheiten in [TODO.md](TODO.md).
+**Fassung 0.10.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
+Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
+Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
+Bestand von über 16.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
+
+Was noch fehlt: OAuth2 statt App-Passwörtern, Outlook-`.pst`, Verschlüsselung
+je Archiv, Pakete für alle drei Systeme. Und der Betrieb unter macOS ist
+ungeprüft. Die vollständige Liste steht in [TODO.md](TODO.md).
 
 ## Wie es funktioniert
 
@@ -106,8 +111,11 @@ konto:firma ordner:Gesendet
 
 `betreff:rechnung` findet auch **Schluss**rechnung. Das ist kein Sonderwunsch,
 sondern im Deutschen der Normalfall – wir schreiben zusammen. Dafür gibt es
-neben dem Wortindex einen zweiten über Dreizeichengruppen. Und `von:muller`
-findet auch „Müller", falls der Umlaut auf der Tastatur nicht getroffen wurde.
+neben dem Wortindex einen zweiten über Dreizeichengruppen.
+
+Auch die Schreibweise darf abweichen: `von:muller` und `von:mueller` finden
+beide „Müller", `bahnhofstrasse` findet „Bahnhofstraße". Groß- und
+Kleinschreibung spielt nirgends eine Rolle.
 
 ## Loslegen
 
@@ -128,6 +136,19 @@ unangetastet.
 Wer lieber selbst bestimmt, wohin es geht, nimmt `pip install ".[alles]"` – oder
 lässt die Installation ganz weg und ruft `python3 -m mailburg` direkt im
 Quellverzeichnis auf.
+
+**Wenn Sie einzelne Zusätze wählen:** Der Kern kommt ohne Fremdpakete aus, aber
+er kann dann auch nur das Nötigste. Was wozu gehört:
+
+| Zusatz | wofür | ohne ihn |
+|---|---|---|
+| `oberflaeche` | das Fenster, PySide6 | nur die Kommandozeile |
+| `imap` | Postfächer abrufen, Passwörter im Schlüsselbund | kein IMAP |
+| `anhaenge` | Text aus PDF und Büroformaten | Anhänge bleiben unauffindbar |
+| `packen` | kleinere Sicherungen (Zstandard) | LZMA, langsamer |
+
+`pip install ".[oberflaeche]"` genügt also nicht, um Postfächer abzurufen –
+dafür braucht es `imap` dazu. Am einfachsten ist `".[alles]"`.
 
 ```bash
 # Archiv anlegen

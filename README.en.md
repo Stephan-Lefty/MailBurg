@@ -16,10 +16,13 @@ makes it searchable — message bodies, headers and the contents of attachments.
 Where that place is, is up to you: internal disk, external disk, a folder
 synchronised by Nextcloud.
 
-Developed and used daily on Linux. On Windows and macOS the test suite and
-the setup demonstrably pass, but MailBurg has not yet seen daily use there —
-if you run it on those systems, use `mailburg pruefen` regularly at first and
-do not clear out your mailbox too soon.
+Developed and used daily on Linux. On **Windows** there is a ready-made
+`MailBurg.exe` — no Python, no installation, with text recognition built in;
+setup, retrieval, search and scheduled background retrieval have all been
+exercised there. On **macOS** only the test suite and the setup demonstrably
+pass; MailBurg has not seen daily use there — if you run it on macOS, use
+`mailburg pruefen` regularly at first and do not clear out your mailbox too
+soon.
 
 <p align="center">
   <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes, mail clients and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Access via the interface or the command line." width="960">
@@ -43,9 +46,14 @@ MailBurg does the opposite:
 
 ## Status
 
-**Early.** The foundation is in place, retrieval from IMAP mailboxes works, and
-both are tested. The graphical interface is still missing — what works today
-works from the command line. See [TODO.en.md](TODO.en.md).
+**Version 0.10.0, in daily use.** Archive format, IMAP retrieval, search, the
+graphical interface, text recognition for scanned PDFs, backups and scheduled
+retrieval are all in place and used every day — on Linux with a corpus of more
+than 16,000 messages, on Windows with the ready-made `MailBurg.exe`.
+
+Still missing: OAuth2 instead of app passwords, Outlook `.pst`, per-archive
+encryption, packages for all three systems. And macOS remains unverified in
+practice. Full list in [TODO.en.md](TODO.en.md).
 
 ## How it works
 

@@ -91,6 +91,28 @@ samt deutschen Sprachdaten bereits eingepackt — dort genügt
 **Ohne diese Pakete läuft MailBurg vollständig** – Abrufen, Suchen,
 Aufbewahrungsfristen, Sicherung. Nur Bilder von Seiten bleiben stumm.
 
+### Und die Python-Zusätze
+
+Das gilt für die beiden Systemprogramme oben. MailBurg selbst kennt daneben
+vier Zusätze, die `install.sh` alle mitinstalliert – wer stattdessen `pip`
+benutzt, wählt sie selbst:
+
+| Zusatz | wofür |
+|---|---|
+| `oberflaeche` | das Fenster (PySide6) |
+| `imap` | Postfächer abrufen, Passwörter im Schlüsselbund |
+| `anhaenge` | Text aus PDF und Büroformaten |
+| `packen` | kleinere Sicherungen (Zstandard) |
+
+```bash
+pip install "mailburg[alles]"        # alles auf einmal
+pip install "mailburg[oberflaeche,imap]"   # nur Fenster und Abruf
+```
+
+**`oberflaeche` allein genügt nicht zum Abrufen.** Heraus käme ein Programm,
+das Postfächer einrichten kann, aber keine Passwörter behält – dafür sorgt
+`imap`.
+
 ## 2. Der erste Start
 
 Beim ersten Aufruf von **MailBurg** führt ein Assistent durch die Einrichtung.

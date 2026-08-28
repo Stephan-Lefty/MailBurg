@@ -149,13 +149,9 @@ def cmd_konten_liste(args: argparse.Namespace) -> int:
         print("Noch kein Konto eingerichtet. Anlegen mit 'mailburg konten hinzufuegen'.")
         return 0
 
-    if not accounts.schluesselbund_verfuegbar():
-        print(
-            "Hinweis: Kein Schlüsselbund erreichbar – die Passwörter werden bei\n"
-            "         jedem Abruf neu erfragt. Unter Arch/Manjaro hilft:\n"
-            "         sudo pacman -S gnome-keyring python-keyring\n",
-            file=sys.stderr,
-        )
+    geht, grund = accounts.schluesselbund_lage()
+    if not geht:
+        print(f"Hinweis: {grund}\n", file=sys.stderr)
 
     for konto in liste.konten:
         zustand = "aktiv" if konto.aktiv else "stillgelegt"
@@ -219,9 +215,8 @@ def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
         print(f"Passwort abgelegt in: {accounts.schluesselbund_name()}")
     else:
         print(
-            "Achtung: Kein Schlüsselbund erreichbar – das Passwort wird bei\n"
-            "         jedem Abruf neu erfragt. In eine Datei geschrieben wird\n"
-            "         es nicht.",
+            f"Achtung: {accounts.schluesselbund_lage()[1]}\n"
+            f"         In eine Datei geschrieben wird es nicht.",
             file=sys.stderr,
         )
 

@@ -55,11 +55,11 @@ def _schluesselbund_satz() -> str:
     """
     name = accounts.schluesselbund_name()
     if not name:
-        return (
-            "<b>nirgends</b>: Auf diesem Rechner ist kein Schlüsselbund "
-            "erreichbar, deshalb wird das Passwort bei jedem Abruf neu "
-            "erfragt"
-        )
+        # Den Grund nennen, nicht bloß die Folge: Fehlt das Paket
+        # keyring, ist »auf diesem Rechner nicht erreichbar« schlicht
+        # falsch - der Rechner hat einen, MailBurg wurde nur ohne den
+        # passenden Zusatz installiert.
+        return f"<b>nirgends</b>: {accounts.schluesselbund_lage()[1]}"
     return f"in die <b>{name}</b>"
 
 
@@ -765,9 +765,8 @@ class KontenSeite(QWizardPage):
         ablage = (
             f"Ihre Passwörter kommen in die <b>{bund}</b>"
             if bund
-            else "<b>Achtung:</b> Auf diesem Rechner ist kein Schlüsselbund "
-                 "erreichbar. Die Passwörter werden dann bei jedem Abruf neu "
-                 "erfragt – gespeichert werden sie nicht"
+            else f"<b>Achtung:</b> {accounts.schluesselbund_lage()[1]} "
+                 f"Gespeichert werden sie nicht."
         )
 
         if gefunden:

@@ -127,17 +127,22 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   wären nochmal 150 MB; dagegen spricht, dass eingescannte PDF die
   Ausnahme sind – in Stephans Privatarchiv 323 von 16.360 Mails.
 
-- [ ] **Die Oberfläche soll den Schlüsselbund mitbringen.** Wer
-  `[oberflaeche]` installiert, bekommt ein Programm, das Postfächer
-  abrufen kann, aber keine Passwörter merkt – `keyring` steckt im
-  Zusatz `imap`. Die Meldung dazu ist obendrein irreführend: »Auf diesem
-  Rechner ist kein Schlüsselbund erreichbar« klingt nach einem Problem
-  des Systems, dabei fehlt nur ein Python-Paket. Am 2026-08-27 unter
-  Windows aufgefallen.
+- [x] **Die Oberfläche soll den Schlüsselbund mitbringen.** (erledigt am
+  2026-08-28) `[oberflaeche]` zieht jetzt `keyring` mit. Und die Meldung
+  unterscheidet die beiden Fälle: fehlendes Paket – dann hilft eine
+  Installation – oder fehlender Speicher auf diesem System, dann hilft
+  nur eine andere Arbeitsumgebung. »Auf diesem Rechner ist kein
+  Schlüsselbund erreichbar« war im ersten Fall schlicht falsch und
+  schickte den Anwender ans falsche Ende.
 
-- [ ] **Die Doku erwähnt die Zusätze nicht.** Weder `[oberflaeche]` noch
-  `[imap]` stehen in einer Anleitung. Wer nicht `install.sh` benutzt,
-  kommt von selbst nicht darauf.
+- [x] **Die Doku erwähnt die Zusätze nicht.** (erledigt am 2026-08-28)
+  Eine Tabelle in README und in »Erste Schritte«, mit dem ausdrücklichen
+  Hinweis, dass `[oberflaeche]` allein nicht zum Abrufen genügt.
+
+- [x] **Der Abschnitt »Stand« in beiden README war überholt.** Dort stand
+  »Frühe Fassung … die grafische Oberfläche fehlt noch« – seit Wochen
+  falsch, und gerade für den ersten Blick auf ein Projekt die
+  schlechteste Stelle für eine veraltete Auskunft. (2026-08-28)
 
 
 - [ ] **Was als Anhang gilt, soll der Anwender festlegen können.** Nicht

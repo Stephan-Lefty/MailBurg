@@ -51,7 +51,14 @@ packen = ["zstandard>=0.22"]
 
 # Die grafische Oberfläche. Bewusst nicht im Kern: PySide6 sind über
 # hundert Megabyte, und die Kommandozeile läuft ohne.
-oberflaeche = ["PySide6-Essentials>=6.6"]
+#
+# **keyring gehört dazu.** Wer die Oberfläche installiert, richtet dort
+# Postfächer ein - und bekam bis zum 2026-08-28 ein Programm, das
+# abrufen kann, aber keine Passwörter merkt. Die Meldung dazu klang
+# nach einem Mangel des Rechners, dabei fehlte nur ein Paket. Ein
+# Assistent, der nach Passwörtern fragt und sie dann vergisst, ist
+# schlimmer als einer, der gar nicht erst fragt.
+oberflaeche = ["PySide6-Essentials>=6.6", "keyring>=24"]
 
 alles = ["mailburg[imap,anhaenge,packen,oberflaeche]"]
 

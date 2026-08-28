@@ -613,3 +613,91 @@ class ZuordnungsanzeigeTest(unittest.TestCase):
 
         text = ausgabe.getvalue()
         self.assertLess(text.index("Geschäftsarchiv"), text.index("Firma"))
+
+
+class SchluesselbundLageTest(unittest.TestCase):
+    """Zwei Gründe, ein Ergebnis – aber völlig verschiedene Abhilfen.
+
+    Entweder fehlt das Paket ``keyring``, dann hilft eine Installation.
+    Oder es ist da, findet auf diesem System aber keinen Speicher – dann
+    hilft nur eine andere Arbeitsumgebung.
+
+    Bis zum 2026-08-28 stand in beiden Fällen »Auf diesem Rechner ist
+    kein Schlüsselbund erreichbar«. Im ersten Fall ist das falsch: Der
+    Rechner hat einen, MailBurg wurde nur ohne den passenden Zusatz
+    installiert. Wer das liest, sucht am falschen Ende – am 2026-08-27
+    unter Windows genau so passiert.
+    """
+
+    def _ohne_keyring(self):
+        import builtins
+        from unittest import mock
+
+        echt = builtins.__import__
+
+        def ohne(name, *args, **kwargs):
+            if name == "keyring" or name.startswith("keyring."):
+                raise ImportError("keyring fehlt")
+            return echt(name, *args, **kwargs)
+
+        return mock.patch.object(builtins, "__import__", ohne)
+
+    def test_fehlendes_paket_wird_als_solches_benannt(self) -> None:
+        from mailburg.core import accounts
+
+        with self._ohne_keyring():
+            geht, grund = accounts.schluesselbund_lage()
+
+        self.assertFalse(geht)
+        self.assertIn("keyring", grund)
+        self.assertIn("pip install", grund)
+        # Und ausdrücklich *nicht* dem Rechner angelastet.
+        self.assertIn("nicht am Rechner", grund)
+
+    def test_fehlender_speicher_bleibt_ein_systemproblem(self) -> None:
+        from unittest import mock
+
+        from mailburg.core import accounts
+
+        try:
+            import keyring
+            from keyring.backends import fail
+        except ImportError:
+            self.skipTest("keyring nicht installiert")
+
+        with mock.patch.object(keyring, "get_keyring",
+                               return_value=fail.Keyring()):
+            geht, grund = accounts.schluesselbund_lage()
+
+        self.assertFalse(geht)
+        self.assertIn("Rechner", grund)
+        self.assertNotIn("pip install", grund)
+
+    def test_die_alte_auskunft_baut_darauf_auf(self) -> None:
+        """``schluesselbund_verfuegbar`` bleibt, damit nichts bricht."""
+        from mailburg.core import accounts
+
+        self.assertEqual(
+            accounts.schluesselbund_verfuegbar(),
+            accounts.schluesselbund_lage()[0],
+        )
+
+
+class ZusaetzeTest(unittest.TestCase):
+    """Wer die Oberfläche installiert, muss Passwörter merken können.
+
+    ``[oberflaeche]`` brachte bis zum 2026-08-28 nur PySide6 mit. Heraus
+    kam ein Programm, das Postfächer einrichten und abrufen kann, aber
+    kein Passwort behält – und die Meldung dazu klang nach einem Mangel
+    des Rechners. Ein Assistent, der nach Passwörtern fragt und sie dann
+    vergisst, ist schlimmer als einer, der gar nicht erst fragt.
+    """
+
+    def test_die_oberflaeche_bringt_den_schluesselbund_mit(self) -> None:
+        wurzel = pathlib.Path(__file__).resolve().parent.parent
+        text = (wurzel / "pyproject.toml").read_text(encoding="utf-8")
+
+        zeile = next(
+            z for z in text.splitlines() if z.startswith("oberflaeche = ")
+        )
+        self.assertIn("keyring", zeile)
