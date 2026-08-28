@@ -11,6 +11,29 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Die Beschriftungen in der Übersichtsgrafik waren zu blass zum Lesen.**
+  `assets/uebersicht.svg` setzte neun Textstellen bei 11,5 bis 13 Pixeln in
+  `#97a1ad` auf weißen Grund – das sind 2,6 Kontrast, verlangt sind 4,5. Die
+  Kastenrahmen lagen mit demselben Wert unter den 3,0, die WCAG für grafische
+  Elemente fordert. Text steht jetzt in `#667080` (5,0), Rahmen in `#7f8a99`
+  (3,5).
+
+  Aufgefallen ist das nicht beim Hinsehen. Solche Werte sieht man einem
+  Farbton nicht an – sie kamen ans Licht, als die Palette in ein anderes
+  Projekt übernommen und dort erstmals nachgerechnet wurde.
+
+### Hinzugefügt
+
+- **Die Farbpalette steht jetzt geschrieben** – in `assets/farben.md` zum
+  Nachlesen und in `mailburg/farben.py` als Werte, samt Kontrastrechnung nach
+  WCAG 2.1. `tests/test_farben.py` prüft die Paarungen, die tatsächlich
+  vorkommen. Beide Dateien sind zum Kopieren in andere Projekte gedacht; diese
+  Palette gilt seit dem 2026-08-28 für alle.
+- **`GRAU_LEISE` (`#667080`)** für zurückgenommenen Text auf hellem Grund.
+  `GRAU_MITTE` (`#97a1ad`) taugt nur auf dunklem – siehe oben.
+
+### Behoben
+
 - **Scans mit riesigen Seitenmaßen blieben stumm.** Eine Seite aus der
   iPhone-Kamera-App misst 4507 × 6681 Punkte statt 595 × 842 – bei 300
   dpi wären das 523 Megapixel, woran tesseract erstickt, ohne einen

@@ -27,7 +27,7 @@
   <text x="40" y="52" class="ueberschrift">WOHER</text>
 
   <g>
-    <rect x="40" y="72" width="250" height="86" rx="10" fill="#ffffff" stroke="#97a1ad" stroke-width="1.5"/>
+    <rect x="40" y="72" width="250" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <circle cx="72" cy="106" r="15" fill="#1668e3"/>
     <path d="M64 101 h16 v10 h-16 z M64 101 l8 6 l8 -6" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
     <text x="100" y="103" class="kasten-titel">IMAP-Postfächer</text>
@@ -36,7 +36,7 @@
   </g>
 
   <g>
-    <rect x="40" y="174" width="250" height="86" rx="10" fill="#ffffff" stroke="#97a1ad" stroke-width="1.5"/>
+    <rect x="40" y="174" width="250" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <circle cx="72" cy="208" r="15" fill="#5b6672"/>
     <path d="M65 202 h14 v13 h-14 z" fill="none" stroke="#ffffff" stroke-width="1.6"/>
     <text x="100" y="205" class="kasten-titel">Mailprogramm</text>
@@ -45,7 +45,7 @@
   </g>
 
   <g>
-    <rect x="40" y="276" width="250" height="86" rx="10" fill="#ffffff" stroke="#97a1ad" stroke-width="1.5"/>
+    <rect x="40" y="276" width="250" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <circle cx="72" cy="310" r="15" fill="#5b6672"/>
     <path d="M66 310 a6 6 0 0 1 12 0 M72 304 v12" fill="none" stroke="#ffffff" stroke-width="1.6"/>
     <text x="100" y="307" class="kasten-titel">Verschlüsselte Post</text>
@@ -69,7 +69,7 @@
   <!-- ================================================== MailBurg (Mitte) -->
   <rect x="404" y="72" width="404" height="380" rx="14" fill="#20262f"/>
   <text x="606" y="112" class="kasten-titel weiss mittig" font-size="21">MailBurg</text>
-  <text x="606" y="136" class="mittig" font-size="13" fill="#97a1ad">liest, prüft, legt ab</text>
+  <text x="606" y="136" class="mittig" font-size="13" fill="#667080">liest, prüft, legt ab</text>
 
   <!-- Archiv -->
   <rect x="432" y="160" width="348" height="150" rx="10" fill="#2b323c" stroke="#1668e3" stroke-width="1.5"/>
@@ -77,21 +77,21 @@
 
   <rect x="452" y="202" width="150" height="42" rx="7" fill="#20262f"/>
   <text x="466" y="221" font-size="13" fill="#d6dde8" font-weight="600">mail/</text>
-  <text x="466" y="237" font-size="11.5" fill="#97a1ad">jede Mail bytegenau</text>
+  <text x="466" y="237" font-size="11.5" fill="#667080">jede Mail bytegenau</text>
 
   <rect x="614" y="202" width="150" height="42" rx="7" fill="#20262f"/>
   <text x="628" y="221" font-size="13" fill="#d6dde8" font-weight="600">meta/</text>
-  <text x="628" y="237" font-size="11.5" fill="#97a1ad">Protokoll mit Hash-Kette</text>
+  <text x="628" y="237" font-size="11.5" fill="#667080">Protokoll mit Hash-Kette</text>
 
-  <text x="452" y="266" font-size="12" fill="#97a1ad">Nachträgliche Änderungen zerreißen die Kette sichtbar.</text>
-  <text x="452" y="284" font-size="12" fill="#97a1ad">Gelöscht wird nur mit Vermerk, Fristen schützen davor.</text>
-  <text x="452" y="302" font-size="12" fill="#97a1ad">Dieselbe Mail zweimal ergibt keine zweite Datei.</text>
+  <text x="452" y="266" font-size="12" fill="#667080">Nachträgliche Änderungen zerreißen die Kette sichtbar.</text>
+  <text x="452" y="284" font-size="12" fill="#667080">Gelöscht wird nur mit Vermerk, Fristen schützen davor.</text>
+  <text x="452" y="302" font-size="12" fill="#667080">Dieselbe Mail zweimal ergibt keine zweite Datei.</text>
 
   <!-- Suchindex, bewusst außerhalb -->
   <rect x="432" y="330" width="348" height="96" rx="10" fill="#2b323c" stroke="#5b6672" stroke-width="1.5" stroke-dasharray="6 4"/>
   <text x="452" y="356" class="kasten-titel weiss" font-size="15">Suchindex – außerhalb des Archivs</text>
-  <text x="452" y="378" font-size="12" fill="#97a1ad">Liegt lokal auf dem Rechner, nicht im Archiv:</text>
-  <text x="452" y="396" font-size="12" fill="#97a1ad">Datenbanken auf Netzlaufwerken gehen kaputt.</text>
+  <text x="452" y="378" font-size="12" fill="#667080">Liegt lokal auf dem Rechner, nicht im Archiv:</text>
+  <text x="452" y="396" font-size="12" fill="#667080">Datenbanken auf Netzlaufwerken gehen kaputt.</text>
   <text x="452" y="414" font-size="12" fill="#1668e3">Muss nie gesichert werden – jederzeit neu erzeugbar.</text>
 
   <!-- ================================================== Zugriff (rechts) -->
@@ -102,21 +102,21 @@
   <path d="M814 280 C 856 280, 866 330, 908 330" fill="none" stroke="#5b6672" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#pfeil-grau)"/>
 
   <g>
-    <rect x="910" y="80" width="290" height="86" rx="10" fill="#ffffff" stroke="#97a1ad" stroke-width="1.5"/>
+    <rect x="910" y="80" width="290" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <text x="932" y="110" class="kasten-titel">Suchen und lesen</text>
     <text x="932" y="130" class="kasten-text">Volltext über Text, Kopfzeilen und</text>
     <text x="932" y="147" class="kasten-text">Anhänge – auch in eingescannten PDF</text>
   </g>
 
   <g>
-    <rect x="910" y="184" width="290" height="86" rx="10" fill="#ffffff" stroke="#97a1ad" stroke-width="1.5"/>
+    <rect x="910" y="184" width="290" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <text x="932" y="214" class="kasten-titel">Oberfläche und Kommandozeile</text>
     <text x="932" y="234" class="kasten-text">Beide können dasselbe. Der Abruf läuft</text>
     <text x="932" y="251" class="kasten-text">im Hintergrund weiter, alle 10–90 Minuten</text>
   </g>
 
   <g>
-    <rect x="910" y="288" width="290" height="86" rx="10" fill="#f7f9fc" stroke="#97a1ad" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <rect x="910" y="288" width="290" height="86" rx="10" fill="#f7f9fc" stroke="#7f8a99" stroke-width="1.5" stroke-dasharray="5 4"/>
     <text x="932" y="318" class="kasten-titel" fill="#5b6672">Geplant: als IMAP-Konto</text>
     <text x="932" y="338" class="kasten-text">Das Archiv in jedem Mailprogramm</text>
     <text x="932" y="355" class="kasten-text">einbinden – auch am Telefon</text>
@@ -126,17 +126,17 @@
   <text x="404" y="478" class="ueberschrift">WOHIN – SIE ENTSCHEIDEN</text>
 
   <g>
-    <rect x="404" y="516" width="126" height="74" rx="10" fill="#ffffff" stroke="#97a1ad" stroke-width="1.5"/>
+    <rect x="404" y="516" width="126" height="74" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <text x="467" y="548" class="kasten-titel mittig" font-size="14">Im Rechner</text>
     <text x="467" y="568" class="kasten-text mittig">interne Platte</text>
   </g>
   <g>
-    <rect x="543" y="516" width="126" height="74" rx="10" fill="#ffffff" stroke="#97a1ad" stroke-width="1.5"/>
+    <rect x="543" y="516" width="126" height="74" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <text x="606" y="548" class="kasten-titel mittig" font-size="14">Externe Platte</text>
     <text x="606" y="568" class="kasten-text mittig">auch abziehbar</text>
   </g>
   <g>
-    <rect x="682" y="516" width="126" height="74" rx="10" fill="#ffffff" stroke="#97a1ad" stroke-width="1.5"/>
+    <rect x="682" y="516" width="126" height="74" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <text x="745" y="548" class="kasten-titel mittig" font-size="14">Nextcloud</text>
     <text x="745" y="568" class="kasten-text mittig">oder Netzlaufwerk</text>
   </g>
@@ -148,5 +148,5 @@
   <text x="40" y="638" class="band">
     Läuft unter Linux, Windows und macOS · Jede Mail bleibt als <tspan font-style="italic">.eml</tspan> auch ohne MailBurg lesbar · Passwörter im Schlüsselbund des Systems
   </text>
-  <text x="1200" y="638" class="band" text-anchor="end" fill="#97a1ad">MIT-Lizenz</text>
+  <text x="1200" y="638" class="band" text-anchor="end" fill="#667080">MIT-Lizenz</text>
 </svg>
