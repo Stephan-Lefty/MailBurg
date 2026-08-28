@@ -1092,6 +1092,32 @@ def cmd_sichern(args) -> int:
             else sicherung.vorschlag(archiv_pfad, name)
         )
 
+    # **Erst nachsehen, ob das Ziel überhaupt da ist.** Ein
+    # Einhängepunkt ohne eingehängten Datenträger sieht aus wie ein
+    # leerer Ordner; ohne diese Prüfung liefe die Sicherung durch und
+    # landete auf der Systemplatte. Auffallen würde das erst, wenn man
+    # sie braucht.
+    #
+    # Im Zeitplan (--leise) wird nichts angelegt: Ein fehlender Ordner
+    # ist dort kein Anlass, einen neuen zu erfinden, sondern der
+    # Hinweis, dass die Platte fehlt.
+    darf, grund = sicherung.ziel_pruefen(
+        archiv_pfad, ziel, anlegen=not args.leise
+    )
+    if not darf:
+        print(f"Fehler: {grund}", file=sys.stderr)
+        return 1
+
+    if sicherung.gleiche_platte(archiv_pfad, ziel):
+        # Kein Abbruch: Es gibt Aufbauten, in denen das gewollt ist -
+        # ein Cloud-Ordner auf derselben Platte, der anderswohin
+        # synchronisiert. Aber gesagt gehört es.
+        print(
+            "Achtung: Die Sicherung liegt auf demselben Datenträger wie "
+            "das Archiv. Geht der verloren, ist beides weg.",
+            file=sys.stderr,
+        )
+
     try:
         befund = sicherung.packen(archiv_pfad, ziel)
     except sicherung.SicherungFehler as exc:

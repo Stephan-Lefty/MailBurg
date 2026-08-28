@@ -107,6 +107,112 @@ def vorschlag(archiv_pfad: Path, name: str = "") -> str:
     return f"{stamm}-{datetime.now():%Y-%m-%d}.{endung}"
 
 
+#: Legt MailBurg im Sicherungsordner ab, um ihn wiederzuerkennen.
+#:
+#: **Wozu.** Eine Sicherung schreibt nach ``/mnt/…/Storage-Box/``. Ist
+#: das ein Einhängepunkt und die Platte hängt nicht, dann existiert der
+#: Ordner trotzdem – leer, auf der Systemplatte. ``mkdir -p`` legt den
+#: Rest an, das Packen läuft durch, und am Ende steht eine Sicherung an
+#: einem Ort, den niemand gemeint hat. Auf derselben Platte wie das
+#: Archiv womöglich, also genau dort, wo sie im Ernstfall mit
+#: verlorengeht.
+#:
+#: Auffallen würde das erst, wenn man die Sicherung braucht. Bis dahin
+#: läuft der Zeitplan Monat für Monat und meldet Erfolg.
+#:
+#: Die Marke ist der Beweis, dass hier schon einmal etwas lag. Fehlt sie
+#: in einem Ordner, in den zuvor gesichert wurde, ist es nicht mehr
+#: derselbe Ort.
+MARKE = ".mailburg-sicherungsziel"
+
+
+def marke_setzen(ordner: Path) -> None:
+    """Zeichnet einen Ordner als Sicherungsziel aus."""
+    from datetime import datetime
+
+    ordner.mkdir(parents=True, exist_ok=True)
+    (ordner / MARKE).write_text(
+        "Dieser Ordner ist ein Sicherungsziel von MailBurg.\n"
+        "\n"
+        "Die Datei dient als Wiedererkennung: Fehlt sie, geht MailBurg\n"
+        "davon aus, dass der Datenträger nicht eingehängt ist, und\n"
+        "sichert lieber gar nicht als an den falschen Ort.\n"
+        "\n"
+        f"Angelegt am {datetime.now().strftime('%d.%m.%Y um %H:%M')}.\n",
+        encoding="utf-8",
+    )
+
+
+def _geraet(pfad: Path) -> int:
+    """Auf welchem Datenträger ein Pfad liegt – 0, wenn unbekannt."""
+    versuch = pfad
+    for _ in range(40):
+        try:
+            return versuch.stat().st_dev
+        except OSError:
+            if versuch.parent == versuch:
+                return 0
+            versuch = versuch.parent
+    return 0
+
+
+def ziel_pruefen(archiv_pfad: Path, ziel: Path, *,
+                 anlegen: bool = False) -> tuple[bool, str]:
+    """Sagt, ob an dieses Ziel gesichert werden darf – und sonst warum nicht.
+
+    ``anlegen`` gilt für den Fall, dass jemand danebensteht: Dann darf
+    ein neuer Ordner entstehen und wird ausgezeichnet. Im Zeitplan ist
+    das anders – dort ist ein fehlender Ordner kein Anlass, einen neuen
+    zu erfinden, sondern der Hinweis, dass die Platte fehlt.
+    """
+    archiv_pfad = Path(archiv_pfad)
+    ordner = Path(ziel)
+    if ordner.suffix:
+        ordner = ordner.parent
+
+    if (ordner / MARKE).is_file():
+        return True, ""
+
+    if not ordner.exists() or not any(ordner.iterdir()):
+        if anlegen:
+            marke_setzen(ordner)
+            return True, ""
+        return False, (
+            f"Der Sicherungsordner {ordner} ist leer oder nicht "
+            f"vorhanden. Wenn dort ein Datenträger eingehängt sein "
+            f"sollte – eine externe Platte, ein Netzlaufwerk, eine "
+            f"Storage Box –, dann hängt er gerade nicht. Es wurde "
+            f"nichts gesichert. Eine Sicherung an den falschen Ort wäre "
+            f"schlimmer als keine: Sie stünde da und sähe richtig aus."
+        )
+
+    # Der Ordner ist nicht leer, trägt aber keine Marke: gewachsener
+    # Bestand aus der Zeit vor dieser Prüfung. Nachtragen statt
+    # verweigern - wer dort schon Sicherungen liegen hat, soll nicht
+    # plötzlich vor einem Fehler stehen.
+    try:
+        marke_setzen(ordner)
+        return True, ""
+    except OSError as exc:
+        return False, f"In {ordner} lässt sich nicht schreiben: {exc}"
+
+
+def gleiche_platte(archiv_pfad: Path, ziel: Path) -> bool:
+    """Ob Sicherung und Archiv auf demselben Datenträger lägen.
+
+    Eine Sicherung neben dem Original geht mit ihm zusammen verloren –
+    bei einem Plattenschaden, bei einem versehentlichen Löschen des
+    ganzen Ordners, bei einem verschlüsselnden Schädling. Der Hinweis
+    stand bisher nur im Text des Einrichtungsfensters; geprüft wurde er
+    nicht.
+    """
+    ordner = Path(ziel)
+    if ordner.suffix:
+        ordner = ordner.parent
+    a, b = _geraet(Path(archiv_pfad)), _geraet(ordner)
+    return bool(a) and a == b
+
+
 def _zielgroesse(ziel: Path) -> int:
     try:
         return ziel.stat().st_size

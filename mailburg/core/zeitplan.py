@@ -251,7 +251,14 @@ def sicherung_einrichten(archiv: Path | str, ziel: Path | str,
         # verloren - dann ist sie keine.
         return False, "Das Ziel darf nicht im Archiv selbst liegen."
 
-    ziel.mkdir(parents=True, exist_ok=True)
+    # **Den Ordner gleich auszeichnen.** Der Zeitplan prüft später, ob
+    # die Marke noch da ist - fehlt sie, geht MailBurg davon aus, dass
+    # der Datenträger nicht eingehängt ist, und sichert lieber gar
+    # nicht. Ohne dieses Setzen hier schlüge ausgerechnet der erste Lauf
+    # fehl, unmittelbar nach dem Einrichten.
+    from mailburg.core import sicherung
+
+    sicherung.marke_setzen(ziel)
 
     if _windows():
         from mailburg.core import aufgabenplanung

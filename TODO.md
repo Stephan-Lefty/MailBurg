@@ -65,11 +65,26 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   herangegangen – ein Archiv, das Mails aus einem nachgebauten Format
   zieht, kann die Bytegenauigkeit nicht garantieren.
 
-- [ ] **4. Meldet MailBurg, wenn das Sicherungsziel fehlt?** Beide
-  Sicherungen schreiben nach `/mnt/…/Storage-Box/`. Ist das
-  am Monatsersten nicht eingehängt, schreibt der Dienst ins Leere. Ob
-  das auffällt, ist ungeprüft – und eine Sicherung, die stillschweigend
-  ausbleibt, ist schlimmer als keine.
+- [x] **4. Meldet MailBurg, wenn das Sicherungsziel fehlt?** (erledigt
+  am 2026-08-28) Nachgestellt: Es meldete nichts. MailBurg legte den
+  Ordner mit `mkdir -p` an, schrieb die Sicherung hinein und gab 0
+  zurück. Bei einem Einhängepunkt ohne eingehängten Datenträger wäre sie
+  damit auf der Systemplatte gelandet – und aufgefallen wäre es erst,
+  wenn man sie braucht.
+
+  MailBurg legt jetzt eine Marke im Zielordner ab und prüft sie. Fehlt
+  sie in einem leeren oder fehlenden Ordner, bricht der Zeitplan mit
+  Rückgabewert 1 ab, statt an den falschen Ort zu schreiben. Von Hand
+  darf weiterhin angelegt werden – wer danebensteht, richtet gerade ein.
+  Dazu ein Hinweis, wenn Sicherung und Archiv auf demselben Datenträger
+  lägen; das stand bisher nur als Ratschlag im Dialogtext.
+
+  **Zu Stephans Aufbau:** Die Sorge trifft ihn nicht.
+  `/mnt/…/Storage-Box/` ist kein Einhängepunkt, sondern ein
+  gewöhnlicher Ordner auf dem RAID – dort kann nichts „nicht eingehängt"
+  sein. Und die Archive liegen auf der USB-Platte, also auf einem
+  anderen Datenträger als die Sicherungen. Fehlt *die* Platte, meldet
+  MailBurg „kein Archiv" und bricht ab (Rückgabewert 2).
 
 - [ ] **5. `konten zuordnung` soll Archivnamen zeigen, keine Kennungen.**
   Derzeit steht dort `220b2cd0-f3b1-49ea-…`. Richtig wäre der Name des

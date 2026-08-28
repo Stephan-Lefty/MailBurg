@@ -9,6 +9,28 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Behoben
+
+- **Eine Sicherung an den falschen Ort blieb unbemerkt.** Schreibt der
+  Zeitplan nach `/mnt/…/Storage-Box/` und ist das ein Einhängepunkt ohne
+  eingehängten Datenträger, dann existiert der Ordner trotzdem – leer, auf
+  der Systemplatte. MailBurg legte den Rest mit `mkdir -p` an, packte
+  hinein und meldete Erfolg. Aufgefallen wäre das erst, wenn man die
+  Sicherung braucht; bis dahin läuft der Zeitplan Monat für Monat.
+
+  MailBurg legt jetzt eine Marke (`.mailburg-sicherungsziel`) im
+  Zielordner ab. Fehlt sie in einem leeren oder fehlenden Ordner, bricht
+  der Zeitplan ab, statt ins Leere zu schreiben – mit Rückgabewert 1,
+  damit systemd und die Aufgabenplanung den Fehlschlag zeigen. Von Hand
+  gestartet darf weiterhin angelegt werden: Wer danebensteht, richtet
+  gerade ein. Ordner mit vorhandenen Sicherungen werden nicht abgewiesen,
+  sondern nachträglich ausgezeichnet.
+
+- **»Nicht auf dieselbe Platte wie das Archiv« war nur ein Ratschlag.**
+  Der Satz stand im Einrichtungsfenster, geprüft wurde er nie. Jetzt sagt
+  MailBurg es, wenn Sicherung und Archiv auf demselben Datenträger lägen.
+  Kein Abbruch – es gibt Aufbauten, in denen das gewollt ist.
+
 ## [0.10.0] – 2026-08-28
 
 ### Hinzugefügt
