@@ -168,12 +168,12 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   Anwendung, das Zeit kostet – deshalb später und nicht als Voraussetzung für
   den ersten Einsatz.
 
-- [ ] **Gespeicherte Suchen.** Der einzige Teil der MailStore-Maske, der
-  noch fehlt – die Maske selbst steht seit dem 2026-08-26 als
-  *Ausführlich suchen …*. In der MailStore-Maske »Öffnen…« und
-  »Speichern unter…«. Wer denselben Auszug regelmäßig braucht – etwa alle
-  Rechnungen eines Lieferanten –, soll ihn nicht jedes Mal neu
-  zusammensetzen müssen.
+- [x] **Gespeicherte Suchen.** (verworfen am 2026-08-28) Stephans Urteil:
+  »braucht man nicht wirklich«. Der Suchausdruck steht als Text im Feld
+  und lässt sich kopieren; wer eine Abfrage regelmäßig braucht, hat sie
+  in der Verlaufsliste oder tippt sie in wenigen Sekunden. Eine eigene
+  Verwaltung mit »Öffnen…« und »Speichern unter…« wäre ein Menü mehr für
+  einen Handgriff weniger.
 
 - [ ] **Der Rückweg: „In Mailprogramm öffnen".** Über eine temporäre
   `.eml` und `xdg-open`/`start`/`open`. Die beiden anderen Wege stehen
