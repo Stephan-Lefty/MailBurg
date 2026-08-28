@@ -3834,3 +3834,100 @@ class AssistentZuordnungTest(OberflaechenTest):
             nach_kennung.index("zuordnen"),
             "zugeordnet wird, bevor die Auswahl geprüft ist",
         )
+
+
+class KontenZuordnungTest(OberflaechenTest):
+    """Die Meldung schickte an eine Stelle, an der es nichts gab.
+
+    »Diesem Archiv ist kein Postfach zugeordnet … Zuordnen unter
+    Einstellungen → Postfächer« – dort ließ sich aber gar nichts
+    zuordnen. Eine Sackgasse mit Wegweiser, aufgefallen am 2026-08-28
+    beim ersten Abruf aus der gepackten Windows-Fassung.
+    """
+
+    def _verwaltung(self):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import accounts, paths
+        from mailburg.core.accounts import Konto, Kontenliste
+        from mailburg.ui.konten import Kontenverwaltung
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        flicken = mock.patch.object(
+            paths, "config_dir", lambda: pathlib.Path(self.ordner.name)
+        )
+        flicken.start()
+        self.addCleanup(flicken.stop)
+        # Kein Zugriff auf den echten Schlüsselbund im Test.
+        holen = mock.patch.object(accounts, "passwort_holen", lambda k: "")
+        holen.start()
+        self.addCleanup(holen.stop)
+
+        liste = Kontenliste(pathlib.Path(self.ordner.name) / "konten.json")
+        liste.hinzufuegen(Konto(
+            name="Privat", server="imap.example.com", benutzer="p@example.com"
+        ))
+
+        verwaltung = Kontenverwaltung()
+        self.addCleanup(verwaltung.close)
+        return verwaltung
+
+    def test_es_gibt_einen_weg_zur_zuordnung(self):
+        """Sonst führt die Meldung im Hauptfenster ins Leere."""
+        verwaltung = self._verwaltung()
+
+        self.assertTrue(hasattr(verwaltung, "zuordnen"))
+        self.assertIn("Archiv", verwaltung.zuordnen.text())
+
+    def test_die_spalte_zeigt_die_archive(self):
+        verwaltung = self._verwaltung()
+
+        kopf = [
+            verwaltung.baum.headerItem().text(i)
+            for i in range(verwaltung.baum.columnCount())
+        ]
+
+        self.assertIn("Archive", kopf)
+
+    def test_ohne_zuordnung_steht_es_da(self):
+        """Ein leeres Feld sähe aus wie »noch nicht geladen«."""
+        verwaltung = self._verwaltung()
+        konto = verwaltung.liste.finden("Privat")
+
+        text = verwaltung._archivnamen(konto)
+
+        self.assertIn("übergangen", text)
+
+    def test_kennungen_werden_zu_namen(self):
+        """»220b2cd0-f3b1-…« sagt niemandem etwas."""
+        import json
+        import tempfile
+        from unittest import mock
+
+        from mailburg.ui import konten
+
+        with tempfile.TemporaryDirectory() as ordner:
+            wo = pathlib.Path(ordner)
+            (wo / "archive.json").write_text(
+                json.dumps({"uuid": "abc-123", "name": "Privatarchiv"}),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "mailburg.ui.app.zuletzt_benutzte_pfade", lambda: [str(wo)]
+            ):
+                name = konten.Kontenverwaltung._archivname("abc-123")
+
+        self.assertEqual(name, "Privatarchiv")
+
+    def test_eine_unbekannte_kennung_bleibt_sichtbar(self):
+        """Liegt die Platte gerade nicht an, wird nichts verschwiegen."""
+        from unittest import mock
+
+        from mailburg.ui import konten
+
+        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade", lambda: []):
+            name = konten.Kontenverwaltung._archivname("220b2cd0-f3b1-49ea")
+
+        self.assertTrue(name.startswith("220b2cd0"))

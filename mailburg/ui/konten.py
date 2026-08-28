@@ -4,13 +4,21 @@ Der Assistent läuft einmal. Danach kommt trotzdem ein Konto hinzu, ein
 altes wird stillgelegt, ein Passwort ändert sich – und für all das gab es
 bisher nur die Kommandozeile.
 
-**Konten gelten programmweit, nicht je Archiv.** Wer zwei Archive führt,
-etwa ein privates und ein geschäftliches, ruft dieselben Postfächer ab und
-entscheidet beim Abruf, wohin. Das ist die einfachere Ordnung: Ein Postfach
-zweimal einzurichten hieße, es zweimal abzurufen.
+**Jedes Postfach gehört ausdrücklich in ein Archiv.** Das war einmal
+anders gedacht – die Liste galt programmweit, und beim Abruf sollte sich
+entscheiden, wohin. Diese Ordnung ist am 2026-08-26 im Echtbetrieb
+gescheitert: Von 9.866 Mails in einem Geschäftsarchiv gehörten 176
+dorthin, der Rest war private Post und lag damit unter zehnjährigen
+Aufbewahrungsfristen.
+
+Ein Postfach kann in mehreren Archiven stehen – selten, aber es gibt
+Gründe. Ohne Zuordnung wird es beim Abruf übergangen; das ist die
+unbequemere Voreinstellung und die einzige vertretbare.
 """
 
 from __future__ import annotations
+
+import pathlib
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -42,7 +50,8 @@ class Kontenverwaltung(QDialog):
         # Die Mailadresse gehört sichtbar dazu: Der Name ist frei gewählt
         # und sagt bei mehreren Postfächern desselben Anbieters nichts.
         self.baum.setHeaderLabels(
-            ["Postfach", "Mailadresse", "Server", "Passwort", "Zustand"]
+            ["Postfach", "Mailadresse", "Server", "Passwort", "Zustand",
+             "Archive"]
         )
         self.baum.setRootIsDecorated(False)
         self.baum.setAccessibleName("Eingerichtete Postfächer")
@@ -52,6 +61,12 @@ class Kontenverwaltung(QDialog):
         self.hinzu.clicked.connect(self._hinzufuegen)
         self.uebernehmen = QPushButton("Aus Thunderbird übernehmen …")
         self.uebernehmen.clicked.connect(self._uebernehmen)
+        self.zuordnen = QPushButton("Archiv zuordnen …")
+        self.zuordnen.setToolTip(
+            "In welche Archive dieses Postfach abgerufen wird. Ohne "
+            "Zuordnung bleibt es beim Abruf außen vor."
+        )
+        self.zuordnen.clicked.connect(self._zuordnen)
         self.passwort_neu = QPushButton("Passwort ändern …")
         self.passwort_neu.clicked.connect(self._passwort_aendern)
         self.stilllegen = QPushButton("Stilllegen")
@@ -63,14 +78,17 @@ class Kontenverwaltung(QDialog):
         for knopf in (self.hinzu, self.uebernehmen):
             knopfreihe.addWidget(knopf)
         knopfreihe.addStretch()
-        for knopf in (self.passwort_neu, self.stilllegen, self.entfernen):
+        for knopf in (self.zuordnen, self.passwort_neu, self.stilllegen,
+                      self.entfernen):
             knopfreihe.addWidget(knopf)
 
         hinweis = QLabel(
             "Ein stillgelegtes Postfach bleibt eingerichtet, wird beim Abruf "
             "aber übergangen – nützlich für ein Konto, das es nicht mehr "
             "gibt. <b>Entfernen</b> nimmt es samt Passwort aus der Liste; die "
-            "bereits archivierten Mails bleiben in jedem Fall erhalten."
+            "bereits archivierten Mails bleiben in jedem Fall erhalten.<br>"
+            "<b>Ohne Archiv wird ein Postfach beim Abruf übergangen</b> – "
+            "sonst landete geschäftliche Post im Privatarchiv."
         )
         hinweis.setWordWrap(True)
         hinweis.setTextFormat(Qt.RichText)
@@ -98,15 +116,66 @@ class Kontenverwaltung(QDialog):
                 f"{konto.server}:{konto.port}",
                 gemerkt,
                 "aktiv" if konto.aktiv else "stillgelegt",
+                self._archivnamen(konto),
             ])
             eintrag.setData(0, Qt.UserRole, konto.name)
             if not konto.aktiv:
                 eintrag.setForeground(0, self.palette().placeholderText())
             self.baum.addTopLevelItem(eintrag)
 
-        for spalte in range(5):
+        for spalte in range(6):
             self.baum.resizeColumnToContents(spalte)
         self._auswahl_geaendert()
+
+    def _archivnamen(self, konto) -> str:
+        """Wohin dieses Postfach abgerufen wird – in Klarnamen.
+
+        Gespeichert ist die Archivkennung, weil ein Archiv auf einer
+        externen Platte morgen woanders liegt. Angezeigt gehört der
+        Name: Mit »220b2cd0-f3b1-…« kann niemand etwas anfangen.
+        """
+        if not konto.archive:
+            return "keinem – wird übergangen"
+        namen = [self._archivname(k) for k in konto.archive]
+        return ", ".join(namen)
+
+    @staticmethod
+    def _archivname(kennung: str) -> str:
+        """Sucht den Namen zu einer Kennung in den zuletzt geöffneten Archiven.
+
+        Findet sich keiner – etwa weil die Platte gerade nicht
+        angeschlossen ist –, bleibt die Kennung stehen. Etwas Unlesbares
+        anzuzeigen ist besser, als ein Archiv zu verschweigen.
+        """
+        import json
+
+        from mailburg.ui.app import zuletzt_benutzte_pfade
+
+        for pfad in zuletzt_benutzte_pfade():
+            datei = pathlib.Path(pfad) / "archive.json"
+            try:
+                daten = json.loads(datei.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if daten.get("uuid") == kennung:
+                return daten.get("name") or pathlib.Path(pfad).name
+        return kennung[:8] + "…"
+
+    def _zuordnen(self) -> None:
+        """Fragt, in welche Archive dieses Postfach abgerufen wird."""
+        konto = self._gewaehltes_konto()
+        if konto is None:
+            return
+        gewaehlt = ArchivZuordnung.fragen(konto, self)
+        if gewaehlt is None:
+            return
+
+        for kennung in list(konto.archive):
+            if kennung not in gewaehlt:
+                self.liste.loesen(konto.name, kennung)
+        for kennung in gewaehlt:
+            self.liste.zuordnen(konto.name, kennung)
+        self._fuellen()
 
     def _gewaehltes_konto(self):
         stellen = self.baum.selectedItems()
@@ -229,3 +298,85 @@ class Kontenverwaltung(QDialog):
         accounts.passwort_loeschen(konto)
         self.liste.entfernen(konto.name)
         self._fuellen()
+
+
+class ArchivZuordnung(QDialog):
+    """In welche Archive ein Postfach abgerufen wird.
+
+    Angeboten werden die zuletzt geöffneten Archive – mehr kennt das
+    Programm nicht, und mehr braucht es auch nicht: Wer ein Archiv
+    zuordnen will, hat es zuvor einmal geöffnet.
+    """
+
+    def __init__(self, konto, eltern=None) -> None:
+        super().__init__(eltern)
+        self.setWindowTitle(f"Archive für »{konto.name}«")
+        self.setMinimumWidth(520)
+
+        from PySide6.QtWidgets import QCheckBox
+
+        self.kaestchen: list[tuple[QCheckBox, str]] = []
+        aufbau = QVBoxLayout(self)
+
+        erklaerung = QLabel(
+            f"In welche Archive soll <b>{konto.name}</b> abgerufen werden?<br>"
+            f"Ohne Zuordnung bleibt das Postfach beim Abruf außen vor – "
+            f"sonst landete geschäftliche Post im Privatarchiv und private "
+            f"unter den Aufbewahrungsfristen eines Geschäftsarchivs."
+        )
+        erklaerung.setWordWrap(True)
+        erklaerung.setTextFormat(Qt.RichText)
+        aufbau.addWidget(erklaerung)
+
+        for kennung, name in self._bekannte_archive():
+            kaestchen = QCheckBox(name)
+            kaestchen.setChecked(kennung in konto.archive)
+            aufbau.addWidget(kaestchen)
+            self.kaestchen.append((kaestchen, kennung))
+
+        if not self.kaestchen:
+            leer = QLabel(
+                "Es ist noch kein Archiv bekannt. Öffnen Sie zuerst eines "
+                "über <i>Archiv → Öffnen</i>."
+            )
+            leer.setWordWrap(True)
+            leer.setTextFormat(Qt.RichText)
+            aufbau.addWidget(leer)
+
+        knoepfe = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        knoepfe.accepted.connect(self.accept)
+        knoepfe.rejected.connect(self.reject)
+        aufbau.addStretch()
+        aufbau.addWidget(knoepfe)
+
+    @staticmethod
+    def _bekannte_archive() -> list[tuple[str, str]]:
+        """Kennung und Name der zuletzt geöffneten Archive."""
+        import json
+
+        from mailburg.ui.app import zuletzt_benutzte_pfade
+
+        gefunden = []
+        for pfad in zuletzt_benutzte_pfade():
+            datei = pathlib.Path(pfad) / "archive.json"
+            try:
+                daten = json.loads(datei.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            kennung = daten.get("uuid")
+            if kennung and kennung not in [k for k, _ in gefunden]:
+                name = daten.get("name") or pathlib.Path(pfad).name
+                art = daten.get("mode", "")
+                zusatz = " (geschäftlich)" if art.startswith("gesch") else ""
+                gefunden.append((kennung, f"{name}{zusatz}"))
+        return gefunden
+
+    @classmethod
+    def fragen(cls, konto, eltern=None) -> list[str] | None:
+        """Zeigt den Dialog. Gibt die gewählten Kennungen zurück, sonst None."""
+        dialog = cls(konto, eltern)
+        if dialog.exec() != QDialog.Accepted:
+            return None
+        return [k for kaestchen, k in dialog.kaestchen if kaestchen.isChecked()]
