@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -1021,6 +1022,49 @@ def cmd_info(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_werkzeuge(args: argparse.Namespace) -> int:
+    """Zeigt, was für Volltext und Texterkennung bereitsteht.
+
+    **Wozu das gut ist.** Wenn eine eingescannte Rechnung im Archiv
+    liegt und die Suche sie nicht findet, gibt es genau zwei Gründe: Der
+    Scan war zu schlecht, oder die Texterkennung lief gar nicht. Ohne
+    diesen Befehl ist das von außen nicht zu unterscheiden - man sucht
+    dann in der falschen Richtung.
+
+    Unter Windows kommt hinzu, dass die gepackte Fassung ihre Werkzeuge
+    selbst mitbringt. Ob sie tatsächlich gefunden werden, soll man
+    nachsehen können, ohne erst eine Rechnung durchlaufen zu lassen.
+    """
+    from mailburg.core import werkzeuge as mitgebracht
+    from mailburg.extract import ocr
+
+    ort = mitgebracht.mitgeliefert()
+    if ort is not None:
+        print(f"Mitgeliefert in: {ort}")
+    print()
+
+    geht, grund = ocr.bereit()
+    print(f"Texterkennung: {'ja' if geht else 'nein'}")
+    if not geht:
+        print(f"  {grund}")
+    else:
+        sprachen = ", ".join(sorted(ocr.sprachen_vorhanden()))
+        print(f"  Sprachen: {sprachen}")
+        print(f"  Benutzt wird: {ocr.sprachwahl()}")
+
+    print()
+    for name, wofuer in (
+        ("pdftoppm", "Seiten in Bilder wandeln"),
+        ("pdftotext", "Text aus PDF holen"),
+        ("pdfinfo", "Seitengröße und Verschlüsselung prüfen"),
+        ("tesseract", "Text aus Bildern lesen"),
+    ):
+        pfad = shutil.which(name)
+        print(f"{name:11} {pfad or '– fehlt –':60} {wofuer}")
+
+    return 0 if geht else 1
+
+
 def cmd_hilfe_suche(args: argparse.Namespace) -> int:
     """Erklärt die Suchsprache."""
     print(describe_syntax())
@@ -1417,6 +1461,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = subparsers.add_parser("suchhilfe", help="die Suchsprache erklären")
     p.set_defaults(func=cmd_hilfe_suche)
+
+    p = subparsers.add_parser(
+        "werkzeuge",
+        help="zeigen, ob die Texterkennung bereitsteht",
+        description=(
+            "Zeigt, welche Hilfsprogramme MailBurg für Volltext und "
+            "Texterkennung findet. Wenn eine eingescannte Rechnung im "
+            "Archiv liegt und die Suche sie nicht findet, steht hier, ob "
+            "es am Scan lag oder daran, dass die Texterkennung gar nicht "
+            "lief."
+        ),
+    )
+    p.set_defaults(func=cmd_werkzeuge)
 
     return parser
 

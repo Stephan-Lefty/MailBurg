@@ -16,11 +16,13 @@ einer Stelle ab und macht sie durchsuchbar – Mailtexte, Kopfzeilen und den
 Inhalt der Anhänge. Wo dieser eine Ort liegt, entscheiden Sie: interne Platte,
 externe Platte, ein von Nextcloud synchronisierter Ordner.
 
-Entwickelt und im Alltag erprobt unter Linux. Unter Windows und macOS laufen
+Entwickelt und im Alltag erprobt unter Linux. Unter **Windows** gibt es eine
+fertige `MailBurg.exe` – ohne Python, ohne Installation, mit eingebauter
+Texterkennung; Einrichtung, Abruf, Suche und der regelmäßige Abruf über die
+Aufgabenplanung sind dort durchgespielt. Unter **macOS** laufen bisher nur
 Tests und Einrichtung nachweislich durch, im täglichen Betrieb war MailBurg
-dort noch nicht – wer es auf diesen Systemen einsetzt, sollte anfangs
-regelmäßig `mailburg pruefen` laufen lassen und das Postfach nicht zu früh
-aufräumen.
+dort noch nicht – wer es dort einsetzt, sollte anfangs regelmäßig
+`mailburg pruefen` laufen lassen und das Postfach nicht zu früh aufräumen.
 
 <p align="center">
   <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer, Mailprogramme und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile." width="960">

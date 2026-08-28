@@ -31,13 +31,17 @@ Anwendungsmenü.
 
 ### Windows
 
-```powershell
-git clone https://github.com/Stephan-Lefty/MailBurg.git
-cd MailBurg
-powershell -ExecutionPolicy Bypass -File install.ps1
-```
+Eine Datei herunterladen, doppelklicken, fertig. Python wird nicht gebraucht,
+installiert wird nichts, Administratorrechte braucht es nicht.
 
-Einzelheiten in [MailBurg unter Windows](windows.md).
+Die aktuelle `MailBurg.exe` hängt an der
+[jüngsten Veröffentlichung](https://github.com/Stephan-Lefty/MailBurg/releases/latest).
+Die Texterkennung für eingescannte PDF ist darin bereits enthalten.
+
+Beim ersten Start warnt Windows: „Der Computer wurde durch Windows geschützt."
+Das ist zu erwarten — die Datei ist nicht signiert. **Weitere Informationen** →
+**Trotzdem ausführen**. Einzelheiten und die Prüfsumme zum Nachrechnen in
+[MailBurg unter Windows](windows.md).
 
 ### Zwei Werkzeuge, die MailBurg mitbringt
 
@@ -79,8 +83,9 @@ Ob es geklappt hat, sagt Ihnen:
 tesseract --list-langs
 ```
 
-Steht dort `deu`, ist alles bereit. Unter Windows sind beide Werkzeuge im
-Installationsskript enthalten; Einzelheiten in
+Steht dort `deu`, ist alles bereit. In der Windows-Fassung sind beide Werkzeuge
+samt deutschen Sprachdaten bereits eingepackt — dort genügt
+`MailBurg.exe werkzeuge`, um es nachzusehen. Einzelheiten in
 [MailBurg unter Windows](windows.md).
 
 **Ohne diese Pakete läuft MailBurg vollständig** – Abrufen, Suchen,

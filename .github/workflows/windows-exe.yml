@@ -35,6 +35,110 @@ jobs:
           pip install -e ".[oberflaeche,imap,anhaenge,packen]"
           pip install pyinstaller
 
+      - name: Texterkennung beschaffen
+        # poppler und tesseract kommen mit in die .exe. Ohne sie findet
+        # MailBurg unter Windows keine eingescannte Rechnung - und mehr
+        # als die Hälfte der PDF in einem gewachsenen Postfach sind
+        # Scans. Der Anwender soll dafür nichts nachinstallieren müssen.
+        #
+        # Die Fassungen sind festgeschrieben. Ein "latest" hier hieße,
+        # dass ein Bau in einem halben Jahr etwas anderes einpackt als
+        # der heutige - und dass er ohne Zutun bricht, wenn jemand
+        # anderes ein Archiv umbenennt.
+        env:
+          POPPLER: "25.07.0-0"
+          TESSDATA: "4.1.0"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $ziel = "werkzeuge\windows"
+          New-Item -ItemType Directory -Force -Path $ziel | Out-Null
+
+          # --- poppler -----------------------------------------------
+          $url = "https://github.com/oschwartz10612/poppler-windows/releases/download/v$env:POPPLER/Release-$env:POPPLER.zip"
+          Invoke-WebRequest -Uri $url -OutFile poppler.zip
+          Expand-Archive poppler.zip -DestinationPath poppler-aus
+          $bin = Get-ChildItem poppler-aus -Recurse -Directory |
+                 Where-Object { $_.FullName -like "*Library\bin" } |
+                 Select-Object -First 1
+          if (-not $bin) { throw "poppler: bin-Ordner nicht gefunden" }
+          Copy-Item "$($bin.FullName)\*" $ziel -Recurse -Force
+
+          # --- tesseract ---------------------------------------------
+          choco install tesseract --no-progress -y
+          $tess = "C:\Program Files\Tesseract-OCR"
+          if (-not (Test-Path $tess)) { throw "tesseract: nicht gefunden" }
+          # Ohne die eigenen Sprachdaten, die kommen gleich frisch.
+          Copy-Item "$tess\*" $ziel -Recurse -Force -Exclude "tessdata"
+
+          # --- Sprachdaten -------------------------------------------
+          # Deutsch *und* Englisch: In deutscher Geschäftspost stecken
+          # genug englische Rechnungen. Aus tessdata (Standard), nicht
+          # aus tessdata_fast - bei einer eingescannten Rechnung zählt
+          # die Trefferquote mehr als eine halbe Sekunde je Seite.
+          $daten = "$ziel\tessdata"
+          New-Item -ItemType Directory -Force -Path $daten | Out-Null
+          foreach ($sprache in @("deu", "eng", "osd")) {
+            $q = "https://github.com/tesseract-ocr/tessdata/raw/$env:TESSDATA/$sprache.traineddata"
+            Invoke-WebRequest -Uri $q -OutFile "$daten\$sprache.traineddata"
+          }
+
+          # --- Herkunft und Lizenzen ---------------------------------
+          # poppler steht unter der GPL, MailBurg unter MIT. Beides in
+          # einer Datei weiterzugeben ist zulässig, solange die
+          # Programme eigenständig bleiben und aufgerufen statt
+          # eingebunden werden - genau so ist es hier. Was die GPL
+          # dafür verlangt, ist Klarheit darüber, was mitgeliefert wird
+          # und wo der Quellcode dazu liegt. Also steht es dabei.
+          @"
+          Mitgelieferte Fremdprogramme
+          ============================
+
+          MailBurg ruft diese Programme auf; eingebunden wird nichts davon.
+          Beide sind unveraendert uebernommen.
+
+          poppler $env:POPPLER  (pdftoppm, pdftotext, pdfinfo)
+            Lizenz: GNU General Public License, Version 2 oder spaeter
+            Windows-Fassung: https://github.com/oschwartz10612/poppler-windows
+            Quellcode:       https://poppler.freedesktop.org/
+
+          tesseract  (Texterkennung)
+            Lizenz: Apache License 2.0
+            Quellcode: https://github.com/tesseract-ocr/tesseract
+
+          Sprachdaten $env:TESSDATA (deu, eng, osd)
+            Lizenz: Apache License 2.0
+            Quelle: https://github.com/tesseract-ocr/tessdata
+
+          MailBurg selbst steht unter der MIT-Lizenz, siehe LICENSE.
+          "@ | Out-File -Encoding utf8 "$ziel\HERKUNFT.txt"
+
+          Invoke-WebRequest -Uri "https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt" `
+            -OutFile "$ziel\LIZENZ-poppler-GPL-2.0.txt"
+          Invoke-WebRequest -Uri "https://www.apache.org/licenses/LICENSE-2.0.txt" `
+            -OutFile "$ziel\LIZENZ-tesseract-Apache-2.0.txt"
+
+          $mb = [math]::Round(
+            ((Get-ChildItem $ziel -Recurse | Measure-Object Length -Sum).Sum / 1MB), 1)
+          Write-Host "Texterkennung: $mb MB"
+          Get-ChildItem $ziel -Filter "*.exe" | ForEach-Object { Write-Host "  $($_.Name)" }
+
+      - name: Läuft die Texterkennung?
+        # Ein mitgeliefertes Programm, das nicht startet, faellt sonst
+        # erst dem Anwender auf - und der hat keine Konsole, um
+        # nachzusehen, woran es liegt.
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:TESSDATA_PREFIX = "$PWD\werkzeuge\windows\tessdata"
+          $sprachen = & "werkzeuge\windows\tesseract.exe" --list-langs 2>&1 | Out-String
+          Write-Host $sprachen
+          if ($sprachen -notmatch "deu") {
+            Write-Error "tesseract kennt kein Deutsch - ein deutscher Text mit englischem Modell wird zu Buchstabensalat."
+            exit 1
+          }
+          & "werkzeuge\windows\pdftoppm.exe" -v 2>&1 | Write-Host
+
       - name: Fassungsnummer erzeugen
         run: python werkzeuge/fassung_erzeugen.py werkzeuge/fassung.txt
 
@@ -50,6 +154,25 @@ jobs:
           Write-Host $ausgabe
           if ($ausgabe -notmatch "MailBurg \d+\.\d+\.\d+") {
             Write-Error "Die gepackte Fassung meldet keine Version."
+            exit 1
+          }
+
+      - name: Findet die fertige Datei ihre Texterkennung?
+        # Der eigentliche Beweis. Bis hierher ist nur belegt, dass die
+        # Programme eingepackt wurden - nicht, dass MailBurg sie im
+        # entpackten Zustand auch findet. Genau dort saß der Fehler bei
+        # den Bildern: Sie steckten in der .exe und wurden trotzdem
+        # nicht gefunden, weil niemand in sys._MEIPASS nachsah.
+        shell: pwsh
+        run: |
+          $ausgabe = & ".\dist\MailBurg.exe" werkzeuge 2>&1 | Out-String
+          Write-Host $ausgabe
+          if ($ausgabe -notmatch "Texterkennung: ja") {
+            Write-Error "Die gepackte Fassung findet ihre Texterkennung nicht."
+            exit 1
+          }
+          if ($ausgabe -notmatch "deu") {
+            Write-Error "Ohne deutsche Sprachdaten wird jede Rechnung zu Buchstabensalat."
             exit 1
           }
 

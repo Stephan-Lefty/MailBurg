@@ -31,6 +31,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from mailburg.core import werkzeuge
+
+# **Beim Import, nicht erst beim ersten Auftrag.** Alles hier fragt über
+# ``shutil.which`` nach den Programmen; steht der mitgelieferte Ordner
+# dann noch nicht im Suchpfad, meldet MailBurg »tesseract fehlt« und
+# schaltet die Texterkennung ab, obwohl sie eingepackt danebenliegt.
+# Unter Linux findet das nichts und ändert nichts.
+werkzeuge.bereitstellen()
+
 #: Auflösung für die Umwandlung in Bilder. 300 dpi ist der übliche Wert für
 #: Texterkennung – darunter leidet die Trefferquote bei kleiner Schrift
 #: spürbar, darüber steigt nur die Rechenzeit.
@@ -134,22 +143,59 @@ def sprachwahl() -> str:
     return "+".join(gewaehlt)
 
 
+def _windows() -> bool:
+    return os.name == "nt"
+
+
 def bereit() -> tuple[bool, str]:
-    """Prüft die Voraussetzungen und erklärt, was gegebenenfalls fehlt."""
+    """Prüft die Voraussetzungen und erklärt, was gegebenenfalls fehlt.
+
+    **Der Rat muss zum System passen.** »sudo apt install« hilft niemandem
+    unter Windows weiter; es sagt ihm nur, dass er hier falsch ist. Und
+    wer dort die gepackte Fassung benutzt, soll überhaupt nichts
+    nachinstallieren müssen - kommt diese Meldung trotzdem, ist etwas mit
+    der Datei nicht in Ordnung, und genau das gehört dann dagestanden.
+    """
     if not shutil.which("pdftoppm"):
+        if _windows():
+            return False, (
+                "Die Texterkennung fehlt (pdftoppm aus poppler). In der "
+                "fertigen MailBurg.exe ist sie enthalten - fehlt sie dort, "
+                "ist die Datei unvollständig heruntergeladen worden. Wer "
+                "MailBurg aus den Quellen betreibt, installiert poppler "
+                "mit: winget install oschwartz10612.Poppler"
+            )
         return False, (
             "poppler fehlt (pdftoppm). Unter Debian: sudo apt install poppler-utils, "
             "unter Arch: sudo pacman -S poppler"
         )
     if not shutil.which("tesseract"):
+        if _windows():
+            return False, (
+                "Die Texterkennung fehlt (tesseract). In der fertigen "
+                "MailBurg.exe ist sie enthalten - fehlt sie dort, ist die "
+                "Datei unvollständig heruntergeladen worden. Wer MailBurg "
+                "aus den Quellen betreibt, installiert sie mit: "
+                "winget install UB-Mannheim.TesseractOCR"
+            )
         return False, (
             "tesseract fehlt. Unter Debian: sudo apt install tesseract-ocr "
             "tesseract-ocr-deu, unter Arch: sudo pacman -S tesseract tesseract-data-deu"
         )
     if not sprachwahl():
+        vorhanden = ", ".join(sorted(sprachen_vorhanden())) or "keine"
+        if _windows():
+            return False, (
+                f"tesseract ist da, aber ohne deutsche Sprachdaten. "
+                f"Vorhanden: {vorhanden}. Ein deutscher Text mit englischem "
+                f"Modell gelesen wird zu Buchstabensalat mit zerstörten "
+                f"Umlauten - lieber gar nicht erkennen als falsch. Bei "
+                f"eigener Installation fehlt meist das Häkchen bei "
+                f"»German« im tesseract-Setup."
+            )
         return False, (
             f"tesseract ist da, aber ohne brauchbare Sprachdaten. Vorhanden: "
-            f"{', '.join(sorted(sprachen_vorhanden())) or 'keine'}. Gebraucht wird "
+            f"{vorhanden}. Gebraucht wird "
             f"mindestens 'deu'. Unter Debian: sudo apt install tesseract-ocr-deu, "
             f"unter Arch: sudo pacman -S tesseract-data-deu"
         )

@@ -68,6 +68,26 @@ DRAUSSEN = [
     "PySide6.QtWebSockets", "tkinter", "unittest", "pydoc_data",
 ]
 
+#: poppler und tesseract, sofern der Workflow sie hergelegt hat.
+#:
+#: **Warum sie mit hinein müssen.** Ohne sie findet MailBurg unter
+#: Windows keine eingescannte Rechnung – und mehr als die Hälfte der PDF
+#: in einem gewachsenen Postfach sind Scans. Der Weg dorthin wäre sonst:
+#: poppler von einer GitHub-Release-Seite laden, ZIP entpacken, PATH
+#: eintragen, dasselbe für tesseract, Sprachdaten für Deutsch nicht
+#: vergessen. Das erledigt niemand nebenbei. Stephans Urteil am
+#: 2026-08-28: »Ohne das ist es doch nicht dieselbe Lösung wie unter
+#: Linux.«
+#:
+#: Sie liegen als ``datas``, nicht als ``binaries``: PyInstaller soll sie
+#: nicht auf Abhängigkeiten durchsuchen und ihre DLLs umsortieren. Sie
+#: werden als eigenständige Programme aufgerufen und müssen beisammen
+#: bleiben.
+MITGEBRACHT = WURZEL / "werkzeuge" / "windows"
+BEIGABEN = (
+    [(str(MITGEBRACHT), "werkzeuge")] if MITGEBRACHT.is_dir() else []
+)
+
 analyse = Analysis(
     [EINSTIEG],
     pathex=[str(WURZEL)],
@@ -87,6 +107,7 @@ analyse = Analysis(
         (str(WURZEL / "docs"), "docs"),
         (str(WURZEL / "LICENSE"), "."),
         (str(WURZEL / "RECHTLICHES.md"), "."),
+        *BEIGABEN,
     ],
     hiddenimports=VERSTECKT,
     hookspath=[],
