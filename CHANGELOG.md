@@ -11,6 +11,14 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Aufbewahrung festlegen, aus der Trefferliste heraus.** *Post →
+  Aufbewahrung festlegen …* ordnet die gerade gefundenen Mails ein. Das
+  Fenster zeigt vorher, wie viele betroffen sind und was die Wahl
+  bedeutet — „8 Jahre lang vor dem Löschen geschützt" statt bloß
+  „Buchungsbeleg". Nur im Geschäftsarchiv; ein Privatarchiv kennt keine
+  Fristen, und ein Menüpunkt, der dort nichts bewirkt, wäre eine
+  Einladung, sich über etwas Gedanken zu machen, das keine Rolle spielt.
+
 - **`mailburg einstufen` ordnet Mails aufbewahrungsrechtlich ein.** Das
   Rechenwerk stand seit dem 25. August und war getestet — aber es gab
   keinen Weg, einer Mail eine Kategorie *zuzuweisen*. Der Index hatte die

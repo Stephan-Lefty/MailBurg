@@ -274,6 +274,20 @@ class Hauptfenster(QMainWindow):
         self.ocr_aktion.triggered.connect(self._texterkennung)
         post.addAction(self.ocr_aktion)
 
+        post.addSeparator()
+        # **Nur im Geschäftsarchiv.** In einem Privatarchiv gibt es keine
+        # Aufbewahrungsfristen; ein Menüpunkt, der dort nichts bewirkt,
+        # wäre eine Einladung, sich über etwas Gedanken zu machen, das
+        # keine Rolle spielt.
+        self.einstufen_aktion = QAction("Aufbewahrung festlegen …", self)
+        self.einstufen_aktion.setStatusTip(
+            "Die gefundenen Mails als Buchungsbeleg, Handelsbrief oder "
+            "privat einordnen – davon hängt ab, wie lange sie vor dem "
+            "Löschen geschützt sind."
+        )
+        self.einstufen_aktion.triggered.connect(self._einstufen)
+        post.addAction(self.einstufen_aktion)
+
         # Einstellungen sind kein Handeln: Was hier steht, gilt fort,
         # bis es jemand ändert. Deshalb ein eigenes Menü - und deshalb
         # weit rechts, kurz vor der Hilfe: Was man täglich braucht,
@@ -402,6 +416,14 @@ class Hauptfenster(QMainWindow):
 
         self.modell.suchindex = self.archiv.index
         self.setWindowTitle(f"{APP_NAME} – {self.archiv.name}")
+        # **Aufbewahrung nur im Geschäftsarchiv.** In einem Privatarchiv
+        # gibt es keine Fristen; ein Menüpunkt, der dort nichts bewirkt,
+        # wäre eine Einladung, sich über etwas Gedanken zu machen, das
+        # keine Rolle spielt. Ausgeblendet statt ausgegraut: Ein grauer
+        # Eintrag wirft die Frage auf, was man tun müsste, damit er
+        # angeht - und die Antwort wäre »ein anderes Archiv anlegen«.
+        if hasattr(self, "einstufen_aktion"):
+            self.einstufen_aktion.setVisible(self.archiv.mode.is_business)
         self._index_pruefen()
         self._baum_fuellen()
         self._bestand_zeigen()
@@ -1256,6 +1278,60 @@ class Hauptfenster(QMainWindow):
 
         art = QMessageBox.information if bericht["ok"] else QMessageBox.warning
         art(self, "Prüfung", "\n".join(zeilen))
+
+    def _einstufen(self) -> None:
+        """Ordnet die gerade gefundenen Mails aufbewahrungsrechtlich ein."""
+        from mailburg.ui.einstufen import Einstufungsdialog
+
+        if self.archiv is None:
+            return
+
+        ausdruck = self.suchfeld.text().strip()
+        treffer = self.archiv.index.search(ausdruck, limit=1_000_000)
+        if not treffer:
+            QMessageBox.information(
+                self,
+                "Nichts gefunden",
+                "Eingestuft wird, was gerade gefunden ist. Suchen Sie "
+                "zuerst – etwa nach »von:steuerkanzlei« oder »rechnung«.",
+            )
+            return
+
+        dialog = Einstufungsdialog(self.archiv, ausdruck, treffer, self)
+        if not dialog.exec():
+            return
+
+        stufe = dialog.gewaehlt()
+        offen = [t for t in treffer if t.category != stufe.value]
+        if not offen:
+            return
+
+        # Ohne Warteanzeige: Bei mehreren tausend Mails schreibt das
+        # Journal für jede einen Eintrag, und das dauert spürbar.
+        self.setCursor(Qt.WaitCursor)
+        try:
+            for eintrag in offen:
+                self.archiv.classify(
+                    eintrag.hash, stufe,
+                    note=f"Suche: {ausdruck}" if ausdruck else "gesamtes Archiv",
+                )
+        except Exception as exc:  # noqa: BLE001
+            self.unsetCursor()
+            QMessageBox.warning(
+                self, "Einstufen abgebrochen",
+                f"Nicht alle Mails konnten eingestuft werden: {exc}\n\n"
+                f"Was bis dahin geändert wurde, steht im Journal.",
+            )
+            return
+        finally:
+            self.unsetCursor()
+
+        wort = "Mail" if len(offen) == 1 else "Mails"
+        self.stand.setText(
+            f"{len(offen)} {wort} als »{stufe.value}« eingestuft – "
+            f"im Journal vermerkt."
+        )
+        self._suchen()
 
     def _texterkennung(self) -> None:
         from mailburg.ui.texterkennung import Texterkennungsdialog

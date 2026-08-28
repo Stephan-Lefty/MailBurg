@@ -230,3 +230,109 @@ class BefehlTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OberflaecheTest(unittest.TestCase):
+    """Der Dialog muss sagen, was die Wahl bedeutet.
+
+    »Buchungsbeleg« sagt einem Anwender nichts, »8 Jahre lang vor dem
+    Löschen geschützt« sagt alles. Eine Einstufung verlängert Fristen um
+    Jahre und lässt sich nicht formlos zurücknehmen – was geschieht, muss
+    vorher dastehen.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        try:
+            from PySide6.QtWidgets import QApplication
+        except ImportError:
+            raise unittest.SkipTest("PySide6 fehlt")
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.pfad = pathlib.Path(self.ordner.name) / "Geschaeftsarchiv"
+        Archive.create(self.pfad, mode="geschaeftlich").close()
+        with Archive.open(self.pfad) as archiv:
+            for nr in range(3):
+                archiv.add(
+                    _mail(f"Rechnung {nr}", "Wed, 26 Aug 2026 10:00:00 +0200",
+                          f"r{nr}"),
+                    account="firma", folder="INBOX",
+                )
+
+    def _dialog(self):
+        from mailburg.ui.einstufen import Einstufungsdialog
+
+        archiv = Archive.open(self.pfad, exclusive=False)
+        self.addCleanup(archiv.close)
+        treffer = archiv.index.search("", limit=100)
+        return Einstufungsdialog(archiv, "rechnung", treffer)
+
+    def test_die_folge_nennt_die_jahre(self) -> None:
+        dialog = self._dialog()
+        self.assertIn("8 Jahre", dialog.folge.text())
+
+    def test_bei_privat_steht_das_gegenteil(self) -> None:
+        from mailburg.core.retention import Category
+
+        dialog = self._dialog()
+        for stufe, knopf in dialog.knoepfe:
+            if stufe is Category.PRIVAT:
+                knopf.setChecked(True)
+
+        self.assertIn("jederzeit", dialog.folge.text())
+        self.assertNotIn("Jahre lang", dialog.folge.text())
+
+    def test_die_zahl_der_betroffenen_steht_dabei(self) -> None:
+        dialog = self._dialog()
+        self.assertIn("3", dialog.folge.text())
+
+    def test_wenn_nichts_zu_tun_ist_steht_auch_das_da(self) -> None:
+        from mailburg.core.retention import Category
+
+        with Archive.open(self.pfad) as archiv:
+            for treffer in archiv.index.search("", limit=100):
+                archiv.classify(treffer.hash, Category.BUCHUNGSBELEG)
+
+        dialog = self._dialog()
+        self.assertIn("bereits", dialog.folge.text())
+
+    def test_jede_kategorie_ist_waehlbar(self) -> None:
+        from mailburg.core.retention import Category
+
+        dialog = self._dialog()
+        angeboten = {stufe for stufe, _knopf in dialog.knoepfe}
+        self.assertEqual(angeboten, set(Category))
+
+    def test_jede_hat_eine_erklaerung_ohne_paragraphen(self) -> None:
+        """Wer »Handelsbrief« nicht kennt, soll trotzdem richtig wählen."""
+        from mailburg.ui.einstufen import STUFEN
+
+        for _stufe, name, erklaerung in STUFEN:
+            with self.subTest(stufe=name):
+                self.assertGreater(len(erklaerung), 40)
+                self.assertNotIn("§", erklaerung)
+
+
+class MenuepunktTest(unittest.TestCase):
+    """Nur im Geschäftsarchiv – im Privatarchiv gibt es keine Fristen."""
+
+    def test_die_sichtbarkeit_haengt_an_der_betriebsart(self) -> None:
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "hauptfenster.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("einstufen_aktion.setVisible", quelle)
+        self.assertIn("is_business", quelle)
+
+    def test_der_vorgang_landet_im_journal(self) -> None:
+        """Auch aus der Oberfläche heraus – sonst wäre der Weg löchrig."""
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "hauptfenster.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("self.archiv.classify(", quelle)

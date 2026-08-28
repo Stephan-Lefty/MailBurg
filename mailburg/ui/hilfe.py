@@ -483,6 +483,29 @@ bestimmte Mail Handelsbrief oder Buchungsbeleg ist, ob eine
 Branchenvorschrift längere Fristen setzt und ob eine laufende Prüfung
 den Ablauf hemmt, kann nur Ihr Steuerberater beurteilen. Das Programm
 rechnet, es entscheidet nicht.</p>
+
+<p><b>Wozu eine Mail zählt, legen Sie fest.</b> Solange nichts
+festgelegt ist, behandelt MailBurg sie wie die längste Pflicht – im
+Zweifel aufbewahren ist die Richtung, die nichts vernichtet. Nur bringt
+das auch mit sich, dass Post jahrelang gehalten wird, die längst weg
+dürfte.</p>
+
+<p>Eingestuft wird über die Suche, nicht Mail für Mail: Wer ein Archiv
+einordnet, hat hunderte Belege vor sich. »Alles von der Steuerkanzlei
+ist Buchungsbeleg« ist eine Regel, die sich als Suchausdruck schreiben
+lässt. Suchen Sie also zuerst, und stufen Sie dann die Treffer ein.</p>
+
+<p>Jede Änderung wird im <a href="#journal">Journal</a> vermerkt, mit
+vorheriger und neuer Einordnung. Das ist kein Selbstzweck: Wer später
+begründen muss, warum eine Mail nach sechs statt acht Jahren gelöscht
+wurde, will auf einen Eintrag zeigen können – und der hängt in der
+Kette, lässt sich also nicht nachträglich glattziehen.</p>
+
+<p><b>Post → Aufbewahrung festlegen …</b><br>Ordnet die gerade
+gefundenen Mails als Buchungsbeleg, Handelsbrief oder privat ein. Das
+Fenster zeigt vorher, wie viele betroffen sind und wie lange sie danach
+geschützt sind. Nur im Geschäftsarchiv; ein Privatarchiv kennt keine
+Fristen.</p>
 """
 
 

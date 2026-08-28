@@ -236,9 +236,9 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   auch die Wirkung: Eine Mail von 2019 ist als Buchungsbeleg bis Ende
   2027 gesperrt, als Handelsbrief schon frei.
 
-  **In der Oberfläche fehlt es noch.** Ein Menüpunkt, der die Treffer der
-  aktuellen Suche einstuft, wäre der nächste Schritt – dieselbe Logik,
-  nur ohne Kommandozeile.
+  **Auch in der Oberfläche:** *Post → Aufbewahrung festlegen …*, mit
+  einem Fenster, das vorher sagt, wie viele Mails betroffen sind und wie
+  lange sie danach geschützt sind. Nur im Geschäftsarchiv sichtbar.
 
   Die Frage, ob sich Handelsbrief und Buchungsbeleg automatisch
   unterscheiden lassen, bleibt offen und ist bewusst nicht angefasst: Ein
