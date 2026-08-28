@@ -168,20 +168,9 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   Anwendung, das Zeit kostet – deshalb später und nicht als Voraussetzung für
   den ersten Einsatz.
 
-- [ ] **Suchmaske nach dem Vorbild von MailStore.** Stephan hat die Maske
-  der Serverfassung als Anhaltspunkt geliefert (2026-08-25). Grundsatz
-  dabei: **Die Maske darf nichts können, was die Suchsprache nicht kann.**
-  Sie baut einen Suchausdruck zusammen und zeigt ihn an – sonst entstehen
-  zwei Wege, von denen einer immer hinterherhinkt, und die Kommandozeile
-  wäre der schwächere.
-
-  Anders als dort würde ich die fünf Ankreuzfelder für die Suchfelder
-  weglassen: Sie stehen ohnehin alle auf »an«. Wer nur `rechnung` tippt,
-  soll nichts weiter anfassen müssen; Einschränkungen kommen darunter.
-
-  Dazu gehören **gespeicherte Suchen** (»Öffnen…«, »Speichern unter…«).
-
-- [ ] **Gespeicherte Suchen.** In der MailStore-Maske »Öffnen…« und
+- [ ] **Gespeicherte Suchen.** Der einzige Teil der MailStore-Maske, der
+  noch fehlt – die Maske selbst steht seit dem 2026-08-26 als
+  *Ausführlich suchen …*. In der MailStore-Maske »Öffnen…« und
   »Speichern unter…«. Wer denselben Auszug regelmäßig braucht – etwa alle
   Rechnungen eines Lieferanten –, soll ihn nicht jedes Mal neu
   zusammensetzen müssen.
