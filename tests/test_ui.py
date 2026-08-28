@@ -1365,7 +1365,7 @@ class StandardansichtTest(FenstergroesseTest):
         self.assertFalse(fenster.isMaximized())
 
 
-class BestandsanzeigeTest(unittest.TestCase):
+class BestandsanzeigeTest(OberflaechenTest):
     """Ist mein Archiv auf dem Stand? Das muss man sehen, nicht glauben."""
 
     def test_zeitpunkt_wird_lesbar(self):

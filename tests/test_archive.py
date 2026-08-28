@@ -535,7 +535,13 @@ class RueckgabeTest(unittest.TestCase):
     def test_dateiname_ohne_verbotene_zeichen(self):
         # Windows verbietet \ / : * ? " < > |, und ein Doppelpunkt steht
         # in fast jedem Betreff mit "Re:" oder "AW:".
-        from mailburg.ui.hauptfenster import _dateiname
+        # Der Dateiname wird in der Oberfläche gebildet; ohne PySide6
+        # gibt es sie nicht. Die CI läuft bewusst ohne Fremdpakete -
+        # MailBurgs Kern kommt ohne aus, und das soll geprüft bleiben.
+        try:
+            from mailburg.ui.hauptfenster import _dateiname
+        except ImportError:
+            self.skipTest("PySide6 ist nicht installiert")
 
         name = _dateiname('Re: Angebot 3/2025 <wichtig?>')
 
@@ -673,7 +679,11 @@ class SicherungTest(unittest.TestCase):
         from mailburg.core import sicherung
         from mailburg.core.archive import Archive
 
-        paket = self.wo / "sicherung.tar.zst"
+        # Die Endung nicht festschreiben: Zstandard steckt erst ab
+        # Python 3.14 in der Standardbibliothek, davor braucht es ein
+        # Paket. Fehlt es, packt MailBurg mit LZMA - und genau dieser
+        # Rückfall soll mitgeprüft werden, statt den Test umzuwerfen.
+        paket = self.wo / f"sicherung.{sicherung._endung()}"
         sicherung.packen(self.wo / "A", paket)
         sicherung.entpacken(paket, self.wo / "Zurueck")
 
