@@ -70,6 +70,56 @@ _SIZE = re.compile(rb"RFC822\.SIZE\s+(\d+)")
 _LIST = re.compile(rb'\((?P<attrs>[^)]*)\)\s+(?P<sep>"[^"]*"|NIL)\s+(?P<name>.*)')
 
 
+#: Was das Betriebssystem meldet – und was es für den Anwender bedeutet.
+#:
+#: Am 2026-08-28 in der Windows-Fassung aufgefallen: Beim Einrichten
+#: stand dort »[Errno 11001] getaddrinfo failed«. Das ist die häufigste
+#: Meldung überhaupt, weil sie bei jedem Tippfehler im Servernamen
+#: erscheint – und sie sagt niemandem etwas.
+#:
+#: MailBurg vermeidet sonst überall Fachjargon. Ausgerechnet an der
+#: Stelle, an der jemand nicht weiterkommt, stand eine Fehlernummer.
+_UEBERSETZUNG = (
+    # Der Name lässt sich nicht auflösen. Unter Windows Errno 11001,
+    # unter Linux -2 oder -3, je nach Auflöser.
+    (("getaddrinfo failed", "name or service not known",
+      "nodename nor servname", "temporary failure in name resolution"),
+     "Diesen Servernamen gibt es nicht. Meist ist es ein Tippfehler – "
+     "IMAP schreibt sich mit vier Buchstaben."),
+
+    # Der Rechner antwortet, aber auf diesem Anschluss lauscht nichts.
+    (("connection refused", "actively refused"),
+     "Der Rechner ist erreichbar, aber auf diesem Anschluss antwortet "
+     "kein Mailserver. Stimmt die Portnummer?"),
+
+    (("timed out", "timeout"),
+     "Der Server antwortet nicht. Das kann an einer Firewall liegen, an "
+     "einer falschen Portnummer – oder der Server ist gerade nicht da."),
+
+    (("authenticationfailed", "invalid credentials", "login failed",
+      "authentication failed"),
+     "Benutzername oder Passwort stimmt nicht."),
+
+    (("no route to host", "network is unreachable"),
+     "Der Rechner ist nicht erreichbar. Besteht die Netzwerkverbindung?"),
+)
+
+
+def _verstaendlich(fehler: Exception) -> str:
+    """Übersetzt die üblichen Netzwerkfehler in einen brauchbaren Satz.
+
+    Was nicht in der Liste steht, wird unverändert durchgereicht: Eine
+    unbekannte Meldung im Original ist immer noch besser als eine
+    erfundene Erklärung, die in die Irre führt.
+    """
+    roh = str(fehler)
+    klein = roh.lower()
+    for muster, klartext in _UEBERSETZUNG:
+        if any(m in klein for m in muster):
+            return klartext
+    return roh
+
+
 class ImapFehler(RuntimeError):
     """Der Server war nicht erreichbar oder hat die Anmeldung abgelehnt."""
 
@@ -269,7 +319,7 @@ class ImapSource(Source):
                 )
             raise ImapFehler(
                 f"Keine Verbindung zu {self.konto.server}:{self.konto.port} – "
-                f"{exc}{hinweis}"
+                f"{_verstaendlich(exc)}{hinweis}"
             ) from exc
 
         try:
@@ -277,7 +327,8 @@ class ImapSource(Source):
         except imaplib.IMAP4.error as exc:
             self._verbindung_wegwerfen()
             raise ImapFehler(
-                f"Anmeldung als {self.konto.benutzer} abgelehnt – {exc}\n"
+                f"Anmeldung als {self.konto.benutzer} abgelehnt – "
+                f"{_verstaendlich(exc)}\n"
                 f"Bei Gmail, GMX, Web.de und Outlook verlangt der Zugriff von "
                 f"außen ein eigenes App-Passwort; das Kennwort der Weboberfläche "
                 f"genügt dort nicht."

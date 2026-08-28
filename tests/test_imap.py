@@ -268,3 +268,66 @@ class ZustandTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FehlermeldungTest(unittest.TestCase):
+    """Was das Betriebssystem meldet, versteht der Anwender nicht.
+
+    Am 2026-08-28 in der Windows-Fassung aufgefallen: Beim Einrichten
+    stand »[Errno 11001] getaddrinfo failed«. Das ist die häufigste
+    Meldung überhaupt, weil sie bei jedem Tippfehler im Servernamen
+    erscheint – und sie sagt niemandem etwas.
+
+    MailBurg vermeidet sonst überall Fachjargon. Ausgerechnet an der
+    Stelle, an der jemand nicht weiterkommt, stand eine Fehlernummer.
+    """
+
+    def _uebersetzt(self, text: str) -> str:
+        from mailburg.sources.imap import _verstaendlich
+
+        return _verstaendlich(Exception(text))
+
+    def test_unbekannter_servername(self) -> None:
+        """Der häufigste Fall – meist ein Tippfehler."""
+        for roh in ("[Errno 11001] getaddrinfo failed",
+                    "[Errno -2] Name or service not known",
+                    "[Errno 8] nodename nor servname provided"):
+            with self.subTest(meldung=roh):
+                text = self._uebersetzt(roh)
+                self.assertIn("Servernamen", text)
+                self.assertIn("Tippfehler", text)
+
+    def test_falscher_anschluss(self) -> None:
+        text = self._uebersetzt("[Errno 111] Connection refused")
+
+        self.assertIn("Portnummer", text)
+
+    def test_keine_antwort(self) -> None:
+        text = self._uebersetzt("timed out")
+
+        self.assertIn("antwortet nicht", text)
+
+    def test_falsches_passwort(self) -> None:
+        text = self._uebersetzt("b'[AUTHENTICATIONFAILED] Invalid credentials'")
+
+        self.assertIn("Passwort", text)
+
+    def test_unbekanntes_bleibt_im_original(self) -> None:
+        """Eine erfundene Erklärung führt weiter in die Irre als der Urtext.
+
+        Wer eine Meldung nicht kennt, kann sie wenigstens suchen. Eine
+        falsche Übersetzung nimmt ihm auch das.
+        """
+        roh = "IMAP4rev1 EXAMINE fehlgeschlagen: seltsamer Serverzustand"
+
+        self.assertEqual(self._uebersetzt(roh), roh)
+
+    def test_kein_fachjargon_in_den_uebersetzungen(self) -> None:
+        """Der Sinn der Übung."""
+        from mailburg.sources.imap import _UEBERSETZUNG
+
+        for _, klartext in _UEBERSETZUNG:
+            with self.subTest(text=klartext[:30]):
+                for wort in ("Errno", "getaddrinfo", "socket", "SSL",
+                             "Exception", "failed"):
+                    self.assertNotIn(wort, klartext)
