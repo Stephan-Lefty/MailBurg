@@ -9,6 +9,8 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [0.10.0] – 2026-08-28
+
 ### Hinzugefügt
 
 - **Die Suche kennt jetzt deutsche Schreibweisen.** »Bahnhofstrasse« findet
@@ -45,6 +47,60 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Gegenstück zu systemds `Persistent=true`. Ohne das fällt eine tägliche
   Sicherung schlicht aus, wenn der Rechner zur fraglichen Zeit ausgeschaltet
   war, und zwar stillschweigend.
+
+
+- **Die Farbpalette steht jetzt geschrieben** – in `assets/farben.md` zum
+  Nachlesen und in `mailburg/farben.py` als Werte, samt Kontrastrechnung nach
+  WCAG 2.1. `tests/test_farben.py` prüft die Paarungen, die tatsächlich
+  vorkommen. Beide Dateien sind zum Kopieren in andere Projekte gedacht; diese
+  Palette gilt seit dem 2026-08-28 für alle.
+- **`GRAU_LEISE` (`#667080`)** für zurückgenommenen Text auf hellem Grund.
+  `GRAU_MITTE` (`#97a1ad`) taugt nur auf dunklem – siehe oben.
+
+
+- **Hilfe → Info** nennt Urheber, Fassung und die Wege für
+  Fehlermeldungen.
+- **Dokumente mit auffällig wenig Text** werden nach der Erkennung
+  benannt. Erledigt heißt nicht gelesen.
+- **`texterkennung --nochmal`** versucht aufgegebene Dokumente erneut –
+  nötig, wenn die Erkennung selbst besser geworden ist.
+- **Beim Öffnen eines Archivs** steht die jüngste Nachricht oben.
+
+
+
+- **`mailburg konten zuordnen` und `mailburg konten zuordnung`** –
+  Postfächer einem Archiv zuweisen und die Zuordnung ansehen.
+- **`mailburg loeschen`** nimmt Mails eines Postfachs wieder aus dem
+  Archiv. Der Trockenlauf ist die Voreinstellung, und entfernt wird nur,
+  was ausschließlich an diesem Postfach hängt.
+
+- **Derselbe Anhang wurde mehrfach durch die Texterkennung geschickt.**
+  Ein Vertrag, der weitergeleitet und mehrfach beantwortet wurde, hängt
+  an vielen Mails – aber es ist ein einziges Dokument. Am Geschäftsarchiv
+  gemessen: 222 gelesene Dokumente mit 986 Seiten, davon 153 Dokumente
+  mit 691 Seiten Abschriften. Siebzig Prozent der Rechenzeit. Verglichen
+  werden jetzt die Bytes des Anhangs, und zwar über Läufe und Archive
+  hinweg; in den Suchindex kommt der Text trotzdem für jede Mail einzeln.
+
+- **Im Fortschrittsfenster fehlte Text.** Ein umbrechendes Etikett meldet
+  Qt eine Höhe, die für eine angenommene Breite gilt, nicht für die
+  tatsächliche. Sobald der Fortschrittsbalken Platz verlangte, nahm sich
+  das Layout ihn beim Absatz darüber – der Text war nicht abgeschnitten,
+  sondern weg.
+
+
+- **`mailburg vorrat`** macht schon erkannten Text für künftige Läufe
+  nutzbar. Für Bestände, die vor der Dublettenprüfung erkannt wurden:
+  Der Text ist da, aber unter dem Schlüssel der Mail statt dem des
+  Dokuments. Erkannt wird nichts neu.
+
+### Geändert
+
+- **Der Erkennungsdialog verspricht keine Dauer mehr.** Die Angabe war
+  aus zwölf Sekunden je Dokument hochgerechnet; die Rechenzeit hängt aber
+  an der Seitenzahl, und die sieht man einem PDF von außen nicht an. Eine
+  Schätzung, die um ein Vielfaches danebenliegt, legt nahe, es laufe
+  etwas falsch, sobald es länger dauert.
 
 ### Behoben
 
@@ -95,17 +151,6 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Farbton nicht an – sie kamen ans Licht, als die Palette in ein anderes
   Projekt übernommen und dort erstmals nachgerechnet wurde.
 
-### Hinzugefügt
-
-- **Die Farbpalette steht jetzt geschrieben** – in `assets/farben.md` zum
-  Nachlesen und in `mailburg/farben.py` als Werte, samt Kontrastrechnung nach
-  WCAG 2.1. `tests/test_farben.py` prüft die Paarungen, die tatsächlich
-  vorkommen. Beide Dateien sind zum Kopieren in andere Projekte gedacht; diese
-  Palette gilt seit dem 2026-08-28 für alle.
-- **`GRAU_LEISE` (`#667080`)** für zurückgenommenen Text auf hellem Grund.
-  `GRAU_MITTE` (`#97a1ad`) taugt nur auf dunklem – siehe oben.
-
-### Behoben
 
 - **Scans mit riesigen Seitenmaßen blieben stumm.** Eine Seite aus der
   iPhone-Kamera-App misst 4507 × 6681 Punkte statt 595 × 842 – bei 300
@@ -121,18 +166,6 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   werden jetzt Rahmen in der Systemfarbe, für alle Fenster.
   Platzhaltertexte werden im Dunkeln aufgehellt.
 
-### Neu
-
-- **Hilfe → Info** nennt Urheber, Fassung und die Wege für
-  Fehlermeldungen.
-- **Dokumente mit auffällig wenig Text** werden nach der Erkennung
-  benannt. Erledigt heißt nicht gelesen.
-- **`texterkennung --nochmal`** versucht aufgegebene Dokumente erneut –
-  nötig, wenn die Erkennung selbst besser geworden ist.
-- **Beim Öffnen eines Archivs** steht die jüngste Nachricht oben.
-
-
-### Behoben
 
 - **Postfächer wurden in jedes Archiv geholt.** Die Kontenliste galt für
   das ganze Programm, das Archiv aber nicht: Jedes »Abrufen« holte alle
@@ -151,44 +184,6 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   derselben Stelle übersehen – für die Sicherung gab es längst eine
   Einheit je Archiv. Das Einrichten des zweiten Zeitplans überschrieb
   den ersten; danach wurde nur noch ein Archiv beliefert.
-
-### Neu
-
-- **`mailburg konten zuordnen` und `mailburg konten zuordnung`** –
-  Postfächer einem Archiv zuweisen und die Zuordnung ansehen.
-- **`mailburg loeschen`** nimmt Mails eines Postfachs wieder aus dem
-  Archiv. Der Trockenlauf ist die Voreinstellung, und entfernt wird nur,
-  was ausschließlich an diesem Postfach hängt.
-
-- **Derselbe Anhang wurde mehrfach durch die Texterkennung geschickt.**
-  Ein Vertrag, der weitergeleitet und mehrfach beantwortet wurde, hängt
-  an vielen Mails – aber es ist ein einziges Dokument. Am Geschäftsarchiv
-  gemessen: 222 gelesene Dokumente mit 986 Seiten, davon 153 Dokumente
-  mit 691 Seiten Abschriften. Siebzig Prozent der Rechenzeit. Verglichen
-  werden jetzt die Bytes des Anhangs, und zwar über Läufe und Archive
-  hinweg; in den Suchindex kommt der Text trotzdem für jede Mail einzeln.
-
-- **Im Fortschrittsfenster fehlte Text.** Ein umbrechendes Etikett meldet
-  Qt eine Höhe, die für eine angenommene Breite gilt, nicht für die
-  tatsächliche. Sobald der Fortschrittsbalken Platz verlangte, nahm sich
-  das Layout ihn beim Absatz darüber – der Text war nicht abgeschnitten,
-  sondern weg.
-
-### Geändert
-
-- **Der Erkennungsdialog verspricht keine Dauer mehr.** Die Angabe war
-  aus zwölf Sekunden je Dokument hochgerechnet; die Rechenzeit hängt aber
-  an der Seitenzahl, und die sieht man einem PDF von außen nicht an. Eine
-  Schätzung, die um ein Vielfaches danebenliegt, legt nahe, es laufe
-  etwas falsch, sobald es länger dauert.
-
-### Neu
-
-- **`mailburg vorrat`** macht schon erkannten Text für künftige Läufe
-  nutzbar. Für Bestände, die vor der Dublettenprüfung erkannt wurden:
-  Der Text ist da, aber unter dem Schlüssel der Mail statt dem des
-  Dokuments. Erkannt wird nichts neu.
-
 
 ## [0.9.0] – 2026-08-26
 
