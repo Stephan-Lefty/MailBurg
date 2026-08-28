@@ -157,6 +157,14 @@ class AddResult:
     """``False``, wenn sie nur einen weiteren Fundort bekam."""
 
 
+#: Ab wann eine Mail in einem Privatarchiv als »alt« gilt.
+#:
+#: Bewusst nicht sechs Jahre – das ist die Handelsbrieffrist und hat in
+#: einem Privatarchiv nichts zu suchen. Am 2026-08-28 mit Stephan
+#: besprochen und an seinem Bestand nachgerechnet.
+ALT_AB_JAHREN = 10
+
+
 class Archive:
     """Ein geöffnetes Archiv."""
 
@@ -438,6 +446,77 @@ class Archive:
         self.journal.flush()
         self.index.commit()
         return vorher
+
+    def faellige(self, today=None) -> list:
+        """Mails, deren Aufbewahrungsfrist abgelaufen ist.
+
+        **Die andere Richtung derselben Rechnung.** Fristen schützen vor
+        zu frühem Löschen – aber nach ihrem Ablauf verlangt die DSGVO,
+        dass personenbezogene Daten auch wieder verschwinden. Ein Archiv,
+        das nur aufbewahrt, erfüllt die eine Hälfte und verletzt die
+        andere.
+
+        Gerechnet wird je Kategorie eine Jahresgrenze, nicht Mail für
+        Mail: Bei sechzehntausend Nachrichten wäre das sonst spürbar. Wer
+        etwa in Deutschland Handelsbriefe sechs Jahre hält, sucht 2026
+        alles aus 2019 und früher.
+
+        Gibt nur Auskunft. Gelöscht wird ausschließlich auf
+        ausdrückliche Bestätigung – ein Programm, das eigenmächtig
+        Geschäftsunterlagen entfernt, richtet mehr Schaden an als jede zu
+        lange aufbewahrte Mail.
+        """
+        from datetime import date as _date
+
+        heute = today or _date.today()
+        treffer = []
+        for kategorie in Category:
+            jahre = self.policy.years(kategorie)
+            if jahre is None:
+                # Privat: keine Frist, also nichts fällig. Wer solche
+                # Post loswerden will, löscht sie ohnehin ungebremst.
+                continue
+            # Eine Mail aus dem Jahr J ist bis Ende J+jahre zu halten.
+            # Fällig ist also alles aus Jahren, für die J + jahre < heute.
+            juengstes = heute.year - jahre - 1
+            if juengstes < 1900:
+                continue
+            treffer.extend(
+                self.index.search(
+                    f"kategorie:{kategorie.value} jahr:1900-{juengstes}",
+                    limit=1_000_000,
+                )
+            )
+        treffer.sort(key=lambda t: t.date or "")
+        return treffer
+
+    def alte(self, jahre: int = ALT_AB_JAHREN, today=None) -> list:
+        """Mails, die älter als ``jahre`` Jahre sind.
+
+        **Für Privatarchive, wo es keine Fristen gibt.** Dort ist Alter
+        kein Grund zum Löschen, sondern nur ein Anhaltspunkt beim
+        Aufräumen – die Mail vom verstorbenen Vater aus 2012 ist mehr
+        wert als die von gestern. Deshalb heißt die Methode ``alte`` und
+        nicht ``faellige``: Es ist eine Auskunft, keine Aufforderung.
+
+        **Zehn Jahre als Vorgabe, nicht sechs.** Sechs ist die
+        Handelsbrieffrist – bei privater Post gibt es keinen Grund, sich
+        daran zu orientieren. Und Post von vor sechs Jahren ist oft noch
+        in Gebrauch: Versicherungspolicen, Garantien, Kaufbelege für
+        langlebige Geräte, Mietverträge. Was zehn Jahre alt ist, ist
+        unstrittig alt.
+
+        Der Aufrufer entscheidet, wie er das nennt. MailBurg zählt nur.
+        """
+        from datetime import date as _date
+
+        heute = today or _date.today()
+        grenze = heute.year - max(1, int(jahre))
+        treffer = self.index.search(
+            f"jahr:1900-{grenze}", limit=1_000_000
+        )
+        treffer.sort(key=lambda t: t.date or "")
+        return treffer
 
     def _check_retention(self, digest: str) -> None:
         """Bremst das Löschen, solange eine Aufbewahrungsfrist läuft."""

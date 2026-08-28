@@ -245,11 +245,17 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   Vorschlag, den der Anwender bestätigt, setzt voraus, dass er ihn
   beurteilen kann – und bei einer falschen Automatik merkt es niemand.
 
-- [ ] **Fälligkeitsbericht.** „Diese 342 Mails haben ihre Frist überschritten
-  und sollten gelöscht werden." Gelöscht wird nur nach ausdrücklicher
-  Bestätigung, nie von selbst – ein Programm, das eigenmächtig
-  Geschäftsunterlagen entfernt, richtet mehr Schaden an als jede zu lange
-  Aufbewahrung.
+- [x] **Fälligkeitsbericht.** (erledigt am 2026-08-28) `mailburg faellig`
+  und eine Nachfrage in der Oberfläche, einmal im Jahr ab dem 1. Mai.
+
+  Der Stichtag geht auf Stephan zurück: »Dann kommt diese Anfrage nur
+  einmal im Jahr.« Nicht ab dem 1. Januar, wenn die Fristen ablaufen –
+  eine Meldung bei jedem Öffnen wird weggeklickt, ohne gelesen zu
+  werden.
+
+  **Auch im Privatarchiv**, ebenfalls seine Anregung, aber mit anderem
+  Ton: keine Fristen, nur ein Hinweis auf Post älter als zehn Jahre, und
+  ausdrücklich der Satz, dass Alter kein Grund zum Löschen ist.
 
 - [ ] **Auskunftsexport nach Art. 15 DSGVO.** Alle Mails zu einer Person
   zusammenstellen und als PDF oder ZIP herausgeben.

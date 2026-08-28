@@ -1123,6 +1123,90 @@ def cmd_werkzeuge(args: argparse.Namespace) -> int:
     return 0 if geht else 1
 
 
+def cmd_faellig(args: argparse.Namespace) -> int:
+    """Zeigt, was seine Aufbewahrungsfrist hinter sich hat.
+
+    **Fristen wirken in beide Richtungen.** Sie schützen vor zu frühem
+    Löschen – aber nach ihrem Ablauf verlangt die DSGVO, dass
+    personenbezogene Daten auch wieder verschwinden. Ein Archiv, das nur
+    aufbewahrt, erfüllt die eine Hälfte und verletzt die andere.
+
+    Gelöscht wird hier trotzdem nichts. Die Entscheidung gehört dem
+    Anwender: Ob eine Betriebsprüfung läuft, ob ein Rechtsstreit
+    anhängig ist, ob eine Branchenvorschrift länger bindet – das kann
+    kein Programm wissen.
+    """
+    from mailburg.core.archive import Archive
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+    with Archive.open(archiv_pfad, exclusive=False) as archiv:
+        if not archiv.mode.is_business:
+            # **Ein Privatarchiv kennt keine Fristen.** Was hier gezeigt
+            # wird, ist deshalb keine Fälligkeit, sondern eine Auskunft
+            # beim Aufräumen - und der Unterschied gehört in die Worte.
+            # Bei privater Post ist Alter ein schlechter Ratgeber: Die
+            # Mail vom verstorbenen Vater aus 2012 ist mehr wert als die
+            # von gestern.
+            from mailburg.core.archive import ALT_AB_JAHREN
+
+            jahre = args.jahre or ALT_AB_JAHREN
+            alte = archiv.alte(jahre)
+            if not alte:
+                print(f"Keine Mail ist älter als {jahre} Jahre.")
+                return 0
+
+            nach_jahr: dict[str, int] = {}
+            for eintrag in alte:
+                nach_jahr[(eintrag.date or "????")[:4]] = (
+                    nach_jahr.get((eintrag.date or "????")[:4], 0) + 1
+                )
+            print(
+                f"{len(alte)} Mails sind älter als {jahre} Jahre.\n"
+            )
+            for jahr in sorted(nach_jahr):
+                print(f"  {jahr}: {nach_jahr[jahr]}")
+            print()
+            print(
+                "Ein Privatarchiv kennt keine Aufbewahrungsfristen – das\n"
+                "hier ist kein Grund zum Löschen, nur eine Auskunft. Alter\n"
+                "sagt bei privater Post wenig darüber, was einem wichtig\n"
+                "ist. Ansehen lässt sich das mit:  "
+                f"mailburg suchen ARCHIV \"jahr:1900-{sorted(nach_jahr)[-1]}\""
+            )
+            return 0
+
+        treffer = archiv.faellige()
+        if not treffer:
+            print("Keine Mail hat ihre Aufbewahrungsfrist hinter sich.")
+            return 0
+
+        nach_jahr: dict[str, int] = {}
+        for eintrag in treffer:
+            jahr = (eintrag.date or "????")[:4]
+            nach_jahr[jahr] = nach_jahr.get(jahr, 0) + 1
+
+        wort = "Mail hat" if len(treffer) == 1 else "Mails haben"
+        print(f"{len(treffer)} {wort} die Aufbewahrungsfrist hinter sich.\n")
+        for jahr in sorted(nach_jahr):
+            print(f"  {jahr}: {nach_jahr[jahr]}")
+
+        if args.ausfuehrlich:
+            print()
+            for eintrag in treffer[:200]:
+                datum = (eintrag.date or "")[:10]
+                print(f"  {datum}  {eintrag.category:14} {eintrag.subject[:50]}")
+            if len(treffer) > 200:
+                print(f"  … und {len(treffer) - 200} weitere")
+
+        print()
+        print(
+            "Gelöscht wird nichts von selbst. Ob eine Betriebsprüfung läuft\n"
+            "oder ein Rechtsstreit anhängig ist, kann das Programm nicht\n"
+            "wissen – fragen Sie im Zweifel Ihren Steuerberater."
+        )
+    return 0
+
+
 def cmd_einstufen(args: argparse.Namespace) -> int:
     """Stuft die Treffer einer Suche aufbewahrungsrechtlich ein.
 
@@ -1601,6 +1685,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="tatsächlich löschen statt nur zeigen",
     )
     p.set_defaults(func=cmd_loeschen)
+
+    p = subparsers.add_parser(
+        "faellig",
+        help="zeigen, was seine Aufbewahrungsfrist hinter sich hat",
+        description=(
+            "Fristen wirken in beide Richtungen: Sie schützen vor zu "
+            "frühem Löschen, und nach ihrem Ablauf verlangt die DSGVO, "
+            "dass personenbezogene Daten wieder verschwinden. Gelöscht "
+            "wird hier nichts – die Entscheidung bleibt beim Anwender."
+        ),
+    )
+    p.add_argument("archiv")
+    p.add_argument(
+        "--ausfuehrlich", action="store_true",
+        help="jede einzelne Mail auflisten, nicht nur die Jahreszahlen",
+    )
+    p.add_argument(
+        "--jahre", type=int, default=None, metavar="ANZAHL",
+        help=(
+            "nur für Privatarchive: ab welchem Alter eine Mail als alt "
+            "gilt (Vorgabe: 10 Jahre). Im Geschäftsarchiv gelten die "
+            "gesetzlichen Fristen."
+        ),
+    )
+    p.set_defaults(func=cmd_faellig)
 
     p = subparsers.add_parser(
         "einstufen",

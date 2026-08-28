@@ -11,6 +11,28 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Einmal im Jahr fragt MailBurg nach abgelaufenen Fristen.** Ab dem
+  1. Mai, und nur einmal je Kalenderjahr. Nicht ab dem 1. Januar, wenn
+  die Fristen ablaufen: Eine Meldung, die bei jedem Öffnen erscheint,
+  wird nach der dritten Wiederholung weggeklickt, ohne gelesen zu werden
+  — und dann auch beim vierten Mal, wenn es darauf ankäme. Im Januar
+  steckt man ohnehin im Jahresabschluss, und ob eine Betriebsprüfung den
+  Ablauf hemmt, weiß man im Frühjahr eher.
+
+  **Auch im Privatarchiv, dort aber mit anderem Ton.** Es gibt keine
+  Fristen, also zeigt MailBurg nur, was älter als zehn Jahre ist, und
+  sagt ausdrücklich dazu, dass Alter kein Grund zum Löschen ist. Bei
+  privater Post sagt das Datum wenig darüber, was einem wichtig ist —
+  eine Nachricht von jemandem, den es nicht mehr gibt, wiegt schwerer
+  als die von gestern.
+
+  Zehn Jahre und nicht sechs: Sechs ist die Handelsbrieffrist und hat in
+  einem Privatarchiv nichts zu suchen. Post von vor sechs Jahren ist oft
+  noch in Gebrauch — Versicherungspolicen, Garantien, Kaufbelege.
+
+  Dazu `mailburg faellig` für dieselbe Auskunft auf der Kommandozeile.
+  Gelöscht wird in keinem Fall etwas von selbst.
+
 - **Aufbewahrung festlegen, aus der Trefferliste heraus.** *Post →
   Aufbewahrung festlegen …* ordnet die gerade gefundenen Mails ein. Das
   Fenster zeigt vorher, wie viele betroffen sind und was die Wahl

@@ -429,6 +429,8 @@ class Hauptfenster(QMainWindow):
         self._bestand_zeigen()
         self._offene_pdf_zeigen()
         self._suchen()
+        # Zuletzt: erst soll das Fenster stehen, dann die Frage kommen.
+        QTimer.singleShot(0, self._fristen_pruefen)
         if hasattr(self, "zuletzt_menue"):
             # Das gerade geöffnete Archiv gehört nicht in die Liste der
             # anderen - man wechselt nicht dorthin, wo man schon ist.
@@ -1278,6 +1280,50 @@ class Hauptfenster(QMainWindow):
 
         art = QMessageBox.information if bericht["ok"] else QMessageBox.warning
         art(self, "Prüfung", "\n".join(zeilen))
+
+    def _fristen_pruefen(self) -> None:
+        """Fragt einmal im Jahr, was seine Frist hinter sich hat.
+
+        **Einmal, nicht bei jedem Start.** Eine Meldung, die ab dem
+        1. Januar bei jedem Öffnen erscheint, wird nach der dritten
+        Wiederholung weggeklickt, ohne gelesen zu werden – und dann auch
+        beim vierten Mal, wenn es darauf ankäme.
+        """
+        from mailburg.core import nachfrage
+
+        if self.archiv is None or not nachfrage.steht_an(self.archiv):
+            return
+
+        try:
+            treffer = (
+                self.archiv.faellige() if self.archiv.mode.is_business
+                else self.archiv.alte()
+            )
+        except Exception:  # noqa: BLE001
+            # Eine Nachfrage darf das Öffnen eines Archivs nie verhindern.
+            return
+
+        # **Auch ein leerer Befund wird vermerkt.** Sonst rechnet MailBurg
+        # bei jedem Start des Jahres von neuem durch das ganze Archiv,
+        # ohne dass jemals etwas dabei herauskäme.
+        nachfrage.gefragt_vermerken(str(self.archiv.uuid))
+        if not treffer:
+            return
+
+        from mailburg.ui.fristen import Fristendialog
+
+        dialog = Fristendialog(self.archiv, treffer, self)
+        dialog.exec()
+        if not dialog.ansehen:
+            return
+
+        # Die Treffer in die Suche legen, statt sie im Dialog zu zeigen:
+        # Dort stehen sie in der gewohnten Liste, mit Vorschau, Sortierung
+        # und allem, was man zum Beurteilen braucht.
+        jahre = sorted({(t.date or "?")[:4] for t in treffer if t.date})
+        if jahre:
+            self.suchfeld.setText(f"jahr:1900-{jahre[-1]}")
+            self._suchen()
 
     def _einstufen(self) -> None:
         """Ordnet die gerade gefundenen Mails aufbewahrungsrechtlich ein."""

@@ -108,6 +108,21 @@ class Policy:
     bafin_supervised: bool = False
     """Nur Deutschland: verlängert Buchungsbelege wieder auf zehn Jahre."""
 
+    review_month: int = 5
+    review_day: int = 1
+    """Wann im Jahr MailBurg nach abgelaufenen Fristen fragt.
+
+    **Einmal im Jahr, nicht bei jedem Start.** Fristen laufen zum
+    Jahresende ab; eine Meldung, die ab dem 1. Januar bei jedem Öffnen
+    erscheint, wird nach der dritten Wiederholung weggeklickt, ohne
+    gelesen zu werden – und dann auch beim vierten Mal, wenn es darauf
+    ankäme.
+
+    Der 1. Mai als Vorgabe hat einen Grund: Im Januar steckt man im
+    Jahresabschluss, und ob eine laufende Betriebsprüfung den Ablauf
+    hemmt, weiß man im Frühjahr eher. Wer es anders will, stellt es um.
+    """
+
     def years(self, category: Category) -> int | None:
         """Aufbewahrungsdauer in Jahren, oder ``None`` ohne Pflicht."""
         if category is Category.PRIVAT:
@@ -140,6 +155,20 @@ class Policy:
         if end_year is None:
             return False
         return (today or date.today()).year <= end_year
+
+    def review_due(self, last_review_year: int | None,
+                   today: date | None = None) -> bool:
+        """Ob die jährliche Nachfrage nach abgelaufenen Fristen ansteht.
+
+        ``last_review_year`` ist das Jahr, in dem zuletzt gefragt wurde –
+        ``None``, wenn noch nie. Gefragt wird ab dem Stichtag, und nur
+        einmal je Kalenderjahr.
+        """
+        heute = today or date.today()
+        stichtag = date(heute.year, self.review_month, self.review_day)
+        if heute < stichtag:
+            return False
+        return last_review_year is None or last_review_year < heute.year
 
     def is_due(self, category: Category, reference: date, today: date | None = None) -> bool:
         """Sagt, ob die Frist abgelaufen ist und die Mail gelöscht werden sollte.

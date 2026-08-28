@@ -501,6 +501,26 @@ begründen muss, warum eine Mail nach sechs statt acht Jahren gelöscht
 wurde, will auf einen Eintrag zeigen können – und der hängt in der
 Kette, lässt sich also nicht nachträglich glattziehen.</p>
 
+<p><b>Einmal im Jahr fragt MailBurg nach.</b> Ab dem 1. Mai, und nur
+einmal je Kalenderjahr: Es zeigt, was seine Frist hinter sich hat.
+Warum nicht ab dem 1. Januar, wenn die Fristen ablaufen? Weil eine
+Meldung, die bei jedem Öffnen erscheint, nach der dritten Wiederholung
+weggeklickt wird, ohne gelesen zu werden – und dann auch beim vierten
+Mal, wenn es darauf ankäme. Im Januar steckt man ohnehin im
+Jahresabschluss, und ob eine Betriebsprüfung den Ablauf hemmt, weiß man
+im Frühjahr eher.</p>
+
+<p><b>Auch ein Privatarchiv fragt</b> – dort aber anders. Es gibt keine
+Fristen, also zeigt es nur, was älter als zehn Jahre ist, und sagt
+ausdrücklich dazu, dass Alter kein Grund zum Löschen ist. Bei privater
+Post sagt das Datum wenig darüber, was einem wichtig ist: Eine
+Nachricht von jemandem, den es nicht mehr gibt, wiegt schwerer als die
+von gestern.</p>
+
+<p>Gelöscht wird in beiden Fällen nichts von selbst. Der Bericht führt
+die betroffenen Mails in die Suche – ansehen, beurteilen und
+entscheiden liegt bei Ihnen.</p>
+
 <p><b>Post → Aufbewahrung festlegen …</b><br>Ordnet die gerade
 gefundenen Mails als Buchungsbeleg, Handelsbrief oder privat ein. Das
 Fenster zeigt vorher, wie viele betroffen sind und wie lange sie danach
