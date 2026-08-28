@@ -27,6 +27,7 @@ mitgeliefert wurde, ist erprobt; was auf dem Rechner steht, ist unbekannt.
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -93,3 +94,25 @@ def bereitstellen() -> bool:
 
     _erledigt = True
     return True
+
+
+def lautlos() -> dict[str, int]:
+    """Zusatzangaben für ``subprocess``, damit kein Fenster aufblitzt.
+
+    **Warum das nötig ist.** ``pdftoppm``, ``pdftotext`` und ``tesseract``
+    sind Konsolenprogramme. Startet eine Anwendung mit Fenster sie unter
+    Windows, öffnet das System für jeden Aufruf eine Konsole – sie
+    erscheint, blitzt auf und verschwindet wieder.
+
+    Bei der Texterkennung geschieht das mehrfach je Seite. Stephan hat es
+    am 2026-08-28 so beschrieben: »auf zu, auf, zu«. Über die Dauer einer
+    Erkennung sind das dutzende Fenster, die sich vor alles andere
+    schieben und den Rechner unbenutzbar machen. Wer das sieht, hält das
+    Programm für kaputt – zu Recht.
+
+    Unter Linux und macOS gibt es das Flag nicht; dort ist das Ergebnis
+    ein leeres Wörterbuch und ändert nichts.
+    """
+    if os.name != "nt":
+        return {}
+    return {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}

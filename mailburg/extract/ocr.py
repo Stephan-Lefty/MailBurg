@@ -127,7 +127,8 @@ def sprachen_vorhanden() -> set[str]:
         return set()
     try:
         ergebnis = subprocess.run(
-            ["tesseract", "--list-langs"], capture_output=True, text=True, timeout=15
+            ["tesseract", "--list-langs"], capture_output=True, text=True, timeout=15,
+            **werkzeuge.lautlos(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return set()
@@ -227,7 +228,8 @@ def _pdfinfo(pdf: Path) -> Seitenmasse:
     masse = Seitenmasse()
     try:
         ergebnis = subprocess.run(
-            ["pdfinfo", str(pdf)], capture_output=True, text=True, timeout=30
+            ["pdfinfo", str(pdf)], capture_output=True, text=True, timeout=30,
+            **werkzeuge.lautlos(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return masse
@@ -340,6 +342,7 @@ def text_aus_pdf(
                     capture_output=True,
                     timeout=ZEITGRENZE_SEITE,
                     check=False,
+                    **werkzeuge.lautlos(),
                 )
             except (OSError, subprocess.TimeoutExpired):
                 continue
@@ -360,6 +363,7 @@ def text_aus_pdf(
                     # selbst im Weg steht, sobald mehrere Dokumente
                     # gleichzeitig gelesen werden.
                     env={**os.environ, "OMP_THREAD_LIMIT": "1"},
+                    **werkzeuge.lautlos(),
                 )
                 teile.append(gelesen.stdout.decode("utf-8", errors="replace"))
                 ergebnis.seiten += 1

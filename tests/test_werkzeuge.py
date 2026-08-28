@@ -227,3 +227,47 @@ class LizenzTest(unittest.TestCase):
         ]
         self.assertEqual(holt, [])
         self.assertIn("werkzeuge\\lizenzen", text)
+
+
+class OhneFensterTest(unittest.TestCase):
+    """Kein aufblitzendes Konsolenfenster bei fremden Programmen.
+
+    ``pdftoppm``, ``pdftotext`` und ``tesseract`` sind Konsolenprogramme.
+    Startet eine Anwendung mit Fenster sie unter Windows, öffnet das
+    System für jeden Aufruf eine Konsole. Bei der Texterkennung geschieht
+    das mehrfach je Seite – Stephan beschrieb es am 2026-08-28 als »auf
+    zu, auf, zu«. Über die Dauer einer Erkennung sind das dutzende
+    Fenster, die sich vor alles andere schieben.
+    """
+
+    def test_unter_linux_aendert_es_nichts(self) -> None:
+        with mock.patch.object(os, "name", "posix"):
+            self.assertEqual(werkzeuge.lautlos(), {})
+
+    def test_unter_windows_kommt_das_flag(self) -> None:
+        with mock.patch.object(os, "name", "nt"):
+            self.assertIn("creationflags", werkzeuge.lautlos())
+
+    def test_jeder_aufruf_eines_fremdprogramms_ist_stumm(self) -> None:
+        """Eine einzige vergessene Stelle genügt für das Geflacker."""
+        import re
+
+        betroffen = [
+            "mailburg/extract/ocr.py",
+            "mailburg/extract/pdf.py",
+            "mailburg/core/accounts.py",
+            "mailburg/core/aufgabenplanung.py",
+            "mailburg/core/zeitplan.py",
+        ]
+
+        for name in betroffen:
+            quelle = (WURZEL / name).read_text(encoding="utf-8")
+            aufrufe = len(re.findall(
+                r"subprocess\.(run|Popen|check_output)\(", quelle
+            ))
+            stumm = quelle.count("werkzeuge.lautlos()")
+            with self.subTest(datei=name):
+                self.assertEqual(
+                    aufrufe, stumm,
+                    f"{name}: {aufrufe} Aufrufe, davon {stumm} ohne Fenster",
+                )

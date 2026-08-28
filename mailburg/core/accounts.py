@@ -24,6 +24,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from mailburg.core import werkzeuge
+
 from mailburg import APP_ID
 from mailburg.core import paths
 
@@ -290,6 +292,7 @@ def _secretservice_anbieter() -> str:
             ergebnis = subprocess.run(
                 ["busctl", "--user", "list", "--no-legend"],
                 capture_output=True, text=True, timeout=5,
+                **werkzeuge.lautlos(),
             )
             for zeile in ergebnis.stdout.splitlines():
                 if zeile.startswith("org.freedesktop.secrets"):

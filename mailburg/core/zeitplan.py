@@ -26,6 +26,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from mailburg.core import werkzeuge
+
 #: Wie oft abgerufen wird, wenn niemand etwas anderes sagt. Halbstündlich
 #: ist bei Mail ein vernünftiger Kompromiss: neu genug, um nichts zu
 #: verpassen, selten genug, um den Server nicht zu belästigen.
@@ -78,6 +80,7 @@ def _systemctl(*argumente: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["systemctl", "--user", *argumente],
         capture_output=True, text=True, check=False, timeout=20,
+        **werkzeuge.lautlos(),
     )
 
 

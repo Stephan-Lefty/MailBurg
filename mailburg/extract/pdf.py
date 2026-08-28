@@ -26,6 +26,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from mailburg.core import werkzeuge
+
 #: Mehr Text nehmen wir aus einem einzelnen Dokument nicht auf. Ein
 #: tausendseitiges Handbuch macht die Suche nicht besser, den Index aber
 #: deutlich größer.
@@ -59,6 +61,7 @@ def _mit_poppler(daten: bytes) -> str:
             ["pdftotext", "-q", "-enc", "UTF-8", "-nopgbrk", tmp.name, "-"],
             capture_output=True,
             timeout=ZEITGRENZE,
+            **werkzeuge.lautlos(),
         )
     # Auch bei Rückgabewert ungleich null kann brauchbarer Text dabei sein:
     # poppler meldet Fehler für einzelne Seiten, liefert die übrigen aber.

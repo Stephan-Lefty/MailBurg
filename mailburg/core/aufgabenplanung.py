@@ -39,6 +39,8 @@ import tempfile
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from mailburg.core import werkzeuge
+
 #: Der Ordner, in dem die Aufgaben in der Aufgabenplanung erscheinen.
 #: Ein eigener Ordner, damit man sie beisammen findet – und damit
 #: erkennbar bleibt, was MailBurg angelegt hat und was nicht.
@@ -95,11 +97,11 @@ def _schtasks(*argumente: str) -> subprocess.CompletedProcess:
     Oberfläche sieht das nach Fehlfunktion aus.
     """
     pfad = _schtasks_pfad() or "schtasks"
-    ohne_fenster = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     return subprocess.run(
         [pfad, *argumente],
         capture_output=True, text=True, check=False, timeout=30,
-        errors="replace", creationflags=ohne_fenster,
+        errors="replace",
+        **werkzeuge.lautlos(),
     )
 
 
