@@ -79,6 +79,28 @@ _LIST = re.compile(rb'\((?P<attrs>[^)]*)\)\s+(?P<sep>"[^"]*"|NIL)\s+(?P<name>.*)
 #:
 #: MailBurg vermeidet sonst überall Fachjargon. Ausgerechnet an der
 #: Stelle, an der jemand nicht weiterkommt, stand eine Fehlernummer.
+#: Server, bei denen Microsoft die einfache Anmeldung abgeschaltet hat.
+#:
+#: Für Geschäftskonten (Exchange Online) am 1. Oktober 2022, für private
+#: Konten am 16. September 2024. Seither verlangt Microsoft
+#: ausschließlich OAuth2 – auch App-Kennwörter wirken nicht mehr.
+#:
+#: **Warum das eine eigene Meldung braucht.** Der Server antwortet mit
+#: AUTHENTICATIONFAILED, und die gewöhnliche Übersetzung lautete
+#: »Benutzername oder Passwort stimmt nicht«. Das ist hier falsch und
+#: schickt den Anwender auf die Suche nach einem Tippfehler, den es
+#: nicht gibt. Am 2026-08-28 nachgesehen und richtiggestellt.
+_MICROSOFT = (
+    "outlook.office365.com", "outlook.com", "hotmail.com", "live.com",
+    "office365.com", "imap-mail.outlook.com",
+)
+
+
+def _ist_microsoft(server: str) -> bool:
+    klein = (server or "").lower()
+    return any(m in klein for m in _MICROSOFT)
+
+
 _UEBERSETZUNG = (
     # Der Name lässt sich nicht auflösen. Unter Windows Errno 11001,
     # unter Linux -2 oder -3, je nach Auflöser.
@@ -105,17 +127,33 @@ _UEBERSETZUNG = (
 )
 
 
-def _verstaendlich(fehler: Exception) -> str:
+def _verstaendlich(fehler: Exception, server: str = "") -> str:
     """Übersetzt die üblichen Netzwerkfehler in einen brauchbaren Satz.
 
     Was nicht in der Liste steht, wird unverändert durchgereicht: Eine
     unbekannte Meldung im Original ist immer noch besser als eine
     erfundene Erklärung, die in die Irre führt.
+
+    ``server`` erlaubt eine genauere Auskunft: Bei Microsoft ist
+    »Passwort stimmt nicht« schlicht falsch – dort ist die
+    Anmeldeart abgeschaltet.
     """
     roh = str(fehler)
     klein = roh.lower()
     for muster, klartext in _UEBERSETZUNG:
         if any(m in klein for m in muster):
+            if server and _ist_microsoft(server) and "Passwort stimmt" in klartext:
+                return (
+                    "Microsoft-Konten lassen sich mit Benutzername und "
+                    "Passwort nicht mehr abrufen – auch nicht mit einem "
+                    "App-Kennwort. Microsoft verlangt seit dem 16.09.2024 "
+                    "(private Konten) bzw. 01.10.2022 (Exchange Online) "
+                    "ausschließlich OAuth2, und das beherrscht MailBurg "
+                    "noch nicht.\n\n"
+                    "Umweg: Das Konto in Thunderbird einrichten – das kann "
+                    "OAuth2 – und dessen Profil mit »mailburg importieren« "
+                    "einlesen."
+                )
             return klartext
     return roh
 
@@ -326,12 +364,16 @@ class ImapSource(Source):
             self._verbindung.login(self.konto.benutzer, passwort)
         except imaplib.IMAP4.error as exc:
             self._verbindung_wegwerfen()
+            # Bei Microsoft steht in der Übersetzung bereits alles
+            # Nötige; der Rat mit dem App-Passwort wäre dort falsch.
+            nachsatz = "" if _ist_microsoft(self.konto.server) else (
+                "\nBei Gmail, GMX und Web.de verlangt der Zugriff von außen "
+                "ein eigenes App-Passwort; das Kennwort der Weboberfläche "
+                "genügt dort nicht."
+            )
             raise ImapFehler(
                 f"Anmeldung als {self.konto.benutzer} abgelehnt – "
-                f"{_verstaendlich(exc)}\n"
-                f"Bei Gmail, GMX, Web.de und Outlook verlangt der Zugriff von "
-                f"außen ein eigenes App-Passwort; das Kennwort der Weboberfläche "
-                f"genügt dort nicht."
+                f"{_verstaendlich(exc, self.konto.server)}{nachsatz}"
             ) from exc
 
     def _verbindung_wegwerfen(self) -> None:

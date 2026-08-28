@@ -331,3 +331,64 @@ class FehlermeldungTest(unittest.TestCase):
                 for wort in ("Errno", "getaddrinfo", "socket", "SSL",
                              "Exception", "failed"):
                     self.assertNotIn(wort, klartext)
+
+
+class MicrosoftTest(unittest.TestCase):
+    """»Passwort stimmt nicht« ist bei Microsoft schlicht falsch.
+
+    Microsoft hat die einfache Anmeldung abgeschaltet: für Exchange
+    Online am 1. Oktober 2022, für private Konten am 16. September 2024.
+    Seither verlangt es ausschließlich OAuth2 – auch App-Kennwörter
+    wirken nicht mehr.
+
+    Der Server antwortet mit AUTHENTICATIONFAILED, und die gewöhnliche
+    Übersetzung schickte den Anwender auf die Suche nach einem
+    Tippfehler, den es nicht gibt. Am 2026-08-28 nachgesehen und
+    richtiggestellt; die Anleitung hatte bis dahin ein App-Kennwort
+    empfohlen, das seit anderthalb Jahren nicht mehr funktioniert.
+    """
+
+    def _meldung(self, server: str) -> str:
+        import imaplib
+
+        from mailburg.sources.imap import _verstaendlich
+
+        return _verstaendlich(
+            imaplib.IMAP4.error("AUTHENTICATIONFAILED"), server
+        )
+
+    def test_microsoft_bekommt_den_wahren_grund(self) -> None:
+        for server in ("outlook.office365.com", "imap-mail.outlook.com",
+                       "smtp.live.com"):
+            with self.subTest(server=server):
+                text = self._meldung(server)
+                self.assertIn("OAuth2", text)
+                self.assertNotIn("Passwort stimmt nicht", text)
+
+    def test_und_einen_gangbaren_umweg(self) -> None:
+        """Eine Absage ohne Ausweg ist eine halbe Auskunft."""
+        text = self._meldung("outlook.office365.com")
+
+        self.assertIn("Thunderbird", text)
+        self.assertIn("importieren", text)
+
+    def test_andere_anbieter_bleiben_unberuehrt(self) -> None:
+        self.assertIn("Passwort stimmt nicht", self._meldung("imap.gmx.net"))
+
+    def test_ohne_server_bleibt_es_bei_der_allgemeinen_auskunft(self) -> None:
+        self.assertIn("Passwort stimmt nicht", self._meldung(""))
+
+    def test_die_anleitung_raet_nicht_mehr_zum_app_kennwort(self) -> None:
+        """Der Fehler, der das ausgelöst hat: Die Tabelle empfahl eines."""
+        import pathlib
+
+        doku = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "docs" / "postfaecher-einrichten.md"
+        ).read_text(encoding="utf-8")
+
+        tabelle = doku[doku.index("| Anbieter |"):doku.index("## Microsoft")]
+        self.assertNotIn("Outlook", tabelle)
+        self.assertNotIn("office365", tabelle)
+        # Und stattdessen der Abschnitt, der es erklärt.
+        self.assertIn("gehen derzeit nicht", doku)

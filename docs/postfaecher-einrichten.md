@@ -57,13 +57,35 @@ diesen einen Zweck gilt und sich einzeln widerrufen lässt.
 | Gmail | `imap.gmail.com` | Google-Konto → Sicherheit → Bestätigung in zwei Schritten → App-Passwörter. Setzt zwingend die Zwei-Faktor-Anmeldung voraus. |
 | GMX | `imap.gmx.net` | Einstellungen → POP3/IMAP-Abruf zuerst freischalten |
 | Web.de | `imap.web.de` | Einstellungen → POP3/IMAP-Abruf zuerst freischalten |
-| Outlook, Hotmail | `outlook.office365.com` | Microsoft-Konto → Sicherheit → Erweiterte Optionen → App-Kennwörter |
 | Posteo | `posteo.de` | Das gewöhnliche Passwort genügt |
 | mailbox.org | `imap.mailbox.org` | Das gewöhnliche Passwort genügt |
 | IONOS | `imap.ionos.de` | Das gewöhnliche Passwort genügt |
 
-Anmeldung per OAuth2 – der Weg, den Google und Microsoft eigentlich vorsehen –
-ist geplant, aber noch nicht gebaut.
+## Microsoft-Konten gehen derzeit nicht
+
+**Outlook.com, Hotmail, Live und Exchange Online lassen sich mit MailBurg
+zurzeit nicht abrufen.** Das liegt nicht an MailBurg, aber es hilft Ihnen
+nicht weiter, und deshalb steht es hier deutlich.
+
+Microsoft hat die einfache Anmeldung mit Benutzername und Passwort
+abgeschaltet: für Geschäftskonten (Exchange Online) am 1. Oktober 2022, für
+private Konten am 16. September 2024. Seither verlangt Microsoft
+ausschließlich OAuth2 – auch App-Kennwörter funktionieren nicht mehr. Wer es
+dennoch versucht, bekommt eine Anmeldefehlermeldung, die den wahren Grund
+nicht nennt.
+
+**Was heute geht:** Das Konto zusätzlich in Thunderbird einrichten und
+MailBurg das Thunderbird-Profil einlesen lassen. Thunderbird beherrscht
+OAuth2. Das ist ein Umweg, aber ein gangbarer – und die Mails landen
+bytegenau im Archiv wie über IMAP.
+
+**Was geplant ist:** OAuth2 in MailBurg selbst. Der Aufwand steckt nicht im
+Programm, sondern davor: Google verlangt für den vollen IMAP-Zugriff ein
+jährlich zu wiederholendes Sicherheitsaudit durch ein zugelassenes Labor,
+das für ein quelloffenes Programm ohne Einnahmen nicht tragbar ist. Der Weg
+wird deshalb sein, dass Sie sich eine eigene Anwendung registrieren – bei
+Microsoft kostenlos und ohne Prüfverfahren – und MailBurg deren Kennung
+mitgeben. Siehe [TODO.md](../TODO.md).
 
 ## Welche Ordner archiviert werden
 

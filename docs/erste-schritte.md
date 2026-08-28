@@ -172,8 +172,9 @@ Vorschlag an – danach ist die Verbindung vollständig geprüft. Eine Möglichk
 die Prüfung einfach abzuschalten, gibt es bewusst nicht.
 
 Postfächer ohne Thunderbird tragen Sie über **Weiteres Postfach von Hand
-eintragen …** ein. Einzelheiten zu App-Passwörtern bei Gmail, GMX, Web.de und
-Outlook stehen in [Postfächer einrichten](postfaecher-einrichten.md), zu Proton
+eintragen …** ein. Einzelheiten zu App-Passwörtern bei Gmail, GMX und Web.de
+stehen in [Postfächer einrichten](postfaecher-einrichten.md) — dort steht auch,
+warum Microsoft-Konten derzeit nicht gehen. Zu Proton
 in derselben Anleitung.
 
 ## 5. Fertig

@@ -3,6 +3,43 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-08-28, abends)
+
+**Morgen zuerst: OAuth2.** Der Punkt ist am 28.08. recherchiert, aber
+nicht gebaut – die Einzelheiten stehen ausführlich in
+[TODO.md](TODO.md). Das Wichtigste vorweg:
+
+- **Microsoft-Konten kann MailBurg heute nicht abrufen.** Basic Auth ist
+  abgeschaltet (Exchange Online 01.10.2022, private Konten 16.09.2024),
+  App-Kennwörter wirken nicht mehr. Die Anleitung empfahl bis zum 28.08.
+  eines; das ist richtiggestellt, samt eigener Fehlermeldung.
+- **Google verlangt für den vollen IMAP-Zugriff ein jährliches
+  CASA-Audit** – für ein quelloffenes Programm ohne Einnahmen nicht
+  tragbar. Der Weg wird sein, dass der Anwender seine eigene Anwendung
+  registriert.
+- **Das wird der erste Baustein ohne Erprobung.** Stephans Konten liegen
+  auf eigenen Servern und bei Proton; ein Microsoft-Konto zum Testen
+  gibt es nicht.
+
+### Was der 28.08. gebracht hat
+
+Der Tag zerfiel in zwei Hälften. Vormittags Windows: die `.exe` fertig
+gebaut, in einer VM mit einem echten Postfach durchgespielt und dabei
+sechs Fehler gefunden, die unter Linux nie aufgefallen wären – darunter
+zwei, die den Zeitplan unbrauchbar gemacht hätten. Nachmittags die
+GoBD- und DSGVO-Ecke: Einstufen, Fälligkeitsbericht, Auskunftsexport,
+Verfahrensdokumentation.
+
+**Die Lehre des Tages steht in den Prüfschritten des Bau-Workflows.**
+Der Fehler, dass die `.exe` ihre eigene Kommandozeile nicht kannte, kam
+nur ans Licht, weil ein Prüfschritt hängenblieb: Er wartete auf einen
+Klick, den auf einem Bauserver niemand macht. Von Hand hätte ich das
+Fenster gesehen und für einen Fehlstart gehalten.
+
+**Und eine zweite:** Ein Test prüft, dass jeder Menüpunkt im Handbuch
+erklärt ist. Er hat an diesem Tag dreimal zugeschlagen, jedes Mal zu
+Recht. Solche Tests sind mehr wert als zehn, die Rechenwege prüfen.
+
 ## Hier war Schluss (Stand 2026-08-26, vormittags)
 
 Der dritte Tag war der erste im echten Betrieb – und dabei ist ein
