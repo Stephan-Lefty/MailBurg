@@ -35,6 +35,16 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   gerade ein. Ordner mit vorhandenen Sicherungen werden nicht abgewiesen,
   sondern nachträglich ausgezeichnet.
 
+- **Eine verschwundene Platte endete in einem Python-Traceback.** Wird
+  eine externe Platte abgezogen, während MailBurg schreibt, sah der
+  Anwender einen Wall aus Zeilen — ohne Antwort auf die einzige wichtige
+  Frage: Ist mein Archiv jetzt kaputt?
+
+  Es ist nicht kaputt, und das steht jetzt dort. Nachgestellt wurde es
+  mit einem Import von 3.000 Mails, mitten im Lauf unterbrochen: 1.000
+  Mails abgelegt, Hash-Kette unversehrt, Journal und Ablage stimmen
+  überein. Die Reihenfolge Ablage → Journal → Index hält.
+
 - **»Nicht auf dieselbe Platte wie das Archiv« war nur ein Ratschlag.**
   Der Satz stand im Einrichtungsfenster, geprüft wurde er nie. Jetzt sagt
   MailBurg es, wenn Sicherung und Archiv auf demselben Datenträger lägen.

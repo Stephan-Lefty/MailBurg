@@ -1578,6 +1578,40 @@ def main(argv: list[str] | None = None) -> int:
     except ArchiveError as exc:
         print(f"Fehler: {exc}", file=sys.stderr)
         return 2
+    except OSError as exc:
+        # **Der wahrscheinlichste Grund ist eine verschwundene Platte.**
+        # Externe Platte abgezogen, Netzlaufwerk getrennt, Cloud nicht
+        # mehr eingehängt. Bisher schlug das als nackter Traceback
+        # durch - ein Wall aus Python-Zeilen, der die einzige wichtige
+        # Frage nicht beantwortet: Ist mein Archiv jetzt kaputt?
+        #
+        # Es ist nicht kaputt, und das darf man sagen. MailBurg
+        # schreibt in der Reihenfolge Ablage, Journal, Index; bricht es
+        # dazwischen ab, fehlt höchstens der letzte Eintrag. Am
+        # 2026-08-28 nachgestellt: 1000 Mails abgelegt, Platte mitten im
+        # Lauf gezogen, danach Hash-Kette unversehrt.
+        archiv = getattr(args, "archiv", None)
+        weg = archiv is not None and not Path(archiv).expanduser().is_dir()
+        if weg:
+            print(
+                f"Der Archivordner {archiv} ist nicht mehr erreichbar.\n"
+                f"\n"
+                f"Meist steckt eine abgezogene Platte dahinter, ein "
+                f"getrenntes Netzlaufwerk oder ein Cloud-Ordner, der "
+                f"nicht mehr eingehängt ist.\n"
+                f"\n"
+                f"Am Archiv kann dabei nichts zu Schaden gekommen sein: "
+                f"MailBurg legt erst die Mail ab, dann den "
+                f"Journaleintrag, dann den Index. Bricht es dazwischen "
+                f"ab, fehlt höchstens der letzte Eintrag - der nächste "
+                f"Lauf holt ihn nach. Hängen Sie den Datenträger wieder "
+                f"ein und lassen Sie zur Beruhigung »mailburg pruefen« "
+                f"laufen.",
+                file=sys.stderr,
+            )
+            return 4
+        print(f"Fehler beim Zugriff: {exc}", file=sys.stderr)
+        return 2
     except KeyboardInterrupt:
         print("\nAbgebrochen.", file=sys.stderr)
         return 130

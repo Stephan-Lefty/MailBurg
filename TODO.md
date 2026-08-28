@@ -317,9 +317,21 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   angefasst. Für ein Archiv ist das vertretbar – die Frage ist, ob jemand
   das anders erwartet.
 
-- [ ] **Was passiert bei einem Archiv auf einer Platte, die zwischendurch
-  weggeht?** Externe Platte abgezogen, Netzlaufwerk getrennt, Cloud nicht
-  eingehängt. Bisher ungetestet.
+- [x] **Was passiert bei einem Archiv auf einer Platte, die zwischendurch
+  weggeht?** (geprüft am 2026-08-28) Nachgestellt, indem der Archivordner
+  mitten in einem Import von 3.000 Mails weggezogen wurde – für das
+  Programm fast dasselbe wie eine abgezogene Platte.
+
+  **Das Archiv bleibt heil.** 1.000 Mails abgelegt, Hash-Kette
+  unversehrt, Journal und Ablage stimmen überein. Die Reihenfolge
+  Ablage → Journal → Index hält, was sie verspricht. Am ursprünglichen
+  Pfad entsteht auch kein Torso.
+
+  **Die Meldung taugte nicht.** Es schlug ein nackter Python-Traceback
+  durch – ein Wall aus Zeilen, der die einzige wichtige Frage nicht
+  beantwortet: Ist mein Archiv jetzt kaputt? Jetzt steht dort, was
+  passiert ist, dass nichts zu Schaden gekommen sein kann und was zu tun
+  ist. Rückgabewert 4.
 
 ## Erledigtes
 
