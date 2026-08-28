@@ -62,6 +62,18 @@ class Zustand:
     """Warum es nicht geht – für die Oberfläche, in ganzen Sätzen."""
 
 
+def _windows() -> bool:
+    """Ob der Zeitplan über die Windows-Aufgabenplanung läuft.
+
+    Als eigene Funktion, nicht als ``os.name``-Abfrage an sieben
+    Stellen: So lässt sie sich in den Tests umlegen. ``os.name`` selbst
+    zu verbiegen zieht pathlib mit – jeder Pfad wäre dann plötzlich ein
+    ``WindowsPath``, und der lässt sich unter Linux nicht einmal
+    anlegen.
+    """
+    return os.name == "nt"
+
+
 def _systemctl(*argumente: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["systemctl", "--user", *argumente],
@@ -71,12 +83,10 @@ def _systemctl(*argumente: str) -> subprocess.CompletedProcess:
 
 def moeglich() -> tuple[bool, str]:
     """Sagt, ob ein Zeitplan angelegt werden kann – und sonst warum nicht."""
-    if os.name == "nt":
-        return False, (
-            "Unter Windows richtet MailBurg den regelmäßigen Abruf noch "
-            "nicht selbst ein. Bis dahin geht es über die Aufgabenplanung; "
-            "die Anleitung liegt bei der Doku."
-        )
+    if _windows():
+        from mailburg.core import aufgabenplanung
+
+        return aufgabenplanung.moeglich()
     if shutil.which("systemctl") is None:
         return False, (
             "Auf diesem System gibt es kein systemd. Der Abruf lässt sich "
@@ -127,6 +137,12 @@ def einrichten(archiv: Path | str, takt: int = STANDARDTAKT) -> tuple[bool, str]
     if not (archiv / "archive.json").is_file():
         return False, f"In {archiv} liegt kein Archiv."
     takt = max(5, int(takt))
+
+    if _windows():
+        from mailburg.core import aufgabenplanung
+
+        return aufgabenplanung.einrichten(archiv, takt)
+
     einheit = _abrufeinheit(archiv)
 
     DIENSTE.mkdir(parents=True, exist_ok=True)
@@ -180,6 +196,14 @@ def abschalten(archiv: Path | str | None = None) -> tuple[bool, str]:
     geht, grund = moeglich()
     if not geht:
         return False, grund
+
+    if _windows():
+        from mailburg.core import aufgabenplanung
+
+        if archiv is None:
+            return True, "Der regelmäßige Abruf ist abgeschaltet."
+        return aufgabenplanung.abschalten(Path(archiv).expanduser().resolve())
+
     einheit = _abrufeinheit(Path(archiv).expanduser().resolve()) if archiv else EINHEIT
     _systemctl("disable", "--now", f"{einheit}.timer")
     for datei in (f"{einheit}.timer", f"{einheit}.service"):
@@ -225,6 +249,14 @@ def sicherung_einrichten(archiv: Path | str, ziel: Path | str,
         return False, "Das Ziel darf nicht im Archiv selbst liegen."
 
     ziel.mkdir(parents=True, exist_ok=True)
+
+    if _windows():
+        from mailburg.core import aufgabenplanung
+
+        return aufgabenplanung.sicherung_einrichten(
+            archiv, ziel, takt, _haltung(behalten), name
+        )
+
     DIENSTE.mkdir(parents=True, exist_ok=True)
     einheit = _einheitsname(archiv)
     benennung = f' --name "{name}"' if name else ""
@@ -276,6 +308,14 @@ def sicherung_abschalten(archiv: Path | str) -> tuple[bool, str]:
     geht, grund = moeglich()
     if not geht:
         return False, grund
+
+    if _windows():
+        from mailburg.core import aufgabenplanung
+
+        return aufgabenplanung.sicherung_abschalten(
+            Path(archiv).expanduser().resolve()
+        )
+
     einheit = _einheitsname(Path(archiv).expanduser().resolve())
     _systemctl("disable", "--now", f"{einheit}.timer")
     for datei in (f"{einheit}.timer", f"{einheit}.service"):
@@ -289,6 +329,14 @@ def sicherung_zustand(archiv: Path | str | None = None) -> Zustand:
     geht, grund = moeglich()
     stand = Zustand(moeglich=geht, grund=grund)
     if not geht or archiv is None:
+        return stand
+
+    if _windows():
+        from mailburg.core import aufgabenplanung
+
+        stand.laeuft, stand.archiv = aufgabenplanung.sicherung_zustand(
+            Path(archiv).expanduser().resolve()
+        )
         return stand
 
     einheit = _einheitsname(Path(archiv).expanduser().resolve())
@@ -311,6 +359,14 @@ def zustand(archiv: Path | str | None = None) -> Zustand:
     geht, grund = moeglich()
     stand = Zustand(moeglich=geht, grund=grund)
     if not geht:
+        return stand
+
+    if _windows():
+        from mailburg.core import aufgabenplanung
+
+        ziel = Path(archiv).expanduser().resolve() if archiv else None
+        stand.laeuft, takt, stand.archiv = aufgabenplanung.zustand(ziel)
+        stand.takt = takt or STANDARDTAKT
         return stand
 
     einheit = _abrufeinheit(Path(archiv).expanduser().resolve()) if archiv else EINHEIT

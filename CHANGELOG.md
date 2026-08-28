@@ -9,7 +9,49 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- **Der regelmäßige Abruf lässt sich jetzt auch unter Windows einstellen.**
+  Bisher stand dort ein grauer Kasten: „Unter Windows richtet MailBurg den
+  regelmäßigen Abruf noch nicht selbst ein." Wer die Windows-Fassung benutzt,
+  musste also täglich von Hand abrufen – und ein Archiv, das man von Hand
+  füttern muss, wird nach zwei Wochen nicht mehr gefüttert. Dann fehlt Post,
+  und gemerkt hat es niemand.
+
+  MailBurg legt nun eine Aufgabe im Ordner „MailBurg" der
+  Windows-Aufgabenplanung an, je Archiv eine eigene. Ohne Verwaltungsrechte,
+  sichtbar und löschbar wie jede andere Aufgabe. Dasselbe gilt für die
+  regelmäßige Sicherung.
+
+  Der Umweg über eine XML-Beschreibung statt über die Schalter von `schtasks`
+  hat einen Grund: Nur so lässt sich `StartWhenAvailable` setzen – das
+  Gegenstück zu systemds `Persistent=true`. Ohne das fällt eine tägliche
+  Sicherung schlicht aus, wenn der Rechner zur fraglichen Zeit ausgeschaltet
+  war, und zwar stillschweigend.
+
 ### Behoben
+
+- **Der erste Abruf lief nach der Einrichtung nicht an.** Auf der
+  Abschlussseite steht „Jetzt den ersten Abruf starten", angekreuzt. Man
+  klickt Fertig, das Hauptfenster geht auf – und das Archiv bleibt leer. Erst
+  F5 holte die Post.
+
+  `main()` rief den Assistenten zwar auf, fragte sein `soll_abrufen` aber nie
+  ab. Über *Archiv → Neues Archiv* hat es die ganze Zeit funktioniert; nur der
+  Weg beim allerersten Start – der einzige, den ein neuer Anwender überhaupt
+  geht – war der ungeprüfte.
+
+- **In der Postfachliste des Assistenten schwebte die Beschreibung in der
+  Mitte.** Ohne Dehnung am Ende verteilt Qt den freien Platz gleichmäßig auf
+  alle Zeilen; bei einem einzigen Postfach stand der Name oben und seine
+  Serveradresse eine Handbreit darunter.
+
+- **Serverfehler standen in der Sprache des Betriebssystems.** Wer sich im
+  Servernamen vertippte, bekam „[Errno -2] Name or service not known" zu
+  lesen. Vier Fälle decken fast alles ab, was beim Einrichten schiefgeht –
+  Name falsch, Port falsch, Server antwortet nicht, Passwort stimmt nicht –,
+  und jeder bekommt jetzt einen Satz, der sagt, wo man nachsehen muss. Die
+  ursprüngliche Meldung bleibt sichtbar.
 
 - **Die Beschriftungen in der Übersichtsgrafik waren zu blass zum Lesen.**
   `assets/uebersicht.svg` setzte neun Textstellen bei 11,5 bis 13 Pixeln in

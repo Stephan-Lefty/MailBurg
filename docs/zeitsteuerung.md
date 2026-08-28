@@ -100,21 +100,38 @@ Der volle Pfad ist nötig: cron kennt den Suchpfad der Anmeldesitzung nicht.
 
 ## Windows: Aufgabenplanung
 
+**Am einfachsten aus dem Programm heraus:** *Einstellungen → Was von selbst
+laufen soll*, Häkchen bei „Neue Post regelmäßig im Hintergrund holen", Abstand
+wählen, Übernehmen. Dasselbe steht am Ende der Einrichtung. MailBurg legt die
+Aufgabe selbst an; Verwaltungsrechte braucht es dafür nicht.
+
+Angelegt wird sie im Ordner **MailBurg** der Aufgabenplanung (`taskschd.msc`),
+je Archiv eine eigene — wer geschäftlich und privat trennt, bekommt zwei. Sie
+lässt sich dort ansehen, anhalten und löschen wie jede andere Aufgabe.
+
+Drei Einstellungen darin sind bewusst so gewählt:
+
+| Einstellung | Warum |
+|---|---|
+| `InteractiveToken` | Läuft nur, während Sie angemeldet sind. Anders kommt der Abruf nicht an die Anmeldeinformationsverwaltung — und damit an kein Passwort. |
+| `StartWhenAvailable` | Holt nach, was ausfiel, während der Rechner aus war. Ohne das fällt eine tägliche Sicherung stillschweigend aus. |
+| `IgnoreNew` | Ein Durchgang darf länger dauern als der Abstand, ohne dass sich zwei Läufe überschneiden. |
+
+Von Hand anstoßen:
+
+```powershell
+Start-ScheduledTask -TaskName "MailBurg\Abruf - MailBurg-Archiv"
+```
+
+Der zweite Teil des Namens ist der Ordnername Ihres Archivs.
+
+### Aus dem Quellverzeichnis
+
+Wer MailBurg aus den Quellen betreibt, kann die Aufgabe auch dort anlegen:
+
 ```powershell
 .\install.ps1 -Zeitsteuerung C:\Archiv            # alle 30 Minuten
 .\install.ps1 -Zeitsteuerung C:\Archiv -Alle 10   # alle 10 Minuten
-```
-
-Das legt die Aufgabe „MailBurg Abruf" an: Sie läuft fünf Minuten nach der
-Anmeldung an und wiederholt sich dann im gewählten Takt. An die Anmeldung
-gebunden, weil die Anmeldeinformationsverwaltung an der Sitzung hängt.
-`MultipleInstances IgnoreNew` verhindert, dass sich zwei Läufe überschneiden.
-
-Nachsehen in der Aufgabenplanung (`taskschd.msc`) unter diesem Namen. Von Hand
-anstoßen:
-
-```powershell
-Start-ScheduledTask -TaskName "MailBurg Abruf"
 ```
 
 ## macOS: launchd
