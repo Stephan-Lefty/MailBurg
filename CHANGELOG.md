@@ -11,6 +11,19 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Entwurf einer Verfahrensdokumentation nach GoBD.** Über *Archiv →
+  Verfahrensdokumentation …* oder `mailburg verfahrensdoku`. MailBurg
+  füllt, was es selbst weiß — Fassung, Ablageort, Verfahren, Postfächer,
+  Zeitpläne, Bestandszahlen. Alles Organisatorische bleibt als sichtbare
+  Lücke stehen, mit `[BITTE ERGÄNZEN]` ausgezeichnet.
+
+  Das ist Absicht: Eine Dokumentation, die vollständig aussieht und es
+  nicht ist, wäre schlimmer als gar keine — sie fällt erst in der Prüfung
+  auf, und dann ist keine Zeit mehr. Im Text steht deshalb auch, was
+  MailBurg *nicht* leistet: dass keine Software GoBD-konform sein kann
+  und dass die Hash-Kette neu berechenbar ist, wer Zugriff auf das
+  Archiv hat.
+
 - **Auskunft nach Art. 15 DSGVO.** Fragt jemand, was über ihn gespeichert
   ist, stellt MailBurg alle Nachrichten zusammen, in denen er vorkommt,
   und packt sie als ZIP — mit einem Begleitblatt, das Herkunft, Zeitraum

@@ -249,6 +249,14 @@ class Hauptfenster(QMainWindow):
         # das Mittel, das Journal die Sache. Wer den Menüpunkt sucht,
         # sucht nicht nach einem Verfahren, sondern nach der Antwort auf
         # die Frage, ob mit seinem Archiv alles in Ordnung ist.
+        self.doku_aktion = QAction("Verfahrensdokumentation …", self)
+        self.doku_aktion.setStatusTip(
+            "Einen Entwurf nach GoBD erzeugen – den technischen Teil füllt "
+            "MailBurg aus, den organisatorischen Sie."
+        )
+        self.doku_aktion.triggered.connect(self._verfahrensdoku)
+        archiv.addAction(self.doku_aktion)
+
         self.auskunft_aktion = QAction("Auskunft nach DSGVO …", self)
         self.auskunft_aktion.setStatusTip(
             "Alles zusammenstellen, was zu einer Person im Archiv liegt – "
@@ -1293,6 +1301,8 @@ class Hauptfenster(QMainWindow):
         ("einstufen_aktion", "Aufbewahrungsfristen gibt es nur im "
                              "Geschäftsarchiv – ein Privatarchiv kennt "
                              "keine."),
+        ("doku_aktion", "Eine Verfahrensdokumentation nach GoBD "
+                        "verlangt nur, wer geschäftlich archiviert."),
         ("auskunft_aktion", "Ein Privatarchiv fällt unter die "
                             "Haushaltsausnahme der DSGVO; ein "
                             "Auskunftsrecht nach Artikel 15 besteht "
@@ -1320,6 +1330,46 @@ class Hauptfenster(QMainWindow):
             if not geschaeftlich:
                 aktion.setStatusTip(grund)
                 aktion.setToolTip(grund)
+
+    def _verfahrensdoku(self) -> None:
+        """Schreibt einen Entwurf nach GoBD in eine Datei."""
+        from PySide6.QtWidgets import QFileDialog
+
+        from mailburg.core import verfahrensdoku
+
+        if self.archiv is None:
+            return
+
+        ziel, _ = QFileDialog.getSaveFileName(
+            self,
+            "Verfahrensdokumentation speichern",
+            str(Path.home() / f"Verfahrensdokumentation-{self.archiv.name}.md"),
+            "Markdown (*.md)",
+        )
+        if not ziel:
+            return
+
+        from mailburg.core.accounts import Kontenliste
+
+        try:
+            text = verfahrensdoku.erzeugen(self.archiv, Kontenliste())
+            Path(ziel).write_text(text, encoding="utf-8")
+        except OSError as exc:
+            QMessageBox.warning(self, "Speichern gescheitert", str(exc))
+            return
+
+        luecken = text.count(verfahrensdoku.LUECKE)
+        QMessageBox.information(
+            self,
+            "Entwurf gespeichert",
+            f"Geschrieben nach\n{ziel}\n\n"
+            f"{luecken} Stellen sind noch auszufüllen – suchen Sie in der "
+            f"Datei nach »BITTE ERGÄNZEN«.\n\n"
+            f"Was dort steht, kann kein Programm wissen: wer zuständig "
+            f"ist, wer vertreten darf, wie oft geprüft wird. "
+            f"Verantwortlich für die Verfahrensdokumentation ist "
+            f"ausschließlich der Steuerpflichtige.",
+        )
 
     def _auskunft(self) -> None:
         """Stellt zusammen, was zu einer Person im Archiv liegt."""

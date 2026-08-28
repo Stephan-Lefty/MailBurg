@@ -521,6 +521,30 @@ von gestern.</p>
 die betroffenen Mails in die Suche – ansehen, beurteilen und
 entscheiden liegt bei Ihnen.</p>
 
+<p><b>Die Verfahrensdokumentation.</b> Die GoBD verlangen sie für
+jedes System, das steuerlich erhebliche Daten verarbeitet: Ein
+sachverständiger Dritter soll in angemessener Zeit sehen können, wie
+die Daten entstehen, wo sie liegen und wie sie gegen Verlust und
+Veränderung geschützt sind.</p>
+
+<p><b>Verantwortlich dafür sind Sie, nicht das Programm.</b> MailBurg
+kann den technischen Teil aus seiner eigenen Konfiguration
+erzeugen – Fassung, Ablageort, Verfahren, Postfächer, Zeitpläne,
+Bestandszahlen. Alles Organisatorische kann es nicht wissen: wer
+zuständig ist, wer im Urlaub vertritt, was bei einem Plattenausfall
+geschieht, wie oft jemand nachsieht, ob die Sicherungen wirklich
+entstehen.</p>
+
+<p>Diese Lücken bleiben im Entwurf sichtbar stehen und sind mit
+<i>BITTE ERGÄNZEN</i> ausgezeichnet. Das ist Absicht: Eine
+Dokumentation, die vollständig aussieht und es nicht ist, wäre
+schlimmer als gar keine – sie fällt erst in der Prüfung auf, und dann
+ist keine Zeit mehr.</p>
+
+<p><b>Archiv → Verfahrensdokumentation …</b><br>Schreibt den Entwurf
+als Textdatei, die Sie in jedem Schreibprogramm weiterbearbeiten
+können. Nur im Geschäftsarchiv.</p>
+
 <p><b>Wenn jemand fragt, was Sie über ihn gespeichert haben.</b> Nach
 Artikel 15 DSGVO hat er Anspruch auf eine Kopie. MailBurg sucht alle
 Nachrichten, in denen die Person vorkommt, und packt sie auf Wunsch in

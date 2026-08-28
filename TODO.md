@@ -267,11 +267,15 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   Vollständigkeit bei mehreren Adressen. Der Vorgang steht im Journal,
   wegen der Rechenschaftspflicht aus Art. 5 Abs. 2.
 
-- [ ] **Verfahrensdokumentation erzeugen.** MailBurg kennt seine eigene
-  Konfiguration und kann den technischen Teil einer Vorlage nach GoBD
-  vorausfüllen. Den organisatorischen Teil ergänzt der Anwender. Im Text muss
-  unmissverständlich stehen, dass die Verantwortung dafür beim Steuerpflichtigen
-  liegt.
+- [x] **Verfahrensdokumentation erzeugen.** (erledigt am 2026-08-28)
+  `mailburg verfahrensdoku` und *Archiv → Verfahrensdokumentation …*.
+  Sieben Abschnitte als Markdown; was MailBurg nicht wissen kann, steht
+  als `[BITTE ERGÄNZEN]` da und wird beim Speichern gezählt.
+
+  Aufgeführt werden nur die Postfächer *dieses* Archivs. Die Kontenliste
+  gilt für das ganze Programm – wer zwei Archive führt, hätte sonst in
+  beiden Dokumentationen dieselben Postfächer stehen, und in keiner der
+  beiden stünde die Wahrheit.
 
 - [ ] **Zeitstempel nach RFC 3161.** Anbindung an einen TSA-Dienst für das
   Siegel. Das Feld ist im Format vorgesehen. Zu klären: welcher Dienst, was bei

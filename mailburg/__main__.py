@@ -1123,6 +1123,80 @@ def cmd_werkzeuge(args: argparse.Namespace) -> int:
     return 0 if geht else 1
 
 
+def cmd_verfahrensdoku(args: argparse.Namespace) -> int:
+    """Erzeugt den technischen Teil einer Verfahrensdokumentation.
+
+    Die GoBD verlangen sie für jedes datenverarbeitende System: Ein
+    sachverständiger Dritter soll in angemessener Zeit sehen, wie die
+    Daten entstehen, wo sie liegen und wie sie geschützt sind.
+
+    **Verantwortlich ist der Steuerpflichtige, nicht das Programm.**
+    MailBurg steuert bei, was es selbst weiß. Alles Organisatorische
+    bleibt als sichtbare Lücke stehen – eine Dokumentation, die
+    vollständig aussieht und es nicht ist, fällt erst in der Prüfung
+    auf, und dann ist keine Zeit mehr.
+    """
+    from mailburg.core import verfahrensdoku
+    from mailburg.core.archive import Archive
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+    with Archive.open(archiv_pfad, exclusive=False) as archiv:
+        konten = None
+        try:
+            konten = Kontenliste()
+        except Exception:  # noqa: BLE001
+            pass
+
+        zeitplaene = {}
+        try:
+            from mailburg.core import zeitplan
+
+            abruf = zeitplan.zustand(archiv_pfad)
+            if abruf.laeuft:
+                zeitplaene["Abruf"] = (
+                    f"{verfahrensdoku.takt_in_worten(abruf.takt).capitalize()}, "
+                    f"selbsttätig im Hintergrund, solange der Benutzer am "
+                    f"Rechner angemeldet ist. Versäumte Läufe werden beim "
+                    f"nächsten Anmelden nachgeholt."
+                )
+            sicher = zeitplan.sicherung_zustand(archiv_pfad)
+            if sicher.laeuft:
+                wohin = getattr(sicher, "archiv", "") or ""
+                zeitplaene["Sicherung"] = (
+                    f"Selbsttätig eingerichtet"
+                    + (f", Ziel `{wohin}`." if wohin else ".")
+                    + " Gepackt wird das gesamte Archiv in eine Datei; der"
+                    + " Suchindex bleibt außen vor, weil er aus dem"
+                    + " Protokoll jederzeit neu entsteht."
+                )
+        except Exception:  # noqa: BLE001
+            pass
+
+        text = verfahrensdoku.erzeugen(archiv, konten, zeitplaene or None)
+
+    if not args.ziel:
+        print(text)
+        return 0
+
+    ziel = Path(args.ziel).expanduser()
+    if ziel.suffix.lower() not in (".md", ".txt"):
+        ziel = ziel.with_suffix(".md")
+    ziel.parent.mkdir(parents=True, exist_ok=True)
+    ziel.write_text(text, encoding="utf-8")
+
+    luecken = text.count(verfahrensdoku.LUECKE)
+    print(f"Geschrieben: {ziel}")
+    print()
+    print(
+        f"**{luecken} Stellen** sind noch auszufüllen – suchen Sie in der\n"
+        f"Datei nach »BITTE ERGÄNZEN«. Was dort steht, kann kein Programm\n"
+        f"wissen: wer zuständig ist, wer vertreten darf, wie oft geprüft\n"
+        f"wird. Verantwortlich für die Verfahrensdokumentation ist\n"
+        f"ausschließlich der Steuerpflichtige."
+    )
+    return 0
+
+
 def cmd_auskunft(args: argparse.Namespace) -> int:
     """Stellt alles zu einer Person zusammen – Art. 15 DSGVO.
 
@@ -1739,6 +1813,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="tatsächlich löschen statt nur zeigen",
     )
     p.set_defaults(func=cmd_loeschen)
+
+    p = subparsers.add_parser(
+        "verfahrensdoku",
+        help="Entwurf einer Verfahrensdokumentation nach GoBD",
+        description=(
+            "Erzeugt den technischen Teil aus der eigenen Konfiguration. "
+            "Der organisatorische Teil bleibt als sichtbare Lücke stehen "
+            "– verantwortlich für die Verfahrensdokumentation ist "
+            "ausschließlich der Steuerpflichtige."
+        ),
+    )
+    p.add_argument("archiv")
+    p.add_argument(
+        "ziel", nargs="?",
+        help="Zieldatei (.md). Ohne Angabe wird der Text ausgegeben.",
+    )
+    p.set_defaults(func=cmd_verfahrensdoku)
 
     p = subparsers.add_parser(
         "auskunft",
