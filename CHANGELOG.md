@@ -9,6 +9,15 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Geändert
+
+- **`mailburg konten zuordnung` zeigt Archivnamen statt Kennungen** und
+  gruppiert nach Archiv. Vorher stand je Postfach eine Zeile mit
+  `c89fdf58-7ec8-4804-af89-915b71440b7b` – für einen Menschen keine
+  Information. Die Frage lautet »was landet in meinem Geschäftsarchiv?«,
+  und genau diese Zuordnung entscheidet über zehnjährige
+  Aufbewahrungsfristen.
+
 ### Behoben
 
 - **Eine Sicherung an den falschen Ort blieb unbemerkt.** Schreibt der

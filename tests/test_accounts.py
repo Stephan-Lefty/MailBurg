@@ -7,6 +7,7 @@ import os
 import stat as stat_modul
 import sys
 import tempfile
+import pathlib
 import unittest
 from pathlib import Path
 
@@ -489,3 +490,126 @@ class ArchivzuordnungTest(unittest.TestCase):
         self.assertEqual(liste.finden("Alt").archive, [])
         self.assertEqual(liste.fuer_archiv("irgendwas"), [])
         self.assertEqual([k.name for k in liste.ohne_archiv()], ["Alt"])
+
+
+class ZuordnungsanzeigeTest(unittest.TestCase):
+    """»konten zuordnung« soll Archivnamen zeigen, keine Kennungen.
+
+    Vorher stand dort je Postfach eine Zeile mit
+    ``c89fdf58-7ec8-4804-af89-915b71440b7b``. Für einen Menschen ist das
+    keine Information – und die Frage lautet ohnehin »was landet in
+    meinem Geschäftsarchiv?«, nicht »welche Kennung hat dieses
+    Postfach?«.
+
+    Die Zuordnung entscheidet über zehnjährige Aufbewahrungsfristen. Am
+    2026-08-26 lagen deswegen 9.690 Mails im falschen Archiv – ein
+    Befehl, der das sichtbar machen soll, muss lesbar sein.
+    """
+
+    def setUp(self) -> None:
+        import json
+        import tempfile
+
+        from mailburg.core.archive import Archive
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        wurzel = pathlib.Path(self.ordner.name)
+
+        self.pfade = []
+        self.kennungen = []
+        for name in ("Geschäftsarchiv", "Privatarchiv"):
+            pfad = wurzel / name
+            Archive.create(pfad, name=name).close()
+            self.pfade.append(str(pfad))
+            self.kennungen.append(
+                json.loads((pfad / "archive.json").read_text(encoding="utf-8"))["uuid"]
+            )
+
+    def _namen(self) -> dict[str, str]:
+        from unittest import mock
+
+        from mailburg import __main__ as cli
+
+        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
+                        return_value=self.pfade):
+            return cli._archivnamen()
+
+    def test_die_kennung_wird_zum_namen(self) -> None:
+        namen = self._namen()
+        self.assertEqual(namen[self.kennungen[0]], "Geschäftsarchiv")
+        self.assertEqual(namen[self.kennungen[1]], "Privatarchiv")
+
+    def test_ein_unbekanntes_archiv_stoert_nicht(self) -> None:
+        """Eine abgezogene Platte hat trotzdem Postfächer.
+
+        Was sich nicht auflösen lässt, bleibt eine Kennung – das ist
+        kein Fehler, sondern ehrlicher als sie wegzulassen.
+        """
+        from unittest import mock
+
+        from mailburg import __main__ as cli
+
+        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
+                        return_value=[*self.pfade, "/gibt/es/nicht"]):
+            namen = cli._archivnamen()
+
+        self.assertEqual(len(namen), 2)
+
+    def test_die_anzeige_gruppiert_nach_archiv(self) -> None:
+        import contextlib
+        import io
+        from unittest import mock
+
+        from mailburg import __main__ as cli
+        from mailburg.core.accounts import Konto, Kontenliste
+
+        liste = Kontenliste()
+        liste.konten = [
+            Konto(name="Firma", server="imap.example.org",
+                  benutzer="post@example.org", archive=[self.kennungen[0]]),
+            Konto(name="Privat", server="imap.example.net",
+                  benutzer="ich@example.net", archive=[self.kennungen[1]]),
+            Konto(name="Ohne Ziel", server="imap.example.com",
+                  benutzer="rest@example.com"),
+        ]
+
+        ausgabe = io.StringIO()
+        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
+                        return_value=self.pfade):
+            with mock.patch.object(cli, "Kontenliste", return_value=liste):
+                with contextlib.redirect_stdout(ausgabe):
+                    cli.cmd_konten_zuordnung(None)
+
+        text = ausgabe.getvalue()
+        self.assertIn("Geschäftsarchiv", text)
+        self.assertIn("Privatarchiv", text)
+        # Keine nackten Kennungen mehr für Archive, die MailBurg kennt.
+        self.assertNotIn(self.kennungen[0], text)
+        # Und das Postfach ohne Ziel wird ausdrücklich benannt.
+        self.assertIn("Ohne Ziel", text)
+        self.assertIn("wird nicht abgerufen", text)
+
+    def test_der_archivname_steht_vor_seinen_postfaechern(self) -> None:
+        import contextlib
+        import io
+        from unittest import mock
+
+        from mailburg import __main__ as cli
+        from mailburg.core.accounts import Konto, Kontenliste
+
+        liste = Kontenliste()
+        liste.konten = [
+            Konto(name="Firma", server="imap.example.org",
+                  benutzer="post@example.org", archive=[self.kennungen[0]]),
+        ]
+
+        ausgabe = io.StringIO()
+        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
+                        return_value=self.pfade):
+            with mock.patch.object(cli, "Kontenliste", return_value=liste):
+                with contextlib.redirect_stdout(ausgabe):
+                    cli.cmd_konten_zuordnung(None)
+
+        text = ausgabe.getvalue()
+        self.assertLess(text.index("Geschäftsarchiv"), text.index("Firma"))

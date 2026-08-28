@@ -86,9 +86,13 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   anderen Datenträger als die Sicherungen. Fehlt *die* Platte, meldet
   MailBurg „kein Archiv" und bricht ab (Rückgabewert 2).
 
-- [ ] **5. `konten zuordnung` soll Archivnamen zeigen, keine Kennungen.**
-  Derzeit steht dort `220b2cd0-f3b1-49ea-…`. Richtig wäre der Name des
-  Archivs, mit der Kennung nur als Zusatz.
+- [x] **5. `konten zuordnung` soll Archivnamen zeigen, keine Kennungen.**
+  (erledigt am 2026-08-28) Die Ausgabe ist zugleich nach Archiven
+  gruppiert – die Frage lautet »was landet in meinem Geschäftsarchiv?«,
+  und die beantwortete eine Liste, in der jedes Postfach seine Kennung
+  wiederholt, nur mühsam. Namen, die MailBurg nicht auflösen kann, bleiben
+  Kennungen: Ein Archiv auf einer abgezogenen Platte hat trotzdem
+  Postfächer.
 
 ### Muss vor dem ersten echten Einsatz passieren
 

@@ -488,21 +488,84 @@ def cmd_konten_zuordnen(args: argparse.Namespace) -> int:
     return 0
 
 
+def _archivnamen() -> dict[str, str]:
+    """Kennung -> Name, für alle Archive, die MailBurg schon einmal sah.
+
+    Die Kontenliste kennt nur Kennungen wie
+    ``c89fdf58-7ec8-4804-af89-915b71440b7b``. Der Name steht im Archiv
+    selbst, also muss er von dort geholt werden – aus den zuletzt
+    geöffneten Archiven, denn andere kennt MailBurg nicht.
+
+    Was sich nicht auflösen lässt, bleibt eine Kennung. Das ist kein
+    Fehler: Ein Archiv auf einer abgezogenen Platte hat trotzdem
+    Postfächer, und die sollen weiter angezeigt werden.
+    """
+    import json
+
+    from mailburg.ui.app import zuletzt_benutzte_pfade
+
+    namen: dict[str, str] = {}
+    for roh in zuletzt_benutzte_pfade():
+        beschreibung = Path(roh) / "archive.json"
+        try:
+            daten = json.loads(beschreibung.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        kennung = daten.get("uuid")
+        if kennung:
+            namen[kennung] = daten.get("name") or Path(roh).name
+    return namen
+
+
 def cmd_konten_zuordnung(args: argparse.Namespace) -> int:
-    """Zeigt, welches Postfach in welches Archiv geht."""
+    """Zeigt, welches Postfach in welches Archiv geht.
+
+    **Nach Archiven gruppiert, nicht nach Postfächern.** Die Frage
+    lautet »was landet in meinem Geschäftsarchiv?«, und die beantwortet
+    eine Liste, in der jedes Postfach seine Kennung wiederholt, nur
+    mühsam. Genau diese Zuordnung entscheidet über zehnjährige
+    Aufbewahrungsfristen – am 2026-08-26 lagen deswegen 9.690 Mails im
+    falschen Archiv.
+    """
     liste = Kontenliste()
     if not liste.konten:
         print("Noch kein Postfach eingerichtet.")
         return 0
 
+    namen = _archivnamen()
+    nach_archiv: dict[str, list] = {}
+    ohne = []
     for konto in liste.konten:
-        zustand = "" if konto.aktiv else "  (abgeschaltet)"
-        if konto.archive:
-            ziele = ", ".join(konto.archive)
+        if not konto.archive:
+            ohne.append(konto)
+            continue
+        for kennung in konto.archive:
+            nach_archiv.setdefault(kennung, []).append(konto)
+
+    def beschriften(konto) -> str:
+        return f"   {konto.name}" + ("" if konto.aktiv else "  (abgeschaltet)")
+
+    # Benannte Archive zuerst, alphabetisch; unbekannte Kennungen ans
+    # Ende - sie sagen ohnehin am wenigsten.
+    def schluessel(kennung: str) -> tuple[int, str]:
+        return (0, namen[kennung].lower()) if kennung in namen else (1, kennung)
+
+    for kennung in sorted(nach_archiv, key=schluessel):
+        if kennung in namen:
+            print(f"{namen[kennung]}")
         else:
-            ziele = "keinem Archiv zugeordnet – wird nicht abgerufen"
-        print(f"{konto.name}{zustand}")
-        print(f"   {ziele}")
+            print(f"{kennung}")
+            print("   (dieses Archiv wurde hier noch nicht geöffnet)")
+        for konto in nach_archiv[kennung]:
+            print(beschriften(konto))
+        print()
+
+    if ohne:
+        print("Keinem Archiv zugeordnet – wird nicht abgerufen")
+        for konto in ohne:
+            print(beschriften(konto))
+        print()
+        print("   Zuordnen mit:  mailburg konten zuordnen NAME ARCHIV")
     return 0
 
 
