@@ -145,21 +145,22 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   schlechteste Stelle für eine veraltete Auskunft. (2026-08-28)
 
 
-- [ ] **Was als Anhang gilt, soll der Anwender festlegen können.** Nicht
-  als Endungsliste zum Tippen, sondern als Gruppen zum Ankreuzen in der
-  Einrichtung: Dokumente (PDF, Office, ODF, RTF), Tabellen und Daten (CSV,
-  XML, JSON), Bilder, Archive, Kalender und Kontakte, alles übrige.
+- [x] **Was als Anhang gilt, soll der Anwender festlegen können.**
+  (verworfen am 2026-08-28) Der Punkt entstand, weil `hat:anhang` fast
+  jede Mail fand – Signaturlogos und Trennlinien wurden mitgezählt. Das
+  ist inzwischen anders gelöst: Nur kleine *eingebettete Bilder* gelten
+  als Beiwerk, PDF nie.
 
-  **Gespeichert wird trotzdem alles.** Die Auswahl steuert nur, was als
-  Anhang *gilt* – ob `hat:anhang` anschlägt, was in der Anhangsliste steht,
-  was durchsucht wird. Die Datei bleibt in der Mail; alles andere bräche
-  die Bytegenauigkeit und damit die Hash-Kette.
+  An Stephans Privatarchiv nachgemessen: Von 16.367 Mails haben **1.773
+  einen Anhang, also 10,8 %**. Davon 72 % PDF, 37 % Bilder, 4 % Kalender.
+  Der Filter ist damit scharf, und der Zweck der Einstellung entfällt.
 
-  Die Festlegung gehört in `archive.json` und bei einer Änderung ins
-  Journal, nicht in die Programmeinstellungen: Für ein Geschäftsarchiv ist
-  »was haben wir als Anhang behandelt« Teil der Verfahrensdokumentation.
-  Wer später erklären muss, warum eine Datei nicht auffindbar war, will das
-  belegen können.
+  Dazu kommen zwei Gründe, es *nicht* zu bauen. Die Suche kann es zur
+  Laufzeit feiner – `typ:pdf` gilt pro Abfrage statt ein für alle Mal.
+  Und eine Festlegung beim Anlegen wäre gefährlich: Wer »Bilder« abwählt,
+  findet Jahre später ein Foto nicht und erfährt nie, warum. Die
+  eingescannte Rechnung als JPG ist kein konstruierter Fall – 337 solcher
+  Mails liegen in diesem Archiv.
 
 - [ ] **Anmeldung per OAuth2.** Der Abruf läuft mit App-Passwörtern. Das
   genügt, ist aber nicht das, was Gmail und Outlook eigentlich wollen: Dort
