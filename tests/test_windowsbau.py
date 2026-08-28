@@ -236,3 +236,56 @@ class SymbolUndTitelTest(unittest.TestCase):
 
     def test_der_name_wird_nur_einmal_gesetzt(self) -> None:
         self.assertEqual(self.quelle.count("setApplicationName("), 1)
+
+
+class GrafikenTest(unittest.TestCase):
+    """Die Bilder müssen in die gepackte Datei und dort gefunden werden.
+
+    Beim ersten Wurf lag nur die ``.ico`` darin – und der
+    Willkommensbildschirm zeigte kein Logo mehr, weil die Burg mit dem
+    Schriftzug aus einer SVG kommt. Das Erste, was ein neuer Anwender
+    sieht, war damit kahl (2026-08-28).
+    """
+
+    def test_die_banner_werden_eingepackt(self) -> None:
+        spec = (WURZEL / "werkzeuge" / "mailburg.spec").read_text(
+            encoding="utf-8"
+        )
+
+        for datei in ("banner.svg", "banner-dark.svg", "icon.svg"):
+            with self.subTest(datei=datei):
+                self.assertIn(datei, spec)
+                self.assertTrue((WURZEL / "assets" / datei).is_file())
+
+    def test_qt_kann_svg_zeichnen(self) -> None:
+        """QPixmap lädt das Modul zur Laufzeit – PyInstaller sieht das nicht."""
+        spec = (WURZEL / "werkzeuge" / "mailburg.spec").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("PySide6.QtSvg", spec)
+        # Und es darf nicht zugleich ausgeschlossen sein.
+        draussen = spec.split("DRAUSSEN = [", 1)[1].split("]", 1)[0]
+        self.assertNotIn("QtSvg", draussen)
+
+    def test_der_gepackte_ordner_wird_durchsucht(self) -> None:
+        """Sonst nützt das Einpacken nichts."""
+        quelle = (WURZEL / "mailburg" / "ui" / "bilder.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("_MEIPASS", quelle)
+
+    def test_der_gepackte_ordner_kommt_zuerst(self) -> None:
+        """Was mitgeliefert wurde, gilt – nicht irgendetwas vom System."""
+        import sys
+        import tempfile
+        from unittest import mock
+
+        from mailburg.ui import bilder
+
+        with tempfile.TemporaryDirectory() as ordner:
+            with mock.patch.object(sys, "_MEIPASS", ordner, create=True):
+                orte = bilder._orte()
+
+        self.assertEqual(str(orte[0]), str(pathlib.Path(ordner) / "assets"))

@@ -44,6 +44,11 @@ EINSTIEG = str(WURZEL / "werkzeuge" / "start_gui.py")
 #: dem Passwort gefragt, und der Hintergrundabruf wäre unmöglich.
 VERSTECKT = [
     "keyring.backends.Windows",
+    # Ohne QtSvg kann Qt die Banner nicht zeichnen: Sie liegen als SVG
+    # vor, damit sie auf jedem Bildschirm scharf bleiben. PyInstaller
+    # sieht den Bedarf nicht, weil MailBurg das Modul nirgends
+    # ausdrücklich importiert - QPixmap lädt es zur Laufzeit nach.
+    "PySide6.QtSvg",
     "win32ctypes.core",
     *collect_submodules("win32ctypes"),
 ]
@@ -70,6 +75,14 @@ analyse = Analysis(
     # Das Handbuch steckt im Programm, die Anleitungen kommen mit: Wer
     # eine einzelne Datei herunterlädt, hat sonst keine Dokumentation.
     datas=[
+        # **Das ganze Bilderverzeichnis, nicht nur das Symbol.** Beim
+        # ersten Wurf lag hier allein die .ico – und der
+        # Willkommensbildschirm zeigte kein Logo mehr, weil die Burg mit
+        # dem Schriftzug aus einer SVG kommt. Das Erste, was ein neuer
+        # Anwender sieht, war damit kahl (2026-08-28).
+        (str(WURZEL / "assets" / "banner.svg"), "assets"),
+        (str(WURZEL / "assets" / "banner-dark.svg"), "assets"),
+        (str(WURZEL / "assets" / "icon.svg"), "assets"),
         (str(WURZEL / "assets" / "mailburg.ico"), "assets"),
         (str(WURZEL / "docs"), "docs"),
         (str(WURZEL / "LICENSE"), "."),
