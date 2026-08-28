@@ -291,6 +291,17 @@ class WillkommenSeite(QWizardPage):
         rollbar.setWidget(text)
         rollbar.setWidgetResizable(True)
         rollbar.setFrameShape(QScrollArea.NoFrame)
+        # **Der Rollbalken bleibt sichtbar.** Auf 1280 x 800 - keine
+        # seltene Größe, viele ältere Notebooks haben sie - passt dieser
+        # Text nicht auf eine Seite. Qt blendet den Balken dann zwar ein,
+        # aber so zurückhaltend, dass man ihn übersieht: Der Text wirkt
+        # zu Ende, und wer nicht scrollt, erfährt nie, dass MailBurg
+        # nichts nach Hause meldet und die Passwörter im Schlüsselbund
+        # liegen. Ausgerechnet das, wofür dieser Text da ist.
+        #
+        # Gekürzt wird er nicht - die Ausführlichkeit ist Absicht. Also
+        # muss sichtbar sein, dass es weitergeht (2026-08-28).
+        rollbar.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         aufbau = QVBoxLayout(self)
         aufbau.addWidget(self.banner)
@@ -453,6 +464,8 @@ class ArchivSeite(QWizardPage):
         rollbar.setWidget(inhalt)
         rollbar.setWidgetResizable(True)
         rollbar.setFrameShape(QScrollArea.NoFrame)
+        # Wie auf der Willkommensseite: sichtbar, dass es weitergeht.
+        rollbar.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         rollbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         aufbau = QVBoxLayout(self)

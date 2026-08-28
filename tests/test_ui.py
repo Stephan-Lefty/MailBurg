@@ -3931,3 +3931,56 @@ class KontenZuordnungTest(OberflaechenTest):
             name = konten.Kontenverwaltung._archivname("220b2cd0-f3b1-49ea")
 
         self.assertTrue(name.startswith("220b2cd0"))
+
+
+class RollbalkenTest(OberflaechenTest):
+    """Wenn ein Text nicht auf die Seite passt, muss man das sehen.
+
+    Auf 1280 × 800 – keine seltene Größe, viele ältere Notebooks haben
+    sie – passt die Willkommensseite nicht auf einen Bildschirm. Qt
+    blendet den Rollbalken dann zwar ein, aber so zurückhaltend, dass
+    man ihn übersieht: Der Text wirkt zu Ende, und wer nicht scrollt,
+    erfährt nie, dass MailBurg nichts nach Hause meldet und die
+    Passwörter im Schlüsselbund liegen.
+
+    Gekürzt wird der Text nicht – die Ausführlichkeit ist Absicht und
+    Stephans ausdrückliche Vorgabe. Also muss sichtbar sein, dass es
+    weitergeht (2026-08-28).
+    """
+
+    def _seiten_mit_rollbereich(self):
+        from PySide6.QtWidgets import QScrollArea
+
+        from mailburg.ui.assistent import ArchivSeite, WillkommenSeite
+
+        gefunden = []
+        for klasse in (WillkommenSeite, ArchivSeite):
+            seite = klasse()
+            self.addCleanup(seite.deleteLater)
+            for bereich in seite.findChildren(QScrollArea):
+                gefunden.append((klasse.__name__, bereich))
+        return gefunden
+
+    def test_der_rollbalken_bleibt_sichtbar(self):
+        from PySide6.QtCore import Qt
+
+        bereiche = self._seiten_mit_rollbereich()
+
+        self.assertTrue(bereiche, "keine Rollbereiche gefunden")
+        for name, bereich in bereiche:
+            with self.subTest(seite=name):
+                self.assertEqual(
+                    bereich.verticalScrollBarPolicy(),
+                    Qt.ScrollBarAlwaysOn,
+                    "der Rollbalken versteckt sich – dann übersieht man ihn",
+                )
+
+    def test_waagerecht_wird_nicht_gerollt(self):
+        """Ein Text, der zur Seite läuft, wäre ein Fehler im Umbruch."""
+        from PySide6.QtCore import Qt
+
+        for name, bereich in self._seiten_mit_rollbereich():
+            with self.subTest(seite=name):
+                self.assertNotEqual(
+                    bereich.horizontalScrollBarPolicy(), Qt.ScrollBarAlwaysOn
+                )
