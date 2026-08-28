@@ -115,8 +115,11 @@ def main(argv: list[str] | None = None) -> int:
     # Muss am Objekt hängen bleiben: Ein Übersetzer, auf den niemand mehr
     # zeigt, wird weggeräumt – und die Knöpfe stehen wieder auf Englisch.
     anwendung._uebersetzer = _deutsch(anwendung)
+    # **Kein Anzeigename.** Qt hängt ihn jedem Fenstertitel an, und die
+    # Fenster nennen das Programm bereits selbst - heraus kam
+    # "MailBurg – Mailarchiv - MailBurg". Am 2026-08-28 in der gepackten
+    # Windows-Fassung aufgefallen, wo es besonders auffiel.
     anwendung.setApplicationName(APP_NAME)
-    anwendung.setApplicationDisplayName(APP_NAME)
     anwendung.setApplicationVersion(__version__)
     anwendung.setDesktopFileName("de.stephanlefty.MailBurg")
 
@@ -235,13 +238,34 @@ def _deutsch(anwendung):
 
 
 def _symbol():
-    """Das Programmsymbol, falls es neben dem Quelltext liegt."""
+    """Das Programmsymbol – wo auch immer es diesmal liegt.
+
+    Drei Fälle, und der letzte fehlte lange. Neben dem Quelltext, wenn
+    MailBurg aus dem Verzeichnis läuft. Unter ``/usr/share/icons``, wenn
+    es als Paket installiert wurde. Und in einem Verzeichnis, das erst
+    beim Start entsteht, wenn es eine gepackte Windows-Datei ist:
+    PyInstaller entpackt sich in einen temporären Ordner und hinterlegt
+    dessen Pfad in ``sys._MEIPASS``.
+
+    Ohne den dritten Fall zeigte das Fenster unter Windows ein leeres
+    Blatt – das Symbol steckte zwar in der ``.exe`` und erschien in der
+    Dateiliste, aber Qt braucht es zusätzlich für das Fenster selbst.
+    Bei einem Programm, das Vertrauen wecken soll, wirkt so etwas
+    unnötig schäbig (2026-08-28).
+    """
     from PySide6.QtGui import QIcon
 
-    for ort in (
-        Path(__file__).resolve().parent.parent.parent / "assets" / "icon.svg",
-        Path("/usr/share/icons/hicolor/scalable/apps/mailburg.svg"),
-    ):
+    orte = []
+    gepackt = getattr(sys, "_MEIPASS", None)
+    if gepackt:
+        # In der gepackten Fassung liegt das Windows-Symbol dabei; SVG
+        # kann Qt dort ohne das Bildmodul nicht immer zeichnen.
+        orte.append(Path(gepackt) / "assets" / "mailburg.ico")
+        orte.append(Path(gepackt) / "assets" / "icon.svg")
+    orte.append(Path(__file__).resolve().parent.parent.parent / "assets" / "icon.svg")
+    orte.append(Path("/usr/share/icons/hicolor/scalable/apps/mailburg.svg"))
+
+    for ort in orte:
         if ort.exists():
             return QIcon(str(ort))
     return None

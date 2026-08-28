@@ -199,3 +199,40 @@ class BaulaufTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SymbolUndTitelTest(unittest.TestCase):
+    """Zwei Schönheitsfehler, die nur in der gepackten Fassung auffielen.
+
+    Beide sind harmlos und beide wirken schäbig – bei einem Programm,
+    das man ohne Installation aus dem Netz lädt und dem man seine Post
+    anvertrauen soll, ist das keine Kleinigkeit.
+    """
+
+    def setUp(self) -> None:
+        self.quelle = (WURZEL / "mailburg" / "ui" / "app.py").read_text(
+            encoding="utf-8"
+        )
+
+    def test_das_symbol_wird_auch_im_gepackten_ordner_gesucht(self) -> None:
+        """PyInstaller entpackt sich in ein Verzeichnis, das erst entsteht.
+
+        Ohne diesen Fall zeigte das Fenster unter Windows ein leeres
+        Blatt: Das Symbol steckte zwar in der ``.exe`` und erschien in
+        der Dateiliste, aber Qt braucht es zusätzlich für das Fenster.
+        """
+        self.assertIn("_MEIPASS", self.quelle)
+        self.assertIn("mailburg.ico", self.quelle)
+
+    def test_kein_anzeigename(self) -> None:
+        """Sonst steht der Programmname zweimal im Titel.
+
+        Qt hängt ``applicationDisplayName`` jedem Fenstertitel an, und
+        die Fenster nennen MailBurg bereits selbst – heraus kam
+        »MailBurg – Mailarchiv - MailBurg«.
+        """
+        self.assertNotIn("setApplicationDisplayName", self.quelle)
+        self.assertIn("setApplicationName", self.quelle)
+
+    def test_der_name_wird_nur_einmal_gesetzt(self) -> None:
+        self.assertEqual(self.quelle.count("setApplicationName("), 1)
