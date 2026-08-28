@@ -82,12 +82,19 @@ class EinstiegTest(unittest.TestCase):
         Anhänge in einem Prozesspool und liefe genau hinein.
         """
         self.assertIn("freeze_support", self.quelle)
-        # Und vor allem, bevor irgendetwas anderes passiert.
-        self.assertLess(
-            self.quelle.index("freeze_support"),
-            self.quelle.index("from mailburg"),
-            "freeze_support muss vor dem ersten Import stehen",
-        )
+
+        # **Und zwar als erste Anweisung im Hauptblock.** Geprüft wird
+        # die Ausführungs-, nicht die Textreihenfolge: Ein Import in
+        # einer Funktion weiter oben läuft erst, wenn sie gerufen wird,
+        # und das ist danach. Die frühere Textprüfung schlug deshalb
+        # fehl, als die Weiche zwischen Fenster und Kommandozeile
+        # dazukam - obwohl daran nichts falsch war.
+        hauptblock = self.quelle.split('if __name__ == "__main__":', 1)[1]
+        anweisungen = [
+            z.strip() for z in hauptblock.splitlines()
+            if z.strip() and not z.strip().startswith("#")
+        ]
+        self.assertEqual(anweisungen[0], "multiprocessing.freeze_support()")
 
 
 class FassungsangabeTest(unittest.TestCase):
@@ -289,3 +296,63 @@ class GrafikenTest(unittest.TestCase):
                 orte = bilder._orte()
 
         self.assertEqual(str(orte[0]), str(pathlib.Path(ordner) / "assets"))
+
+
+class WeicheTest(unittest.TestCase):
+    """Die .exe muss Fenster und Kommandozeile auseinanderhalten.
+
+    Unter Linux gibt es zwei Startbefehle, ``mailburg`` und
+    ``mailburg-gui``. Unter Windows gibt es eine Datei, und die muss
+    beides können.
+
+    Ohne die Weiche wurde jedes Argument als Archivpfad gedeutet:
+    ``MailBurg.exe abrufen --leise C:\\Archiv`` öffnete ein Fenster mit
+    dem Archiv »abrufen«, fand keines und blieb mit einem Fehlerdialog
+    stehen. Der eingerichtete Zeitplan ruft genau so auf – er hätte alle
+    30 Minuten ein Fenster geöffnet, statt Post zu holen. Aufgefallen am
+    2026-08-28, als ein Prüfschritt im Bau-Workflow hängenblieb, weil er
+    auf einen Klick wartete, den auf einem Bauserver niemand macht.
+    """
+
+    def setUp(self) -> None:
+        import sys
+
+        sys.path.insert(0, str(WURZEL / "werkzeuge"))
+        import start_gui
+
+        self.start = start_gui
+
+    def test_die_befehle_werden_abgefragt_nicht_aufgezaehlt(self) -> None:
+        """Eine Liste im Quelltext würde beim nächsten Befehl vergessen."""
+        befehle = self.start._befehle()
+
+        for erwartet in ("abrufen", "sichern", "suchen", "werkzeuge"):
+            with self.subTest(befehl=erwartet):
+                self.assertIn(erwartet, befehle)
+
+    def test_der_zeitplan_ruft_einen_bekannten_befehl(self) -> None:
+        """Sonst öffnet die Aufgabenplanung alle 30 Minuten ein Fenster."""
+        quelle = (
+            WURZEL / "mailburg" / "core" / "aufgabenplanung.py"
+        ).read_text(encoding="utf-8")
+
+        befehle = self.start._befehle()
+        # Was in aufgabenplanung.py als erstes Wort der Argumente steht.
+        for zeile in quelle.splitlines():
+            if "abrufen --leise" in zeile:
+                self.assertIn("abrufen", befehle)
+            if "sichern --leise" in zeile:
+                self.assertIn("sichern", befehle)
+
+    def test_ohne_argumente_kommt_das_fenster(self) -> None:
+        """Wer doppelklickt, will kein Hilfetext."""
+        quelle = (WURZEL / "werkzeuge" / "start_gui.py").read_text(
+            encoding="utf-8"
+        )
+
+        # Die Oberfläche steht als letztes, ohne Bedingung davor.
+        self.assertIn("from mailburg.ui.app import main", quelle)
+        self.assertLess(
+            quelle.index("kommandozeile"),
+            quelle.index("from mailburg.ui.app import main"),
+        )
