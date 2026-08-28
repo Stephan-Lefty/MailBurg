@@ -113,10 +113,12 @@ jobs:
           MailBurg selbst steht unter der MIT-Lizenz, siehe LICENSE.
           "@ | Out-File -Encoding utf8 "$ziel\HERKUNFT.txt"
 
-          Invoke-WebRequest -Uri "https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt" `
-            -OutFile "$ziel\LIZENZ-poppler-GPL-2.0.txt"
-          Invoke-WebRequest -Uri "https://www.apache.org/licenses/LICENSE-2.0.txt" `
-            -OutFile "$ziel\LIZENZ-tesseract-Apache-2.0.txt"
+          # Aus dem Repo, nicht aus dem Netz. Der erste Versuch lud sie
+          # von gnu.org und apache.org - und der Bau brach ab, weil
+          # gnu.org nicht antwortete. An einem Text, der sich seit 1991
+          # nicht geändert hat.
+          Copy-Item "werkzeuge\lizenzen\GPL-2.0.txt" "$ziel\LIZENZ-poppler-GPL-2.0.txt"
+          Copy-Item "werkzeuge\lizenzen\Apache-2.0.txt" "$ziel\LIZENZ-tesseract-Apache-2.0.txt"
 
           $mb = [math]::Round(
             ((Get-ChildItem $ziel -Recurse | Measure-Object Length -Sum).Sum / 1MB), 1)

@@ -194,3 +194,36 @@ class RatschlagTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LizenzTest(unittest.TestCase):
+    """Die Lizenztexte liegen im Repo, nicht im Netz.
+
+    Der erste Versuch lud sie beim Bauen von ``gnu.org`` und
+    ``apache.org``. Der Bau brach ab, weil gnu.org nicht antwortete – an
+    einem Text, der sich seit 1991 nicht geändert hat. Ein Bau, der an
+    der Erreichbarkeit fremder Websites hängt, ist keiner.
+    """
+
+    def test_beide_texte_liegen_bereit(self) -> None:
+        for datei in ("GPL-2.0.txt", "Apache-2.0.txt"):
+            with self.subTest(datei=datei):
+                pfad = WURZEL / "werkzeuge" / "lizenzen" / datei
+                self.assertTrue(pfad.is_file())
+                self.assertGreater(len(pfad.read_text(encoding="utf-8")), 5000)
+
+    def test_der_workflow_holt_sie_nicht_mehr_aus_dem_netz(self) -> None:
+        text = (
+            WURZEL / ".github" / "workflows" / "windows-exe.yml"
+        ).read_text(encoding="utf-8")
+
+        # Nur die Abrufe zählen. In den Kommentaren dürfen die Namen
+        # stehen - dort steht ja gerade, warum sie nicht mehr abgerufen
+        # werden.
+        holt = [
+            zeile for zeile in text.splitlines()
+            if "Invoke-WebRequest" in zeile
+            and ("gnu.org" in zeile or "apache.org" in zeile)
+        ]
+        self.assertEqual(holt, [])
+        self.assertIn("werkzeuge\\lizenzen", text)
