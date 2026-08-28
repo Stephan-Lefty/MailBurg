@@ -16,20 +16,24 @@ wurde.
   Fehleinstellung, sondern Absicht – geschäftlich wartet jemand auf
   Antwort, privat eilt nichts.
 
-### Plan für den 2026-08-28
+### Am 2026-08-28 erledigt
 
-- [ ] **1. Die `.exe` bauen** (siehe unten, ausführlich). Am Abend des
-  2026-08-27 verabredet: PyInstaller einrichten, in der CI auf einem
-  Windows-Läufer bauen, an die Release-Seite hängen.
+- [x] **Die `.exe` für Windows.** Eine einzelne Datei, 152 MB, ohne Python
+  und ohne Installation. Gebaut von GitHub selbst, an
+  [v0.10.0](https://github.com/Stephan-Lefty/MailBurg/releases/tag/v0.10.0)
+  angehängt. Die Texterkennung ist enthalten – poppler, tesseract und die
+  deutschen Sprachdaten.
 
-- [ ] **2. In der VM ausprobieren.** Die Windows-VM steht bereits
-  eingerichtet unter `/mnt/raid/VMs/windows11.qcow2` – Windows 11 25H2,
-  lokales Konto `test`, kein Python nötig, wenn die `.exe` hält, was sie
-  soll. Zu prüfen: ob SmartScreen sich meldet, ob der Assistent aus der
-  `.exe` heraus startet, wie lange der erste Start dauert.
+- [x] **In der VM ausprobiert, mit einem echten Postfach.** Einrichtung,
+  IMAP-Abruf, Suche, Vorschau, Texterkennung und der regelmäßige Abruf
+  über die Windows-Aufgabenplanung. Dabei kamen sechs Fehler ans Licht,
+  die unter Linux nie aufgefallen wären – darunter zwei, die den Zeitplan
+  unbrauchbar gemacht hätten.
 
-  **Die VM nie mit `destroy` beenden**, sondern:
-  `virsh -c qemu:///session shutdown windows11`
+- [x] **Umlaut-Umschreibungen in der Suche.** Die Frage »Lohnt der
+  Aufwand?« hat sich beim Nachmessen beantwortet: Es ging nicht nur um
+  `mueller`, sondern auch um `strasse` gegen `straße` – und in der Schweiz
+  gibt es überhaupt kein ß. Die Suchanfrage fächert jetzt selbst auf.
 
 ### Alter Plan für den 2026-08-27
 
@@ -279,10 +283,6 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   beantwortet war, wird beim Archivieren festgehalten und danach nie wieder
   angefasst. Für ein Archiv ist das vertretbar – die Frage ist, ob jemand
   das anders erwartet.
-
-- [ ] **Umlaut-Umschreibungen in der Suche.** `von:muller` findet inzwischen
-  „Müller", aber `von:mueller` nicht. Die Auffächerung ue→ü müsste die
-  Suchanfrage selbst leisten. Lohnt der Aufwand?
 
 - [ ] **Was passiert bei einem Archiv auf einer Platte, die zwischendurch
   weggeht?** Externe Platte abgezogen, Netzlaufwerk getrennt, Cloud nicht
