@@ -11,6 +11,23 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Die Suche kennt jetzt deutsche Schreibweisen.** »Bahnhofstrasse« findet
+  »Bahnhofstraße«, »mueller« findet »Müller«. Bisher nicht: Der Index legt
+  Wörter zwar ohne Umlautpunkte ab, weshalb »muller« schon immer »Müller« fand
+  – aber das **ß** blieb stehen, und die Umschreibung mit e war ihm fremd.
+
+  In der Schweiz gibt es überhaupt kein ß, dort schreibt jeder »ss«. Bei einem
+  Programm, das Aufbewahrungsfristen für DE, AT *und* CH kennt, ist das keine
+  Kleinigkeit.
+
+  Lösen lässt sich das nicht im Index – SQLite kann es nicht. Die Suchanfrage
+  fächert deshalb selbst auf: aus `strasse` wird `strasse OR straße`. Dass
+  dabei auch Unsinn entsteht (aus »Steuer« wird »Steür«), schadet nicht: Solche
+  Varianten finden schlicht nichts.
+
+  Groß- und Kleinschreibung war und ist der Suche gleichgültig, auch bei
+  Umlauten.
+
 - **Der regelmäßige Abruf lässt sich jetzt auch unter Windows einstellen.**
   Bisher stand dort ein grauer Kasten: „Unter Windows richtet MailBurg den
   regelmäßigen Abruf noch nicht selbst ein." Wer die Windows-Fassung benutzt,
@@ -30,6 +47,20 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   war, und zwar stillschweigend.
 
 ### Behoben
+
+- **Bei jedem Aufruf eines Hilfsprogramms blitzte unter Windows ein
+  Konsolenfenster auf.** `pdftoppm`, `pdftotext` und `tesseract` sind
+  Konsolenprogramme; startet eine Anwendung mit Fenster sie, öffnet Windows
+  jedes Mal eine Konsole. Bei der Texterkennung geschieht das mehrfach je
+  Seite – über die Dauer eines Laufs dutzende Fenster, die sich vor alles
+  andere schieben. Wer das sieht, hält das Programm für kaputt.
+
+- **Die gepackte `MailBurg.exe` kannte ihre eigene Kommandozeile nicht.** Jedes
+  Argument wurde als Archivpfad gedeutet: `MailBurg.exe abrufen --leise
+  C:\Archiv` öffnete ein Fenster mit dem Archiv »abrufen«, fand keines und
+  blieb mit einem Fehlerdialog stehen. Das traf auch den eingerichteten
+  Zeitplan — er hätte alle 30 Minuten ein Fenster geöffnet, statt Post zu
+  holen.
 
 - **Der erste Abruf lief nach der Einrichtung nicht an.** Auf der
   Abschlussseite steht „Jetzt den ersten Abruf starten", angekreuzt. Man

@@ -70,6 +70,73 @@ def _fts_quote(value: str) -> str:
     return '"' + value.replace('"', '""') + '"'
 
 
+#: Schreibweisen, die dasselbe Wort meinen.
+#:
+#: **Warum das nötig ist.** Der Index legt Wörter ohne Umlautpunkte ab,
+#: deshalb findet »muller« auch »Müller«. Zwei Fälle deckt das nicht ab:
+#:
+#: * Das **ß** bleibt stehen, wie es ist. »Bahnhofstrasse« findet
+#:   »Bahnhofstraße« nicht – und in der Schweiz gibt es überhaupt kein ß,
+#:   dort schreibt jeder »ss«. Bei einem Programm, das Aufbewahrungsfristen
+#:   für DE, AT *und* CH kennt, ist das keine Kleinigkeit.
+#: * Die **Umschreibung mit e** – »mueller« statt »müller«. So schreibt
+#:   man in Mailadressen, in Dateinamen und überall dort, wo Umlaute
+#:   Ärger machen.
+#:
+#: Beides lässt sich nicht im Index lösen; SQLite kann das nicht. Also
+#: fächert die Suchanfrage selbst auf: Aus »strasse« wird
+#: »strasse OR straße«.
+_SCHREIBWEISEN = (
+    ("ß", "ss"),
+    ("ss", "ß"),
+    ("ae", "ä"),
+    ("oe", "ö"),
+    ("ue", "ü"),
+)
+
+#: Deckel für die Auffächerung. Ein Wort mit vielen betroffenen Stellen
+#: ergäbe sonst zwei hoch n Varianten – und eine Suchanfrage, die länger
+#: braucht als die Suche selbst.
+_HOECHSTENS = 8
+
+
+def schreibweisen(wort: str) -> list[str]:
+    """Alle Schreibweisen, die dasselbe Wort meinen könnten.
+
+    Die erste ist immer das, was eingegeben wurde. Unsinnige Varianten
+    entstehen dabei durchaus – aus »Steuer« wird auch »Steür« –, aber
+    sie schaden nicht: Sie finden schlicht nichts. Die Alternative wäre
+    ein Wörterbuch, und das wüsste bei Eigennamen auch nicht weiter.
+    """
+    gefunden = [wort]
+    gesehen = {wort.lower()}
+
+    # Mehrere Runden, damit auch »Strassenmueller« beide Stellen erwischt.
+    for _ in range(3):
+        for vorhanden in list(gefunden):
+            for alt, ersatz in _SCHREIBWEISEN:
+                if alt not in vorhanden.lower():
+                    continue
+                # Auf der kleingeschriebenen Fassung: Die Suche
+                # unterscheidet ohnehin nicht nach Groß und Klein.
+                variante = vorhanden.lower().replace(alt, ersatz)
+                if variante not in gesehen:
+                    gesehen.add(variante)
+                    gefunden.append(variante)
+                if len(gefunden) >= _HOECHSTENS:
+                    return gefunden
+    return gefunden
+
+
+def _fts_gruppe(value: str, *, prefix: bool = False) -> str:
+    """Ein FTS5-Ausdruck über alle Schreibweisen eines Begriffs."""
+    stern = "*" if prefix else ""
+    teile = [_fts_quote(v) + stern for v in schreibweisen(value)]
+    if len(teile) == 1:
+        return teile[0]
+    return "(" + " OR ".join(teile) + ")"
+
+
 def _datum_lesen(wert: str) -> str:
     """Nimmt ein Datum entgegen – geschrieben, wie man es hier schreibt.
 
@@ -98,10 +165,7 @@ def _datum_lesen(wert: str) -> str:
 
 def _column_match(table: str, column: str, value: str, *, prefix: bool = False) -> str:
     """Baut einen FTS5-Ausdruck, der nur eine Spalte durchsucht."""
-    term = _fts_quote(value)
-    if prefix:
-        term += "*"
-    return f"{{{column}}} : {term}"
+    return f"{{{column}}} : {_fts_gruppe(value, prefix=prefix)}"
 
 
 def build(expression: str) -> tuple[str, list[object]]:
@@ -149,13 +213,13 @@ def build(expression: str) -> tuple[str, list[object]]:
     if free_terms:
         # Alle freien Begriffe in einer Anfrage, mit UND verknüpft und als
         # Präfix – so wird die Trefferliste schon beim Tippen brauchbar.
-        joined = " AND ".join(_fts_quote(t) + "*" for t in free_terms)
+        joined = " AND ".join(_fts_gruppe(t, prefix=True) for t in free_terms)
         clauses.append("m.id IN (SELECT rowid FROM search WHERE search MATCH ?)")
         params.append(joined)
 
     for term in free_excluded:
         clauses.append("m.id NOT IN (SELECT rowid FROM search WHERE search MATCH ?)")
-        params.append(_fts_quote(term) + "*")
+        params.append(_fts_gruppe(term, prefix=True))
 
     return (" AND ".join(clauses) if clauses else "1=1"), params
 
