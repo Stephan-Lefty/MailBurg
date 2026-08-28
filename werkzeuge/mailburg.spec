@@ -1,0 +1,107 @@
+# -*- mode: python ; coding: utf-8 -*-
+"""Bauplan für die Windows-Fassung von MailBurg.
+
+**Warum es das gibt.** Am 2026-08-27 wurde MailBurg zum ersten Mal auf
+einem frischen Windows eingerichtet. Das dauerte zwei Stunden: Python
+über winget nachinstallieren, PowerShell als Administrator öffnen, Pfade
+abtippen, Zusätze in eckigen Klammern kennen (``[oberflaeche,imap]``).
+Unter Linux genügt ein Befehl.
+
+Stephans Urteil danach: »Der Windows-User braucht eine fertige
+Exe-Datei, und dann läuft alles automatisch.« Er hat recht – wer ein
+Archivprogramm sucht, will kein Python einrichten.
+
+**Was hier hineingepackt wird:** Python, PySide6, keyring und MailBurg
+selbst. Nicht enthalten sind poppler und tesseract für die
+Texterkennung; das wären noch einmal 150 MB für etwas, das die Ausnahme
+ist – in Stephans Privatarchiv 323 eingescannte PDF bei 16.360 Mails.
+Fehlen sie, sagt MailBurg das und arbeitet ohne sie weiter.
+
+Gebaut wird mit::
+
+    pyinstaller werkzeuge/mailburg.spec
+
+Das läuft nur unter Windows sinnvoll: PyInstaller packt immer für das
+System, auf dem es läuft.
+"""
+
+import sys
+from pathlib import Path
+
+from PyInstaller.utils.hooks import collect_submodules
+
+WURZEL = Path(SPECPATH).parent
+
+#: Der Einstieg. Nicht ``mailburg/__main__.py``: Das ist die
+#: Kommandozeile. Wer doppelklickt, will das Fenster.
+EINSTIEG = str(WURZEL / "werkzeuge" / "start_gui.py")
+
+#: Was mitmuss, obwohl es niemand ausdrücklich importiert.
+#:
+#: ``keyring`` sucht seinen Speicher zur Laufzeit über Einstiegspunkte –
+#: PyInstaller sieht davon nichts und ließe die Windows-Anbindung weg.
+#: Genau die braucht MailBurg aber: Ohne sie würde bei jedem Abruf nach
+#: dem Passwort gefragt, und der Hintergrundabruf wäre unmöglich.
+VERSTECKT = [
+    "keyring.backends.Windows",
+    "win32ctypes.core",
+    *collect_submodules("win32ctypes"),
+]
+
+#: Was Platz kostet und niemand braucht. PySide6-Essentials bringt
+#: einiges mit, das ein Archivprogramm nie anfasst.
+DRAUSSEN = [
+    "PySide6.Qt3DAnimation", "PySide6.Qt3DCore", "PySide6.Qt3DExtras",
+    "PySide6.Qt3DInput", "PySide6.Qt3DLogic", "PySide6.Qt3DRender",
+    "PySide6.QtBluetooth", "PySide6.QtCharts", "PySide6.QtDataVisualization",
+    "PySide6.QtMultimedia", "PySide6.QtMultimediaWidgets",
+    "PySide6.QtNfc", "PySide6.QtOpenGL", "PySide6.QtOpenGLWidgets",
+    "PySide6.QtPositioning", "PySide6.QtQuick", "PySide6.QtQuick3D",
+    "PySide6.QtQuickWidgets", "PySide6.QtQml", "PySide6.QtSensors",
+    "PySide6.QtSerialPort", "PySide6.QtSpatialAudio", "PySide6.QtWebChannel",
+    "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets",
+    "PySide6.QtWebSockets", "tkinter", "unittest", "pydoc_data",
+]
+
+analyse = Analysis(
+    [EINSTIEG],
+    pathex=[str(WURZEL)],
+    binaries=[],
+    # Das Handbuch steckt im Programm, die Anleitungen kommen mit: Wer
+    # eine einzelne Datei herunterlädt, hat sonst keine Dokumentation.
+    datas=[
+        (str(WURZEL / "assets" / "mailburg.ico"), "assets"),
+        (str(WURZEL / "docs"), "docs"),
+        (str(WURZEL / "LICENSE"), "."),
+        (str(WURZEL / "RECHTLICHES.md"), "."),
+    ],
+    hiddenimports=VERSTECKT,
+    hookspath=[],
+    runtime_hooks=[],
+    excludes=DRAUSSEN,
+    noarchive=False,
+)
+
+pyz = PYZ(analyse.pure)
+
+exe = EXE(
+    pyz,
+    analyse.scripts,
+    analyse.binaries,
+    analyse.datas,
+    [],
+    name="MailBurg",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    # UPX presst die Datei kleiner, bringt MailBurg aber regelmäßig in
+    # Verdacht: Virenscanner schlagen bei gepackten Programmen häufiger
+    # an, und eine unsignierte Datei hat es ohnehin schwer genug.
+    upx=False,
+    # Kein Konsolenfenster: Wer doppelklickt, will das Programm sehen
+    # und nicht ein schwarzes Fenster daneben.
+    console=False,
+    disable_windowed_traceback=False,
+    icon=str(WURZEL / "assets" / "mailburg.ico"),
+    version=str(WURZEL / "werkzeuge" / "fassung.txt"),
+)
