@@ -9,6 +9,28 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- **`mailburg einstufen` ordnet Mails aufbewahrungsrechtlich ein.** Das
+  Rechenwerk stand seit dem 25. August und war getestet — aber es gab
+  keinen Weg, einer Mail eine Kategorie *zuzuweisen*. Der Index hatte die
+  Spalte, die Suche kannte `kategorie:`, die Löschsperre fragte sie ab,
+  und niemand konnte sie setzen.
+
+  Eingestuft wird über einen Suchausdruck, nicht Mail für Mail: Wer ein
+  Archiv einordnet, hat hunderte Belege vor sich. „Alles von der
+  Steuerkanzlei ist Buchungsbeleg" ist eine Regel, die sich schreiben
+  lässt. Ohne `--wirklich` wird nur gezeigt, was geschähe — eine
+  Einstufung verlängert Fristen und lässt sich nicht formlos zurücknehmen.
+
+  Jeder Vorgang wandert als `classify` ins Journal, mit vorheriger und
+  neuer Kategorie: Für ein Geschäftsarchiv ist „wer hat wann was wozu
+  erklärt" Teil der Verfahrensdokumentation.
+
+  Die Wirkung ist belegt: Eine Mail von Anfang 2019 in einem deutschen
+  Geschäftsarchiv ist als Buchungsbeleg bis Ende 2027 gesperrt, als
+  Handelsbrief bereits frei, als privat jederzeit löschbar.
+
 ### Geändert
 
 - **`[oberflaeche]` bringt jetzt den Schlüsselbund mit.** Wer nur die

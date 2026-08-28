@@ -388,6 +388,57 @@ class Archive:
         self.journal.flush()
         self.index.commit()
 
+    def classify(
+        self,
+        digest: str,
+        category: "Category | str",
+        *,
+        actor: str = "",
+        note: str = "",
+    ) -> "Category":
+        """Stuft eine Mail aufbewahrungsrechtlich ein.
+
+        Handelsbrief, Buchungsbeleg oder privat – davon hängt ab, wie
+        lange MailBurg das Löschen bremst. Sechs, acht oder zehn Jahre
+        sind ein Unterschied, und ``unbestimmt`` wird sicherheitshalber
+        wie die längste Pflicht behandelt.
+
+        **Der Vorgang wandert ins Journal.** Nicht aus Ordnungsliebe: Für
+        ein Geschäftsarchiv ist »wer hat wann was wozu erklärt« Teil der
+        Verfahrensdokumentation. Wer später begründen muss, warum eine
+        Mail nach sechs statt acht Jahren gelöscht wurde, will auf einen
+        Eintrag zeigen können – und der Eintrag hängt in der Hash-Kette,
+        lässt sich also nicht nachträglich glattziehen.
+
+        Zurückgegeben wird die vorherige Einstufung. Das ist mehr als
+        Höflichkeit: Wer versehentlich hundert Mails umstellt, soll sie
+        zurückstellen können.
+        """
+        ziel = Category(category)
+
+        row = self.index.db.execute(
+            "SELECT category FROM messages WHERE hash = ?", (digest,)
+        ).fetchone()
+        if row is None:
+            raise ArchiveError(f"Diese Mail liegt nicht im Archiv: {digest}")
+        vorher = Category(row["category"] or Category.UNBESTIMMT)
+
+        if vorher == ziel:
+            return vorher
+
+        self.journal.append(
+            "classify",
+            hash=digest,
+            category=ziel.value,
+            previous=vorher.value,
+            actor=actor or _angemeldeter_benutzer(),
+            note=note,
+        )
+        self.index.set_category(digest, ziel.value)
+        self.journal.flush()
+        self.index.commit()
+        return vorher
+
     def _check_retention(self, digest: str) -> None:
         """Bremst das Löschen, solange eine Aufbewahrungsfrist läuft."""
         row = self.index.db.execute(

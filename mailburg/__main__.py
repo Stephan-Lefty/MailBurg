@@ -1123,6 +1123,65 @@ def cmd_werkzeuge(args: argparse.Namespace) -> int:
     return 0 if geht else 1
 
 
+def cmd_einstufen(args: argparse.Namespace) -> int:
+    """Stuft die Treffer einer Suche aufbewahrungsrechtlich ein.
+
+    **Über die Suche, nicht Mail für Mail.** Wer ein Archiv einstuft, hat
+    hunderte Belege vor sich, keine drei. »Alles von der Steuerkanzlei
+    ist Buchungsbeleg« ist eine Regel, die sich als Suchausdruck schreiben
+    lässt – und die sich später nachvollziehen lässt, weil jeder Vorgang
+    im Journal steht.
+
+    Ohne ``--wirklich`` wird nur gezeigt, was geschähe. Eine Einstufung
+    verlängert Aufbewahrungsfristen und lässt sich nicht formlos
+    zurücknehmen; ein Tippfehler im Suchausdruck soll nicht hundert Mails
+    für acht Jahre festsetzen.
+    """
+    from mailburg.core.archive import Archive
+    from mailburg.core.retention import Category
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+    try:
+        ziel = Category(args.kategorie)
+    except ValueError:
+        moeglich = ", ".join(k.value for k in Category)
+        print(f"'{args.kategorie}' ist keine Kategorie. Möglich: {moeglich}",
+              file=sys.stderr)
+        return 2
+
+    with Archive.open(archiv_pfad, exclusive=args.wirklich) as archiv:
+        treffer = archiv.index.search(args.suche, limit=1_000_000)
+        if not treffer:
+            print(f"Keine Treffer für: {args.suche}")
+            return 0
+
+        # Was schon so eingestuft ist, bleibt unangetastet - und wird
+        # auch nicht mitgezählt. Sonst meldet der Befehl beim zweiten
+        # Aufruf dieselbe Zahl und man hält ihn für wirkungslos.
+        offen = [t for t in treffer if t.category != ziel.value]
+
+        print(f"{len(treffer)} Treffer für: {args.suche}")
+        if not offen:
+            print(f"Alle sind bereits »{ziel.value}«. Nichts zu tun.")
+            return 0
+        print(f"Davon einzustufen als »{ziel.value}«: {len(offen)}")
+
+        if not args.wirklich:
+            for t in offen[:10]:
+                print(f"   {t.date or '        '}  {t.subject[:60]}")
+            if len(offen) > 10:
+                print(f"   … und {len(offen) - 10} weitere")
+            print()
+            print("Nichts geändert. Zum Ausführen: --wirklich")
+            return 0
+
+        for t in offen:
+            archiv.classify(t.hash, ziel, note=f"Suche: {args.suche}")
+        wort = "Mail" if len(offen) == 1 else "Mails"
+        print(f"Eingestuft: {len(offen)} {wort}. Im Journal vermerkt.")
+    return 0
+
+
 def cmd_hilfe_suche(args: argparse.Namespace) -> int:
     """Erklärt die Suchsprache."""
     print(describe_syntax())
@@ -1542,6 +1601,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="tatsächlich löschen statt nur zeigen",
     )
     p.set_defaults(func=cmd_loeschen)
+
+    p = subparsers.add_parser(
+        "einstufen",
+        help="Mails aufbewahrungsrechtlich einordnen",
+        description=(
+            "Stuft die Treffer einer Suche als Handelsbrief, Buchungsbeleg "
+            "oder privat ein. Davon hängt ab, wie lange MailBurg das "
+            "Löschen bremst – sechs, acht oder zehn Jahre. Ohne "
+            "--wirklich wird nur gezeigt, was geschähe."
+        ),
+    )
+    p.add_argument("archiv")
+    p.add_argument("suche", help="Suchausdruck, etwa »von:steuerkanzlei«")
+    p.add_argument(
+        "kategorie",
+        help="handelsbrief, buchungsbeleg, privat oder unbestimmt",
+    )
+    p.add_argument(
+        "--wirklich", action="store_true",
+        help="die Einstufung tatsächlich vornehmen",
+    )
+    p.set_defaults(func=cmd_einstufen)
 
     p = subparsers.add_parser("suchhilfe", help="die Suchsprache erklären")
     p.set_defaults(func=cmd_hilfe_suche)

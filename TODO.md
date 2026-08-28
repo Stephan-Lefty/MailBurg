@@ -230,12 +230,20 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   ausdrücklich freizuschalten fürs Heimnetz, und für unterwegs der Verweis
   auf VPN oder Tailscale statt einer Portfreigabe im Router.
 
-- [ ] **Aufbewahrungskategorien in der Oberfläche.** Das Rechenwerk steht in
-  `core/retention.py` und ist getestet, aber es gibt noch keinen Weg, einer
-  Mail eine Kategorie zuzuweisen. Der Journalvorgang `classify` ist vorgesehen.
-  Offen ist, ob sich Handelsbrief und Buchungsbeleg brauchbar automatisch
-  unterscheiden lassen – vermutlich nur als Vorschlag, den der Anwender
-  bestätigt.
+- [x] **Aufbewahrungskategorien: das Einstufen gibt es jetzt.** (erledigt
+  am 2026-08-28) `mailburg einstufen ARCHIV SUCHE KATEGORIE`, mit
+  Journalvorgang `classify` und Trockenlauf ohne `--wirklich`. Belegt ist
+  auch die Wirkung: Eine Mail von 2019 ist als Buchungsbeleg bis Ende
+  2027 gesperrt, als Handelsbrief schon frei.
+
+  **In der Oberfläche fehlt es noch.** Ein Menüpunkt, der die Treffer der
+  aktuellen Suche einstuft, wäre der nächste Schritt – dieselbe Logik,
+  nur ohne Kommandozeile.
+
+  Die Frage, ob sich Handelsbrief und Buchungsbeleg automatisch
+  unterscheiden lassen, bleibt offen und ist bewusst nicht angefasst: Ein
+  Vorschlag, den der Anwender bestätigt, setzt voraus, dass er ihn
+  beurteilen kann – und bei einer falschen Automatik merkt es niemand.
 
 - [ ] **Fälligkeitsbericht.** „Diese 342 Mails haben ihre Frist überschritten
   und sollten gelöscht werden." Gelöscht wird nur nach ausdrücklicher

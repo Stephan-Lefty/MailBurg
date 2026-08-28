@@ -155,6 +155,14 @@ class Hit:
     has_attachments: bool
     snippet: str = ""
 
+    category: str = "unbestimmt"
+    """Wozu die Mail aufbewahrungsrechtlich zählt.
+
+    Mitgeführt, damit ein Aufrufer nicht für jeden Treffer einzeln
+    nachfragen muss – »was ist hier noch nicht eingestuft?« ist die
+    häufigste Frage an eine Trefferliste in einem Geschäftsarchiv.
+    """
+
     @property
     def sender_display(self) -> str:
         """Absender so, wie man ihn einer Liste zeigt."""
@@ -429,7 +437,7 @@ class Index:
         # sich beim Nachladen - die Liste sprünge dem Anwender weg.
         rows = self.db.execute(
             f"""SELECT m.hash, m.bucket, m.subject, m.from_addr, m.from_name,
-                       m.date, m.size, m.has_attachments
+                       m.date, m.size, m.has_attachments, m.category
                 FROM messages m
                 WHERE {where}
                 ORDER BY {feld} {richtung}, m.date DESC
@@ -447,6 +455,7 @@ class Index:
                 date=row["date"],
                 size=row["size"],
                 has_attachments=bool(row["has_attachments"]),
+                category=row["category"] or "unbestimmt",
             )
             for row in rows
         ]
