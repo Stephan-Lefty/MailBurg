@@ -521,6 +521,30 @@ von gestern.</p>
 die betroffenen Mails in die Suche – ansehen, beurteilen und
 entscheiden liegt bei Ihnen.</p>
 
+<p><b>Wenn jemand fragt, was Sie über ihn gespeichert haben.</b> Nach
+Artikel 15 DSGVO hat er Anspruch auf eine Kopie. MailBurg sucht alle
+Nachrichten, in denen die Person vorkommt, und packt sie auf Wunsch in
+eine Datei – mit einem Begleitblatt, das nennt, woher die Daten stammen
+und wozu sie gespeichert sind.</p>
+
+<p><b>Herausgegeben wird von Ihnen, nicht vom Programm.</b> Zwei Dinge
+kann keine Software entscheiden. Erstens stehen in denselben
+Nachrichten oft Daten Dritter – Adressen im Verteiler, Namen im Text,
+Unterschriften in Anhängen; nach Artikel 15 Absatz 4 darf die Kopie
+deren Rechte nicht beeinträchtigen. Zweitens wird nach genau einer
+Adresse gesucht: Wer unter mehreren schreibt, taucht nur unter der
+gesuchten auf.</p>
+
+<p>Der Vorgang wird im <a href="#journal">Journal</a> vermerkt. Artikel
+5 Absatz 2 verlangt, dass Sie die Einhaltung nachweisen können – wer in
+einem Jahr gefragt wird, ob er fristgerecht Auskunft erteilt hat, will
+auf einen Eintrag zeigen können.</p>
+
+<p><b>Archiv → Auskunft nach DSGVO …</b><br>Stellt zusammen, was zu
+einer Person im Archiv liegt, und speichert es als ZIP-Datei. Nur im
+Geschäftsarchiv: Ein Privatarchiv fällt unter die Haushaltsausnahme der
+DSGVO, ein Auskunftsrecht besteht dort nicht.</p>
+
 <p><b>Post → Aufbewahrung festlegen …</b><br>Ordnet die gerade
 gefundenen Mails als Buchungsbeleg, Handelsbrief oder privat ein. Das
 Fenster zeigt vorher, wie viele betroffen sind und wie lange sie danach

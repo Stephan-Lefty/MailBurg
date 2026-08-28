@@ -257,8 +257,15 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   Ton: keine Fristen, nur ein Hinweis auf Post älter als zehn Jahre, und
   ausdrücklich der Satz, dass Alter kein Grund zum Löschen ist.
 
-- [ ] **Auskunftsexport nach Art. 15 DSGVO.** Alle Mails zu einer Person
-  zusammenstellen und als PDF oder ZIP herausgeben.
+- [x] **Auskunftsexport nach Art. 15 DSGVO.** (erledigt am 2026-08-28)
+  `mailburg auskunft` und *Archiv → Auskunft nach DSGVO …*. Als ZIP mit
+  den unveränderten `.eml` und einem Begleitblatt, nicht als PDF: Eine
+  Mail als PDF zu drucken heißt, sie zu verändern.
+
+  Das Begleitblatt nennt ausdrücklich, was MailBurg *nicht* entscheiden
+  kann – Daten Dritter in denselben Nachrichten (Art. 15 Abs. 4) und die
+  Vollständigkeit bei mehreren Adressen. Der Vorgang steht im Journal,
+  wegen der Rechenschaftspflicht aus Art. 5 Abs. 2.
 
 - [ ] **Verfahrensdokumentation erzeugen.** MailBurg kennt seine eigene
   Konfiguration und kann den technischen Teil einer Vorlage nach GoBD

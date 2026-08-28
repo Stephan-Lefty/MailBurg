@@ -249,6 +249,16 @@ class Hauptfenster(QMainWindow):
         # das Mittel, das Journal die Sache. Wer den Menüpunkt sucht,
         # sucht nicht nach einem Verfahren, sondern nach der Antwort auf
         # die Frage, ob mit seinem Archiv alles in Ordnung ist.
+        self.auskunft_aktion = QAction("Auskunft nach DSGVO …", self)
+        self.auskunft_aktion.setStatusTip(
+            "Alles zusammenstellen, was zu einer Person im Archiv liegt – "
+            "wenn jemand nach Artikel 15 DSGVO fragt."
+        )
+        self.auskunft_aktion.triggered.connect(self._auskunft)
+        archiv.addAction(self.auskunft_aktion)
+
+        archiv.addSeparator()
+
         pruefen = QAction("Journal prüfen", self)
         pruefen.triggered.connect(self._pruefen)
         archiv.addAction(pruefen)
@@ -416,14 +426,7 @@ class Hauptfenster(QMainWindow):
 
         self.modell.suchindex = self.archiv.index
         self.setWindowTitle(f"{APP_NAME} – {self.archiv.name}")
-        # **Aufbewahrung nur im Geschäftsarchiv.** In einem Privatarchiv
-        # gibt es keine Fristen; ein Menüpunkt, der dort nichts bewirkt,
-        # wäre eine Einladung, sich über etwas Gedanken zu machen, das
-        # keine Rolle spielt. Ausgeblendet statt ausgegraut: Ein grauer
-        # Eintrag wirft die Frage auf, was man tun müsste, damit er
-        # angeht - und die Antwort wäre »ein anderes Archiv anlegen«.
-        if hasattr(self, "einstufen_aktion"):
-            self.einstufen_aktion.setVisible(self.archiv.mode.is_business)
+        self._betriebsart_anwenden()
         self._index_pruefen()
         self._baum_fuellen()
         self._bestand_zeigen()
@@ -1280,6 +1283,51 @@ class Hauptfenster(QMainWindow):
 
         art = QMessageBox.information if bericht["ok"] else QMessageBox.warning
         art(self, "Prüfung", "\n".join(zeilen))
+
+    #: Was nur in einer der beiden Betriebsarten sinnvoll ist.
+    #:
+    #: Die Zuordnung steht an *einer* Stelle. Verteilt über die
+    #: Menüaufbau-Methode wäre beim nächsten Punkt die Hälfte vergessen,
+    #: und der Anwender stünde vor einem Eintrag, der nichts tut.
+    NUR_GESCHAEFTLICH = (
+        ("einstufen_aktion", "Aufbewahrungsfristen gibt es nur im "
+                             "Geschäftsarchiv – ein Privatarchiv kennt "
+                             "keine."),
+        ("auskunft_aktion", "Ein Privatarchiv fällt unter die "
+                            "Haushaltsausnahme der DSGVO; ein "
+                            "Auskunftsrecht nach Artikel 15 besteht "
+                            "dort nicht."),
+    )
+
+    def _betriebsart_anwenden(self) -> None:
+        """Schaltet die Menüpunkte, die nur zu einer Archivart passen.
+
+        **Ausgegraut, nicht ausgeblendet.** Ein verschwundener Eintrag
+        lässt niemanden wissen, dass es die Funktion gibt – wer sie
+        einmal braucht, sucht sie im falschen Programm. Ein grauer
+        Eintrag zeigt sie und sagt im Statustext, warum er hier nicht
+        gilt. So lernt man das Programm nebenbei kennen, statt vor einer
+        Lücke zu stehen.
+        """
+        geschaeftlich = (
+            self.archiv is not None and self.archiv.mode.is_business
+        )
+        for name, grund in self.NUR_GESCHAEFTLICH:
+            aktion = getattr(self, name, None)
+            if aktion is None:
+                continue
+            aktion.setEnabled(geschaeftlich)
+            if not geschaeftlich:
+                aktion.setStatusTip(grund)
+                aktion.setToolTip(grund)
+
+    def _auskunft(self) -> None:
+        """Stellt zusammen, was zu einer Person im Archiv liegt."""
+        from mailburg.ui.auskunft import Auskunftsdialog
+
+        if self.archiv is None:
+            return
+        Auskunftsdialog(self.archiv, self).exec()
 
     def _fristen_pruefen(self) -> None:
         """Fragt einmal im Jahr, was seine Frist hinter sich hat.

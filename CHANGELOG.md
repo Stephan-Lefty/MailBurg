@@ -11,6 +11,25 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Auskunft nach Art. 15 DSGVO.** Fragt jemand, was über ihn gespeichert
+  ist, stellt MailBurg alle Nachrichten zusammen, in denen er vorkommt,
+  und packt sie als ZIP — mit einem Begleitblatt, das Herkunft, Zeitraum
+  und Verarbeitungszweck nennt. Über *Archiv → Auskunft nach DSGVO …*
+  oder `mailburg auskunft`.
+
+  **Herausgegeben wird von einem Menschen.** Zwei Dinge kann kein
+  Programm entscheiden, und beide stehen deshalb im Begleitblatt: In
+  denselben Nachrichten stehen oft Daten Dritter — Adressen im
+  Verteiler, Namen im Text, Unterschriften in Anhängen —, und nach
+  Art. 15 Abs. 4 darf die Kopie deren Rechte nicht beeinträchtigen. Und
+  gesucht wird nach genau einer Adresse; wer unter mehreren schreibt,
+  taucht nur unter der gesuchten auf.
+
+  Kein PDF, sondern `.eml`: Eine Mail als PDF zu drucken heißt, sie zu
+  verändern — Anhänge fallen weg, Kopfzeilen verschwinden. Der Vorgang
+  wird im Journal vermerkt, weil Art. 5 Abs. 2 verlangt, dass der
+  Verantwortliche die Einhaltung nachweisen kann.
+
 - **Einmal im Jahr fragt MailBurg nach abgelaufenen Fristen.** Ab dem
   1. Mai, und nur einmal je Kalenderjahr. Nicht ab dem 1. Januar, wenn
   die Fristen ablaufen: Eine Meldung, die bei jedem Öffnen erscheint,
@@ -62,6 +81,12 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Handelsbrief bereits frei, als privat jederzeit löschbar.
 
 ### Geändert
+
+- **Menüpunkte, die nur zu einer Archivart passen, sind ausgegraut statt
+  ausgeblendet.** Ein verschwundener Eintrag lässt niemanden wissen, dass
+  es die Funktion gibt — wer sie einmal braucht, sucht sie im falschen
+  Programm. Ein grauer Eintrag zeigt sie und sagt im Statustext, warum er
+  hier nicht gilt.
 
 - **`[oberflaeche]` bringt jetzt den Schlüsselbund mit.** Wer nur die
   Oberfläche installierte, bekam ein Programm, das Postfächer einrichten

@@ -1123,6 +1123,60 @@ def cmd_werkzeuge(args: argparse.Namespace) -> int:
     return 0 if geht else 1
 
 
+def cmd_auskunft(args: argparse.Namespace) -> int:
+    """Stellt alles zu einer Person zusammen – Art. 15 DSGVO.
+
+    Gibt nichts heraus. Es packt zusammen und sagt dazu, was vor der
+    Herausgabe noch zu prüfen ist: Daten Dritter in denselben
+    Nachrichten, und ob die Person unter weiteren Adressen schreibt.
+    Beides kann kein Programm entscheiden.
+    """
+    from mailburg.core import auskunft
+    from mailburg.core.archive import Archive
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+    with Archive.open(archiv_pfad, exclusive=bool(args.ziel)) as archiv:
+        befund = auskunft.zusammenstellen(
+            archiv, args.adresse, im_text=args.im_text
+        )
+
+        print(f"Zu »{args.adresse}« im Archiv »{archiv.name}«:\n")
+        print(f"  Nachrichten gesamt: {befund.anzahl}")
+        print(f"    als Absender:     {befund.als_absender}")
+        print(f"    als Empfänger:    {befund.als_empfaenger}")
+        if args.im_text:
+            print(f"    im Text erwähnt:  {befund.im_text}")
+
+        if not befund.anzahl:
+            print("\nNichts gefunden. Schreibt die Person unter einer "
+                  "anderen Adresse?")
+            return 0
+
+        von = (befund.treffer[0].date or "")[:10]
+        bis = (befund.treffer[-1].date or "")[:10]
+        print(f"  Zeitraum:           {von} bis {bis}")
+
+        if not args.ziel:
+            print()
+            print("Nichts geschrieben. Zum Packen ein Ziel angeben:")
+            print(f"  mailburg auskunft ARCHIV {args.adresse} auskunft.zip")
+            return 0
+
+        auskunft.packen(archiv, befund, Path(args.ziel).expanduser())
+        groesse = befund.ziel.stat().st_size / 1024 / 1024
+        print(f"\nGeschrieben: {befund.ziel}  ({groesse:.1f} MB)")
+        print("Im Journal vermerkt.")
+        print()
+        print(
+            "Vor der Herausgabe prüfen: In denselben Nachrichten stehen\n"
+            "oft Daten Dritter – Adressen im Verteiler, Namen im Text,\n"
+            "Unterschriften in Anhängen. Nach Art. 15 Abs. 4 DSGVO darf\n"
+            "die Kopie deren Rechte nicht beeinträchtigen. Das Begleitblatt\n"
+            "im Paket sagt es noch einmal."
+        )
+    return 0
+
+
 def cmd_faellig(args: argparse.Namespace) -> int:
     """Zeigt, was seine Aufbewahrungsfrist hinter sich hat.
 
@@ -1685,6 +1739,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="tatsächlich löschen statt nur zeigen",
     )
     p.set_defaults(func=cmd_loeschen)
+
+    p = subparsers.add_parser(
+        "auskunft",
+        help="alles zu einer Person zusammenstellen (Art. 15 DSGVO)",
+        description=(
+            "Sucht alle Nachrichten, in denen eine Person vorkommt, und "
+            "packt sie auf Wunsch als ZIP – mit einem Begleitblatt, das "
+            "nennt, was noch zu prüfen ist. MailBurg stellt zusammen; "
+            "herausgegeben wird von einem Menschen."
+        ),
+    )
+    p.add_argument("archiv")
+    p.add_argument("adresse", help="Mailadresse der betroffenen Person")
+    p.add_argument(
+        "ziel", nargs="?",
+        help="Zieldatei (.zip). Ohne Angabe wird nur gezählt.",
+    )
+    p.add_argument(
+        "--im-text", action="store_true", dest="im_text",
+        help=(
+            "auch Nachrichten aufnehmen, in denen die Adresse bloß "
+            "erwähnt wird – trifft oft Verteiler, in denen die Person "
+            "nicht Beteiligte ist"
+        ),
+    )
+    p.set_defaults(func=cmd_auskunft)
 
     p = subparsers.add_parser(
         "faellig",

@@ -317,16 +317,42 @@ class OberflaecheTest(unittest.TestCase):
 
 
 class MenuepunktTest(unittest.TestCase):
-    """Nur im Geschäftsarchiv – im Privatarchiv gibt es keine Fristen."""
+    """Nur im Geschäftsarchiv – im Privatarchiv gibt es keine Fristen.
 
-    def test_die_sichtbarkeit_haengt_an_der_betriebsart(self) -> None:
-        quelle = (
+    **Ausgegraut, nicht ausgeblendet.** Zuerst war es umgekehrt; Stephan
+    hat am 2026-08-28 auf das Ausgrauen bestanden, und das ist besser:
+    Ein verschwundener Eintrag lässt niemanden wissen, dass es die
+    Funktion gibt – wer sie einmal braucht, sucht sie im falschen
+    Programm.
+    """
+
+    def _quelle(self) -> str:
+        return (
             pathlib.Path(__file__).resolve().parent.parent
             / "mailburg" / "ui" / "hauptfenster.py"
         ).read_text(encoding="utf-8")
 
-        self.assertIn("einstufen_aktion.setVisible", quelle)
-        self.assertIn("is_business", quelle)
+    def test_die_zuordnung_steht_an_einer_stelle(self) -> None:
+        """Verteilt über den Menüaufbau wäre beim nächsten Punkt die
+        Hälfte vergessen, und der Anwender stünde vor einem Eintrag,
+        der nichts tut."""
+        quelle = self._quelle()
+
+        self.assertIn("NUR_GESCHAEFTLICH", quelle)
+        self.assertIn("_betriebsart_anwenden", quelle)
+
+    def test_ausgegraut_statt_ausgeblendet(self) -> None:
+        quelle = self._quelle()
+
+        self.assertIn("aktion.setEnabled(geschaeftlich)", quelle)
+        self.assertNotIn("einstufen_aktion.setVisible", quelle)
+
+    def test_der_graue_eintrag_sagt_warum(self) -> None:
+        """Sonst rätselt man, was zu tun wäre, damit er angeht."""
+        quelle = self._quelle()
+
+        self.assertIn("aktion.setStatusTip(grund)", quelle)
+        self.assertIn("aktion.setToolTip(grund)", quelle)
 
     def test_der_vorgang_landet_im_journal(self) -> None:
         """Auch aus der Oberfläche heraus – sonst wäre der Weg löchrig."""
