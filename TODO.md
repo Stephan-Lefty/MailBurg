@@ -51,7 +51,7 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   niemand herangekommen. Was dort liegt, weiß niemand.
 
   Und es ist nicht wenig: **37 GB, 9.380 Dateien, Geschäftspost von 2010
-  bis 2024** unter `/mnt/raid/Firma/Firma/Mailarchiv`. Damit
+  bis 2024** unter `/mnt/…/Firma/Mailarchiv`. Damit
   gelten Aufbewahrungsfristen – Handelsbriefe sechs Jahre, buchungs-
   relevante Unterlagen zehn. Alles ab 2016 ist heute noch pflichtig. Ein
   Programm, das beim Einhalten solcher Fristen helfen soll, darf nicht der
