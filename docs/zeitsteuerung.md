@@ -12,7 +12,10 @@ mailburg abrufen ~/Archiv --leise
 
 ## Wie oft?
 
-**Alle 30 Minuten ist die Vorgabe.** Wählbar sind 10, 30, 60 oder 90 Minuten.
+**Alle 30 Minuten ist die Vorgabe.** In der Oberfläche stehen fünf Abstände zur
+Wahl: alle 15 Minuten, alle 30 Minuten, stündlich, alle 4 Stunden und einmal am
+Tag. Wer die Zeitsteuerung von Hand einrichtet, ist daran nicht gebunden — dort
+lässt sich jede Minutenzahl angeben, siehe die Beispiele weiter unten.
 
 Der Grund für den kurzen Takt ist nicht Bequemlichkeit, sondern eine echte
 Gefahr: Wer seinem Mailclient aufträgt, alte Post wegzuräumen, löscht sie bei
@@ -24,15 +27,20 @@ Die Wahl hängt davon ab, wie viele Konten Sie haben:
 
 | Takt | Wofür |
 |------|-------|
-| 10 Minuten | Wenige Konten, eigener Mailserver, oder ein Mailclient, der zügig aufräumt |
-| 30 Minuten | Der Regelfall |
-| 60–90 Minuten | Viele Konten bei großen Anbietern |
+| alle 15 Minuten | Wenige Konten, eigener Mailserver, oder ein Mailclient, der zügig aufräumt |
+| alle 30 Minuten | Der Regelfall |
+| stündlich | Viele Konten bei großen Anbietern |
+| alle 4 Stunden · einmal am Tag | Wenn das Postfach ohnehin nicht aufgeräumt wird |
 
-**Warum nicht immer zehn Minuten?** Bei dreißig Konten wären das über
-viertausend Anmeldungen am Tag. GMX, Web.de und andere drosseln oder sperren
+**Warum nicht immer eine Viertelstunde?** Bei dreißig Konten wären das fast
+dreitausend Anmeldungen am Tag. GMX, Web.de und andere drosseln oder sperren
 Konten, bei denen sich jemand derart häufig anmeldet – aus ihrer Sicht sieht
 das aus wie ein Angriff. Wer viele Postfächer bei großen Anbietern hat, fährt
-mit 60 Minuten besser.
+mit einer Stunde besser.
+
+**Und warum die langen Takte?** Sie sind für Archive gedacht, deren Postfächer
+niemand automatisch leert. Wo nichts gelöscht wird, eilt auch nichts – dann
+genügt ein Durchgang am Tag, und die Anbieter sehen von MailBurg fast nichts.
 
 Kein Takt schließt das Fenster ganz. Wirklich sicher wird das Aufräumen erst,
 wenn Sie vorher nachweisen, dass alles Ältere im Archiv liegt – siehe

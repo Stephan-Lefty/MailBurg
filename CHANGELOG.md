@@ -69,6 +69,14 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   fettgedruckten Rat direkt darunter widerspricht, wäre schlimmer als
   nichts. Eine bereits getroffene Wahl wird nie überschrieben.
 
+- **Die Doku nannte Abrufabstände, die es nicht gibt.** In
+  `zeitsteuerung.md` stand „Wählbar sind 10, 30, 60 oder 90 Minuten", in der
+  Übersichtsgrafik „alle 10–90 Minuten". Tatsächlich stehen in der
+  Oberfläche alle 15 Minuten, alle 30 Minuten, stündlich, alle 4 Stunden und
+  einmal am Tag zur Wahl — weder 10 noch 90 kamen je vor. Die Angaben
+  stammten aus einem früheren Entwurf. Ein Test vergleicht die Doku jetzt
+  mit der tatsächlichen Liste.
+
 - **»? (2)« im Fristendialog** stand für Mails, deren Datum sich nicht lesen
   ließ — wer es sah, wusste nicht, ob das Programm etwas nicht konnte oder ob
   es ein Jahr gibt, das so heißt. Jetzt steht dort „ohne Datum", am Ende der

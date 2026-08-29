@@ -25,13 +25,43 @@ wurde.
 
   Sicherung: `/mnt/raid/VMs/MailBurg-vor-bildbereinigung-2026-08-29.bundle`
 
+- [x] **Zehn Fehler aus dem Bilder-Durchgang.** Ausgelöst von einem
+  Beispielarchiv mit genau einer Mail darin: „1 Mails im Archiv" in der
+  Statuszeile, dieselbe Lücke beim Einstufen, bei den Fristen, beim
+  Einlesen einer Sicherung und auf der Abschlussseite des Assistenten;
+  dazu „Das Archiv liegt in None", ein Bild, das etwas anderes zeigte als
+  seine Bildunterschrift, siebzehn Alternativtexte ohne Inhalt, „? (2)"
+  für Mails ohne lesbares Datum und `C:/Users/…` statt `C:\Users\…` unter
+  Windows. Alles behoben, mit Tests.
+
+- [x] **Der Sicherungsdialog schlägt einen Ordner vor.** Vorher kam auf
+  „Übernehmen" eine Fehlermeldung für ein leeres Feld, das der Dialog
+  selbst leer gelassen hatte. Cloud vor externer Platte vor anderem
+  Laufwerk; der Benutzerordner nie, und lieber kein Vorschlag als einer
+  auf der Platte des Archivs.
+
+- [x] **Das Bild des Zeitplandialogs unter Windows** ist in der Anleitung.
+
 ### Als Nächstes dran
 
-- [ ] **Zwei Windows-Bilder fehlen noch.** Der Zeitplan-Dialog unter
-  *Einstellungen → Was von selbst laufen soll* – den kann die vorhandene
-  `.exe` zeigen. Und das Hauptfenster mit dem Beispielarchiv; dafür braucht
-  es eine neue `.exe`, weil auf der bisherigen Aufnahme noch „1 Mails im
-  Archiv" steht.
+- [ ] **Noch ein »1 Mails«, auf der Kommandozeile.** In
+  `mailburg/__main__.py` (Zeile 544) steht `f"  {len(zeilen)} Mails, davon
+  {len(nur_hier)} nur hier zu finden."` — dieselbe fehlende
+  Fallunterscheidung wie in der Oberfläche, nur eben beim Postfach-Entlasten.
+  `mailburg.core.sprache.mails()` gibt es dafür bereits.
+
+  **Nicht angefasst**, weil an dieser Datei gerade eine zweite Sitzung
+  arbeitet. Wer sie als Nächstes anfasst, nimmt es mit — und sieht gleich
+  nach, ob im selben Modul noch mehr davon steht.
+
+- [ ] **Das Hauptfenster-Bild für die Windows-Anleitung.** Auf der
+  bisherigen Aufnahme stand noch „1 Mails im Archiv". Die neue `.exe` mit
+  dem Plural-Fix ist am 2026-08-29 gebaut und liegt als Artefakt am Lauf
+  der *Windows-Fassung*; der Durchgang in der VM steht noch aus.
+
+  Aufzunehmen: das Hauptfenster mit dem Beispielarchiv, in dem eine Mail
+  liegt – dort muss jetzt „1 Mail im Archiv" stehen. Das ist zugleich die
+  Gegenprobe für die Korrektur.
 
 ### Nicht anfassen
 

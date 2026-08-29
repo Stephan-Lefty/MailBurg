@@ -20,6 +20,13 @@ import pathlib
 import re
 import unittest
 
+try:
+    import PySide6  # noqa: F401
+
+    QT_DA = True
+except ImportError:  # pragma: no cover
+    QT_DA = False
+
 WURZEL = pathlib.Path(__file__).resolve().parent.parent
 BILDER = WURZEL / "docs" / "bilder"
 
@@ -83,6 +90,47 @@ class DokuBilderTest(unittest.TestCase):
             "Diese Bilder haben keine brauchbare Beschreibung:\n  "
             + "\n  ".join(ohne),
         )
+
+
+@unittest.skipUnless(QT_DA, "Die Takte stehen bisher in einem Qt-Modul.")
+class TakteInDerDokuTest(unittest.TestCase):
+    """Die Doku nannte Abstände, die es nicht gab.
+
+    In ``zeitsteuerung.md`` stand »Wählbar sind 10, 30, 60 oder 90
+    Minuten«, in der Übersichtsgrafik »alle 10–90 Minuten«. Tatsächlich
+    wählbar sind 15, 30, 60, 240 und 1440 Minuten. Weder 10 noch 90
+    kamen je vor – die Angaben stammten aus einem früheren Entwurf und
+    hatten die Änderung nicht mitbekommen.
+
+    Am 2026-08-29 aufgefallen, als Stephan die Auswahlliste in der
+    Windows-VM aufklappte und abbildete.
+    """
+
+    def test_die_doku_nennt_keine_erfundenen_takte(self):
+        from mailburg.ui.zeitplan import TAKTE
+
+        echte = {bezeichnung for bezeichnung, _ in TAKTE}
+        ganz = (WURZEL / "docs" / "zeitsteuerung.md").read_text(
+            encoding="utf-8"
+        )
+
+        # Nur der Abschnitt über die Oberfläche. Weiter unten stehen
+        # Aufrufe von install.sh, und dort ist der Takt eine freie
+        # Minutenzahl – »--alle 10« ist dort kein Fehler, sondern geht.
+        text = ganz.split("## Wie oft?", 1)[1].split("\n## ", 1)[0]
+
+        for erfunden in ("10 Minuten", "90 Minuten", "10–90"):
+            self.assertNotIn(erfunden, text, f"»{erfunden}« gibt es nicht")
+
+        for echt in echte:
+            self.assertIn(
+                echt, text, f"»{echt}« ist wählbar, steht aber nicht in der Doku"
+            )
+
+    def test_auch_die_uebersichtsgrafik(self):
+        svg = (WURZEL / "assets" / "uebersicht.svg").read_text(encoding="utf-8")
+
+        self.assertNotIn("10–90", svg)
 
 
 if __name__ == "__main__":

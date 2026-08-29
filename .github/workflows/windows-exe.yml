@@ -1,9 +1,19 @@
 # Baut die Windows-Fassung als einzelne Datei.
 #
-# **Nur bei Releases und auf ausdrückliche Anforderung.** GitHub rechnet
-# Windows-Minuten doppelt, und dieses Konto hat schon einmal an einem
-# einzigen Arbeitstag sein Monatskontingent verbraucht (1.800 von 2.000).
-# Ein Build je Push wäre der schnellste Weg dorthin zurück.
+# **Nur bei Releases und auf ausdrückliche Anforderung.** Seit MailBurg
+# öffentlich ist, kosten die Actions-Minuten nichts mehr – die Begründung
+# von früher (Windows zählt doppelt, und dieses Konto hat an einem
+# einzigen Arbeitstag 1.800 von 2.000 Minuten verbraucht) gilt für die
+# Abrechnung nicht mehr.
+#
+# Die Beschränkung bleibt trotzdem. Ein Build je Push hieße: vier Minuten
+# Rechenzeit für jede geänderte Zeile, auch für die, die Windows nie zu
+# sehen bekommt. Wer die .exe braucht, ruft sie – über die
+# Actions-Oberfläche oder mit
+#
+#     gh workflow run windows-exe.yml --ref main
+#
+# Bei diesem Weg landet sie als Artefakt am Lauf, nicht an einem Release.
 name: Windows-Fassung
 
 on:

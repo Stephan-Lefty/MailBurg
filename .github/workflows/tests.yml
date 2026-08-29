@@ -1,17 +1,21 @@
 name: Tests
 
-# MailBurg ist ein privates Repository – hier kosten Actions-Minuten Geld.
-# Und zwar mehr, als die Laufzeiten vermuten lassen: GitHub rundet *jeden
-# einzelnen Job* auf volle Minuten auf und rechnet macOS zehnfach, Windows
-# zweifach. Ein macOS-Job, der neun Sekunden läuft, kostet damit zehn Minuten.
+# Seit dem 26.08.2026 ist MailBurg öffentlich; Actions-Minuten kosten
+# hier nichts mehr. Die Sparsamkeit bleibt trotzdem – sie stammt aus der
+# Zeit davor, und ihr Grund gilt weiter:
 #
-# Die alte Fassung startete bei jedem Push dreizehn Jobs auf drei
-# Betriebssystemen: 53 abgerechnete Minuten für einen Durchlauf von unter
-# einer Minute. An einem einzigen Arbeitstag summierte sich das auf 1.800
-# Minuten – das gesamte Monatskontingent.
+# GitHub rundet *jeden einzelnen Job* auf volle Minuten auf und rechnet
+# macOS zehnfach, Windows zweifach. Ein macOS-Job, der neun Sekunden
+# läuft, zählt als zehn Minuten. Die erste Fassung startete bei jedem
+# Push dreizehn Jobs auf drei Betriebssystemen: 53 abgerechnete Minuten
+# für einen Durchlauf von unter einer Minute. An einem einzigen
+# Arbeitstag summierte sich das auf 1.800 von 2.000 Minuten – das
+# gesamte Monatskontingent.
 #
-# Deshalb gilt jetzt: Bei jedem Push läuft *ein* Job auf Linux. Die teuren
-# Betriebssysteme kommen einmal die Woche dran, und wenn jemand sie ruft.
+# Was auch ohne Rechnung bleibt: Wartezeit und verbrannte Rechenzeit.
+# Deshalb gilt weiterhin: Bei jedem Push läuft *ein* Job auf Linux. Die
+# teuren Betriebssysteme kommen einmal die Woche dran, und wenn jemand
+# sie ruft.
 
 on:
   push:

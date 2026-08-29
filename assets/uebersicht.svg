@@ -111,8 +111,8 @@
   <g>
     <rect x="910" y="184" width="290" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <text x="932" y="214" class="kasten-titel">Oberfläche und Kommandozeile</text>
-    <text x="932" y="234" class="kasten-text">Beide können dasselbe. Der Abruf läuft</text>
-    <text x="932" y="251" class="kasten-text">im Hintergrund weiter, alle 10–90 Minuten</text>
+    <text x="932" y="234" class="kasten-text">Beide können dasselbe. Der Abruf läuft im</text>
+    <text x="932" y="251" class="kasten-text">Hintergrund, viertelstündlich bis täglich</text>
   </g>
 
   <g>
