@@ -93,9 +93,8 @@ Doppelklick, und der Assistent führt durch vier Schritte:
    Nach einem gescheiterten Versuch erscheint deshalb **Ohne Prüfung
    übernehmen**. Beim ersten Abruf zeigt sich dann, ob die Angaben stimmen.
 4. **Fertig** — mit dem Häkchen „Jetzt den ersten Abruf starten" läuft der
-   erste Durchgang gleich los.
-
-   ![Die Abschlussseite des Assistenten. Sie nennt den Ort des Archivs, die Zahl der eingerichteten Postfächer und wo die Passwörter liegen; darunter die Einstellung für den regelmäßigen Abruf im Hintergrund.](bilder/windows-fertig.webp)
+   erste Durchgang gleich los. Die Seite nennt den Ort des Archivs, die
+   Zahl der eingerichteten Postfächer und wo die Passwörter liegen.
 
 Der erste Abruf holt **alles**, was in den Postfächern liegt. Bei einem
 gewachsenen Bestand kann das eine Stunde dauern. Jeder weitere Lauf holt nur

@@ -11,6 +11,49 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Auf einem Bild in der Anleitung stand der Sicherungsordner des
+  Entwicklers** — mitsamt seinem Namen darin. Das Bilderwerkzeug setzt
+  jedem Fenster erfundene Daten vor, aber der Zeitplandialog fragt das
+  Betriebssystem, was eingerichtet ist. Er bekommt jetzt ebenfalls einen
+  erfundenen Zustand.
+
+  Die eingebaute Selbstkontrolle hatte es nicht gefunden: Sie suchte nach
+  Namen großer Mailanbieter, nicht nach Pfaden. Sie kennt jetzt auch den
+  Namen dessen, der die Bilder gerade erzeugt — ermittelt beim Lauf, damit
+  er nicht im Repo stehen muss, um aus dem Repo herausgehalten zu werden.
+  Und sie liest jetzt auch `.webp`; die von Hand aufgenommenen
+  Windows-Bilder waren ihr bis dahin entgangen.
+
+- **»1 Mails im Archiv«** stand in der Statuszeile, sobald genau eine Mail
+  darin lag — bei einem frisch angelegten Archiv also immer, an der
+  Stelle, an der ein neuer Anwender zum ersten Mal nachsieht. Dieselbe
+  Fallunterscheidung fehlte beim Einstufen („1 Mails werden geändert. Sie
+  sind dann acht Jahre geschützt"), bei den Fristen, beim Einlesen einer
+  Sicherung und auf der Abschlussseite des Assistenten („1 Postfächer sind
+  eingerichtet"). Die Zahlwörter liegen jetzt an einer Stelle, die auch die
+  Kommandozeile benutzt.
+
+- **»Das Archiv liegt in None«** auf der letzten Seite des Assistenten. Der
+  Pfad darf leer sein; ein durchgereichtes Python-`None` durfte trotzdem
+  nicht auf dem Bildschirm landen. Auf demselben Bild stand außerdem
+  „0 Postfächer sind eingerichtet“, obwohl der Schritt davor drei zeigte —
+  das Bilderwerkzeug rief die Seiten einzeln auf, statt sie der Reihe nach
+  zu durchlaufen.
+
+- **Ein Bild in der Windows-Anleitung zeigte etwas anderes als seine
+  Beschreibung** — angekündigt war die Abschlussseite des Assistenten, zu
+  sehen war der Willkommensbildschirm. Beim Aufnehmen war dasselbe Fenster
+  zweimal gespeichert worden.
+
+### Geändert
+
+- **Die Bilder in der Anleitung haben Beschreibungen bekommen.** Vorher
+  stand als Alternativtext meist nur eine Überschrift — „Willkommen“,
+  „Fertig“, „Handbuch“. Ein Vorleseprogramm gab damit nichts von dem
+  wieder, was auf dem Bild steht. Ein Test achtet jetzt darauf, und
+  gleichzeitig darauf, dass kein eingebundenes Bild fehlt und keines
+  unbenutzt herumliegt.
+
 - **Das im Dialog eingetippte Passwort ging verloren** — und daraus wurde
   eine Sackgasse. In der Postfachliste blieb das Feld leer; beim
   Weitergehen kam „Für dieses Postfach fehlt noch das Passwort" mit den

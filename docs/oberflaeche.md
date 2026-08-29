@@ -10,7 +10,7 @@ Dieselben Erklärungen stehen auch im Programm selbst unter **Hilfe → Handbuch
 
 ## Das Hauptfenster
 
-![Übersicht](bilder/uebersicht.png)
+![Das Hauptfenster in drei Bereichen: links die Postfächer mit ihren Ordnern, rechts oben die Nachrichtenliste mit Anhangsymbol, Datum, Absender, Betreff und Größe, darunter der Lesebereich. Ganz oben das Suchfeld, unten die Zahl der Mails im Archiv.](bilder/uebersicht.png)
 
 Vier Bereiche:
 
@@ -37,7 +37,7 @@ Mailprogramm stellt: *Ist mein Archiv auf dem Stand?*
 
 ### Eine Nachricht lesen
 
-![Lesefenster](bilder/lesefenster.png)
+![Eine geöffnete Nachricht: oben Betreff, Absender mit Adresse, Empfänger und Datum, darunter der Text der Mail in einem eigenen Bereich.](bilder/lesefenster.png)
 
 Ein **Doppelklick** in der Trefferliste öffnet die Nachricht in einem eigenen
 Fenster – die Vorschau unten ist zum Überfliegen da, nicht zum Lesen. Mehrere
@@ -46,7 +46,7 @@ Strg+W oder Esc schließt sie.
 
 ### Eine Nachricht zurückholen
 
-![Wiederherstellen](bilder/wiederherstellen.png)
+![Der Dialog zum Zurückholen einer Nachricht ins Postfach. Er erklärt, dass die Mail vollständig und mit ihrem ursprünglichen Datum in den Posteingang kommt und dass es nicht dasselbe Postfach sein muss. Darunter die Wahl des Zielpostfachs und ein Häkchen »Als ungelesen markieren«.](bilder/wiederherstellen.png)
 
 Mit der **rechten Maustaste** auf eine Nachricht: *Im Postfach wiederherstellen*
 legt sie in den Posteingang eines frei gewählten Postfachs – vollständig, mit
@@ -75,7 +75,7 @@ zwei Archive führt, wechselt hierüber mit zwei Klicks.
 
 **Auskunft nach DSGVO …** *(nur im Geschäftsarchiv)*
 
-![Auskunft nach DSGVO](bilder/auskunft.png)
+![Der Dialog für die Auskunft nach Artikel 15 DSGVO: ein Feld für die Mailadresse der betroffenen Person, ein Häkchen für Nachrichten, in denen die Adresse nur erwähnt wird, und das Ergebnis mit der Zahl der Nachrichten und dem Zeitraum. Darunter der Hinweis, dass vor der Herausgabe die Rechte Dritter zu prüfen sind.](bilder/auskunft.png)
 
 Fragt jemand, was über ihn gespeichert ist, hat er nach Artikel 15 DSGVO
 Anspruch auf eine Kopie. MailBurg sucht alle Nachrichten, in denen die Person
@@ -93,7 +93,7 @@ bleibt als sichtbare Lücke stehen. Verantwortlich dafür sind Sie.
 
 **Archiv sichern …**
 
-![Sichern](bilder/sichern.png)
+![Der Sicherungsdialog. Er erklärt, dass das ganze Archiv in eine einzige Datei wandert, dass diese nicht viel kleiner wird, weil die Mails bereits komprimiert liegen, und dass der Suchindex nicht mitkommt, weil er sich jederzeit neu aufbauen lässt.](bilder/sichern.png)
 
 Packt das ganze Archiv in eine einzige Datei. Viel kleiner wird sie nicht –
 Ihre Mails liegen schon komprimiert –, aber aus zehntausend Dateien wird eine,
@@ -118,7 +118,7 @@ Postfächer erreichbar waren. **Räumen Sie nicht auf, solange dort eines fehlt.
 
 **Eingescannte PDF lesen …**
 
-![Texterkennung](bilder/texterkennung.png)
+![Der Dialog für die Texterkennung. Er meldet, dass keine eingescannten PDF warten, und lässt einstellen, wie viele Prozessorkerne die Erkennung gleichzeitig verwenden darf.](bilder/texterkennung.png)
 
 Die Zahl im Menü sagt, wie viele Dokumente noch ein weißes Blatt für die Suche
 sind: eingescannte Seiten ohne Textebene. Die Texterkennung liest sie und legt
@@ -131,7 +131,7 @@ können normal weitersuchen.
 
 **Aufbewahrung festlegen …** *(nur im Geschäftsarchiv)*
 
-![Aufbewahrung festlegen](bilder/aufbewahrung.png)
+![Der Dialog zum Einstufen gefundener Mails. Zur Wahl stehen Buchungsbeleg, Handelsbrief, Privat und »Noch nicht eingeordnet«, jeweils mit Erklärung. Darunter steht, wie viele Mails geändert werden und wie lange sie danach vor dem Löschen geschützt sind, sowie der Hinweis, dass jede Änderung im Journal vermerkt wird.](bilder/aufbewahrung.png)
 
 Ordnet die **gerade gefundenen** Mails ein: Buchungsbeleg, Handelsbrief oder
 privat. Davon hängt ab, wie lange MailBurg das Löschen bremst – sechs, acht
@@ -149,7 +149,7 @@ zeigen können.
 
 ### Einmal im Jahr fragt MailBurg nach
 
-![Abgelaufene Fristen](bilder/fristen.png)
+![Die jährliche Nachfrage im Privatarchiv: Sie nennt die Zahl der Mails, die älter als zehn Jahre sind, und aus welchen Jahren sie stammen. Dazu der Hinweis, dass ein Privatarchiv keine Aufbewahrungsfristen kennt und Alter kein Grund zum Löschen ist. Knöpfe »Ansehen« und »Nicht jetzt«.](bilder/fristen.png)
 
 Ab dem 1. Mai, und nur einmal je Kalenderjahr: MailBurg zeigt, was seine Frist
 hinter sich hat. Nicht ab dem 1. Januar, wenn die Fristen ablaufen – eine
@@ -165,7 +165,7 @@ selbst.
 
 **Ausführlich suchen … (Strg+F)**
 
-![Suchmaske](bilder/suchmaske.png)
+![Die ausführliche Suchmaske mit Feldern für Suchwort, Absender, Empfänger, Betreff und Dateiname eines Anhangs. Darunter Eingrenzungen nach Postfach, Ordner, Jahr, Zeitraum, Anhangstyp, Größe und Wichtigkeit. Ganz unten steht der daraus gebaute Suchausdruck, der sich kopieren und auf der Kommandozeile weiterverwenden lässt.](bilder/suchmaske.png)
 
 Eine Maske mit Feldern für Absender, Empfänger, Betreff, Anhänge, Zeitraum,
 Größe und Wichtigkeit. Unten zeigt sie den Suchausdruck, den sie daraus
@@ -193,7 +193,7 @@ versehentliches Verziehen die Ansicht, die Sie sich eingerichtet haben.
 
 **Postfächer verwalten …**
 
-![Postfächer](bilder/postfaecher.png)
+![Die Postfachverwaltung als Tabelle mit Postfach, Mailadresse, Server, Ort des Passworts, Zustand und zugeordnetem Archiv. Ein stillgelegtes Postfach ist ausgegraut. Darunter Knöpfe zum Hinzufügen, zur Übernahme aus Thunderbird, zum Zuordnen eines Archivs und zum Stilllegen.](bilder/postfaecher.png)
 
 Postfächer hinzufügen, Passwörter ändern, stilllegen oder entfernen. Ein
 stillgelegtes Postfach bleibt eingerichtet, wird beim Abruf aber übergangen –
@@ -203,7 +203,7 @@ erhalten.
 
 **Was von selbst laufen soll (Automatisierung) …**
 
-![Automatisierung](bilder/automatisierung.png)
+![Die Einstellungen für das, was von selbst läuft: oben das Häkchen für den regelmäßigen Abruf im Hintergrund mit einstellbarem Abstand, darunter die regelmäßige Sicherung in eine Datei mit Häufigkeit, Zahl der aufbewahrten Stände und Zielordner. Dazu der Hinweis, nicht auf dieselbe Platte wie das Archiv zu sichern.](bilder/automatisierung.png)
 
 Zwei Dinge, die ohne Zutun laufen sollten:
 
@@ -219,7 +219,7 @@ geht mit ihm zusammen verloren.
 
 ## Menü Hilfe
 
-![Handbuch](bilder/handbuch.png)
+![Das eingebaute Handbuch: links das Verzeichnis mit Kapiteln von »Überblick« bis »Tipps«, rechts der Text des gewählten Kapitels mit Verweisen auf verwandte Stellen.](bilder/handbuch.png)
 
 **Handbuch … (F1)** – dieselben Erklärungen im Programm, nach Kapiteln
 geordnet und untereinander verlinkt.

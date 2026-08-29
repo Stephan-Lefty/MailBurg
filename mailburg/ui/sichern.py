@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from mailburg.core import sprache
 from mailburg.ui.arbeit import Auftrag, Läufer
 from mailburg.ui.fliesstext import Fliesstext
 
@@ -149,7 +150,8 @@ class Sicherungsdialog(QDialog):
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(True)
         self.knoepfe.button(QDialogButtonBox.Cancel).setText("Schließen")
         self.stand.setText(
-            f"<p><b>Fertig.</b> {befund.dateien:,} Dateien in einer.</p>"
+            f"<p><b>Fertig.</b> {sprache.dateien(befund.dateien)} "
+            f"in einer.</p>"
             f"<p>{befund.ziel_bytes / 1024 / 1024:.0f} MB · "
             f"{befund.ziel}</p>".replace(",", ".")
         )
@@ -364,7 +366,7 @@ class Uebernahmedialog(QDialog):
     def _fertig(self, befund) -> None:
         self.balken.setVisible(False)
         self.knoepfe.button(QDialogButtonBox.Cancel).setText("Schließen")
-        zeilen = [f"<b>{befund.dateien} Mails eingelesen.</b>"]
+        zeilen = [f"<b>{sprache.mails(befund.dateien)} eingelesen.</b>"]
         if befund.warnungen:
             # Nicht verschweigen: Was nicht gelesen werden konnte, fehlt.
             zeilen.append("Nicht lesbar waren:")

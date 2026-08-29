@@ -272,6 +272,22 @@ def _assistent_bilder() -> None:
         for nummer, kennung in enumerate(assistent.pageIds()):
             assistent.setStartId(kennung)
             assistent.restart()
+
+            # **Die Abschlussseite fasst zusammen, was vorher gewählt
+            # wurde.** Hier wird aber jede Seite einzeln aufgerufen statt
+            # der Reihe nach durchgeklickt – also steht dort nichts. Auf
+            # dem Bild las sich das als »Das Archiv liegt in None, 0
+            # Postfächer sind eingerichtet«.
+            #
+            # Deshalb bekommt sie nachgereicht, was ein Anwender an
+            # dieser Stelle hinter sich hätte: den Ort aus Schritt 2 und
+            # die drei Postfächer aus Schritt 3.
+            seite = assistent.page(kennung)
+            if isinstance(seite, modul.AbschlussSeite):
+                assistent.archiv_pfad = erfundene_orte[0].pfad
+                assistent.konten = konten
+                seite.initializePage()
+
             assistent.show()
             ablegen(assistent, f"einrichtung-{nummer + 1}")
         assistent.close()
@@ -407,10 +423,43 @@ def main() -> int:
 
         from mailburg.ui.zeitplan import Zeitplandialog
 
-        automatik = Zeitplandialog(archiv=ort)
-        automatik.resize(660, 580)
-        automatik.show()
-        ablegen(automatik, "automatisierung")
+        # **Dieser Dialog liest den echten Rechner aus.** Alle anderen
+        # Fenster hier bekommen das Beispielarchiv vorgesetzt; der
+        # Zeitplandialog dagegen fragt das Betriebssystem, was
+        # eingerichtet ist – und zeigt den Zielordner der Sicherung an.
+        # So kam auf ``automatisierung.png`` der Pfad des Entwicklers ins
+        # Bild, mitsamt seinem Namen darin, und lag damit auf GitHub.
+        #
+        # Deshalb bekommt der Dialog hier einen erfundenen Zustand
+        # vorgesetzt, statt zu hoffen, dass gerade nichts eingerichtet
+        # ist. Das Bild zeigt ohnehin, wie es aussieht, wenn beides läuft
+        # – ein leeres Formular erklärt niemandem etwas.
+        from mailburg.core import zeitplan as _zeitplan
+
+        echt_abruf = _zeitplan.zustand
+        echt_sicherung = _zeitplan.sicherung_zustand
+
+        def _beispiel_abruf(archiv=None):
+            return _zeitplan.Zustand(
+                moeglich=True, laeuft=True, takt=30, archiv=str(ort)
+            )
+
+        def _beispiel_sicherung(archiv=None):
+            return _zeitplan.Zustand(
+                moeglich=True, laeuft=True,
+                archiv="/home/martha/Nextcloud/MailBurg-Sicherung",
+            )
+
+        _zeitplan.zustand = _beispiel_abruf
+        _zeitplan.sicherung_zustand = _beispiel_sicherung
+        try:
+            automatik = Zeitplandialog(archiv=ort)
+            automatik.resize(660, 580)
+            automatik.show()
+            ablegen(automatik, "automatisierung")
+        finally:
+            _zeitplan.zustand = echt_abruf
+            _zeitplan.sicherung_zustand = echt_sicherung
 
         from mailburg.ui.texterkennung import Texterkennungsdialog
 
@@ -458,6 +507,30 @@ VERRAETERISCH = (
     "kasserver", "hostedoffice",
 )
 
+
+def _eigene_spuren() -> list[str]:
+    """Der Name dessen, der die Bilder gerade erzeugt.
+
+    Am 2026-08-29 stand auf ``automatisierung.png`` der Zielordner einer
+    Sicherung – mit dem Vornamen des Anwenders darin. Die Liste oben
+    hatte ihn nicht gefunden, weil sie nach Anbietern sucht und nicht
+    nach Pfaden. Auf GitHub lag das Bild da schon monatelang.
+
+    Der Name steht bewusst **nicht** in dieser Datei, sondern wird beim
+    Lauf ermittelt: Sonst stünde er im Repo, um ihn aus dem Repo
+    herauszuhalten. So greift die Prüfung außerdem bei jedem für seinen
+    eigenen Namen.
+    """
+    import getpass
+
+    spuren = set()
+    for wort in (getpass.getuser(), Path.home().name):
+        wort = (wort or "").strip().lower()
+        # Zu kurze Namen träfen zu oft auf gewöhnliche Wörter.
+        if len(wort) >= 4:
+            spuren.add(wort)
+    return sorted(spuren)
+
 #: **Warum mit Klammeraffe.** Zuerst stand hier bloß »outlook«, und die
 #: Prüfung schlug beim Anmeldefenster an: Dort steht »Microsoft
 #: (Outlook.com, Hotmail, Exchange)« als Name des Anmeldedienstes. Das
@@ -491,17 +564,34 @@ def _nachsehen() -> int:
     import shutil
     import subprocess
 
+    from mailburg import QUELLTEXT_URL
+
     if not shutil.which("tesseract"):
         print("Hinweis: Ohne tesseract keine Selbstkontrolle der Bilder.")
         return 0
 
+    # Auch .webp: Die von Hand aufgenommenen Windows-Bilder liegen so,
+    # und die Prüfung lief an ihnen jahrelang vorbei, weil hier nur
+    # nach *.png gesucht wurde.
+    bilder = sorted(
+        p for p in BILDER.iterdir()
+        if p.suffix.lower() in (".png", ".webp", ".jpg", ".jpeg")
+    )
+    gesucht = list(VERRAETERISCH) + _eigene_spuren()
+
+    # Die Adresse des Projekts steht auf jedem Bild, das GitHub zeigt –
+    # und enthält den Kontonamen. Der ist öffentlich und gehört dorthin;
+    # eine Prüfung, die daran jedes Mal anschlägt, wird bald überlesen.
+    projekt = QUELLTEXT_URL.lower().removeprefix("https://").rstrip("/")
+
     beanstandet = []
-    for bild in sorted(BILDER.glob("*.png")):
+    for bild in bilder:
         gelesen = subprocess.run(
             ["tesseract", str(bild), "stdout", "-l", "deu+eng"],
             capture_output=True, text=True, check=False,
         ).stdout.lower()
-        treffer = [wort for wort in VERRAETERISCH if wort in gelesen]
+        ohne_projekt = gelesen.replace(projekt, " ")
+        treffer = [wort for wort in gesucht if wort in ohne_projekt]
         if treffer:
             beanstandet.append((bild.name, treffer))
 

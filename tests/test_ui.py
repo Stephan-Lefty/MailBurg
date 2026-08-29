@@ -4347,3 +4347,55 @@ class ZahlwortTest(OberflaechenTest):
         ).read_text(encoding="utf-8")
 
         self.assertNotIn('"Treffer" if', quelle)
+
+
+class AbschlussSeiteTest(OberflaechenTest):
+    """»Das Archiv liegt in None, 0 Postfächer sind eingerichtet«.
+
+    So stand es auf einem Bild in der Anleitung – ein durchgereichtes
+    Python-``None`` auf der letzten Seite des Assistenten, an der Stelle,
+    an der ein Anwender nachliest, wo seine Post künftig liegt.
+
+    ``archiv_pfad`` ist ausdrücklich ``Path | None``. Am 2026-08-29 beim
+    Durchsehen der Bilder gefunden.
+    """
+
+    def _seite(self, pfad, konten):
+        from mailburg.ui.assistent import AbschlussSeite, Einrichtungsassistent
+
+        assistent = Einrichtungsassistent()
+        assistent.archiv_pfad = pfad
+        assistent.konten = konten
+        seite = assistent.abschluss
+        seite.initializePage()
+        return seite.text.text()
+
+    def test_ohne_pfad_kein_python(self):
+        text = self._seite(None, [])
+
+        self.assertNotIn("None", text)
+        self.assertNotIn("Das Archiv liegt in", text)
+
+    def test_mit_pfad_steht_der_pfad_da(self):
+        text = self._seite(pathlib.Path("/home/martha/Mailarchiv"), [])
+
+        self.assertIn("/home/martha/Mailarchiv", text)
+
+    def test_ein_postfach_ist_kein_postfaecher(self):
+        text = self._seite(pathlib.Path("/home/martha/Mailarchiv"), [object()])
+
+        self.assertIn("1 Postfach ist eingerichtet", text)
+        self.assertNotIn("1 Postfächer", text)
+
+    def test_mehrere_postfaecher_sind(self):
+        text = self._seite(
+            pathlib.Path("/home/martha/Mailarchiv"), [object(), object()]
+        )
+
+        self.assertIn("2 Postfächer sind eingerichtet", text)
+
+    def test_satzanfang_wird_gross_wenn_der_pfad_fehlt(self):
+        """Ohne Pfad beginnt der Satz mit der Zahl – nicht mit »0 …« klein."""
+        text = self._seite(None, [object()])
+
+        self.assertIn("<p>1 Postfach ist eingerichtet", text)

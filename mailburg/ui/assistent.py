@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
 )
 
 from mailburg import APP_NAME, QUELLTEXT_URL
-from mailburg.core import accounts, orte
+from mailburg.core import accounts, orte, sprache
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, Mode
 from mailburg.core.retention import QUELLEN, Jurisdiction
@@ -1387,9 +1387,25 @@ class AbschlussSeite(QWizardPage):
         anzahl = len(getattr(assistent, "konten", []))
         bund = accounts.schluesselbund_name()
 
+        # »Das Archiv liegt in None, 0 Postfächer sind eingerichtet« stand
+        # einmal auf einem Bild in der Anleitung. Der Pfad ist ausdruecklich
+        # Path | None – wer diese Seite ohne gesetzten Pfad erreicht, soll
+        # kein Python zu sehen bekommen. Und bei genau einem Postfach hiess
+        # es »1 Postfächer sind«.
+        eingerichtet = (
+            f"{sprache.postfaecher(anzahl)} "
+            + ("ist" if anzahl == 1 else "sind")
+            + " eingerichtet"
+        )
+        satz = (
+            f"Das Archiv liegt in <b>{assistent.archiv_pfad}</b>, "
+            f"{eingerichtet}"
+            if assistent.archiv_pfad
+            else eingerichtet[0].upper() + eingerichtet[1:]
+        )
+
         self.text.setText(
-            f"<p>Das Archiv liegt in <b>{assistent.archiv_pfad}</b>, "
-            f"{anzahl} Postfächer sind eingerichtet"
+            f"<p>{satz}"
             + (f", die Passwörter in der {bund}." if bund else ".")
             + "</p>"
 

@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 # Die Logik steht in mailburg.core.nachfrage - sie ist eine Rechnung,
 # keine Darstellung, und dürfte Qt nicht voraussetzen. Hier nur
 # weitergereicht, damit Aufrufer nicht zwei Module kennen müssen.
+from mailburg.core import sprache
 from mailburg.core.nachfrage import (  # noqa: F401
     SCHLUESSEL,
     gefragt_vermerken,
@@ -60,8 +61,9 @@ class Fristendialog(QDialog):
 
         if geschaeftlich:
             kopf = (
-                f"<b>{len(treffer)} Mails</b> haben ihre Aufbewahrungsfrist "
-                f"hinter sich."
+                f"<b>{sprache.mails(len(treffer))}</b> "
+                + ("haben" if len(treffer) != 1 else "hat")
+                + " ihre Aufbewahrungsfrist hinter sich."
             )
             erklaerung = (
                 "Fristen wirken in beide Richtungen. Sie schützen vor zu "
@@ -79,8 +81,9 @@ class Fristendialog(QDialog):
             from mailburg.core.archive import ALT_AB_JAHREN
 
             kopf = (
-                f"<b>{len(treffer)} Mails</b> sind älter als "
-                f"{ALT_AB_JAHREN} Jahre."
+                f"<b>{sprache.mails(len(treffer))}</b> "
+                + ("sind" if len(treffer) != 1 else "ist")
+                + f" älter als {ALT_AB_JAHREN} Jahre."
             )
             erklaerung = (
                 "Ein Privatarchiv kennt keine Aufbewahrungsfristen. Sie "

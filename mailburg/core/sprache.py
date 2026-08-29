@@ -37,3 +37,7 @@ def dateien(zahl: int) -> str:
 
 def nachrichten(zahl: int) -> str:
     return anzahl(zahl, "Nachricht", "Nachrichten")
+
+
+def postfaecher(zahl: int) -> str:
+    return anzahl(zahl, "Postfach", "Postfächer")

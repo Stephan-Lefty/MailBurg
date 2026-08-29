@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from mailburg.core import sprache
 from mailburg.core.retention import Category
 
 #: Die Kategorien in der Reihenfolge, in der man sie braucht, mit einer
@@ -72,7 +73,9 @@ class Einstufungsdialog(QDialog):
         aufbau = QVBoxLayout(self)
 
         gefunden = QLabel(
-            f"<b>{len(treffer)} Mails</b> sind gerade gefunden"
+            f"<b>{sprache.mails(len(treffer))}</b> "
+            + ("sind" if len(treffer) != 1 else "ist")
+            + " gerade gefunden"
             + (f" mit <i>{ausdruck}</i>." if ausdruck else " (das ganze Archiv).")
         )
         gefunden.setWordWrap(True)
@@ -162,17 +165,31 @@ class Einstufungsdialog(QDialog):
         )
         if not offen:
             self.folge.setText(
-                f"<i>Alle {len(self.treffer)} sind bereits so eingeordnet.</i>"
+                "<i>Diese Mail ist bereits so eingeordnet.</i>"
+                if len(self.treffer) == 1
+                else f"<i>Alle {len(self.treffer)} sind bereits so "
+                     f"eingeordnet.</i>"
             )
             return
 
+        # Auch der Folgesatz richtet sich nach der Zahl: »1 Mail wird
+        # geändert. Sie sind dann acht Jahre geschützt« las sich falsch.
+        eine = offen == 1
         if stufe is Category.PRIVAT:
-            was = "Sie dürfen dann jederzeit gelöscht werden."
+            was = (
+                "Sie darf dann jederzeit gelöscht werden."
+                if eine
+                else "Sie dürfen dann jederzeit gelöscht werden."
+            )
         else:
             jahre = self.archiv.policy.years(stufe)
             was = (
-                f"Sie sind dann {jahre} Jahre lang vor dem Löschen "
-                f"geschützt – gerechnet ab dem Ende des Jahres, aus dem "
-                f"die Mail stammt."
+                f"Sie {'ist' if eine else 'sind'} dann {jahre} Jahre lang "
+                f"vor dem Löschen geschützt – gerechnet ab dem Ende des "
+                f"Jahres, aus dem die Mail stammt."
             )
-        self.folge.setText(f"<b>{offen}</b> Mails werden geändert. {was}")
+        self.folge.setText(
+            f"<b>{sprache.mails(offen)}</b> "
+            + ("werden" if offen != 1 else "wird")
+            + f" geändert. {was}"
+        )

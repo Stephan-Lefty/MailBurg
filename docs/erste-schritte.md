@@ -117,14 +117,14 @@ das Postfächer einrichten kann, aber keine Passwörter behält – dafür sorgt
 
 Beim ersten Aufruf von **MailBurg** führt ein Assistent durch die Einrichtung.
 
-![Willkommen](bilder/einrichtung-1.png)
+![Die erste Seite des Einrichtungsassistenten mit dem MailBurg-Logo. Darunter steht, dass Postfächer nur gelesen werden, wohin die Post geht, dass keine Verbindung nach außen aufgebaut wird und keine Suche nach Aktualisierungen stattfindet.](bilder/einrichtung-1.png)
 
 Hier steht, was MailBurg tut und was nicht. Lesen Sie es einmal – es ist die
 Grundlage dafür, ob Sie dem Programm Ihre Post anvertrauen wollen.
 
 ## 3. Wo das Archiv liegen soll
 
-![Das Archiv](bilder/einrichtung-2.png)
+![Der Schritt »Das Archiv«: eine Auswahl für den Ort mit dem freien Platz dahinter, darunter der vollständige Pfad zum Ändern. Weiter unten die Wahl zwischen Privatarchiv und Geschäftsarchiv, jeweils mit Erklärung, und ein Feld für das Recht, nach dem die Fristen gelten.](bilder/einrichtung-2.png)
 
 MailBurg schlägt Orte vor und zeigt, wie viel Platz dort frei ist. **Wählen
 Sie möglichst nicht die Platte, auf der Ihr Betriebssystem liegt** – geht die
@@ -148,7 +148,7 @@ Außerdem gelten die Aufbewahrungsfristen des gewählten Rechtsraums
 
 ## 4. Postfächer
 
-![Postfächer](bilder/einrichtung-3.png)
+![Der Schritt »Ihre Postfächer«: drei aus Thunderbird übernommene Postfächer, angekreuzt, mit Serveradresse darunter und je einem Passwortfeld. Darüber die Erklärung, warum MailBurg die Passwörter nicht aus Thunderbird ausliest.](bilder/einrichtung-3.png)
 
 Ist Thunderbird installiert, liest MailBurg dessen Einstellungen aus – Server,
 Benutzername und Verschlüsselung stehen dann schon da.
@@ -179,7 +179,7 @@ in derselben Anleitung.
 
 ## 5. Fertig
 
-![Fertig](bilder/einrichtung-4.png)
+![Die Abschlussseite: der Ort des Archivs, die Zahl der eingerichteten Postfächer und der Schlüsselbund, in dem die Passwörter liegen. Darunter die Häkchen für den regelmäßigen Abruf im Hintergrund samt Abstand und für den ersten Abruf gleich jetzt.](bilder/einrichtung-4.png)
 
 Hier lässt sich gleich einstellen, dass MailBurg regelmäßig im Hintergrund
 abruft. Dafür muss das Programm weder geöffnet bleiben noch mitstarten – nötig
@@ -191,7 +191,7 @@ weiter.
 
 ## 6. Suchen
 
-![Hauptfenster](bilder/hauptfenster.png)
+![Das Hauptfenster nach einer Suche nach »rechnung«: links der Baum der Postfächer und Ordner, oben die drei Treffer mit Datum, Absender und Betreff, darunter die gewählte Nachricht mit Kopfzeilen, Text und einem Anhang, der sich öffnen oder speichern lässt.](bilder/hauptfenster.png)
 
 Schreiben Sie einfach hinein, wonach Sie suchen. Gesucht wird in Betreff,
 Text, Absender, Empfänger und in den Anhängen.
