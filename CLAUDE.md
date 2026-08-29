@@ -22,6 +22,18 @@ wirklich nach sieben Tagen verfallen lässt. Falls ja, taugt OAuth2 bei
 Gmail nicht für den Zeitplan – die Anleitung rät dort deshalb weiterhin
 zum App-Passwort.
 
+**Die Historie ist bereinigt** (2026-08-29). Plattenseriennummer,
+Domain, Mailserver, Firmenname und Ordnerpfade sind aus allen 188
+Commits verschwunden – geprüft an einem frischen Klon von GitHub. Die
+Sicherung des alten Standes liegt außerhalb des Repos unter
+`/mnt/…/MailBurg-vor-bereinigung-2026-08-29.bundle`.
+
+Wer künftig etwas hinzufügt: **Keine echten Adressen, Server oder
+Pfade.** Für Beispiele gibt es `example.org`, `example.com` und
+`example.net` – die sind nach RFC 2606 dafür reserviert. Die
+Autorennennung in LICENSE, `pyproject.toml` und `ui/info.py` ist davon
+ausgenommen; ein Urheber darf genannt werden.
+
 **Noch offen aus der Verabredung:** Bilder. Stephan will sie zum
 Schluss, wenn alles andere sauber ist – die Linux-Screenshots in
 `docs/bilder/` sind vom 26.08. und zeigen den Assistenten vor den
