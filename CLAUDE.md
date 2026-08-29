@@ -3,23 +3,30 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
-## Hier war Schluss (Stand 2026-08-28, abends)
+## Hier war Schluss (Stand 2026-08-29, Samstag)
 
-**Morgen zuerst: OAuth2.** Der Punkt ist am 28.08. recherchiert, aber
-nicht gebaut – die Einzelheiten stehen ausführlich in
-[TODO.md](TODO.md). Das Wichtigste vorweg:
+**OAuth2 ist gebaut** – Ablauf, Bedienung auf beiden Wegen,
+[docs/oauth2.md](docs/oauth2.md). PKCE nach RFC 7636, Marken im
+Schlüsselbund, Erneuerung mit Vorlauf beim Verbindungsaufbau.
 
-- **Microsoft-Konten kann MailBurg heute nicht abrufen.** Basic Auth ist
-  abgeschaltet (Exchange Online 01.10.2022, private Konten 16.09.2024),
-  App-Kennwörter wirken nicht mehr. Die Anleitung empfahl bis zum 28.08.
-  eines; das ist richtiggestellt, samt eigener Fehlermeldung.
-- **Google verlangt für den vollen IMAP-Zugriff ein jährliches
-  CASA-Audit** – für ein quelloffenes Programm ohne Einnahmen nicht
-  tragbar. Der Weg wird sein, dass der Anwender seine eigene Anwendung
-  registriert.
-- **Das wird der erste Baustein ohne Erprobung.** Stephans Konten liegen
-  auf eigenen Servern und bei Proton; ein Microsoft-Konto zum Testen
-  gibt es nicht.
+**Was offen bleibt, und das ist der wichtigste Satz hier:** Niemand hat
+sich damit bisher bei einem echten Anbieter angemeldet. Geprüft ist der
+Ablauf gegen einen nachgebauten Anbieter auf dem eigenen Rechner.
+Stephans Konten liegen auf eigenen Servern und bei Proton – ein
+Microsoft-Konto zum Testen gibt es nicht. In der Anleitung steht das
+ausdrücklich; wer den Text ändert, soll diesen Satz stehen lassen,
+solange er stimmt.
+
+Zweite offene Frage: ob Googles Testmodus die Erneuerungs-Token
+wirklich nach sieben Tagen verfallen lässt. Falls ja, taugt OAuth2 bei
+Gmail nicht für den Zeitplan – die Anleitung rät dort deshalb weiterhin
+zum App-Passwort.
+
+**Noch offen aus der Verabredung:** Bilder. Stephan will sie zum
+Schluss, wenn alles andere sauber ist – die Linux-Screenshots in
+`docs/bilder/` sind vom 26.08. und zeigen den Assistenten vor den
+Änderungen, für Windows fehlen SmartScreen, Hauptfenster und
+Zeitplan-Dialog.
 
 ### Was der 28.08. gebracht hat
 
@@ -220,7 +227,9 @@ mailburg/
 ├── search/query.py    Suchausdruck -> SQL
 ├── sources/           base.py (Schnittstelle), local.py (Thunderbird/Maildir/MBOX),
 │                      imap.py (Postfächer)
-├── ui/                noch leer – kommt mit PySide6
+├── ui/                die Oberfläche: hauptfenster, assistent, konten,
+│                      suchmaske, vorschau, hilfe, zeitplan, sichern,
+│                      einstufen, fristen, auskunft, anmelden
 └── __main__.py        Kommandozeile
 
 install.sh / install.ps1   Einrichtung; laufen in der CI wirklich durch
@@ -251,9 +260,10 @@ Archivkennung – nicht nach dem Pfad, damit er eine umgehängte externe Platte
 Andersherum entstünde bei einem Absturz ein Eintrag ohne Inhalt – und der sieht
 aus wie eine Manipulation.
 
-**Die CI läuft je Push nur auf Linux.** Das Repository ist privat, dort kosten
-Actions-Minuten Geld – und mehr, als die Laufzeiten vermuten lassen: GitHub
-rundet *jeden einzelnen Job* auf volle Minuten auf, rechnet macOS zehnfach und
+**Die CI läuft je Push nur auf Linux.** Seit dem 26.08.2026 ist das
+Repository öffentlich, Actions-Minuten kosten dort nichts mehr. Die Regel
+bleibt trotzdem – sie stammt aus der Zeit davor und hat einen Grund, der
+noch gilt: GitHub rundet *jeden einzelnen Job* auf volle Minuten auf, rechnet macOS zehnfach und
 Windows zweifach. Die erste Fassung startete dreizehn Jobs je Push und
 verbrauchte an einem einzigen Arbeitstag das Monatskontingent des Kontos
 (1.800 von 2.000 Minuten). Deshalb: ein Job je Push, alle Schritte darin
@@ -309,12 +319,17 @@ wer das behauptet, macht sich angreifbar. Die Belege dafür stehen in
 
 ## Noch nicht getestet
 
-- Verhalten bei einem Archiv auf einem Laufwerk, das während des Betriebs
-  verschwindet.
+- ~~Verhalten bei einem Archiv auf einem Laufwerk, das während des Betriebs
+  verschwindet.~~ Am 28.08.2026 nachgestellt: Das Archiv bleibt heil
+  (1.000 Mails, Hash-Kette unversehrt), die Meldung war ein nackter
+  Traceback und ist behoben.
 - Zusammenspiel mit einem laufenden Nextcloud-Client.
 - Große Bestände: gemessen wurde an 5.187 Mails, nicht an einer halben Million.
-- **Der Abruf gegen einen echten IMAP-Server.** Geprüft ist er gegen den
-  nachgebildeten Server in `tests/fake_imap.py`. Der hält sich an RFC 3501 –
-  echte Server tun das mit Eigenheiten. Besonders zu beobachten: Gmail
-  (Etiketten statt Ordner), Exchange (eigenwillige LIST-Antworten) und Server,
-  die bei zu vielen UIDs in einer Zeile aussteigen.
+- **Gmail und Exchange.** Der Abruf gegen echte Server läuft seit dem
+  26.08.2026 im Alltag – acht Postfächer, darunter Proton über die Bridge,
+  und am 28.08. auch unter Windows. Alle liegen aber bei denselben zwei
+  Anbietern. Ungeprüft bleiben die Eigenheiten von Gmail (Etiketten statt
+  Ordner), Exchange (eigenwillige LIST-Antworten) und Servern, die bei zu
+  vielen UIDs in einer Zeile aussteigen.
+- **OAuth2 an einem echten Konto.** Siehe ganz oben: Der Ablauf ist nur
+  gegen einen nachgebauten Anbieter geprüft.

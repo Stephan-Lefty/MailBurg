@@ -37,7 +37,6 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   — aber niemand hat sich damit bisher bei Microsoft oder Google
   angemeldet. Wer der erste ist: Rückmeldung erwünscht.
 
-### Hinzugefügt
 
 - **Entwurf einer Verfahrensdokumentation nach GoBD.** Über *Archiv →
   Verfahrensdokumentation …* oder `mailburg verfahrensdoku`. MailBurg
