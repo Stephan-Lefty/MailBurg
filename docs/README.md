@@ -8,6 +8,9 @@
   mit Bild und Erklärung.
 - **[Postfächer einrichten](postfaecher-einrichten.md)** – IMAP-Konten anlegen,
   App-Passwörter bei den großen Anbietern, was archiviert wird und was nicht.
+- **[Anmeldung per OAuth2](oauth2.md)** – für Microsoft-Konten, die kein
+  Passwort mehr annehmen. Warum Sie sich dafür eine eigene Anwendung
+  registrieren müssen, und wie das in fünf Minuten geht.
 - **[Regelmäßig abrufen](zeitsteuerung.md)** – nächtlicher Abruf unter Linux,
   Windows und macOS, und warum der Schlüsselbund dabei der Haken ist.
 - **[Postfach entlasten](postfach-entlasten.md)** – der eigentliche Zweck:

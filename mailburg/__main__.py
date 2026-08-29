@@ -162,6 +162,126 @@ def cmd_konten_liste(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_konten_anmelden(args: argparse.Namespace) -> int:
+    """Meldet ein Postfach per OAuth2 an.
+
+    Öffnet den Browser, wartet auf die Rückkehr und legt die Token im
+    Schlüsselbund ab. Danach läuft der Abruf ohne Zutun weiter – bis der
+    Anbieter die Anmeldung entzieht oder das Kontopasswort geändert
+    wird.
+    """
+    from mailburg.core import accounts
+    from mailburg.core.oauth2 import ANBIETER, OAuthFehler
+    from mailburg.core.oauth2_anmelden import anmelden
+
+    liste = Kontenliste()
+    konto = liste.finden(args.name)
+    if konto is None:
+        print(f"Kein Postfach namens '{args.name}'.", file=sys.stderr)
+        return 2
+
+    anbieter_kennung = args.anbieter or konto.oauth_anbieter
+    if not anbieter_kennung:
+        print(
+            f"Für '{konto.name}' ist kein Anmeldedienst hinterlegt.\n"
+            f"Mit --anbieter angeben: {', '.join(ANBIETER)}",
+            file=sys.stderr,
+        )
+        return 2
+
+    anbieter = ANBIETER.get(anbieter_kennung)
+    if anbieter is None:
+        print(
+            f"Unbekannter Anmeldedienst '{anbieter_kennung}'. "
+            f"Bekannt sind: {', '.join(ANBIETER)}",
+            file=sys.stderr,
+        )
+        return 2
+
+    kennung = args.kennung or konto.oauth_kennung
+    if not kennung:
+        print(
+            f"Es fehlt die Kennung Ihrer registrierten Anwendung "
+            f"(--kennung).\n\n{anbieter.hinweis}\n\n"
+            f"Schritt für Schritt steht das in docs/oauth2.md.",
+            file=sys.stderr,
+        )
+        return 2
+
+    geht, grund = accounts.schluesselbund_lage()
+    if not geht:
+        # Ohne Schlüsselbund wäre die Anmeldung sinnlos: Die Token
+        # müssten in eine Datei, und ein Erneuerungs-Token ist auf
+        # Monate hinaus ein Vollzugang zum Postfach.
+        print(f"Anmeldung nicht möglich: {grund}", file=sys.stderr)
+        return 2
+
+    print(f"Der Browser öffnet sich für die Anmeldung bei {anbieter.name}.")
+    print("Melden Sie sich dort an und erlauben Sie MailBurg den Zugriff.")
+    print()
+
+    try:
+        token = anmelden(anbieter, kennung)
+    except OAuthFehler as exc:
+        print(f"Nicht angemeldet: {exc}", file=sys.stderr)
+        return 1
+
+    konto.oauth_anbieter = anbieter.kennung
+    konto.oauth_kennung = kennung
+    liste.speichern()
+
+    if not accounts.token_setzen(konto, token):
+        print(
+            "Die Anmeldung hat geklappt, ließ sich aber nicht im "
+            "Schlüsselbund ablegen. In eine Datei geschrieben wird sie "
+            "nicht – melden Sie sich erneut an, wenn der Schlüsselbund "
+            "wieder erreichbar ist.",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"'{konto.name}' ist angemeldet.")
+    print(
+        "Die Anmeldung liegt im Schlüsselbund. Der Abruf erneuert sie von "
+        "selbst; nur wenn Sie das Kontopasswort ändern oder den Zugriff "
+        "entziehen, ist eine neue Anmeldung nötig."
+    )
+    return 0
+
+
+def cmd_konten_abmelden(args: argparse.Namespace) -> int:
+    """Nimmt die OAuth2-Anmeldung eines Postfachs zurück.
+
+    Entfernt nur die Token aus dem Schlüsselbund. Das Postfach bleibt
+    eingerichtet, die archivierten Mails bleiben ohnehin.
+
+    **Beim Anbieter gilt der Zugriff damit noch.** Ihn dort zu widerrufen
+    kann nur der Anwender – im Sicherheitsbereich seines Kontos. Das
+    steht in der Ausgabe, weil sonst der Eindruck entstünde, mit diesem
+    Befehl sei die Sache erledigt.
+    """
+    from mailburg.core import accounts
+
+    liste = Kontenliste()
+    konto = liste.finden(args.name)
+    if konto is None:
+        print(f"Kein Postfach namens '{args.name}'.", file=sys.stderr)
+        return 2
+
+    accounts.token_loeschen(konto)
+    konto.oauth_anbieter = ""
+    liste.speichern()
+
+    print(f"'{konto.name}' ist abgemeldet, die Token sind entfernt.")
+    print()
+    print(
+        "Beim Anbieter besteht die Erlaubnis weiter. Widerrufen lässt sie "
+        "sich nur dort – bei Microsoft unter »Mein Konto → Apps und "
+        "Dienste«, bei Google unter »Konto → Sicherheit → Drittanbieter-Apps«."
+    )
+    return 0
+
+
 def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
     """Richtet ein Postfach ein und prüft es gleich."""
     if args.proton:
@@ -1616,6 +1736,35 @@ def build_parser() -> argparse.ArgumentParser:
         "zuordnung", help="zeigen, welches Postfach in welches Archiv geht"
     )
     k.set_defaults(func=cmd_konten_zuordnung)
+
+    k = konten_befehle.add_parser(
+        "anmelden",
+        help="ein Postfach per OAuth2 anmelden",
+        description=(
+            "Öffnet den Browser, meldet das Postfach beim Anbieter an und "
+            "legt die Zugangsmarken im Schlüsselbund ab. Nötig bei "
+            "Microsoft, wo die Anmeldung mit Passwort abgeschaltet ist. "
+            "MailBurg bringt keine eigene Anwendungskennung mit – Sie "
+            "registrieren Ihre eigene, siehe docs/oauth2.md."
+        ),
+    )
+    k.add_argument("name", help="Kurzname des Postfachs")
+    k.add_argument(
+        "--anbieter",
+        help="microsoft oder google. Ohne Angabe der schon hinterlegte.",
+    )
+    k.add_argument(
+        "--kennung",
+        help="Kennung Ihrer beim Anbieter registrierten Anwendung",
+    )
+    k.set_defaults(func=cmd_konten_anmelden)
+
+    k = konten_befehle.add_parser(
+        "abmelden",
+        help="die OAuth2-Anmeldung eines Postfachs zurücknehmen",
+    )
+    k.add_argument("name", help="Kurzname des Postfachs")
+    k.set_defaults(func=cmd_konten_abmelden)
 
     k = konten_befehle.add_parser("pruefen", help="Anmeldung und Ordner prüfen")
     k.add_argument("name", nargs="?", help="ohne Angabe werden alle geprüft")

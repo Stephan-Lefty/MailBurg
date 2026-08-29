@@ -148,11 +148,12 @@ def _verstaendlich(fehler: Exception, server: str = "") -> str:
                     "Passwort nicht mehr abrufen – auch nicht mit einem "
                     "App-Kennwort. Microsoft verlangt seit dem 16.09.2024 "
                     "(private Konten) bzw. 01.10.2022 (Exchange Online) "
-                    "ausschließlich OAuth2, und das beherrscht MailBurg "
-                    "noch nicht.\n\n"
-                    "Umweg: Das Konto in Thunderbird einrichten – das kann "
-                    "OAuth2 – und dessen Profil mit »mailburg importieren« "
-                    "einlesen."
+                    "ausschließlich OAuth2.\n\n"
+                    "MailBurg kann das: »mailburg konten anmelden NAME "
+                    "--anbieter microsoft --kennung IHRE-KENNUNG«. Die "
+                    "Kennung stammt aus einer Anwendung, die Sie sich "
+                    "selbst registrieren – kostenlos und in fünf Minuten. "
+                    "Schritt für Schritt in docs/oauth2.md."
                 )
             return klartext
     return roh

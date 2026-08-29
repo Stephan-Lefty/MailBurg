@@ -79,7 +79,12 @@ MailBurg das Thunderbird-Profil einlesen lassen. Thunderbird beherrscht
 OAuth2. Das ist ein Umweg, aber ein gangbarer – und die Mails landen
 bytegenau im Archiv wie über IMAP.
 
-**Was geplant ist:** OAuth2 in MailBurg selbst. Der Aufwand steckt nicht im
+**Was seit dem 2026-08-29 vorbereitet ist:** OAuth2 in MailBurg selbst.
+Der Ablauf steht, die Anleitung dazu ist
+[Anmeldung per OAuth2](oauth2.md). Ungeprüft an einem echten Konto —
+wenn Sie es ausprobieren, ist eine Rückmeldung viel wert.
+
+**Warum es nicht einfach eingebaut ist:** Der Aufwand steckt nicht im
 Programm, sondern davor: Google verlangt für den vollen IMAP-Zugriff ein
 jährlich zu wiederholendes Sicherheitsaudit durch ein zugelassenes Labor,
 das für ein quelloffenes Programm ohne Einnahmen nicht tragbar ist. Der Weg

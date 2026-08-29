@@ -162,49 +162,22 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   eingescannte Rechnung als JPG ist kein konstruierter Fall – 337 solcher
   Mails liegen in diesem Archiv.
 
-- [ ] **Anmeldung per OAuth2.** *(am 2026-08-28 recherchiert, Bau auf
-  den Folgetag verschoben)*
+- [x] **Anmeldung per OAuth2.** (gebaut am 2026-08-29) Ablauf, Bedienung
+  auf beiden Wegen und [Anleitung](docs/oauth2.md) stehen. PKCE nach
+  RFC 7636, Marken im Schlüsselbund, Erneuerung mit Vorlauf beim
+  Verbindungsaufbau.
 
-  **Es ist keine Kür mehr.** Microsoft hat die einfache Anmeldung
-  abgeschaltet – Exchange Online am 1. Oktober 2022, private Konten
-  (outlook.com, hotmail.com, live.com) am 16. September 2024. Auch
-  App-Kennwörter wirken dort nicht mehr. MailBurg kann Microsoft-Konten
-  damit schlicht nicht abrufen. Die Anleitung empfahl bis dahin ein
-  App-Kennwort; das ist am 2026-08-28 richtiggestellt worden, samt einer
-  eigenen Fehlermeldung, die den wahren Grund nennt.
+  **Offen bleibt die Erprobung.** Niemand hat sich damit bisher bei
+  Microsoft oder Google angemeldet – Stephans Konten liegen auf eigenen
+  Servern und bei Proton. Geprüft ist der Ablauf nur gegen einen
+  nachgebauten Anbieter. Wer ein Microsoft-Konto zur Hand hat, sollte
+  einmal durchgehen; bis dahin steht in der Anleitung, dass es ungeprüft
+  ist.
 
-  Bei **Google** funktionieren App-Passwörter (mit Zwei-Faktor-Anmeldung)
-  weiterhin. Dort ist es also weniger dringend – und deutlich teurer:
-
-  **Die Hürde liegt nicht im Code.** Für den vollen IMAP-Zugriff braucht
-  es Googles `mail.google.com`-Scope, einen »restricted scope«. Der
-  verlangt ein CASA-Sicherheitsaudit durch ein zugelassenes Labor,
-  jährlich zu wiederholen, mit Kosten von einigen hundert bis mehreren
-  tausend Dollar. Für ein quelloffenes Programm ohne Einnahmen nicht
-  tragbar.
-
-  **Der gangbare Weg:** Der Anwender registriert seine eigene Anwendung
-  und gibt MailBurg deren Kennung mit. Bei Microsoft (Entra ID) ist das
-  kostenlos und ohne Prüfverfahren. Bei Google über die Cloud Console
-  für den Eigengebrauch – dabei ist zu klären, ob der Testing-Modus die
-  Erneuerungs-Token nach sieben Tagen verfallen lässt; für einen
-  Zeitplan wäre das ein K.-o.-Kriterium.
-
-  **Zu bauen wäre:** XOAUTH2 für IMAP, Token im Schlüsselbund, stille
-  Erneuerung vor Ablauf, ein Feld für die eigene Kennung in der
-  Kontenverwaltung, und eine Anleitung, die durch die Registrierung
-  führt.
-
-  **Ehrlich dazu:** Weder Stephan noch ich können das am lebenden Objekt
-  prüfen – seine Konten liegen auf eigenen Servern und bei Proton, kein
-  Microsoft-Konto dabei. Das wäre der erste Baustein ohne Erprobung.
-
-  Quellen: [Microsoft
-  Learn](https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/deprecation-of-basic-authentication-exchange-online),
-  [Thunderbird
-  Help](https://support.mozilla.org/en-US/kb/microsoft-oauth-authentication-and-thunderbird-202),
-  [Google restricted scope
-  verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification)
+  Ebenfalls offen: ob Googles Testmodus die Erneuerungs-Token wirklich
+  nach sieben Tagen verfallen lässt. Falls ja, taugt OAuth2 bei Gmail
+  nicht für den Zeitplan – die Anleitung rät dort deshalb weiterhin zum
+  App-Passwort.
 
 - [ ] **Der Rückweg: „In Mailprogramm öffnen".** Über eine temporäre
   `.eml` und `xdg-open`/`start`/`open`. Die beiden anderen Wege stehen

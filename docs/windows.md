@@ -145,14 +145,15 @@ oder von Hand:
 **Outlook**-Archive (`.pst`, `.ost`) kann MailBurg noch nicht lesen. Der Weg
 dahin führt über `libpff` und steht auf der Liste.
 
-**Und der IMAP-Weg ist bei Microsoft derzeit versperrt.** Outlook.com, Hotmail
-und Exchange Online verlangen seit dem 16. September 2024 beziehungsweise dem
+**Der IMAP-Weg braucht bei Microsoft OAuth2.** Outlook.com, Hotmail und
+Exchange Online verlangen seit dem 16. September 2024 beziehungsweise dem
 1. Oktober 2022 ausschließlich OAuth2; App-Kennwörter funktionieren dort nicht
-mehr, und MailBurg beherrscht OAuth2 noch nicht.
+mehr. MailBurg beherrscht das seit dem 29. August 2026 — siehe
+[Anmeldung per OAuth2](oauth2.md). Sie registrieren sich dafür eine eigene
+Anwendung, kostenlos und in fünf Minuten.
 
-Bis dahin hilft nur der Umweg: In Outlook den Ordner als `.eml` exportieren,
-oder das Konto zusätzlich in Thunderbird einrichten — Thunderbird kann OAuth2 —
-und MailBurg das Thunderbird-Profil einlesen lassen.
+Alternativ: In Outlook den Ordner als `.eml` exportieren, oder das Konto
+zusätzlich in Thunderbird einrichten und MailBurg das Profil einlesen lassen.
 
 ## Wieder loswerden
 

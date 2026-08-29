@@ -11,6 +11,34 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Anmeldung per OAuth2.** Microsoft nimmt seit dem 16. September 2024
+  (private Konten) beziehungsweise 1. Oktober 2022 (Exchange Online) kein
+  Passwort mehr an — auch kein App-Kennwort. Ohne OAuth2 ließen sich diese
+  Postfächer überhaupt nicht abrufen.
+
+  Über `mailburg konten anmelden` oder den Knopf **Anmelden …** in der
+  Postfachverwaltung. Der Browser öffnet sich, danach erneuert MailBurg
+  den Zugriff selbsttätig — auch beim Abruf im Hintergrund.
+
+  **MailBurg bringt keine eigene Anwendungskennung mit.** Google verlangt
+  für den vollen Postfachzugriff ein jährlich zu wiederholendes
+  Sicherheitsaudit durch ein zugelassenes Labor; für ein quelloffenes
+  Programm ohne Einnahmen ist das nicht tragbar. Sie registrieren deshalb
+  eine Anwendung auf Ihren Namen — bei Microsoft kostenlos und in fünf
+  Minuten. Die Anleitung dazu ist [docs/oauth2.md](docs/oauth2.md).
+
+  Öffentlicher Client mit PKCE, kein Geheimnis: Ein Programm auf fremden
+  Rechnern kann nichts geheim halten. Die Marken liegen im Schlüsselbund,
+  nie in einer Datei — ein Erneuerungs-Token ist auf Monate hinaus ein
+  Vollzugang zum Postfach.
+
+  **Ungeprüft an einem echten Konto.** Der Ablauf ist gegen einen
+  nachgebauten Anbieter durchgespielt, PKCE gegen RFC 7636 gegengerechnet
+  — aber niemand hat sich damit bisher bei Microsoft oder Google
+  angemeldet. Wer der erste ist: Rückmeldung erwünscht.
+
+### Hinzugefügt
+
 - **Entwurf einer Verfahrensdokumentation nach GoBD.** Über *Archiv →
   Verfahrensdokumentation …* oder `mailburg verfahrensdoku`. MailBurg
   füllt, was es selbst weiß — Fassung, Ablageort, Verfahren, Postfächer,

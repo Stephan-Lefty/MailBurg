@@ -344,3 +344,243 @@ class KontoTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BefehlTest(unittest.TestCase):
+    """Die Bedienung auf der Kommandozeile.
+
+    Geprüft wird vor allem, was *ohne* Netz geschieht: fehlende Angaben,
+    unbekannte Anbieter, kein Schlüsselbund. Das sind die Fälle, in denen
+    ein Anwender strandet – und die einzigen, die sich ohne echtes Konto
+    prüfen lassen.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core.accounts import Konto, Kontenliste
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+
+        self.liste = Kontenliste()
+        self.liste.konten = [
+            Konto(name="Arbeit", server="outlook.office365.com",
+                  benutzer="post@example.com"),
+        ]
+        self.liste.speichern = lambda: None
+
+        flicken = mock.patch(
+            "mailburg.__main__.Kontenliste", return_value=self.liste
+        )
+        flicken.start()
+        self.addCleanup(flicken.stop)
+
+    def _rufen(self, *args) -> tuple[int, str]:
+        import contextlib
+        import io
+
+        from mailburg.__main__ import main
+
+        fehler = io.StringIO()
+        ausgabe = io.StringIO()
+        with contextlib.redirect_stderr(fehler):
+            with contextlib.redirect_stdout(ausgabe):
+                code = main(list(args))
+        return code, fehler.getvalue() + ausgabe.getvalue()
+
+    def test_unbekanntes_postfach(self) -> None:
+        code, text = self._rufen("konten", "anmelden", "Gibtsnicht")
+
+        self.assertEqual(code, 2)
+        self.assertIn("Gibtsnicht", text)
+
+    def test_ohne_anbieter_wird_gefragt(self) -> None:
+        code, text = self._rufen("konten", "anmelden", "Arbeit")
+
+        self.assertEqual(code, 2)
+        self.assertIn("microsoft", text)
+
+    def test_unbekannter_anbieter(self) -> None:
+        code, text = self._rufen(
+            "konten", "anmelden", "Arbeit", "--anbieter", "aol"
+        )
+
+        self.assertEqual(code, 2)
+        self.assertIn("microsoft", text)
+
+    def test_ohne_kennung_kommt_die_anleitung(self) -> None:
+        """Eine Absage ohne Wegweiser ist eine halbe Auskunft."""
+        code, text = self._rufen(
+            "konten", "anmelden", "Arbeit", "--anbieter", "microsoft"
+        )
+
+        self.assertEqual(code, 2)
+        self.assertIn("Entra", text)
+        self.assertIn("oauth2.md", text)
+
+    def test_ohne_schluesselbund_wird_gar_nicht_erst_angemeldet(self) -> None:
+        """Die Token müssten sonst in eine Datei.
+
+        Ein Erneuerungs-Token ist auf Monate hinaus ein Vollzugang zum
+        Postfach – und es hat die Zwei-Faktor-Anmeldung schon hinter
+        sich.
+        """
+        from unittest import mock
+
+        with mock.patch(
+            "mailburg.core.accounts.schluesselbund_lage",
+            return_value=(False, "kein Schlüsselbund"),
+        ):
+            code, text = self._rufen(
+                "konten", "anmelden", "Arbeit",
+                "--anbieter", "microsoft", "--kennung", "abc",
+            )
+
+        self.assertEqual(code, 2)
+        self.assertIn("kein Schlüsselbund", text)
+
+    def test_abmelden_nennt_den_zweiten_schritt(self) -> None:
+        """Die Erlaubnis beim Anbieter bleibt – das muss dastehen.
+
+        Sonst entstünde der Eindruck, mit diesem Befehl sei die Sache
+        erledigt.
+        """
+        code, text = self._rufen("konten", "abmelden", "Arbeit")
+
+        self.assertEqual(code, 0)
+        klein = text.lower()
+        self.assertIn("beim anbieter", klein)
+        self.assertIn("widerrufen", klein)
+
+
+class AnleitungTest(unittest.TestCase):
+    """Die Anleitung muss die Hürde benennen, nicht verschweigen."""
+
+    def setUp(self) -> None:
+        import pathlib
+
+        self.text = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "docs" / "oauth2.md"
+        ).read_text(encoding="utf-8")
+
+    def test_sie_sagt_warum_es_keine_mitgelieferte_kennung_gibt(self) -> None:
+        self.assertIn("jährlich", self.text)
+        self.assertIn("Audit", self.text.replace("Sicherheitsaudit", "Audit"))
+
+    def test_sie_raet_bei_gmail_zum_app_passwort(self) -> None:
+        """Sieben Tage im Testmodus taugen nicht für einen Zeitplan."""
+        self.assertIn("sieben Tage", self.text)
+        self.assertIn("App-Passwort", self.text)
+
+    def test_sie_nennt_den_ungeprueften_stand(self) -> None:
+        """Wer der erste ist, soll es wissen."""
+        self.assertIn("ungeprüft", self.text.lower())
+
+    def test_die_haeufigen_fehler_stehen_darin(self) -> None:
+        for stichwort in ("localhost", "öffentlicher Client",
+                          "IMAP.AccessAsUser.All"):
+            with self.subTest(stichwort=stichwort):
+                self.assertIn(stichwort, self.text)
+
+
+class OberflaecheTest(unittest.TestCase):
+    """Das Anmeldefenster.
+
+    Bei einem Passwort genügt ein Eingabefeld. Hier muss der Anwender
+    vorher eine Anwendung registriert haben, und das weiß er nicht von
+    selbst – das Fenster muss es sagen, bevor es etwas verlangt.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        try:
+            from PySide6.QtWidgets import QApplication
+        except ImportError:
+            raise unittest.SkipTest("PySide6 fehlt")
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _dialog(self, **felder):
+        """Hält den Dialog fest, solange der Test läuft.
+
+        Ohne Referenz räumt Qt ihn sofort weg – und der Zugriff auf sein
+        Label endet in »Internal C++ object already deleted«. Das ist
+        kein Fehler des Programms, sondern einer der Testschreibweise.
+        """
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.anmelden import Anmeldedialog
+
+        konto = Konto(name="Arbeit", server="outlook.office365.com",
+                      benutzer="post@example.com", **felder)
+        dialog = Anmeldedialog(konto)
+        self._offen = getattr(self, "_offen", [])
+        self._offen.append(dialog)
+        return dialog
+
+    def test_beide_anbieter_stehen_zur_wahl(self) -> None:
+        dialog = self._dialog()
+        namen = [
+            dialog.anbieter.itemText(i)
+            for i in range(dialog.anbieter.count())
+        ]
+
+        self.assertTrue(any("Microsoft" in n for n in namen))
+        self.assertTrue(any("Google" in n for n in namen))
+
+    def test_der_hinweis_erklaert_die_eigene_kennung(self) -> None:
+        """Ohne Begründung wirkt die Abfrage wie eine Schikane."""
+        import re
+
+        text = re.sub("<[^>]+>", "", self._dialog().hinweis.text())
+
+        self.assertIn("keine eigene Kennung", text)
+        self.assertIn("jährlich", text)
+        self.assertIn("oauth2.md", text)
+
+    def test_eine_hinterlegte_kennung_wird_vorgeschlagen(self) -> None:
+        """Beim zweiten Mal soll niemand sie erneut heraussuchen."""
+        dialog = self._dialog(oauth_anbieter="google", oauth_kennung="abc-123")
+
+        self.assertEqual(dialog.kennung.text(), "abc-123")
+        self.assertEqual(dialog.anbieter.currentData(), "google")
+
+    def test_ohne_kennung_wird_nicht_angemeldet(self) -> None:
+        dialog = self._dialog()
+        dialog.kennung.setText("   ")
+        dialog._anmelden()
+
+        self.assertIn("fehlt die Kennung", dialog.stand.text())
+
+    def test_ohne_schluesselbund_auch_nicht(self) -> None:
+        from unittest import mock
+
+        dialog = self._dialog()
+        dialog.kennung.setText("abc")
+
+        with mock.patch("mailburg.core.accounts.schluesselbund_lage",
+                        return_value=(False, "keiner da")):
+            with mock.patch("mailburg.ui.anmelden.QMessageBox.warning") as box:
+                dialog._anmelden()
+
+        box.assert_called_once()
+
+    def test_der_knopf_heisst_je_nach_zustand_anders(self) -> None:
+        """»Anmelden« oder »Neu anmelden« – das sagt, was gerade gilt."""
+        quelle = (
+            __import__("pathlib").Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "konten.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Neu anmelden", quelle)
+        self.assertIn("per_oauth2", quelle)
+
+    def test_bei_oauth2_ist_das_passwort_gesperrt(self) -> None:
+        """Beides zugleich ergibt keinen Sinn."""
+        quelle = (
+            __import__("pathlib").Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "konten.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("self.passwort_neu.setEnabled(not konto.per_oauth2)", quelle)

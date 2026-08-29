@@ -365,12 +365,18 @@ class MicrosoftTest(unittest.TestCase):
                 self.assertIn("OAuth2", text)
                 self.assertNotIn("Passwort stimmt nicht", text)
 
-    def test_und_einen_gangbaren_umweg(self) -> None:
-        """Eine Absage ohne Ausweg ist eine halbe Auskunft."""
+    def test_und_einen_gangbaren_weg(self) -> None:
+        """Eine Absage ohne Ausweg ist eine halbe Auskunft.
+
+        Bis zum 2026-08-29 lautete der Ausweg »über Thunderbird«, weil
+        MailBurg kein OAuth2 konnte. Seither kann es das – und dann
+        gehört der eigene Befehl dorthin, nicht der Umweg.
+        """
         text = self._meldung("outlook.office365.com")
 
-        self.assertIn("Thunderbird", text)
-        self.assertIn("importieren", text)
+        self.assertIn("konten anmelden", text)
+        self.assertIn("oauth2.md", text)
+        self.assertNotIn("beherrscht MailBurg noch nicht", text)
 
     def test_andere_anbieter_bleiben_unberuehrt(self) -> None:
         self.assertIn("Passwort stimmt nicht", self._meldung("imap.gmx.net"))

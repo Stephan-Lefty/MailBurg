@@ -69,6 +69,13 @@ class Kontenverwaltung(QDialog):
         self.zuordnen.clicked.connect(self._zuordnen)
         self.passwort_neu = QPushButton("Passwort ändern …")
         self.passwort_neu.clicked.connect(self._passwort_aendern)
+        self.anmelden = QPushButton("Anmelden …")
+        self.anmelden.setToolTip(
+            "Anmeldung per OAuth2 – nötig bei Microsoft, das kein Passwort "
+            "mehr annimmt. Sie brauchen dafür die Kennung einer selbst "
+            "registrierten Anwendung; siehe docs/oauth2.md."
+        )
+        self.anmelden.clicked.connect(self._anmelden)
         self.stilllegen = QPushButton("Stilllegen")
         self.stilllegen.clicked.connect(self._stilllegen)
         self.entfernen = QPushButton("Entfernen")
@@ -78,8 +85,8 @@ class Kontenverwaltung(QDialog):
         for knopf in (self.hinzu, self.uebernehmen):
             knopfreihe.addWidget(knopf)
         knopfreihe.addStretch()
-        for knopf in (self.zuordnen, self.passwort_neu, self.stilllegen,
-                      self.entfernen):
+        for knopf in (self.zuordnen, self.passwort_neu, self.anmelden,
+                      self.stilllegen, self.entfernen):
             knopfreihe.addWidget(knopf)
 
         hinweis = QLabel(
@@ -185,10 +192,30 @@ class Kontenverwaltung(QDialog):
 
     def _auswahl_geaendert(self) -> None:
         konto = self._gewaehltes_konto()
-        for knopf in (self.passwort_neu, self.stilllegen, self.entfernen):
+        for knopf in (self.passwort_neu, self.anmelden, self.stilllegen,
+                      self.entfernen):
             knopf.setEnabled(konto is not None)
-        if konto is not None:
-            self.stilllegen.setText("Wieder aufnehmen" if not konto.aktiv else "Stilllegen")
+        if konto is None:
+            return
+
+        self.stilllegen.setText(
+            "Wieder aufnehmen" if not konto.aktiv else "Stilllegen"
+        )
+        # **Beides zugleich ergibt keinen Sinn.** Ein Postfach meldet
+        # sich entweder mit Passwort an oder per OAuth2; die Knöpfe
+        # sollen zeigen, was gerade gilt, statt beide gleich aussehen
+        # zu lassen.
+        self.anmelden.setText(
+            "Neu anmelden …" if konto.per_oauth2 else "Anmelden …"
+        )
+        self.passwort_neu.setEnabled(not konto.per_oauth2)
+        if konto.per_oauth2:
+            self.passwort_neu.setToolTip(
+                "Dieses Postfach meldet sich per OAuth2 an – ein Passwort "
+                "wird dafür nicht gebraucht."
+            )
+        else:
+            self.passwort_neu.setToolTip("")
 
     # -------------------------------------------------------------- Ändern
 
@@ -239,6 +266,30 @@ class Kontenverwaltung(QDialog):
             return
         self._passwort_erfragen(konto, f"Neues Passwort für {konto.name}")
         self._fuellen()
+
+    def _anmelden(self) -> None:
+        """Meldet das gewählte Postfach per OAuth2 an."""
+        from mailburg.ui.anmelden import Anmeldedialog
+
+        konto = self._gewaehltes_konto()
+        if konto is None:
+            return
+
+        dialog = Anmeldedialog(konto, self)
+        if not dialog.exec():
+            return
+
+        self.liste.speichern()
+        self._fuellen()
+        QMessageBox.information(
+            self,
+            "Angemeldet",
+            f"»{konto.name}« ist angemeldet.\n\n"
+            f"Die Anmeldung liegt im Schlüsselbund Ihres Systems. MailBurg "
+            f"erneuert sie bei jedem Abruf von selbst – nur wenn Sie das "
+            f"Kontopasswort ändern oder den Zugriff beim Anbieter "
+            f"entziehen, ist eine neue Anmeldung nötig.",
+        )
 
     def _passwort_erfragen(self, konto, titel: str) -> bool:
         """Fragt ein Passwort ab und prüft es gleich am Server."""
