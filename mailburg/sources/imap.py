@@ -360,6 +360,10 @@ class ImapSource(Source):
                 f"{_verstaendlich(exc)}{hinweis}"
             ) from exc
 
+        if self.konto.per_oauth2:
+            self._per_oauth2_anmelden()
+            return
+
         try:
             self._verbindung.login(self.konto.benutzer, passwort)
         except imaplib.IMAP4.error as exc:
@@ -374,6 +378,68 @@ class ImapSource(Source):
             raise ImapFehler(
                 f"Anmeldung als {self.konto.benutzer} abgelehnt – "
                 f"{_verstaendlich(exc, self.konto.server)}{nachsatz}"
+            ) from exc
+
+    def _per_oauth2_anmelden(self) -> None:
+        """Meldet mit einem Zugriffstoken an, statt mit einem Passwort.
+
+        **Die Erneuerung geschieht hier, nicht anderswo.** Ein Token
+        gilt eine Stunde; ein Abruf im Hintergrund läuft aber nachts um
+        drei, wenn niemand danebensitzt. Wird es erst beim Scheitern
+        erneuert, fällt jeder zweite Lauf aus.
+
+        Erneuert wird mit Vorlauf, nicht erst beim Ablauf: Zwischen
+        »noch gültig« und dem Aufbau der Verbindung liegen Sekunden.
+        """
+        from mailburg.core import accounts
+        from mailburg.core.oauth2 import (
+            ANBIETER,
+            OAuthFehler,
+            erneuern,
+            xoauth2_zeichenkette,
+        )
+
+        anbieter = ANBIETER.get(self.konto.oauth_anbieter)
+        if anbieter is None:
+            self._verbindung_wegwerfen()
+            raise ImapFehler(
+                f"Unbekannter Anmeldedienst »{self.konto.oauth_anbieter}«. "
+                f"Bekannt sind: {', '.join(ANBIETER)}."
+            )
+
+        token = accounts.token_holen(self.konto)
+        if token is None:
+            self._verbindung_wegwerfen()
+            raise ImapFehler(
+                f"Für {self.konto.benutzer} ist keine Anmeldung hinterlegt. "
+                f"Melden Sie das Postfach einmal an – danach läuft der "
+                f"Abruf ohne Zutun weiter."
+            )
+
+        if token.abgelaufen():
+            try:
+                token = erneuern(anbieter, self.konto.oauth_kennung, token)
+            except OAuthFehler as exc:
+                self._verbindung_wegwerfen()
+                raise ImapFehler(str(exc)) from exc
+            # Sofort ablegen: Ein erneuertes Token, das nur im Speicher
+            # steht, ist beim nächsten Lauf wieder weg - und manche
+            # Anbieter geben das alte Erneuerungs-Token dann nicht mehr
+            # heraus.
+            accounts.token_setzen(self.konto, token)
+
+        satz = xoauth2_zeichenkette(self.konto.benutzer, token.zugriff)
+        try:
+            self._verbindung.authenticate(
+                "XOAUTH2", lambda _herausforderung: satz.encode("utf-8")
+            )
+        except imaplib.IMAP4.error as exc:
+            self._verbindung_wegwerfen()
+            raise ImapFehler(
+                f"Anmeldung als {self.konto.benutzer} abgelehnt – das "
+                f"Zugriffstoken wurde nicht angenommen.\n"
+                f"{exc}\n"
+                f"Melden Sie das Postfach neu an, wenn das bleibt."
             ) from exc
 
     def _verbindung_wegwerfen(self) -> None:

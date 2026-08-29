@@ -107,6 +107,48 @@ class Konto:
     es folgenlos.
     """
 
+    oauth_anbieter: str = ""
+    """Bei welchem Anbieter angemeldet wird – ``microsoft``, ``google``.
+
+    Leer heißt: Anmeldung mit Passwort, wie bisher. Das bleibt der
+    Regelfall; die meisten Server nehmen weiterhin ein Passwort, und
+    OAuth2 bringt dort nur Umstand.
+
+    **Nötig ist es bei Microsoft.** Dort ist die Anmeldung mit
+    Benutzername und Passwort abgeschaltet – Exchange Online seit dem
+    1. Oktober 2022, private Konten seit dem 16. September 2024 –, und
+    auch App-Kennwörter wirken nicht mehr.
+    """
+
+    oauth_kennung: str = ""
+    """Die Kennung der beim Anbieter registrierten Anwendung.
+
+    **MailBurg bringt keine eigene mit.** Google verlangt für den vollen
+    IMAP-Zugriff ein jährlich zu wiederholendes Sicherheitsaudit, das für
+    ein quelloffenes Programm ohne Einnahmen nicht tragbar ist. Der
+    Anwender registriert deshalb seine eigene Anwendung – bei Microsoft
+    kostenlos und ohne Prüfverfahren – und trägt ihre Kennung hier ein.
+
+    Sie ist kein Geheimnis: Bei einem öffentlichen Client mit PKCE ist
+    sie nur eine Adresse, kein Schlüssel. Deshalb steht sie in der
+    Kontenliste und nicht im Schlüsselbund; die Token dagegen schon.
+    """
+
+    @property
+    def per_oauth2(self) -> bool:
+        """Ob dieses Postfach über OAuth2 angemeldet wird."""
+        return bool(self.oauth_anbieter)
+
+    @property
+    def token_schluessel(self) -> str:
+        """Kennung der Token im Schlüsselbund.
+
+        Getrennt vom Passwortschlüssel: Ein Postfach kann im Lauf seines
+        Lebens die Anmeldeart wechseln, und dann sollen sich die beiden
+        Einträge nicht überschreiben.
+        """
+        return f"oauth2:{self.benutzer}@{self.server}"
+
     @property
     def ist_lokale_bruecke(self) -> bool:
         """Ob die Nachsicht beim Zertifikat wirklich greifen darf."""
@@ -346,6 +388,56 @@ def passwort_holen(konto: Konto) -> str | None:
         return keyring.get_password(APP_ID, konto.schluessel)
     except Exception:  # noqa: BLE001 – ein gesperrter Schlüsselbund wirft
         return None
+
+
+def token_holen(konto: Konto):
+    """Holt die OAuth2-Token aus dem Schlüsselbund.
+
+    Gibt ``None`` zurück, wenn keine hinterlegt sind oder der
+    Schlüsselbund nicht zu erreichen ist – der Aufrufer muss dann zur
+    Anmeldung auffordern.
+    """
+    from mailburg.core.oauth2 import Token
+
+    if not schluesselbund_verfuegbar():
+        return None
+    import keyring
+
+    try:
+        roh = keyring.get_password(APP_ID, konto.token_schluessel)
+    except Exception:  # noqa: BLE001 – ein gesperrter Schlüsselbund wirft
+        return None
+    return Token.aus_json(roh) if roh else None
+
+
+def token_setzen(konto: Konto, token) -> bool:
+    """Legt die OAuth2-Token im Schlüsselbund ab.
+
+    **Nie in eine Datei.** Ein Erneuerungs-Token ist auf Monate hinaus
+    ein Vollzugang zum Postfach – es ist mehr wert als das Passwort,
+    weil es die Zwei-Faktor-Anmeldung bereits hinter sich hat.
+    """
+    if not schluesselbund_verfuegbar():
+        return False
+    import keyring
+
+    try:
+        keyring.set_password(APP_ID, konto.token_schluessel, token.als_json())
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def token_loeschen(konto: Konto) -> None:
+    """Nimmt die Token zurück – beim Abmelden oder Entfernen des Kontos."""
+    if not schluesselbund_verfuegbar():
+        return
+    import keyring
+
+    try:
+        keyring.delete_password(APP_ID, konto.token_schluessel)
+    except Exception:  # noqa: BLE001 – nicht vorhanden ist kein Fehler
+        pass
 
 
 def passwort_setzen(konto: Konto, passwort: str) -> bool:
