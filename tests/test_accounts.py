@@ -527,13 +527,19 @@ class ZuordnungsanzeigeTest(unittest.TestCase):
             )
 
     def _namen(self) -> dict[str, str]:
+        """Die Auflösung steht seit dem 2026-08-29 in core.archive.
+
+        Vorher gab es sie zweimal – einmal für die Kommandozeile, einmal
+        für die Oberfläche. Zwei Stellen, die dasselbe tun, laufen
+        irgendwann auseinander.
+        """
         from unittest import mock
 
-        from mailburg import __main__ as cli
+        from mailburg.core.archive import archivnamen
 
         with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
                         return_value=self.pfade):
-            return cli._archivnamen()
+            return archivnamen()
 
     def test_die_kennung_wird_zum_namen(self) -> None:
         namen = self._namen()
@@ -548,11 +554,11 @@ class ZuordnungsanzeigeTest(unittest.TestCase):
         """
         from unittest import mock
 
-        from mailburg import __main__ as cli
+        from mailburg.core.archive import archivnamen
 
         with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
                         return_value=[*self.pfade, "/gibt/es/nicht"]):
-            namen = cli._archivnamen()
+            namen = archivnamen()
 
         self.assertEqual(len(namen), 2)
 

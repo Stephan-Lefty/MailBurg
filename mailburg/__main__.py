@@ -603,35 +603,6 @@ def cmd_konten_zuordnen(args: argparse.Namespace) -> int:
     return 0
 
 
-def _archivnamen() -> dict[str, str]:
-    """Kennung -> Name, für alle Archive, die MailBurg schon einmal sah.
-
-    Die Kontenliste kennt nur Kennungen wie
-    ``c89fdf58-7ec8-4804-af89-915b71440b7b``. Der Name steht im Archiv
-    selbst, also muss er von dort geholt werden – aus den zuletzt
-    geöffneten Archiven, denn andere kennt MailBurg nicht.
-
-    Was sich nicht auflösen lässt, bleibt eine Kennung. Das ist kein
-    Fehler: Ein Archiv auf einer abgezogenen Platte hat trotzdem
-    Postfächer, und die sollen weiter angezeigt werden.
-    """
-    import json
-
-    from mailburg.ui.app import zuletzt_benutzte_pfade
-
-    namen: dict[str, str] = {}
-    for roh in zuletzt_benutzte_pfade():
-        beschreibung = Path(roh) / "archive.json"
-        try:
-            daten = json.loads(beschreibung.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        kennung = daten.get("uuid")
-        if kennung:
-            namen[kennung] = daten.get("name") or Path(roh).name
-    return namen
-
-
 def cmd_konten_zuordnung(args: argparse.Namespace) -> int:
     """Zeigt, welches Postfach in welches Archiv geht.
 
@@ -647,7 +618,9 @@ def cmd_konten_zuordnung(args: argparse.Namespace) -> int:
         print("Noch kein Postfach eingerichtet.")
         return 0
 
-    namen = _archivnamen()
+    from mailburg.core.archive import archivnamen
+
+    namen = archivnamen()
     nach_archiv: dict[str, list] = {}
     ohne = []
     for konto in liste.konten:

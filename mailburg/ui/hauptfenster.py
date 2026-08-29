@@ -1698,15 +1698,10 @@ def _dateiname(betreff: str) -> str:
     return (sauber[:80] or "Nachricht") + ".eml"
 
 
-def _archivname(pfad) -> str:
-    """Der Anzeigename eines Archivs, ohne es dafür zu öffnen."""
-    import json
-
-    try:
-        meta = json.loads((pfad / "archive.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return pfad.name
-    return meta.get("name") or pfad.name
+# Die Leseroutine steht in core.archive - sie gehört zum Archivformat,
+# nicht zur Darstellung. Hier nur weitergereicht, damit die Aufrufer im
+# Modul nicht zwei Herkünfte kennen müssen.
+from mailburg.core.archive import archivname as _archivname  # noqa: E402
 
 
 def _abrufzeit(iso: str) -> str:

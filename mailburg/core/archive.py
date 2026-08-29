@@ -165,6 +165,71 @@ class AddResult:
 ALT_AB_JAHREN = 10
 
 
+def archivname(pfad) -> str:
+    """Der Anzeigename eines Archivs, ohne es dafür zu öffnen.
+
+    Ein Archiv zu öffnen setzt eine Sperrdatei und baut den Index auf.
+    Für einen Menüeintrag ist das zu viel; hier genügt ein Blick in
+    ``archive.json``.
+
+    Lässt sie sich nicht lesen – abgezogene Platte, verhunzte Datei –,
+    bleibt der Ordnername. Der ist immer noch besser als nichts.
+    """
+    import json
+
+    pfad = Path(pfad)
+    try:
+        meta = json.loads(
+            (pfad / "archive.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return pfad.name
+    return meta.get("name") or pfad.name
+
+
+def archivnamen() -> dict[str, str]:
+    """Kennung -> Name, für alle Archive, die MailBurg schon einmal sah.
+
+    **Warum das hier steht und nicht zweimal woanders.** Die
+    Kontenlisten kennen nur Kennungen wie
+    ``c89fdf58-7ec8-4804-af89-915b71440b7b``; der Name steht im Archiv
+    selbst. Sowohl die Kommandozeile als auch die Postfachverwaltung
+    müssen ihn nachschlagen – und hatten dafür bis zum 2026-08-29 je
+    eine eigene Fassung. Zwei Stellen, die dasselbe tun, laufen
+    irgendwann auseinander.
+
+    Gelesen wird **einmal je Archiv**, nicht einmal je Kennung. Die
+    frühere Fassung in der Oberfläche ging für jedes Postfach erneut
+    durch alle Archivdateien; bei acht Postfächern und zwei Archiven
+    waren das sechzehn Durchläufe für zwei Antworten.
+
+    Was sich nicht auflösen lässt – etwa weil die Platte gerade nicht
+    angeschlossen ist –, fehlt im Ergebnis. Der Aufrufer entscheidet,
+    was er dann anzeigt; die Kennung wegzulassen wäre falsch, denn ein
+    Archiv auf einer abgezogenen Platte hat trotzdem Postfächer.
+    """
+    import json
+
+    from mailburg.ui.app import zuletzt_benutzte_pfade
+
+    namen: dict[str, str] = {}
+    for roh in zuletzt_benutzte_pfade():
+        pfad = Path(roh)
+        try:
+            daten = json.loads(
+                (pfad / "archive.json").read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError):
+            continue
+        kennung = daten.get("uuid")
+        if kennung:
+            namen[kennung] = daten.get("name") or pfad.name
+    return namen
+
+
+
+
+
 class Archive:
     """Ein geöffnetes Archiv."""
 

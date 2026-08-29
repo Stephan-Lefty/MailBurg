@@ -114,6 +114,9 @@ class Kontenverwaltung(QDialog):
     # ------------------------------------------------------------- Anzeigen
 
     def _fuellen(self) -> None:
+        # Beim Neuaufbau frisch nachsehen: Zwischen zwei Durchläufen kann
+        # ein Archiv angelegt, umbenannt oder abgezogen worden sein.
+        self._namen = None
         self.baum.clear()
         for konto in self.liste.konten:
             gemerkt = "im Schlüsselbund" if accounts.passwort_holen(konto) else "fehlt"
@@ -141,32 +144,23 @@ class Kontenverwaltung(QDialog):
         externen Platte morgen woanders liegt. Angezeigt gehört der
         Name: Mit »220b2cd0-f3b1-…« kann niemand etwas anfangen.
         """
+        from mailburg.core.archive import archivnamen
+
         if not konto.archive:
             return "keinem – wird übergangen"
-        namen = [self._archivname(k) for k in konto.archive]
-        return ", ".join(namen)
 
-    @staticmethod
-    def _archivname(kennung: str) -> str:
-        """Sucht den Namen zu einer Kennung in den zuletzt geöffneten Archiven.
+        # Einmal lesen, nicht je Kennung: Bei acht Postfächern und zwei
+        # Archiven waren das vorher sechzehn Durchläufe durch dieselben
+        # Dateien.
+        if self._namen is None:
+            self._namen = archivnamen()
 
-        Findet sich keiner – etwa weil die Platte gerade nicht
-        angeschlossen ist –, bleibt die Kennung stehen. Etwas Unlesbares
-        anzuzeigen ist besser, als ein Archiv zu verschweigen.
-        """
-        import json
-
-        from mailburg.ui.app import zuletzt_benutzte_pfade
-
-        for pfad in zuletzt_benutzte_pfade():
-            datei = pathlib.Path(pfad) / "archive.json"
-            try:
-                daten = json.loads(datei.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                continue
-            if daten.get("uuid") == kennung:
-                return daten.get("name") or pathlib.Path(pfad).name
-        return kennung[:8] + "…"
+        # Was sich nicht auflösen lässt, bleibt als gekürzte Kennung
+        # stehen. Ein Archiv auf einer abgezogenen Platte hat trotzdem
+        # Postfächer, und die zu verschweigen wäre schlimmer.
+        return ", ".join(
+            self._namen.get(k, k[:8] + "…") for k in konto.archive
+        )
 
     def _zuordnen(self) -> None:
         """Fragt, in welche Archive dieses Postfach abgerufen wird."""

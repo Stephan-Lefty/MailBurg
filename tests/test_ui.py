@@ -3917,18 +3917,27 @@ class KontenZuordnungTest(OberflaechenTest):
             with mock.patch(
                 "mailburg.ui.app.zuletzt_benutzte_pfade", lambda: [str(wo)]
             ):
-                name = konten.Kontenverwaltung._archivname("abc-123")
+                from mailburg.core.archive import archivnamen
+
+                name = archivnamen().get("abc-123", "abc-123"[:8] + "…")
 
         self.assertEqual(name, "Privatarchiv")
 
     def test_eine_unbekannte_kennung_bleibt_sichtbar(self):
-        """Liegt die Platte gerade nicht an, wird nichts verschwiegen."""
+        """Liegt die Platte gerade nicht an, wird nichts verschwiegen.
+
+        Seit dem 2026-08-29 löst ``core.archive.archivnamen`` das an
+        einer Stelle für beide Wege auf; was dort fehlt, bleibt als
+        gekürzte Kennung stehen. Ein Archiv auf einer abgezogenen Platte
+        hat trotzdem Postfächer.
+        """
         from unittest import mock
 
-        from mailburg.ui import konten
+        from mailburg.core.archive import archivnamen
 
         with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade", lambda: []):
-            name = konten.Kontenverwaltung._archivname("220b2cd0-f3b1-49ea")
+            kennung = "220b2cd0-f3b1-49ea"
+            name = archivnamen().get(kennung, kennung[:8] + "…")
 
         self.assertTrue(name.startswith("220b2cd0"))
 
