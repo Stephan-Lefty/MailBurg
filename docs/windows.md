@@ -19,18 +19,45 @@ Get-FileHash .\MailBurg.exe -Algorithm SHA256
 
 Der angezeigte Wert muss mit dem in der `.sha256`-Datei übereinstimmen.
 
+![Die Release-Seite auf GitHub: unter »Assets« liegen MailBurg.exe mit 152 MB und die Datei mit der Prüfsumme. Rechts oben zeigt Edge den fertigen Download.](bilder/windows-herunterladen.webp)
+
 ## Windows wird warnen
 
-Beim ersten Start meldet Windows: **„Der Computer wurde durch Windows
-geschützt."** Das ist zu erwarten, und es ist keine Aussage über die Datei.
+**Beim Herunterladen mit Edge.** Nach dem Laden meldet er: *„MailBurg.exe
+wird häufig nicht heruntergeladen. Stellen Sie sicher, dass Sie MailBurg.exe
+vertrauen, bevor Sie sie öffnen."* Das ist keine Aussage über den Inhalt,
+sondern über die Häufigkeit: Der Zähler steht bei einem Programm mit einer
+Handvoll Anwender nun einmal niedrig.
+
+Die Datei ist da, aber Edge wirft sie weg, wenn Sie nichts tun. Fahren Sie mit
+der Maus über die Warnung; es erscheinen ein Papierkorb und drei Punkte. Unter
+den drei Punkten steht **Beibehalten**.
+
+> **Achtung, hier ist die Führung heikel.** Danach fragt Edge noch einmal
+> nach, und die beiden Knöpfe heißen *Abbrechen* und *Löschen*. **Löschen ist
+> der hervorgehobene** — wer gedankenlos die Eingabetaste drückt, hat die
+> Datei weggeworfen. Zum Behalten klicken Sie auf den kleinen Pfeil **neben**
+> „Löschen" und wählen dort **Trotzdem beibehalten**.
+>
+> Das ist keine Eigenheit von MailBurg; jede unsignierte Datei bekommt diese
+> Behandlung.
+
+**Danach startet sie ohne weitere Nachfrage.** Am 29. August 2026 in einer
+frischen Windows-11-Installation durchgespielt: Wer in Edge »Trotzdem
+beibehalten« gewählt hat, bekommt beim Doppelklick keine zweite Warnung mehr.
+
+**Kommt die Datei anders auf den Rechner** — über einen USB-Stick, aus einem
+anderen Browser, aus einem Netzlaufwerk —, kann beim ersten Start
+*„Der Computer wurde durch Windows geschützt"* erscheinen. Dann:
+**Weitere Informationen** → **Trotzdem ausführen**.
+
+## Warum überhaupt gewarnt wird
 
 SmartScreen kennt zwei Wege, eine Anwendung für unbedenklich zu halten: Sie ist
 von einem gekauften Zertifikat signiert, oder sie wurde bereits von vielen
 Leuten heruntergeladen und ausgeführt. MailBurg ist beides nicht — ein
 Signaturzertifikat kostet dreistellig im Jahr, und die Zahl der Anwender ist
 überschaubar.
-
-Zum Starten: **Weitere Informationen** → **Trotzdem ausführen**.
 
 Wem das zu wenig ist: Die Prüfsumme oben lässt sich nachrechnen, der Quellcode
 liegt offen, und die `.exe` wird nicht auf einem Privatrechner gebaut, sondern

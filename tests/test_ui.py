@@ -4133,3 +4133,47 @@ class LeereKopfzeileTest(OberflaechenTest):
 
         # Einmal in _kopf_setzen selbst, sonst nirgends.
         self.assertEqual(quelle.count("self.kopf.setText("), 1)
+
+
+class ArchivOhnePostfachTest(OberflaechenTest):
+    """Ein Archiv nur zum Importieren muss anlegbar sein.
+
+    »Ohne Postfach gibt es nichts zu archivieren« stimmt nicht: Wer ein
+    Thunderbird-Profil oder eine Sicherung einlesen will, braucht keins.
+    Bis zum 2026-08-29 kam er im Assistenten nicht weiter – aufgefallen,
+    als für die Windows-Anleitung ein Beispielarchiv angelegt werden
+    sollte.
+    """
+
+    def test_es_wird_gefragt_statt_verboten(self):
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "assistent.py"
+        ).read_text(encoding="utf-8")
+
+        # Der Aufruf steht *vor* dem Titel, die Erklärung dahinter.
+        mitte = quelle.index('"Kein Postfach gewählt"')
+        stelle = quelle[mitte - 200:mitte + 800]
+
+        self.assertIn("QMessageBox.question", stelle)
+        self.assertIn("fortfahren?", stelle)
+
+    def test_die_vorgabe_ist_nein(self):
+        """Wer versehentlich keins gewählt hat, soll nicht durchrutschen."""
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "assistent.py"
+        ).read_text(encoding="utf-8")
+
+        stelle = quelle[quelle.index('"Kein Postfach gewählt"'):]
+        self.assertIn("QMessageBox.No,", stelle[:900])
+
+    def test_der_weg_zurueck_steht_dabei(self):
+        """Sonst hält man es für endgültig."""
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "assistent.py"
+        ).read_text(encoding="utf-8")
+
+        stelle = quelle[quelle.index('"Kein Postfach gewählt"'):][:800]
+        self.assertIn("nachtragen", stelle)

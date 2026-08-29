@@ -853,12 +853,27 @@ class KontenSeite(QWizardPage):
             if fertige:
                 self.wizard().konten = [z.konto for z in fertige]
                 return True
-            QMessageBox.information(
+            # **Fragen, nicht verbieten.** »Ohne Postfach gibt es nichts
+            # zu archivieren« stimmt nicht: Wer ein Archiv anlegt, um
+            # ein Thunderbird-Profil oder eine Sicherung hineinzulesen,
+            # braucht kein Postfach. Bis zum 2026-08-29 kam er hier
+            # nicht weiter – aufgefallen, als Stephan für die Anleitung
+            # ein Beispielarchiv anlegen wollte.
+            antwort = QMessageBox.question(
                 self,
                 "Kein Postfach gewählt",
-                "Ohne Postfach gibt es nichts zu archivieren. Wählen Sie "
-                "mindestens eines aus oder tragen Sie eines von Hand ein.",
+                "Ohne Postfach wird beim Abruf nichts geholt.\n\n"
+                "Das kann gewollt sein – etwa für ein Archiv, in das Sie "
+                "nur ein Thunderbird-Profil oder eine Sicherung "
+                "einlesen. Postfächer lassen sich jederzeit nachtragen "
+                "unter Einstellungen → Postfächer verwalten.\n\n"
+                "Ohne Postfach fortfahren?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
             )
+            if antwort == QMessageBox.Yes:
+                self.wizard().konten = []
+                return True
             return False
 
         # Ein eingerichtetes Postfach hat sein Passwort im Schlüsselbund;

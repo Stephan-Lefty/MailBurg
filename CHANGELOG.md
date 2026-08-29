@@ -11,6 +11,13 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Ein Archiv ohne Postfach ließ sich nicht anlegen.** Der Assistent
+  bestand auf mindestens einem und begründete das mit „Ohne Postfach gibt
+  es nichts zu archivieren". Das stimmt nicht: Wer ein Archiv anlegt, um
+  ein Thunderbird-Profil oder eine Sicherung hineinzulesen, braucht
+  keins. Jetzt fragt MailBurg statt zu verbieten — mit „Nein" als
+  Vorgabe, damit niemand versehentlich durchrutscht.
+
 - **Ein umbenannter IMAP-Ordner wurde zweimal geführt.** Wird aus
   „Kunden" ein „Kunden 2025", war der Höchststand für den neuen Namen
   null: Der ganze Ordner wurde erneut durchlaufen, jede Mail bekam einen
