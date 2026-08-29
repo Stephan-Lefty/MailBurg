@@ -73,6 +73,24 @@ angeschlossenen Platten.
 **Zuletzt benutzt** – die zuletzt geöffneten Archive unter ihrem Namen. Wer
 zwei Archive führt, wechselt hierüber mit zwei Klicks.
 
+**Auskunft nach DSGVO …** *(nur im Geschäftsarchiv)*
+
+![Auskunft nach DSGVO](bilder/auskunft.png)
+
+Fragt jemand, was über ihn gespeichert ist, hat er nach Artikel 15 DSGVO
+Anspruch auf eine Kopie. MailBurg sucht alle Nachrichten, in denen die Person
+vorkommt, und packt sie auf Wunsch als ZIP – mit einem Begleitblatt, das
+Herkunft, Zeitraum und Verarbeitungszweck nennt.
+
+**Herausgegeben wird von Ihnen, nicht vom Programm.** In denselben Nachrichten
+stehen oft Daten Dritter – Adressen im Verteiler, Namen im Text, Unterschriften
+in Anhängen –, und nach Artikel 15 Absatz 4 darf die Kopie deren Rechte nicht
+beeinträchtigen. Das steht im Fenster und noch einmal im Begleitblatt.
+
+**Verfahrensdokumentation …** *(nur im Geschäftsarchiv)* – erzeugt einen
+Entwurf nach GoBD. MailBurg füllt, was es selbst weiß; alles Organisatorische
+bleibt als sichtbare Lücke stehen. Verantwortlich dafür sind Sie.
+
 **Archiv sichern …**
 
 ![Sichern](bilder/sichern.png)
@@ -110,6 +128,38 @@ PDF werden nicht verändert.
 Etwa fünf bis acht Sekunden je Seite. Sie können das Fenster schließen und im
 Hintergrund weiterlesen lassen; oben rechts steht dann der Stand, und Sie
 können normal weitersuchen.
+
+**Aufbewahrung festlegen …** *(nur im Geschäftsarchiv)*
+
+![Aufbewahrung festlegen](bilder/aufbewahrung.png)
+
+Ordnet die **gerade gefundenen** Mails ein: Buchungsbeleg, Handelsbrief oder
+privat. Davon hängt ab, wie lange MailBurg das Löschen bremst – sechs, acht
+oder zehn Jahre.
+
+Eingestuft wird über die Suche, nicht Mail für Mail. Wer ein Archiv einordnet,
+hat hunderte Belege vor sich; »alles von der Steuerkanzlei ist Buchungsbeleg«
+ist eine Regel, die sich als Suchausdruck schreiben lässt. Suchen Sie also
+zuerst, und stufen Sie dann die Treffer ein.
+
+Das Fenster sagt vorher, wie viele Mails betroffen sind und was die Wahl
+bedeutet. Jede Änderung steht im [Journal](#journal) – wer später begründen
+muss, warum eine Mail nach sechs statt acht Jahren gelöscht wurde, will darauf
+zeigen können.
+
+### Einmal im Jahr fragt MailBurg nach
+
+![Abgelaufene Fristen](bilder/fristen.png)
+
+Ab dem 1. Mai, und nur einmal je Kalenderjahr: MailBurg zeigt, was seine Frist
+hinter sich hat. Nicht ab dem 1. Januar, wenn die Fristen ablaufen – eine
+Meldung, die bei jedem Öffnen erscheint, wird nach der dritten Wiederholung
+weggeklickt, ohne gelesen zu werden.
+
+**Auch ein Privatarchiv fragt**, dort aber anders: Es gibt keine Fristen, also
+zeigt es nur, was älter als zehn Jahre ist, und sagt ausdrücklich dazu, dass
+Alter kein Grund zum Löschen ist. Gelöscht wird in beiden Fällen nichts von
+selbst.
 
 ## Menü Suchen
 

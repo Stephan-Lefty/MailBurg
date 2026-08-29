@@ -205,7 +205,10 @@ def _kontenbild(eltern) -> None:
          mock.patch.object(modul.accounts, "passwort_holen",
                            lambda konto: "vorhanden"):
         fenster = modul.Kontenverwaltung(eltern)
-        fenster.resize(820, 420)
+        # Breit genug für die Spalte »Archive«: Bei 820 brach sie mitten
+        # im Wort ab, und gerade sie ist die wichtigste – ohne Zuordnung
+        # wird ein Postfach beim Abruf übergangen.
+        fenster.resize(1020, 420)
         fenster.show()
         ablegen(fenster, "postfaecher")
         fenster.close()
@@ -283,6 +286,15 @@ def main() -> int:
     anwendung.setStyle("Fusion")
     QLocale.setDefault(QLocale("de_DE"))
 
+    # **Qts eigene Beschriftungen übersetzen.** Ohne das steht auf den
+    # Standardknöpfen »Close« und »Cancel« – im echten Programm nicht,
+    # denn dort lädt ``ui.app.main`` den Übersetzer. Die Anleitung zeigte
+    # damit etwas, das es so nie zu sehen gibt. Am 2026-08-29 auf dem
+    # Bild der Postfachverwaltung aufgefallen.
+    from mailburg.ui.app import _deutsch
+
+    anwendung._uebersetzer = _deutsch(anwendung)
+
     zwischen = Path(tempfile.mkdtemp(prefix="mailburg-bilder-"))
     try:
         ort = zwischen / "Geschaeftsarchiv"
@@ -319,6 +331,72 @@ def main() -> int:
         maske.von.setText("energie")
         maske.show()
         ablegen(maske, "suchmaske")
+
+        def _passend(dialog, breite: int) -> None:
+            """Breite vorgeben, Höhe nach Bedarf.
+
+            ``resize`` allein zieht die Absätze auseinander, wenn das
+            Fenster höher ist als sein Inhalt – es sieht dann aus, als
+            fehle etwas. ``adjustSize`` allein schrumpft es auf
+            dreihundert Pixel, und der Text bricht nach jedem zweiten
+            Wort um. Beides zusammen trifft es.
+            """
+            dialog.setMinimumWidth(breite)
+            dialog.adjustSize()
+            dialog.resize(breite, dialog.sizeHint().height())
+
+        # ---------------------------------------- Aufbewahrung und DSGVO
+        #
+        # Alles, was seit dem 26.08. dazugekommen ist. Ein Menüpunkt ohne
+        # Bild in der Anleitung ist einer, den niemand findet.
+        from mailburg.ui.einstufen import Einstufungsdialog
+
+        # Wirklich suchen, nicht bloß behaupten: Stünde über einer Liste
+        # aller Mails »gefunden mit von:energie«, wäre die Anleitung an
+        # der Stelle unwahr.
+        treffer = archiv.index.search("von:energie", limit=50)
+        einstufen = Einstufungsdialog(archiv, "von:energie", treffer, fenster)
+        _passend(einstufen, 620)
+        einstufen.show()
+        ablegen(einstufen, "aufbewahrung")
+        einstufen.close()
+
+        from mailburg.ui.fristen import Fristendialog
+
+        fristen = Fristendialog(
+            archiv, archiv.index.search("", limit=50), fenster
+        )
+        _passend(fristen, 560)
+        fristen.show()
+        ablegen(fristen, "fristen")
+        fristen.close()
+
+        from mailburg.ui.auskunft import Auskunftsdialog
+
+        auskunft = Auskunftsdialog(archiv, fenster)
+        # Eine Adresse, die es im Beispielarchiv wirklich gibt: Ein Bild
+        # mit »Nichts gefunden« taugt nicht als Anleitung.
+        auskunft.adresse.setText("a.feldmann@partner-firma.example")
+        auskunft._suchen()
+        # Knapp halten - sonst zieht das Layout die Absätze auseinander
+        # und das Fenster sieht aus, als fehle etwas.
+        _passend(auskunft, 620)
+        auskunft.show()
+        ablegen(auskunft, "auskunft")
+        auskunft.close()
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.anmelden import Anmeldedialog
+
+        anmelden = Anmeldedialog(
+            Konto(name="Arbeit", server="outlook.office365.com",
+                  benutzer="martha@mailburg.example"),
+            fenster,
+        )
+        _passend(anmelden, 620)
+        anmelden.show()
+        ablegen(anmelden, "anmelden")
+        anmelden.close()
 
         from mailburg.ui.hilfe import Hilfefenster
 
@@ -375,9 +453,28 @@ def main() -> int:
 #: Bilder lagen schon auf GitHub, bevor es jemandem auffiel. Seitdem
 #: liest dieses Skript seine eigenen Bilder noch einmal.
 VERRAETERISCH = (
-    "protonmail", "gmail", "gmx", "web.de", "outlook",
-    "@t-online", "kasserver", "goserver", "hostedoffice",
+    "@protonmail", "@gmail", "@gmx", "@web.de", "@outlook", "@t-online",
+    "@hotmail", "@live.", "@posteo", "@mailbox.org",
+    "kasserver", "hostedoffice",
 )
+
+#: **Warum mit Klammeraffe.** Zuerst stand hier bloß »outlook«, und die
+#: Prüfung schlug beim Anmeldefenster an: Dort steht »Microsoft
+#: (Outlook.com, Hotmail, Exchange)« als Name des Anmeldedienstes. Das
+#: ist keine Adresse, sondern die Bezeichnung eines Anbieters – sie
+#: *muss* dort stehen, sonst weiß niemand, was er auswählt.
+#:
+#: Gesucht wird deshalb nach Adressen, nicht nach Produktnamen. Eine
+#: Mailadresse bei einem dieser Anbieter wäre ein Fund; ihr Name in
+#: einer Auswahlliste ist keiner.
+#:
+#: (Hier steht bewusst keine vollständige Beispieladresse. Der Test
+#: ``test_nur_reservierte_endungen`` verbietet sie in dieser Datei –
+#: zu Recht, und er hat sie beim ersten Wurf dieses Kommentars prompt
+#: gefunden.)
+#:
+#: Die beiden ohne Klammeraffe sind Servernamen von Massenhostern – die
+#: tauchen nur auf, wenn jemand seine echte Kontenliste abgebildet hat.
 
 
 def _nachsehen() -> int:

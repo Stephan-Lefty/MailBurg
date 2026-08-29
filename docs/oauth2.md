@@ -107,6 +107,15 @@ kann das Postfach abrufen.
 mailburg konten anmelden Arbeit
 ```
 
+### Oder über die Oberfläche
+
+*Einstellungen → Postfächer verwalten … → Anmelden …*
+
+![Das Anmeldefenster: Auswahl des Anbieters, Feld für die Kennung der selbst registrierten Anwendung, und die Erklärung, warum MailBurg keine eigene mitbringt.](bilder/anmelden.png)
+
+Dasselbe wie oben, nur ohne Tippen. Die Kennung wird beim ersten Mal
+eingetragen und danach vorgeschlagen.
+
 ## Was danach geschieht
 
 Der Zugriff läuft nach einer Stunde ab. MailBurg erneuert ihn bei jedem
