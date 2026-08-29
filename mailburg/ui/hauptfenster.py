@@ -891,9 +891,12 @@ class Hauptfenster(QMainWindow):
 
         from mailburg.core.sync import Abrufzustand
 
-        anzahl = f"{self.archiv.index.count():,}".replace(",", ".")
+        from mailburg.core.sprache import mails
+
         wann = _abrufzeit(Abrufzustand(self.archiv.uuid).zuletzt)
-        self.bestand.setText(f"{anzahl} Mails im Archiv · {wann}")
+        self.bestand.setText(
+            f"{mails(self.archiv.index.count())} im Archiv · {wann}"
+        )
 
     def _reihenfolge_merken(self) -> None:
         from mailburg.ui.app import merken_unter
@@ -1002,15 +1005,18 @@ class Hauptfenster(QMainWindow):
             # Ohne Suchausdruck ist nichts gesucht worden; dann steht dort
             # auch kein Ergebnis, sondern gar nichts.
             self.suchmeldung.setText("")
+            from mailburg.core.sprache import mails
+
             self.stand.setText(
-                f"{anzahl} Mails" if self.modell.gesamt
+                mails(self.modell.gesamt) if self.modell.gesamt
                 else "Das Archiv ist noch leer."
             )
             return
 
         if self.modell.gesamt:
-            wort = "Treffer" if self.modell.gesamt > 1 else "Treffer"
-            self._suchmeldung_setzen(f"MailBurg hat {anzahl} {wort}.", True)
+            # »Treffer« ist in Ein- und Mehrzahl gleich – hier stand
+            # einmal eine Fallunterscheidung mit zwei gleichen Zweigen.
+            self._suchmeldung_setzen(f"MailBurg hat {anzahl} Treffer.", True)
         else:
             self._suchmeldung_setzen(
                 "MailBurg hat nichts gefunden. F1 erklärt die Suchsprache.",

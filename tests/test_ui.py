@@ -4296,3 +4296,54 @@ class PasswortAusDemDialogTest(OberflaechenTest):
         )
         self.assertIsNotNone(zeile)
         self.assertTrue(hasattr(zeile, "passwort"))
+
+
+class ZahlwortTest(OberflaechenTest):
+    """»1 Mails im Archiv« stand in der Statuszeile.
+
+    Ein winziger Fehler, aber einer, den jeder sofort sieht – und er
+    stand ausgerechnet dort, wo ein neuer Anwender zum ersten Mal
+    nachsieht, ob sein Archiv etwas enthält. Bei einem frisch
+    angelegten Archiv mit einer Mail also immer.
+
+    Am 2026-08-29 auf einem Windows-Bild für die Anleitung aufgefallen.
+    """
+
+    def test_einzahl_und_mehrzahl(self):
+        from mailburg.core.sprache import mails
+
+        self.assertEqual(mails(0), "0 Mails")
+        self.assertEqual(mails(1), "1 Mail")
+        self.assertEqual(mails(2), "2 Mails")
+
+    def test_mit_tausenderpunkt(self):
+        from mailburg.core.sprache import mails
+
+        self.assertEqual(mails(16367), "16.367 Mails")
+
+    def test_auch_die_unregelmaessigen(self):
+        """»Datei« wird nicht zu »Dateis«."""
+        from mailburg.core.sprache import dateien, nachrichten
+
+        self.assertEqual(dateien(1), "1 Datei")
+        self.assertEqual(dateien(3), "3 Dateien")
+        self.assertEqual(nachrichten(1), "1 Nachricht")
+        self.assertEqual(nachrichten(3), "3 Nachrichten")
+
+    def test_die_statuszeile_benutzt_es(self):
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "hauptfenster.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("from mailburg.core.sprache import mails", quelle)
+        self.assertNotIn('} Mails im Archiv', quelle)
+
+    def test_keine_scheinbare_fallunterscheidung(self):
+        """Es stand einmal »Treffer« if … else »Treffer« da."""
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "hauptfenster.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn('"Treffer" if', quelle)
