@@ -9,6 +9,21 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Behoben
+
+- **Ein umbenannter IMAP-Ordner wurde zweimal geführt.** Wird aus
+  „Kunden" ein „Kunden 2025", war der Höchststand für den neuen Namen
+  null: Der ganze Ordner wurde erneut durchlaufen, jede Mail bekam einen
+  zweiten Fundort, und im Ordnerbaum stand der alte Name als Geist
+  weiter. Verloren ging dabei nichts — die Ablage ist inhaltsadressiert,
+  doppelt lag keine einzige Datei —, aber das Journal wuchs ohne Not: bei
+  einem Ordner mit fünftausend Mails um fünftausend Einträge.
+
+  Erkannt wird es an der `UIDVALIDITY`, die beim Umbenennen gleich
+  bleibt. Nur bei genau einem verschwundenen und genau einem neuen
+  Ordner — zwei Ordner können dieselbe Kennzahl tragen, und ein falsch
+  zusammengeführter Ordner wäre schlimmer als ein doppelt gelesener.
+
 ### Hinzugefügt
 
 - **Anmeldung per OAuth2.** Microsoft nimmt seit dem 16. September 2024

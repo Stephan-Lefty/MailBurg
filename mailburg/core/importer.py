@@ -83,6 +83,57 @@ def _verarbeiten(roh: bytes, mit_anhangstext: bool) -> tuple[Any, str, dict[str,
     return zerlegt, anhangstext, zaehlung
 
 
+def _umbenennungen_nachziehen(archiv, quelle) -> None:
+    """Zieht umbenannte Ordner nach, bevor der Lauf beginnt.
+
+    **Sonst wird der Ordner zweimal geführt.** MailBurg merkt sich den
+    Fundort unter dem angezeigten Namen; wird aus »Kunden« ein »Kunden
+    2025«, ist der Höchststand für den neuen Namen null. Der ganze
+    Ordner wird erneut durchlaufen, jede Mail bekommt einen zweiten
+    Fundort, und im Ordnerbaum steht der alte Name als Geist weiter.
+    Verloren geht dabei nichts – doppelt liegt auch nichts, die Ablage
+    ist inhaltsadressiert –, aber bei fünftausend Mails sind das
+    fünftausend überflüssige Journaleinträge.
+
+    Nur Quellen, die es können, werden gefragt: Ein Thunderbird-Profil
+    hat keine ``UIDVALIDITY``, und ein Ordner heißt dort, wie er heißt.
+    """
+    zustand = getattr(quelle, "zustand", None)
+    if zustand is None or not hasattr(quelle, "umbenennungen"):
+        return
+
+    bekannte = zustand.bekannte_ordner(quelle.account)
+    if not bekannte:
+        return
+
+    try:
+        paare = quelle.umbenennungen(bekannte)
+    except Exception:  # noqa: BLE001
+        # Eine Erkennung, die scheitert, darf den Abruf nicht kosten.
+        # Im schlimmsten Fall wird eben doppelt gelesen, wie bisher.
+        return
+
+    for alt, neu in paare:
+        umgezogen = archiv.index.ordner_umbenennen(quelle.account, alt, neu)
+        if not umgezogen:
+            continue
+        zustand.ordner_umbenennen(quelle.account, alt, neu)
+        # **Der Vorgang gehört ins Journal.** Ein Fundort, der sich
+        # ändert, ist eine Änderung am Archiv - und beim nächsten
+        # Neuaufbau des Index muss nachvollziehbar sein, warum die Mails
+        # jetzt woanders liegen.
+        archiv.journal.append(
+            "note",
+            art="ordner_umbenannt",
+            konto=quelle.account,
+            alt=alt,
+            neu=neu,
+            fundorte=umgezogen,
+        )
+        archiv.journal.flush()
+        archiv.index.commit()
+
+
 def importieren(
     archiv,
     quelle,
@@ -108,6 +159,8 @@ def importieren(
     stat = Statistik()
     kerne = prozesse if prozesse is not None else min(os.cpu_count() or 2, 8)
     deckel = max(kerne * PUFFER_JE_KERN, 4)
+
+    _umbenennungen_nachziehen(archiv, quelle)
 
     def ablegen(nachricht, zerlegt, anhangstext: str) -> None:
         ergebnis = archiv.add(

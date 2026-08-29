@@ -500,6 +500,28 @@ class Index:
             )
         }
 
+    def ordner_umbenennen(self, account: str, alt: str, neu: str) -> int:
+        """Zieht alle Fundorte eines Ordners auf den neuen Namen um.
+
+        Gibt zurück, wie viele umgezogen sind. Gibt es den neuen Namen
+        schon – etwa weil ein früherer Lauf ihn bereits angelegt hat –,
+        werden die Doppelten still verworfen: Dieselbe Mail zweimal im
+        selben Ordner ist kein Fundort mehr, sondern ein Fehler.
+        """
+        vorher = self.db.execute(
+            "SELECT COUNT(*) FROM locations WHERE account = ? AND folder = ?",
+            (account, alt),
+        ).fetchone()[0]
+        if not vorher:
+            return 0
+
+        self.db.execute(
+            """UPDATE OR REPLACE locations SET folder = ?
+               WHERE account = ? AND folder = ?""",
+            (neu, account, alt),
+        )
+        return vorher
+
     def max_uid(self, account: str, folder: str) -> int:
         """Die höchste UID, die aus diesem Ordner tatsächlich im Archiv liegt.
 

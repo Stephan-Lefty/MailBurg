@@ -244,14 +244,21 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   richtige Reihenfolge – ein Lasttest an einem Bestand, den man nicht
   ersetzen kann, beweist wenig, solange die Grundlage nicht steht.
 
-- [ ] **Was passiert, wenn jemand einen IMAP-Ordner umbenennt?** MailBurg
-  merkt sich den Fundort unter dem angezeigten Namen. Aus »Kunden« wird
-  »Kunden 2025«, und schon ist der Höchststand für diesen Namen null: Der
-  ganze Ordner wird erneut geholt und als zweiter Fundort ins Journal
-  geschrieben. Verloren geht nichts, doppelt auf der Platte liegt auch
-  nichts – aber das Journal wächst ohne Not, und im Ordnerbaum steht der
-  Ordner zweimal. Ob sich das über die Ordner-Kennung aus RFC 8474
-  (`OBJECTID`) sauber lösen lässt, ist zu prüfen; nicht jeder Server kann das.
+- [x] **Was passiert, wenn jemand einen IMAP-Ordner umbenennt?**
+  (nachgestellt und behoben am 2026-08-29) Die Vermutung stimmte: Der
+  Ordner wurde zweimal geführt, jede Mail bekam einen zweiten Fundort,
+  das Journal verdoppelte sich. Bei drei Mails waren es sechs Einträge
+  statt drei; bei fünftausend entsprechend.
+
+  Erkannt wird es über `UIDVALIDITY` – die bleibt beim Umbenennen
+  gleich, so verlangt es RFC 3501. RFC 8474 (`OBJECTID`) wäre der
+  sauberere Weg, kennen aber längst nicht alle Server.
+
+  **Nur bei genau einem verschwundenen und genau einem neuen Ordner.**
+  Zwei Ordner können dieselbe `UIDVALIDITY` tragen; der Standard
+  verlangt Eindeutigkeit nur innerhalb eines Ordners über die Zeit. Im
+  Zweifel geschieht nichts – dann wird eben doppelt gelesen, wie bisher.
+  Ein falsch zusammengeführter Ordner wäre deutlich schlimmer.
 
 - [ ] **Marken bleiben eine Momentaufnahme.** Ob eine Mail gelesen oder
   beantwortet war, wird beim Archivieren festgehalten und danach nie wieder

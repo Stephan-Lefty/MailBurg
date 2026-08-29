@@ -158,6 +158,25 @@ class Abrufzustand:
         else:
             del eintrag["nachholen"]
 
+    def bekannte_ordner(self, konto: str) -> set[str]:
+        """Welche Ordner dieses Kontos beim letzten Lauf da waren.
+
+        Grundlage für die Umbenennungserkennung: Was hier steht und auf
+        dem Server fehlt, ist entweder gelöscht oder umbenannt.
+        """
+        return set(self.konten.get(konto, {}))
+
+    def ordner_umbenennen(self, konto: str, alt: str, neu: str) -> None:
+        """Nimmt den gemerkten Stand mit auf den neuen Namen.
+
+        Ohne das wäre die Umbenennung im Index zwar vollzogen, der
+        Abrufzustand aber kennte den neuen Ordner nicht – und der
+        nächste Lauf hielte ihn für frisch.
+        """
+        ordner = self.konten.setdefault(konto, {})
+        if alt in ordner:
+            ordner[neu] = ordner.pop(alt)
+
     def konto_vergessen(self, konto: str) -> None:
         """Wirft alles zu einem Konto weg – der nächste Lauf holt alles."""
         self.konten.pop(konto, None)

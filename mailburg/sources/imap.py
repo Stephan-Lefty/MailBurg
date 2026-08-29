@@ -517,6 +517,71 @@ class ImapSource(Source):
 
     # ------------------------------------------------------------- Abrufen
 
+    def umbenennungen(self, bekannte: set[str]) -> list[tuple[str, str]]:
+        """Findet Ordner, die seit dem letzten Lauf umbenannt wurden.
+
+        **Warum das nötig ist.** MailBurg merkt sich den Fundort unter
+        dem angezeigten Namen. Wird aus »Kunden« ein »Kunden 2025«, ist
+        der Höchststand für den neuen Namen null: Der ganze Ordner wird
+        erneut durchlaufen und jede Mail bekommt einen zweiten Fundort.
+        Verloren geht nichts – doppelt liegt auch nichts, die Ablage ist
+        inhaltsadressiert –, aber das Journal wächst ohne Not, und im
+        Ordnerbaum steht der Ordner zweimal, einmal davon als Geist.
+        Bei einem Ordner mit fünftausend Mails sind das fünftausend
+        überflüssige Einträge.
+
+        **Woran es sich erkennen lässt.** ``UIDVALIDITY`` bleibt beim
+        Umbenennen gleich – so verlangt es RFC 3501, denn die UIDs
+        ändern sich ja nicht. Verschwindet also ein bekannter Ordner und
+        taucht ein unbekannter mit derselben Kennzahl auf, ist es
+        derselbe unter neuem Namen.
+
+        **Warum nicht über RFC 8474.** Der Standard sieht dafür eine
+        eigene Ordner-Kennung vor (``OBJECTID``), aber die kennen längst
+        nicht alle Server. ``UIDVALIDITY`` kennt jeder.
+
+        **Wo die Grenze liegt.** Zwei Ordner können dieselbe
+        ``UIDVALIDITY`` tragen – der Standard verlangt Eindeutigkeit nur
+        innerhalb eines Ordners über die Zeit, nicht zwischen Ordnern.
+        Deshalb wird nur zugeordnet, wenn genau ein Ordner verschwunden
+        und genau einer hinzugekommen ist und beide dieselbe Kennzahl
+        haben. Im Zweifel geschieht nichts – dann wird eben doppelt
+        gelesen, wie bisher. Ein falsch zusammengeführter Ordner wäre
+        deutlich schlimmer.
+        """
+        if self.zustand is None:
+            return []
+
+        jetzige = {anzeige for _roh, anzeige in self._alle_ordner()}
+        verschwunden = bekannte - jetzige
+        neue = jetzige - bekannte
+        if len(verschwunden) != 1 or len(neue) != 1:
+            return []
+
+        alt_name = next(iter(verschwunden))
+        neu_name = next(iter(neue))
+        alte_kennzahl = self.zustand.uidvalidity(self.account, alt_name)
+        if alte_kennzahl is None:
+            return []
+
+        # Für die Kennzahl des neuen Ordners muss er geöffnet werden.
+        roh = next(
+            (r for r, a in self._alle_ordner() if a == neu_name), None
+        )
+        if roh is None:
+            return []
+        try:
+            status, _daten = self._verbindung.select(f'"{roh}"', readonly=True)
+            if status != "OK":
+                return []
+            neue_kennzahl = self._uidvalidity()
+        except (imaplib.IMAP4.error, OSError):
+            return []
+
+        if neue_kennzahl != alte_kennzahl:
+            return []
+        return [(alt_name, neu_name)]
+
     def iter_messages(self) -> Iterator[RawMessage]:
         for roh, anzeige in self._alle_ordner():
             try:
