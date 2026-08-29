@@ -137,15 +137,28 @@ class Fristendialog(QDialog):
         self.ansehen = True
         self.accept()
 
+    #: Mails ohne verwertbares Datum. Sie kommen vor – bei alter Post aus
+    #: Umzügen zwischen Programmen, bei Nachrichten mit beschädigtem Kopf.
+    #: Auf einem Bild in der Anleitung stand dafür »? (2)«; wer das liest,
+    #: weiß nicht, ob das Programm etwas nicht konnte oder ob es ein Jahr
+    #: gibt, das so heißt. Am 2026-08-29 ausgeschrieben.
+    OHNE_DATUM = "ohne Datum"
+
     def _nach_jahr(self) -> str:
         zaehler: dict[str, int] = {}
         for eintrag in self.treffer:
-            jahr = (eintrag.date or "?")[:4]
+            jahr = eintrag.date[:4] if eintrag.date else self.OHNE_DATUM
             zaehler[jahr] = zaehler.get(jahr, 0) + 1
         if not zaehler:
             return ""
+
+        # »ohne Datum« ans Ende, nicht alphabetisch zwischen die Jahre.
+        jahre = sorted(k for k in zaehler if k != self.OHNE_DATUM)
+        if self.OHNE_DATUM in zaehler:
+            jahre.append(self.OHNE_DATUM)
+
         return "Aus diesen Jahren: " + ", ".join(
-            f"{jahr} ({anzahl})" for jahr, anzahl in sorted(zaehler.items())
+            f"{jahr} ({zaehler[jahr]})" for jahr in jahre
         )
 
 

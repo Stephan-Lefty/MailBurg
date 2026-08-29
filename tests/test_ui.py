@@ -4449,3 +4449,49 @@ class PfadanzeigeTest(OberflaechenTest):
         self.assertIn(
             "self.ziel.setText(_wie_das_system_schreibt(gewaehlt))", quelle
         )
+
+
+class OhneDatumTest(OberflaechenTest):
+    """»Aus diesen Jahren: 2026 (12), ? (2)«.
+
+    Das Fragezeichen stand für Mails, deren Datum sich nicht lesen ließ.
+    Wer es sieht, weiß nicht, ob das Programm etwas nicht konnte oder ob
+    es ein Jahr gibt, das so heißt.
+
+    Am 2026-08-29 auf dem Bild `fristen.png` aufgefallen.
+    """
+
+    def _dialog(self, daten):
+        from unittest.mock import MagicMock
+
+        from mailburg.ui.fristen import Fristendialog
+
+        dialog = Fristendialog.__new__(Fristendialog)
+        dialog.treffer = [MagicMock(date=d) for d in daten]
+        return dialog
+
+    def test_ohne_datum_wird_ausgeschrieben(self):
+        text = self._dialog(["2019-04-01", None, "2019-08-02"])._nach_jahr()
+
+        self.assertIn("ohne Datum (1)", text)
+        self.assertNotIn("?", text)
+
+    def test_ohne_datum_steht_hinten(self):
+        """Sonst sortierte es sich zwischen die Jahre."""
+        text = self._dialog([None, "2019-04-01", "2021-01-01"])._nach_jahr()
+
+        self.assertTrue(
+            text.index("2019") < text.index("2021") < text.index("ohne Datum"),
+            text,
+        )
+
+    def test_ohne_fund_bleibt_es_leer(self):
+        self.assertEqual(self._dialog([])._nach_jahr(), "")
+
+    def test_die_jahre_werden_gezaehlt(self):
+        text = self._dialog(
+            ["2019-04-01", "2019-08-02", "2021-01-01"]
+        )._nach_jahr()
+
+        self.assertIn("2019 (2)", text)
+        self.assertIn("2021 (1)", text)
