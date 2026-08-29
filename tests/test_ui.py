@@ -4229,3 +4229,70 @@ class OhnePruefungKnopfTest(OberflaechenTest):
 
         self.assertTrue(dialog.ungeprueft_knopf.isHidden())
         self.assertTrue(dialog.uebernehmen_knopf.isEnabled())
+
+
+class PasswortAusDemDialogTest(OberflaechenTest):
+    """Das im Dialog eingetippte Passwort muss in der Liste ankommen.
+
+    **Wie daraus eine Sackgasse wurde.** Ohne diese Übernahme blieb das
+    Feld in der Postfachliste leer. Beim Weitergehen kam »Für dieses
+    Postfach fehlt noch das Passwort« mit den Knöpfen *Erneut versuchen*
+    und *Dieses Postfach auslassen*. Wer auslassen wählte, bekam »Kein
+    Postfach gewählt« und kam ebenfalls nicht weiter – und wer es
+    ankreuzte, landete wieder bei der Passwortfrage.
+
+    Am 2026-08-29 unter Windows gelandet, beim Anlegen eines
+    Beispielarchivs für die Anleitung. Der Weg war seit vier Tagen so
+    und niemandem aufgefallen, weil beim Durchspielen immer ein echtes
+    Postfach mit echtem Passwort eingetragen wurde.
+    """
+
+    def _seite_mit_dialog(self, passwort: str):
+        from unittest import mock
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.assistent import KontenSeite, KontoDialog
+
+        seite = KontenSeite()
+        dialog = KontoDialog()
+        dialog.name.setText("Beispiel")
+        dialog.server.setText("imap.example.org")
+        dialog.benutzer.setText("post@example.org")
+        dialog.passwort.setText(passwort)
+
+        self._offen = getattr(self, "_offen", [])
+        self._offen += [seite, dialog]
+
+        with mock.patch.object(KontoDialog, "exec", return_value=True):
+            with mock.patch("mailburg.ui.assistent.KontoDialog",
+                            return_value=dialog):
+                seite._von_hand()
+        return seite
+
+    def test_es_kommt_in_der_zeile_an(self):
+        seite = self._seite_mit_dialog("geheim")
+
+        self.assertEqual(len(seite.zeilen), 1)
+        self.assertEqual(seite.zeilen[0].passwort.text(), "geheim")
+
+    def test_ohne_passwort_bleibt_das_feld_leer(self):
+        """Wer keins eingibt, soll auch keins vorgesetzt bekommen."""
+        seite = self._seite_mit_dialog("")
+
+        self.assertEqual(seite.zeilen[0].passwort.text(), "")
+
+    def test_die_zeile_wird_zurueckgegeben(self):
+        """Sonst kann der Aufrufer nichts damit machen – genau daran lag es."""
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.assistent import KontenSeite
+
+        seite = KontenSeite()
+        self._offen = getattr(self, "_offen", [])
+        self._offen.append(seite)
+
+        zeile = seite._zeile_anlegen(
+            Konto(name="X", server="imap.example.org",
+                  benutzer="post@example.org")
+        )
+        self.assertIsNotNone(zeile)
+        self.assertTrue(hasattr(zeile, "passwort"))

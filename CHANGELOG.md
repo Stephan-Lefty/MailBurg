@@ -11,6 +11,17 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Das im Dialog eingetippte Passwort ging verloren** — und daraus wurde
+  eine Sackgasse. In der Postfachliste blieb das Feld leer; beim
+  Weitergehen kam „Für dieses Postfach fehlt noch das Passwort" mit den
+  Knöpfen *Erneut versuchen* und *Dieses Postfach auslassen*. Wer
+  auslassen wählte, bekam „Kein Postfach gewählt" und kam ebenfalls nicht
+  weiter; wer ankreuzte, landete wieder bei der Passwortfrage.
+
+  Ursache war eine Methode, die die angelegte Zeile nicht zurückgab —
+  der Aufrufer hatte damit nichts, wohin er das Passwort hätte schreiben
+  können.
+
 - **»Ohne Prüfung übernehmen« stand schon vor dem Verbindungstest da.**
   Solange „Übernehmen" ausgegraut ist, war er der einzige anklickbare Weg
   nach vorn — und damit lag der ungeprüfte Weg näher als der geprüfte. Er

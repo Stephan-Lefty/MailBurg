@@ -805,7 +805,12 @@ class KontenSeite(QWizardPage):
         for konto in gefunden:
             self._zeile_anlegen(konto)
 
-    def _zeile_anlegen(self, konto: Konto) -> None:
+    def _zeile_anlegen(self, konto: Konto):
+        """Legt eine Zeile an und gibt sie zurück.
+
+        Der Rückgabewert wird gebraucht, um das im Dialog eingegebene
+        Passwort zu übernehmen.
+        """
         zeile = KontoZeile(konto, self.gitter, len(self.zeilen))
 
         # Dasselbe Postfach nicht zweimal einrichten. Der Name ist frei
@@ -823,11 +828,28 @@ class KontenSeite(QWizardPage):
             zeile.bereits_da = True
 
         self.zeilen.append(zeile)
+        return zeile
 
     def _von_hand(self) -> None:
         dialog = KontoDialog(self)
-        if dialog.exec():
-            self._zeile_anlegen(dialog.konto())
+        if not dialog.exec():
+            return
+
+        zeile = self._zeile_anlegen(dialog.konto())
+
+        # **Das Passwort mitnehmen.** Es steht schon im Dialog – wer es
+        # dort eingetippt hat, will es nicht gleich noch einmal
+        # eintippen. Ohne diese Zeile blieb das Feld in der Liste leer,
+        # und beim Weitergehen kam »Für dieses Postfach fehlt noch das
+        # Passwort«.
+        #
+        # Zusammen mit »Ohne Prüfung übernehmen« wurde daraus eine
+        # Sackgasse: Postfach auslassen hieß »kein Postfach gewählt«,
+        # Postfach ankreuzen hieß »Passwort fehlt«. Am 2026-08-29 unter
+        # Windows gelandet, beim Anlegen eines Beispielarchivs für die
+        # Anleitung.
+        if zeile is not None and dialog.passwort.text():
+            zeile.passwort.setText(dialog.passwort.text())
 
     def validatePage(self) -> bool:
         if self._durchgewinkt:
