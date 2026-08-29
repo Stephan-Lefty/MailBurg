@@ -8,6 +8,26 @@ wurde.
 
 ## Offen
 
+### Als Nächstes dran
+
+- [ ] **Ein Skript liegt bereit und will ausgeführt werden.** Auf einer
+  alten Fassung von `docs/bilder/automatisierung.png` steht der echte
+  Sicherungspfad – mit Stephans Vornamen darin. Die aktuelle Fassung ist
+  ersetzt und gepusht, die alte steckt weiter in der Historie: Die
+  Bereinigung vom 2026-08-29 arbeitete auf Text, ein PNG ist Binärdatei.
+
+  Geprüft wurden alle vierzig Bildfassungen der Historie mit
+  Texterkennung; betroffen ist genau eine. Das Skript tauscht ihren Inhalt
+  gegen die saubere Fassung, legt vorher eine Sicherung an und fragt vor
+  dem Push nach. Es liegt im Arbeitsverzeichnis der Sitzung als
+  `bild-aus-historie.sh`.
+
+- [ ] **Zwei Windows-Bilder fehlen noch.** Der Zeitplan-Dialog unter
+  *Einstellungen → Was von selbst laufen soll* – den kann die vorhandene
+  `.exe` zeigen. Und das Hauptfenster mit dem Beispielarchiv; dafür braucht
+  es eine neue `.exe`, weil auf der bisherigen Aufnahme noch „1 Mails im
+  Archiv" steht.
+
 ### Nicht anfassen
 
 - **Die Zeitpläne stehen so, wie Stephan sie will** (2026-08-26): Abruf
