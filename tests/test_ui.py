@@ -4177,3 +4177,55 @@ class ArchivOhnePostfachTest(OberflaechenTest):
 
         stelle = quelle[quelle.index('"Kein Postfach gewählt"'):][:800]
         self.assertIn("nachtragen", stelle)
+
+
+class OhnePruefungKnopfTest(OberflaechenTest):
+    """»Ohne Prüfung übernehmen« erst nach einem Versuch.
+
+    Solange »Übernehmen« ausgegraut ist, wäre er der einzige anklickbare
+    Weg nach vorn – und damit läge der ungeprüfte Weg näher als der
+    geprüfte. Stephan am 2026-08-29 unter Windows: »Ohne Prüfung
+    durchkommen kommt jetzt schon, vor dem Verbindungstest.«
+
+    Wer den Test nicht bestehen *kann* – ohne Netz, Brücke noch nicht
+    gestartet –, drückt einmal auf »Verbindung testen«, sieht das
+    Scheitern und bekommt ihn dann angeboten.
+    """
+
+    def _dialog(self):
+        from mailburg.ui.assistent import KontoDialog
+
+        dialog = KontoDialog()
+        dialog.name.setText("Probe")
+        dialog.server.setText("imap.example.org")
+        dialog.benutzer.setText("post@example.org")
+        self._offen = getattr(self, "_offen", [])
+        self._offen.append(dialog)
+        return dialog
+
+    def test_er_ist_zu_beginn_nicht_da(self):
+        """``isVisible`` ist ohne ``show`` immer falsch – geprüft wird
+        die ausdrückliche Einstellung."""
+        self.assertTrue(self._dialog().ungeprueft_knopf.isHidden())
+
+    def test_nach_dem_scheitern_erscheint_er(self):
+        dialog = self._dialog()
+        dialog._misslungen("Diesen Servernamen gibt es nicht.")
+
+        self.assertFalse(dialog.ungeprueft_knopf.isHidden())
+
+    def test_eine_aenderung_verbirgt_ihn_wieder(self):
+        """Wer den Servernamen ändert, hat einen neuen Versuch verdient."""
+        dialog = self._dialog()
+        dialog._misslungen("Fehler")
+        dialog.server.setText("imap.example.net")
+
+        self.assertTrue(dialog.ungeprueft_knopf.isHidden())
+
+    def test_nach_erfolg_bleibt_er_fort(self):
+        """Wer durchgekommen ist, braucht den Umweg nicht."""
+        dialog = self._dialog()
+        dialog._geglueckt(["INBOX", "Gesendet"])
+
+        self.assertTrue(dialog.ungeprueft_knopf.isHidden())
+        self.assertTrue(dialog.uebernehmen_knopf.isEnabled())

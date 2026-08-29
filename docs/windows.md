@@ -85,6 +85,13 @@ Doppelklick, und der Assistent führt durch vier Schritte:
    Findet MailBurg ein Thunderbird-Profil, stehen dessen Konten hier schon
    drin und müssen nur noch angekreuzt werden. Sonst tragen Sie sie von Hand
    ein.
+
+   ![Ein von Hand eingetragenes Postfach in der Liste, angekreuzt, mit Adresse und Server darunter und einem Feld für das Passwort.](bilder/windows-postfach-eingetragen.webp)
+
+   **Ist der Server gerade nicht erreichbar** – unterwegs ohne Netz, oder ein
+   Brückenprogramm läuft noch nicht –, führt der Verbindungstest nicht weiter.
+   Nach einem gescheiterten Versuch erscheint deshalb **Ohne Prüfung
+   übernehmen**. Beim ersten Abruf zeigt sich dann, ob die Angaben stimmen.
 4. **Fertig** — mit dem Häkchen „Jetzt den ersten Abruf starten" läuft der
    erste Durchgang gleich los.
 

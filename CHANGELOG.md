@@ -11,6 +11,12 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **»Ohne Prüfung übernehmen« stand schon vor dem Verbindungstest da.**
+  Solange „Übernehmen" ausgegraut ist, war er der einzige anklickbare Weg
+  nach vorn — und damit lag der ungeprüfte Weg näher als der geprüfte. Er
+  erscheint jetzt erst nach einem gescheiterten Versuch; wer den Test
+  nicht bestehen kann, sieht vorher, woran es liegt.
+
 - **Ein Archiv ohne Postfach ließ sich nicht anlegen.** Der Assistent
   bestand auf mindestens einem und begründete das mit „Ohne Postfach gibt
   es nichts zu archivieren". Das stimmt nicht: Wer ein Archiv anlegt, um

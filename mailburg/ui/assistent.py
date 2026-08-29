@@ -1180,6 +1180,17 @@ class KontoDialog(QDialog):
         )
         self.ungeprueft_knopf.clicked.connect(self._ohne_pruefung)
         knoepfe.addButton(self.ungeprueft_knopf, QDialogButtonBox.ActionRole)
+        # **Erst nach einem Versuch.** Solange »Übernehmen« ausgegraut
+        # ist, wäre dies der einzige anklickbare Weg nach vorn – und
+        # damit läge der ungeprüfte Weg näher als der geprüfte. Am
+        # 2026-08-29 unter Windows aufgefallen: »Ohne Prüfung durchkommen
+        # kommt jetzt schon, vor dem Verbindungstest.«
+        #
+        # Wer den Test nicht bestehen *kann* – ohne Netz, Brücke noch
+        # nicht gestartet –, drückt einmal auf »Verbindung testen«, sieht
+        # das Scheitern und bekommt den Knopf dann angeboten. Ein Klick
+        # mehr, aber einer, nach dem man weiß, woran man ist.
+        self.ungeprueft_knopf.setVisible(False)
 
         aufbau = QVBoxLayout(self)
         aufbau.addLayout(formular)
@@ -1203,6 +1214,10 @@ class KontoDialog(QDialog):
         self.uebernehmen_knopf.setEnabled(False)
         self.pruefstand.setText("Noch nicht geprüft")
         self.pruefstand.setStyleSheet("")
+        # Auch den zweiten Weg wieder verbergen: Wer den Servernamen
+        # ändert, hat einen neuen Versuch verdient - und soll ihn nicht
+        # überspringen können, ohne ihn gesehen zu haben.
+        self.ungeprueft_knopf.setVisible(False)
 
     def _ohne_pruefung(self) -> None:
         """Übernimmt das Postfach, ohne dass die Verbindung stand.
@@ -1275,6 +1290,12 @@ class KontoDialog(QDialog):
         # der beim Abruf erscheint, und würde hier den Platz sprengen.
         self.pruefstand.setText(text.split("\n")[0])
         self.uebernehmen_knopf.setEnabled(False)
+        # **Jetzt erst der zweite Weg.** Wer bis hierher kommt, hat es
+        # versucht und weiß, woran er ist – unterwegs ohne Netz, eine
+        # Brücke, die nicht läuft, ein Server, den es erst morgen gibt.
+        # Vorher angeboten wäre er der einzige anklickbare Knopf gewesen
+        # und damit eine Einladung, die Prüfung zu überspringen.
+        self.ungeprueft_knopf.setVisible(True)
 
     def konto(self) -> Konto:
         server = self.server.text().strip()
