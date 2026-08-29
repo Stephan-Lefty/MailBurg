@@ -4495,3 +4495,76 @@ class OhneDatumTest(OberflaechenTest):
 
         self.assertIn("2019 (2)", text)
         self.assertIn("2021 (1)", text)
+
+
+class SicherungsvorschlagTest(OberflaechenTest):
+    """Das Häkchen setzen und sofort eine Fehlermeldung bekommen.
+
+    So war es: »Das Archiv regelmäßig in eine Datei sichern« ankreuzen,
+    auf Übernehmen – und dann »Bitte einen Ordner für die Sicherungen
+    wählen«, für einen leeren Zustand, den der Dialog selbst hergestellt
+    hatte. Am 2026-08-29 auf den Windows-Bildern zu sehen.
+    """
+
+    def _wahl(self, vorschlag):
+        """Die Patches müssen über den ganzen Test laufen.
+
+        Beim ersten Wurf endeten sie mit dem Konstruktor – das Ankreuzen
+        danach fragte dann das echte System und schlug einen Ordner vor,
+        den es auf dem Entwicklungsrechner tatsächlich gibt.
+        """
+        from unittest import mock
+
+        from mailburg.core import zeitplan as kern
+        from mailburg.ui import zeitplan as modul
+
+        for patch in (
+            mock.patch.object(
+                modul.orte, "sicherungsort_vorschlagen",
+                lambda archiv=None: vorschlag,
+            ),
+            mock.patch.object(
+                kern, "sicherung_zustand",
+                lambda archiv=None: kern.Zustand(moeglich=True),
+            ),
+        ):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+        return modul.Sicherungswahl(archiv="/home/martha/Mailarchiv")
+
+    def test_ankreuzen_schlaegt_einen_ordner_vor(self):
+        wahl = self._wahl(pathlib.Path("/media/martha/Platte/MailBurg-Sicherung"))
+        self.assertEqual(wahl.ziel.text(), "")
+
+        wahl.an.setChecked(True)
+
+        self.assertEqual(
+            wahl.ziel.text(),
+            str(pathlib.Path("/media/martha/Platte/MailBurg-Sicherung")),
+        )
+
+    def test_eine_getroffene_wahl_wird_nicht_ueberschrieben(self):
+        wahl = self._wahl(pathlib.Path("/media/martha/Platte/MailBurg-Sicherung"))
+        wahl.ziel.setText("/home/martha/Woanders")
+
+        wahl.an.setChecked(True)
+
+        self.assertEqual(wahl.ziel.text(), "/home/martha/Woanders")
+
+    def test_ohne_geeigneten_ort_bleibt_das_feld_leer(self):
+        """Lieber nichts als ein Ordner neben dem Original."""
+        wahl = self._wahl(None)
+
+        wahl.an.setChecked(True)
+
+        self.assertEqual(wahl.ziel.text(), "")
+
+    def test_abkreuzen_loescht_nichts(self):
+        wahl = self._wahl(pathlib.Path("/media/martha/Platte/MailBurg-Sicherung"))
+        wahl.an.setChecked(True)
+        vorher = wahl.ziel.text()
+
+        wahl.an.setChecked(False)
+
+        self.assertEqual(wahl.ziel.text(), vorher)

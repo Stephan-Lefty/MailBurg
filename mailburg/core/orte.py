@@ -30,6 +30,10 @@ EINHAENGEPUNKTE = ("/run/media", "/media", "/mnt", "/Volumes")
 #: Verzeichnisname für das Archiv, wenn nur der Ort gewählt wurde.
 VORGABENAME = "Mailarchiv"
 
+#: Dasselbe für die Sicherungen. Ein eigener Name, damit niemand die
+#: gepackten Stände für das Archiv selbst hält.
+SICHERUNGSNAME = "MailBurg-Sicherung"
+
 
 @dataclass(frozen=True)
 class Ort:
@@ -237,3 +241,44 @@ def vorschlagen() -> list[Ort]:
             )
 
     return gefunden
+
+
+#: In welcher Reihenfolge sich ein Ort für Sicherungen eignet. Die Cloud
+#: zuerst, weil sie den Rechner überlebt und weil sie den Zweck einer
+#: Sicherung – woanders zu liegen – ohne Zutun erfüllt. Dann eine externe
+#: Platte, dann ein anderes eingebautes Laufwerk.
+#:
+#: Der Benutzerordner steht bewusst **nicht** in der Liste: Er liegt auf
+#: derselben Platte wie in aller Regel das Archiv, und eine Sicherung
+#: neben dem Original geht mit ihm zusammen verloren.
+SICHERUNGSRANG = ("cloud", "extern", "laufwerk")
+
+
+def sicherungsort_vorschlagen(archiv: Path | str | None = None) -> Path | None:
+    """Wohin die Sicherungen am ehesten gehören – oder ``None``.
+
+    Der Dialog verlangte einen Ordner, schlug aber keinen vor: Wer das
+    Häkchen setzte und auf »Übernehmen« ging, bekam erst einmal eine
+    Fehlermeldung für einen Zustand, den der Dialog selbst hergestellt
+    hatte.
+
+    **Lieber nichts als etwas Falsches.** Findet sich kein Ort, der auf
+    einer anderen Platte liegt als das Archiv, wird nichts vorgeschlagen.
+    Ein Vorschlag, der dem fettgedruckten Rat direkt darunter
+    widerspricht, wäre schlimmer als ein leeres Feld.
+    """
+    if archiv is not None:
+        archivgeraet = _geraetenummer(Path(archiv).expanduser())
+    else:
+        archivgeraet = _geraetenummer(Path.home())
+
+    orte = vorschlagen()
+    for art in SICHERUNGSRANG:
+        for ort in orte:
+            if ort.art != art:
+                continue
+            ordner = ort.pfad.parent
+            if _geraetenummer(ordner) == archivgeraet:
+                continue
+            return ordner / SICHERUNGSNAME
+    return None

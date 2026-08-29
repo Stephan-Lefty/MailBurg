@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from mailburg.core import zeitplan
+from mailburg.core import orte, zeitplan
 from mailburg.ui import farben
 
 #: Die angebotenen Abstände. Bewusst wenige: Wer zwischen siebzehn
@@ -216,6 +216,15 @@ class Sicherungswahl(QWidget):
     def _umschalten(self, an: bool) -> None:
         for teil in (self.takt, self.behalten, self.ziel, self.suchen):
             teil.setEnabled(an)
+
+        # Wer ankreuzt, will sichern – dann soll nicht als Nächstes eine
+        # Fehlermeldung kommen, weil das Feld leer ist, das der Dialog
+        # selbst leer gelassen hat. Nur beim Ankreuzen und nur, wenn
+        # nichts drinsteht: Eine getroffene Wahl wird nie überschrieben.
+        if an and not self.ziel.text().strip():
+            vorschlag = orte.sicherungsort_vorschlagen(self.archiv)
+            if vorschlag is not None:
+                self.ziel.setText(_wie_das_system_schreibt(str(vorschlag)))
 
     def _ordner_waehlen(self) -> None:
         gewaehlt = QFileDialog.getExistingDirectory(

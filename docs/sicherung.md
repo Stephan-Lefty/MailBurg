@@ -64,6 +64,15 @@ Anbieter kommt, entscheidet dessen Programm. Drei übliche Wege:
 Der einfachste Weg, wenn Sie Nextcloud, Dropbox, Drive oder ähnliches als
 Desktop-Programm nutzen: Sichern Sie direkt in den synchronisierten Ordner.
 
+**In der Oberfläche wird er von selbst vorgeschlagen.** Wer unter
+*Einstellungen → Was von selbst laufen soll (Automatisierung) …* das Häkchen
+bei der regelmäßigen Sicherung setzt, findet dort bereits einen Ordner
+eingetragen — zuerst ein Cloud-Ordner, sonst eine externe Platte, sonst ein
+anderes Laufwerk. Der Benutzerordner wird nie vorgeschlagen, und wenn sich
+nichts findet, was auf einer anderen Platte liegt als das Archiv, bleibt das
+Feld leer. Eine Sicherung neben dem Original geht mit ihm zusammen verloren;
+lieber kein Vorschlag als ein falscher.
+
 ```bash
 mailburg sichern ~/Archiv ~/Nextcloud/Mailsicherung --ersetzen
 ```

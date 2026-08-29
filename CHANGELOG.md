@@ -56,6 +56,24 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Geändert
 
+- **Der Sicherungsdialog schlägt jetzt einen Ordner vor.** Wer das Häkchen
+  bei der regelmäßigen Sicherung setzte und auf „Übernehmen" ging, bekam
+  „Bitte einen Ordner für die Sicherungen wählen" — eine Fehlermeldung für
+  einen leeren Zustand, den der Dialog selbst hergestellt hatte.
+
+  Vorgeschlagen wird zuerst ein Cloud-Ordner, dann eine externe Platte,
+  dann ein anderes Laufwerk. Der Benutzerordner nie: Er liegt auf derselben
+  Platte wie in aller Regel das Archiv. Findet sich gar nichts auf einer
+  anderen Platte, bleibt das Feld leer — eine Sicherung neben dem Original
+  geht mit ihm zusammen verloren, und ein Vorschlag, der dem
+  fettgedruckten Rat direkt darunter widerspricht, wäre schlimmer als
+  nichts. Eine bereits getroffene Wahl wird nie überschrieben.
+
+- **»? (2)« im Fristendialog** stand für Mails, deren Datum sich nicht lesen
+  ließ — wer es sah, wusste nicht, ob das Programm etwas nicht konnte oder ob
+  es ein Jahr gibt, das so heißt. Jetzt steht dort „ohne Datum", am Ende der
+  Aufzählung statt alphabetisch zwischen den Jahren.
+
 - **Die Bilder in der Anleitung haben Beschreibungen bekommen.** Vorher
   stand als Alternativtext meist nur eine Überschrift — „Willkommen“,
   „Fertig“, „Handbuch“. Ein Vorleseprogramm gab damit nichts von dem
