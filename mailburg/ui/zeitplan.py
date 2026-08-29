@@ -41,6 +41,28 @@ TAKTE: list[tuple[str, int]] = [
 ]
 
 
+def _wie_das_system_schreibt(pfad: str | None) -> str:
+    """Trennzeichen so, wie der Anwender sie kennt.
+
+    Qt gibt Pfade immer mit Schrägstrich zurück – auch unter Windows.
+    Wer dort über »Auswählen …« einen Ordner heraussuchte, bekam
+    ``C:/Users/…`` zu sehen, obwohl Windows selbst überall
+    ``C:\\Users\\…`` schreibt.
+
+    Aufgefallen am 2026-08-29 auf einem Bild aus der Windows-VM. In den
+    anderen Auswahlfeldern trat es nicht auf: Dort geht der Pfad erst
+    durch ``pathlib.Path``, und dessen ``str()`` setzt von sich aus die
+    Trennzeichen des laufenden Systems. Nur hier landete der rohe
+    Qt-Text unmittelbar im Eingabefeld.
+
+    Auf den Pfad selbst hat das keine Auswirkung – Windows nimmt beide
+    Schreibweisen an. Es geht allein darum, was dasteht.
+    """
+    if not pfad:
+        return ""
+    return str(Path(pfad))
+
+
 class Zeitplanwahl(QWidget):
     """Ankreuzfeld und Abstand – zum Einbauen in Seiten und Dialoge."""
 
@@ -130,7 +152,7 @@ class Sicherungswahl(QWidget):
             self.takt.addItem(bezeichnung, bezeichnung)
         self.takt.setAccessibleName("Wie oft gesichert wird")
 
-        self.ziel = QLineEdit(stand.archiv or "")
+        self.ziel = QLineEdit(_wie_das_system_schreibt(stand.archiv))
         self.ziel.setPlaceholderText(
             "Ordner für die Sicherungen – am besten in der Cloud"
         )
@@ -200,7 +222,7 @@ class Sicherungswahl(QWidget):
             self, "Ordner für die Sicherungen", self.ziel.text() or str(Path.home())
         )
         if gewaehlt:
-            self.ziel.setText(gewaehlt)
+            self.ziel.setText(_wie_das_system_schreibt(gewaehlt))
 
     def anwenden(self) -> tuple[bool, str]:
         if not self.an.isEnabled():

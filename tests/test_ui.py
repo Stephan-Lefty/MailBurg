@@ -4399,3 +4399,53 @@ class AbschlussSeiteTest(OberflaechenTest):
         text = self._seite(None, [object()])
 
         self.assertIn("<p>1 Postfach ist eingerichtet", text)
+
+
+class PfadanzeigeTest(OberflaechenTest):
+    """»C:/Users/test/Documents« stand im Sicherungsdialog.
+
+    Qt gibt Pfade immer mit Schrägstrich zurück, auch unter Windows.
+    Wer dort über »Auswählen …« einen Ordner heraussuchte, bekam ihn in
+    einer Schreibweise zu sehen, die Windows selbst nirgends verwendet.
+
+    Von Stephan am 2026-08-29 in der Windows-VM entdeckt – und zwar
+    dadurch, dass er den Ordner heraussuchte, statt ihn zu tippen.
+    """
+
+    def test_schraegstriche_werden_zu_dem_was_das_system_schreibt(self):
+        from mailburg.ui.zeitplan import _wie_das_system_schreibt
+
+        # Unter Linux bleibt der Schrägstrich – das ist hier die
+        # richtige Antwort. Geprüft wird, dass überhaupt umgesetzt wird.
+        self.assertEqual(
+            _wie_das_system_schreibt("/home/martha/Sicherung"),
+            str(pathlib.Path("/home/martha/Sicherung")),
+        )
+
+    def test_leerer_pfad_bleibt_leer(self):
+        """Sonst stünde ein einzelner Punkt im Feld: str(Path("")) == "."."""
+        from mailburg.ui.zeitplan import _wie_das_system_schreibt
+
+        self.assertEqual(_wie_das_system_schreibt(""), "")
+        self.assertEqual(_wie_das_system_schreibt(None), "")
+
+    def test_windows_bekaeme_backslashes(self):
+        """Was unter Windows herauskäme – hier über PureWindowsPath."""
+        self.assertEqual(
+            str(pathlib.PureWindowsPath("C:/Users/test/Documents")),
+            r"C:\Users\test\Documents",
+        )
+
+    def test_das_feld_geht_durch_die_umsetzung(self):
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "zeitplan.py"
+        ).read_text(encoding="utf-8")
+
+        # Beide Wege ins Feld: der gespeicherte Zustand und die Auswahl.
+        self.assertIn(
+            "QLineEdit(_wie_das_system_schreibt(stand.archiv))", quelle
+        )
+        self.assertIn(
+            "self.ziel.setText(_wie_das_system_schreibt(gewaehlt))", quelle
+        )

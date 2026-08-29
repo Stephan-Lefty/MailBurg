@@ -24,6 +24,15 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Und sie liest jetzt auch `.webp`; die von Hand aufgenommenen
   Windows-Bilder waren ihr bis dahin entgangen.
 
+- **Windows zeigte Pfade in einer Schreibweise, die es selbst nirgends
+  verwendet.** Wer im Sicherungsdialog über „Auswählen …" einen Ordner
+  heraussuchte, bekam `C:/Users/…` zu sehen statt `C:\Users\…` — Qt gibt
+  Pfade immer mit Schrägstrich zurück. In den übrigen Auswahlfeldern fiel
+  es nicht auf, weil der Pfad dort erst durch `pathlib.Path` geht, dessen
+  `str()` von sich aus die Trennzeichen des laufenden Systems setzt. Auf
+  die Funktion hatte es keine Auswirkung; es ging allein darum, was
+  dastand.
+
 - **»1 Mails im Archiv«** stand in der Statuszeile, sobald genau eine Mail
   darin lag — bei einem frisch angelegten Archiv also immer, an der
   Stelle, an der ein neuer Anwender zum ersten Mal nachsieht. Dieselbe

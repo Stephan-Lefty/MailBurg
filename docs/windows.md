@@ -124,10 +124,18 @@ Alles andere wäre das Ende der Unveränderbarkeit und damit des Zwecks.
 
 ## Regelmäßig abrufen
 
-*Einstellungen → Was von selbst laufen soll* → Häkchen bei „Neue Post
-regelmäßig im Hintergrund holen", Abstand wählen, Übernehmen.
+*Einstellungen → Was von selbst laufen soll (Automatisierung) …* → Häkchen bei
+„Neue Post regelmäßig im Hintergrund holen", Abstand wählen, Übernehmen. Zur
+Wahl stehen alle 15 Minuten, alle 30 Minuten, stündlich, alle 4 Stunden und
+einmal am Tag.
 
-MailBurg legt dafür eine Aufgabe im Ordner **MailBurg** der
+![Der Dialog »Was von selbst laufen soll« unter Windows. Oben das Häkchen für den regelmäßigen Abruf im Hintergrund mit dem Abstand daneben, darunter die Erklärung, dass MailBurg dafür weder geöffnet bleiben noch in den Autostart muss. Unten die regelmäßige Sicherung in eine Datei mit Häufigkeit, Zahl der aufbewahrten Stände und Zielordner, dazu der Hinweis, nicht auf dieselbe Platte wie das Archiv zu sichern.](bilder/windows-zeitplan.webp)
+
+Im selben Fenster steht die regelmäßige **Sicherung**. Sie ist unabhängig vom
+Abruf: Das eine holt Post herein, das andere packt das Archiv weg. Beides lässt
+sich einzeln an- und abschalten. Näheres in [sicherung.md](sicherung.md).
+
+MailBurg legt für den Abruf eine Aufgabe im Ordner **MailBurg** der
 Windows-Aufgabenplanung an, je Archiv eine eigene. Verwaltungsrechte braucht es
 nicht. MailBurg muss dafür weder geöffnet bleiben noch in den Autostart —
 geholt wird ohne Fenster.
