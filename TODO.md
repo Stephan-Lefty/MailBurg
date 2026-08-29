@@ -8,19 +8,24 @@ wurde.
 
 ## Offen
 
+### Am 2026-08-29 erledigt
+
+- [x] **Die Bilder aus der Historie bereinigt.** Auf einer alten Fassung
+  von `docs/bilder/automatisierung.png` stand der echte Sicherungspfad –
+  mit Stephans Vornamen darin. Die Textbereinigung vom selben Tag hatte sie
+  nicht erfasst: `git filter-repo --replace-text` arbeitet auf Text, ein
+  PNG ist Binärdatei.
+
+  Alle vierzig Bildfassungen der Historie wurden mit Texterkennung
+  geprüft; betroffen war genau eine. Ihr Inhalt ist gegen die saubere
+  Fassung getauscht. Nachgeprüft an einem frischen Klon von GitHub: 39
+  Bildfassungen, alle sauber – 39 statt 40, weil die getauschte Fassung nun
+  mit der bestehenden zusammenfällt. 196 Commits, beide Tags stehen, das
+  Release v0.10.0 samt `.exe` ist unversehrt.
+
+  Sicherung: `/mnt/raid/VMs/MailBurg-vor-bildbereinigung-2026-08-29.bundle`
+
 ### Als Nächstes dran
-
-- [ ] **Ein Skript liegt bereit und will ausgeführt werden.** Auf einer
-  alten Fassung von `docs/bilder/automatisierung.png` steht der echte
-  Sicherungspfad – mit Stephans Vornamen darin. Die aktuelle Fassung ist
-  ersetzt und gepusht, die alte steckt weiter in der Historie: Die
-  Bereinigung vom 2026-08-29 arbeitete auf Text, ein PNG ist Binärdatei.
-
-  Geprüft wurden alle vierzig Bildfassungen der Historie mit
-  Texterkennung; betroffen ist genau eine. Das Skript tauscht ihren Inhalt
-  gegen die saubere Fassung, legt vorher eine Sicherung an und fragt vor
-  dem Push nach. Es liegt im Arbeitsverzeichnis der Sitzung als
-  `bild-aus-historie.sh`.
 
 - [ ] **Zwei Windows-Bilder fehlen noch.** Der Zeitplan-Dialog unter
   *Einstellungen → Was von selbst laufen soll* – den kann die vorhandene
