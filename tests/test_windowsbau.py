@@ -545,3 +545,24 @@ class StartbildTest(unittest.TestCase):
         # Wirft nicht - das ist die Prüfung.
         _startbild("Probe")
         _startbild(schliessen=True)
+
+
+class StartbildSichtbarkeitTest(unittest.TestCase):
+    """Das Bild war da und trotzdem nicht zu sehen.
+
+    ``always_on_top=False`` schien höflich – ein Startbild, das sich
+    nicht vordrängt. Tatsächlich bekommt ein randloses Fenster unter
+    Windows keinen Fokus und rutscht sofort hinter den Desktop, von dem
+    aus gestartet wurde. Wer doppelklickt, sieht dann wieder nichts:
+    genau der Zustand, den das Bild verhindern soll.
+
+    Am 2026-08-30 in der VM: »es dauert und es kommt auch kein Bild«.
+    """
+
+    def test_das_bild_bleibt_oben(self):
+        spec = (WURZEL / "werkzeuge" / "mailburg.spec").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("always_on_top=True", spec)
+        self.assertNotIn("always_on_top=False", spec)

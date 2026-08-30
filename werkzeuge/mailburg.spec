@@ -149,7 +149,15 @@ splash = (
         # Vorgabetext – in einem Programm, das sonst durchgehend
         # deutsch spricht.
         text_default="Wird vorbereitet …",
-        always_on_top=False,
+        # **Muss oben bleiben.** Hier stand einmal False – gedacht als
+        # Höflichkeit, damit sich das Bild nicht vordrängt. Das Ergebnis
+        # war, dass es gar nicht zu sehen war: Ein randloses Fenster
+        # bekommt unter Windows keinen Fokus und rutscht sofort hinter
+        # den Desktop, von dem aus gestartet wurde. Wer doppelklickt,
+        # sieht dann wieder nichts – genau das, was das Bild verhindern
+        # soll. Am 2026-08-30 in der VM: »es dauert und es kommt auch
+        # kein Bild«.
+        always_on_top=True,
     )
     if STARTBILD.is_file()
     else None
