@@ -9,6 +9,32 @@ down, with the date they were completed.
 
 ### Needed before real-world use
 
+- [ ] **The Server Edition.** For **Debian Server** and **Windows Server 2025**
+  or newer, reachable on the company network and over the internet through a
+  browser. The design note is in [docs/server.md](docs/server.md) (German);
+  nothing has been built yet.
+
+  **It comes before importing the 700,000 messages** (Stephan, 2026-08-31). A
+  corpus that size does not belong on a workstation, and it does not migrate
+  twice.
+
+  The five hard parts, in brief: MailBurg has **no notion of users**; without a
+  desktop there is **no keyring**, and therefore currently no way to reach the
+  mailbox passwords at all; the service has to run on both systems; HTTPS and
+  reachability; and **archive encryption moves up**, because the reasoning from
+  2026-08-25 no longer holds on a server.
+
+  **Per-mailbox permissions, decided 2026-08-31.** Up to 50 users, up to 60
+  mailboxes; an administrator decides on the server who may see which — from a
+  single one to all of them.
+
+  Two things about that are the actual work. First: **the permission check
+  belongs inside the query, not after it.** Search first and filter afterwards,
+  and the result count betrays how much more there is. Second: **a message can
+  sit in several mailboxes.** Whoever may see one of them may see the message —
+  but the location display must not name the others, or it reveals the structure
+  of the whole archive.
+
 - [ ] **Subject patterns as a rule field?** Deliberately left out: a subject can
   be forged, it changes over the course of an exchange, and a rule matching
   "invoice" would also catch the marketing mail pretending to be one. Folder and

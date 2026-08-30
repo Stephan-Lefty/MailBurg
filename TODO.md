@@ -10,6 +10,34 @@ wurde.
 
 ### Muss vor dem ersten echten Einsatz passieren
 
+- [ ] **Die Server Edition.** Für **Debian Server** und **Windows Server
+  2025** oder jünger, erreichbar im Firmennetz und über das Internet per
+  Browser. Der Entwurf steht in [docs/server.md](docs/server.md); gebaut
+  ist noch nichts.
+
+  **Sie kommt vor dem Import der 700.000 Mails** (Stephan, 2026-08-31).
+  Ein Bestand dieser Größe gehört nicht auf einen Arbeitsplatzrechner
+  und wandert nicht zweimal.
+
+  Die fünf Brocken, in Kürze: MailBurg kennt **keine Benutzer**; ohne
+  Desktop gibt es **keinen Schlüsselbund** und damit derzeit keinen Weg
+  an die Postfach-Passwörter; der Dienst muss auf beiden Systemen laufen;
+  HTTPS und Erreichbarkeit; und die **Archivverschlüsselung rückt nach
+  vorn**, weil die Begründung von 2026-08-25 auf einem Server nicht mehr
+  trägt.
+
+  **Rechte je Postfach, entschieden am 2026-08-31.** Bis zu 50 Benutzer,
+  bis zu 60 Postfächer; der Verwalter legt am Server fest, wer welche
+  sehen darf – von einem einzigen bis zu allen.
+
+  Zwei Dinge daran sind die eigentliche Arbeit. Erstens: **Die
+  Rechteprüfung gehört in die Abfrage, nicht dahinter.** Wer erst sucht
+  und dann wegfiltert, verrät über die Trefferzahl, wie viel es sonst
+  noch gäbe. Zweitens: **Eine Mail kann in mehreren Postfächern
+  liegen.** Wer eines davon sehen darf, darf die Mail sehen – aber die
+  Fundortanzeige darf die übrigen nicht nennen, sonst verrät sie die
+  Struktur des ganzen Archivs.
+
 - [ ] **Betreffmuster als Regelfeld?** Bewusst weggelassen: Der Betreff
   lässt sich fälschen, er wechselt im Verlauf eines Austauschs, und eine
   Regel auf »Rechnung« träfe auch die Werbemail, die so tut. Ordner und

@@ -1,0 +1,273 @@
+[Übersicht](../README.md) | [Anleitungen](README.md) | [Erste Schritte](erste-schritte.md) | [Die Oberfläche](oberflaeche.md)
+
+# Server Edition – Entwurf
+
+**Hiervon ist noch nichts gebaut.** Dieses Dokument hält fest, was ein
+MailBurg-Server können muss, was dafür fehlt und in welcher Reihenfolge
+es entstehen sollte. Es ist die Grundlage für die Entscheidung, nicht
+ihr Ergebnis.
+
+Stand: 2026-08-31. Zielsysteme: **Debian Server** und **Windows Server
+2025** oder jünger.
+
+## Wozu überhaupt
+
+Das Firmenarchiv umfasst rund 700.000 Mails. So etwas gehört nicht auf
+einen Arbeitsplatzrechner: Es soll von mehreren Stellen erreichbar sein,
+im Firmennetz und von unterwegs, und es soll laufen, wenn niemand
+angemeldet ist.
+
+Die Reihenfolge ist deshalb: **erst der Server, dann der Import.** Ein
+Bestand dieser Größe wandert nicht zweimal.
+
+## Was schon trägt
+
+`core`, `search`, `sources` und `extract` sind vollständig frei von Qt –
+nachgeprüft am 2026-08-30. Der Kern hat überhaupt keine
+Pflichtabhängigkeiten (`dependencies = []` in `pyproject.toml`).
+
+Eine Weboberfläche wäre damit ein **drittes Frontend** neben
+Kommandozeile und Desktop-Fenster, kein zweites Programm. Archivformat,
+Journal, Hash-Kette, Index und Fristenrechnung bleiben, wie sie sind.
+
+Das ist die gute Nachricht. Die folgenden fünf Punkte sind die andere.
+
+## 1. MailBurg kennt keine Benutzer
+
+Es gibt kein Konto, keine Anmeldung, keine Rolle, kein Recht. Das
+Journal führt zwar einen `actor`, aber der ist ein Name aus dem
+Betriebssystem – eine Behauptung, keine geprüfte Identität.
+
+**Das ist der größte Brocken, größer als die Weboberfläche selbst.**
+
+### Entschieden am 2026-08-31
+
+**Rechte je Postfach.** Am Server wird festgelegt, auf welche Postfächer
+ein Benutzer zugreifen darf – von einem einzigen bis zu allen.
+
+Die Größenordnung, die Stephan genannt hat: **bis zu 50 Benutzer, bis zu
+60 Postfächer.** Das ist klein genug, dass die Zuordnung eine
+gewöhnliche Tabelle sein kann (höchstens 3.000 Zeilen), und groß genug,
+dass sie sich nicht von Hand in einer Konfigurationsdatei pflegen lässt.
+
+Diese Entscheidung ist die richtige – und sie ist teurer als eine bloße
+Anmeldung. Was daran hängt:
+
+### Die Rechte gehören in die Abfrage, nicht dahinter
+
+Wer erst sucht und dann wegfiltert, was der Benutzer nicht sehen darf,
+baut ein Leck. Die **Trefferzahl** stimmt dann nicht mit dem überein,
+was in der Liste steht – und aus »1.284 Treffer, davon 12 sichtbar«
+liest jeder heraus, dass es 1.272 weitere gibt. Dasselbe gilt für die
+Sortierung, für das Blättern und für jede Statistik.
+
+Gut daran: **Der Mechanismus ist schon da.** Die Suchsprache kennt
+`konto:` und setzt es als Prädikat in die Abfrage:
+
+```sql
+EXISTS (SELECT 1 FROM locations l WHERE l.msg_id = m.id AND l.account = ?)
+```
+
+Die Rechteprüfung ist dasselbe Muster mit einer Liste statt eines Werts
+– nur darf sie nicht weglassbar sein. Sie gehört deshalb nicht in die
+Suchsprache, sondern eine Ebene tiefer: an die Stelle, an der die
+Abfrage zusammengesetzt wird, für jede Abfrage, ohne Schalter.
+
+### Eine Mail kann in mehreren Postfächern liegen
+
+Das ist keine Ausnahme, sondern der Normalfall bei Rundmails: Die
+Tabelle `locations` führt je Nachricht beliebig viele Fundorte.
+
+Daraus folgt eine Falle, die man einmal übersieht und nie wieder: Ein
+Benutzer, der Postfach A sehen darf, **darf die Mail sehen**, wenn sie in
+A liegt – auch wenn sie zusätzlich in B liegt. Aber die
+**Fundortanzeige darf B nicht nennen.** Sonst verrät die Detailansicht
+einer erlaubten Mail die Struktur des übrigen Archivs, samt Namen der
+Postfächer, die es sonst noch gibt.
+
+Betroffen sind alle Stellen, die Fundorte zeigen oder zählen: die
+Trefferliste, die Detailansicht, der Postfachbaum links und die
+Gesamtzahl unten (»2.431 Mails im Archiv« ist für jeden Benutzer eine
+andere Zahl).
+
+### Wer die Rechte vergibt
+
+Es braucht eine Rolle »Verwalter« – jemanden, der Benutzer anlegt,
+Postfächer zuordnet und Zugänge stilllegt. Und zwar von Anfang an, samt
+Kommandozeilenbefehl: Ein Server, dessen Weboberfläche klemmt, muss sich
+von der Konsole aus wieder zugänglich machen lassen.
+
+**Stilllegen statt löschen**, wie bei den Postfächern schon: Wer
+ausscheidet, verliert den Zugang – aber sein Name muss im Journal
+lesbar bleiben, sonst stehen dort Vorgänge ohne Urheber.
+
+### Und alles davon ins Journal
+
+Jede Anmeldung, jede Rechteänderung und jeder Zugriff auf Post. Bei
+personenbezogenen Daten ist das keine Fleißarbeit, sondern die
+Rechenschaftspflicht aus Art. 5 Abs. 2 DSGVO – und bei einem Archiv, in
+dem 50 Menschen suchen können, ist es die einzige Möglichkeit,
+nachträglich zu beantworten, wer was gesehen hat.
+
+**Ein Vorbehalt dazu:** Jeden Suchzugriff zu protokollieren, lässt das
+Journal schnell wachsen, und es ist selbst eine Sammlung
+personenbezogener Daten – nämlich darüber, wonach Mitarbeiter suchen.
+Das gehört bedacht, bevor es gebaut wird: vermutlich Zugriffe auf
+einzelne Nachrichten ja, jede getippte Suchanfrage nein.
+
+## 2. Ohne Desktop gibt es keinen Schlüsselbund
+
+Die Postfach-Passwörter liegen im Schlüsselbund des Betriebssystems.
+Der hängt an einer **Anmeldesitzung** – unter Linux an gnome-keyring
+oder ksecretd, die ein angemeldeter Benutzer startet.
+
+**Auf einem Debian-Server ohne Desktop gibt es keinen.** Und genau das
+ist der Betriebszustand, den wir wollen: Der Dienst läuft, ohne dass
+jemand angemeldet ist.
+
+Nachgeprüft in `core/accounts.py`: Es gibt derzeit **keinen anderen
+Weg** an ein Passwort. Fehlt der Schlüsselbund, meldet MailBurg das und
+hört auf. Für den Desktop ist das richtig; für einen Server ist es das
+Ende.
+
+Was der Server stattdessen braucht – zu entscheiden:
+
+**Eine Schlüsseldatei neben der Konfiguration**, nur für das Dienstkonto
+lesbar (`0600`), Inhalt mit einem Hauptschlüssel verschlüsselt. Der
+Hauptschlüssel kommt beim Start aus einer Umgebungsvariablen oder einer
+Datei, die nach dem Lesen zugeklappt wird. Einfach, überall gleich, und
+ehrlich benennbar: Wer den Server-Benutzer hat, hat die Passwörter.
+
+**Oder der systemd-Weg:** `LoadCredential=` reicht Geheimnisse an den
+Dienst durch, ohne dass sie im Dateisystem des Dienstes stehen. Sauber,
+aber nur unter Linux – für Windows bräuchte es ohnehin den ersten Weg.
+
+Was **nicht** geht: den Desktop-Schlüsselbund auf einem Server
+nachbauen zu wollen. Ein entsperrter Schlüsselbund ohne angemeldeten
+Menschen ist eine Datei mit Extraschritten.
+
+## 3. Als Dienst laufen
+
+**Debian:** eine systemd-Unit. Das Muster steht schon – `core/zeitplan.py`
+legt Benutzereinheiten für den Abruf an. Für den Server wäre es eine
+Systemeinheit unter einem eigenen Benutzer (`mailburg`), mit
+`ProtectSystem`, `PrivateTmp` und einem Arbeitsverzeichnis, das nur ihm
+gehört.
+
+**Windows Server 2025:** hier fehlt mir belastbares Wissen. Ein
+Python-Programm wird dort nicht von selbst zum Dienst; üblich sind
+Wrapper wie NSSM oder WinSW, oder `pywin32`. Was auf Windows Server 2025
+der empfohlene Weg ist, muss nachgeschlagen werden – nicht geraten. Das
+ist ein eigener Arbeitsschritt und gehört vor die erste Zeile Code.
+
+## 4. Erreichbarkeit und HTTPS
+
+Im Firmennetz ist das überschaubar. »Über das Internet« ist die Aussage
+mit dem Risiko.
+
+Das Repo rät für den verwandten IMAP-Gedanken zu VPN statt Portfreigabe
+(siehe TODO, Abschnitt *Danach*). Wer stattdessen einen Webdienst
+öffentlich stellt, sollte wenigstens:
+
+* **hinter einem Reverse Proxy** stehen – nginx oder Caddy unter Debian,
+  IIS unter Windows –, nicht mit dem eigenen HTTP-Server nach außen;
+* **HTTPS erzwingen**, mit HSTS, und niemals eine Anmeldung über
+  ungesicherte Verbindung anbieten;
+* **Anmeldeversuche begrenzen** und verzögern, sonst probiert sie
+  jemand in Ruhe durch;
+* **keine Fehlermeldung geben, die Konten verrät** – »Anmeldung
+  fehlgeschlagen«, nicht »Benutzer unbekannt«.
+
+**Eine ehrliche Empfehlung bleibt trotzdem:** Wenn VPN oder Tailscale in
+Frage kommen, ist das der bessere Weg. Ein Archiv mit zwanzig Jahren
+Geschäftspost ist ein lohnenderes Ziel als das, was sonst so im Netz
+steht.
+
+## 5. Die Verschlüsselung rückt nach vorn
+
+In der TODO steht sie unter *Danach*. Für einen Server gehört sie
+weiter nach oben – nicht weil der Server unsicherer wäre, sondern weil
+die Begründung von damals nicht mehr trägt.
+
+Die Entscheidung vom 2026-08-25 lautete: kein Passwort beim
+Programmstart, weil es ohne Archivverschlüsselung Theater wäre – die
+Mails liegen als Dateien im Ordner, wer am Rechner sitzt, liest sie
+ohnehin. **Das stimmt für einen Arbeitsplatz.** Bei einem Server ist
+»wer am Rechner sitzt« nicht mehr dieselbe Person wie »wer die Daten
+sehen darf«, und Sicherungen wandern womöglich in eine Cloud.
+
+## Was die Weboberfläche können muss
+
+In dieser Reihenfolge, und zunächst **nur lesend**:
+
+1. Anmelden und abmelden.
+2. Suchen – dieselbe Suchsprache wie überall, mit der Trefferliste.
+3. Eine Nachricht lesen, mit Anhängen zum Herunterladen.
+4. Als `.eml` herunterladen.
+5. Den Zustand sehen: wie viele Mails, wann zuletzt abgerufen, ob alle
+   Postfächer erreichbar waren.
+
+**Später und nur mit Bedacht:** Einstufen, Fristenbericht, Auskunft nach
+Art. 15 DSGVO, Verfahrensdokumentation. Alles vier sind Vorgänge, die
+ins Journal schreiben – dort muss vorher geklärt sein, wer sie auslösen
+darf.
+
+**Bewusst nicht im Browser:** das Zurücklegen ins Postfach. Das ist die
+einzige Stelle, an der MailBurg in ein fremdes Postfach schreibt; sie
+soll eng gefasst bleiben.
+
+## Technikwahl
+
+Alles MIT oder BSD – AGPL und GPL bleiben draußen, wie im ganzen
+Projekt.
+
+* **Starlette** (MIT) mit **uvicorn** (BSD) als HTTP-Grundlage.
+* **Server-gerendertes HTML** mit Jinja2 (BSD). Kein JavaScript-Gerüst,
+  keine Inhalte von fremden Servern – dieselbe Haltung wie beim Rest:
+  Was das Programm anzeigt, bringt es mit.
+* **argon2-cffi** (MIT) für die Passwörter der Benutzer. Dasselbe
+  Verfahren steht ohnehin für die Archivverschlüsselung im Plan.
+* Als eigener Zusatz: `pip install "mailburg[server]"`. Wer den Server
+  nicht braucht, installiert ihn nicht.
+
+## Reihenfolge
+
+Jede Stufe ist für sich brauchbar und prüfbar:
+
+1. **Benutzer, Rechte und Anmeldung** im Kern – ohne Web, mit
+   Kommandozeilenbefehlen zum Anlegen und Zuordnen. Journal mit
+   geprüftem `actor`. Dazu die Rechteprüfung an der Stelle, an der die
+   Suchabfrage entsteht, mit Tests, die belegen: Was ein Benutzer nicht
+   sehen darf, taucht auch in keiner Zahl auf.
+2. **Passwörter ohne Schlüsselbund**, sonst ruft der Server nie ab.
+3. **Der Dienst**, auf beiden Systemen, mit einer Seite, die »läuft«
+   sagt. Damit ist der Betrieb geklärt, bevor Funktion dazukommt.
+4. **Lesender Zugriff** im Browser: Suche, Lesen, Herunterladen.
+5. **Der Import der 700.000 Mails.**
+6. Alles Weitere.
+
+Der Import steht mit Absicht erst an fünfter Stelle. Vorher soll sich
+zeigen, dass der Dienst über Wochen stabil läuft – ein Lasttest an
+einem Bestand, den man nicht ersetzen kann, beweist wenig, solange die
+Grundlage nicht steht.
+
+## Was offen ist
+
+* **Der Windows-Dienst**: nachzuschlagen, nicht zu raten.
+* **Wo der Server steht.** Auf eigener Hardware in der Firma oder
+  gemietet? Bei gemietet liegt Geschäftspost bei einem Dritten – eine
+  Auftragsverarbeitung nach Art. 28 DSGVO, die einen Vertrag mit dem
+  Anbieter braucht.
+* **Wie ein Benutzer zu seinem Postfach kommt.** Trägt der Verwalter die
+  Zuordnung von Hand ein, oder soll sie sich aus der Mailadresse
+  ergeben? Von Hand ist mühsamer, aber durchschaubar – und bei 50
+  Benutzern einmalig zu leisten.
+* **Wie viel gleichzeitig los ist.** 50 Benutzer heißt nicht 50
+  Suchanfragen zur selben Sekunde. SQLite liest im WAL-Modus problemlos
+  parallel; die Frage ist eher, ob ein einzelner Prozess mit
+  Arbeiterfäden genügt oder ob es mehrere braucht. Zu messen, nicht zu
+  raten – erst recht bei 700.000 Mails und 9 GB Index.
+* **Wie Benutzer ihr Passwort zurücksetzen.** Ohne Mailversand vom
+  Server aus bleibt nur: Der Verwalter setzt es zurück. Das ist bei 50
+  Menschen vertretbar und erspart dem Archivserver, selbst Mails zu
+  verschicken.
