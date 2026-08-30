@@ -65,10 +65,24 @@ Vorführungen und Videos. `screenshots.py` taugt dafür nicht, es räumt
 sein Archiv wieder weg. Ein Test wacht darüber, dass jede Adresse auf
 `.example` endet.
 
-**Als Nächstes:** der Rückweg »In Mailprogramm öffnen« – der letzte
-offene Punkt unter *Muss vor dem ersten echten Einsatz passieren*. Und
-`TODO.en.md` ist seit dem 26.08. stehengeblieben; sie führt Dinge als
-offen, die es längst gibt.
+**Am späten Abend noch dazugekommen:** der Rückweg »In Mailprogramm
+öffnen« – damit stehen alle drei Wege aus dem Archiv. Die Frage war
+nicht das Öffnen, sondern die `.eml`, die dabei entsteht: Sie liegt im
+Zwischenspeicher des Benutzers mit `0700`/`0600`, nicht in `/tmp`, und
+verschwindet beim nächsten Öffnen (nach vier Stunden) oder beim Beenden.
+
+**Und beide Sprachen sind wieder gleichauf.** `TODO.en.md` war seit dem
+26.08. stehengeblieben. Stephans Ansage dazu: »alles bitte in Deutsch
+und Englisch im Repo auf dem Laufenden halten« – wer die deutsche Datei
+ändert, zieht die englische im selben Zug nach. Beide stehen jetzt in
+derselben Ordnung, damit ein Abgleich überhaupt möglich bleibt.
+
+**Als Nächstes:** Die Liste *Muss vor dem ersten echten Einsatz
+passieren* enthält nur noch eine Frage, und die ist bewusst offen
+(Betreffmuster als Regelfeld). Der MailStore-Import mit den 700.000
+Mails ist vertagt – Stephan kann das frühestens Ende Oktober 2026
+prüfen; er steht deshalb unter »Vertagt« und nicht in der laufenden
+Liste.
 
 ## Hier war Schluss (Stand 2026-08-29, Samstag)
 
