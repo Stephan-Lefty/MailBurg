@@ -455,3 +455,71 @@ class AufgabenXmlTest(unittest.TestCase):
             with self.subTest(art=art):
                 # Wirft bei kaputtem XML - das ist hier die Prüfung.
                 ElementTree.fromstring(self._xml(**art))
+
+
+class StartbildTest(unittest.TestCase):
+    """Zwanzig Sekunden Stille beim Start.
+
+    Die .exe ist eine einzige Datei; Windows packt sie bei jedem Start
+    vollständig aus, und solange ist auf dem Bildschirm nichts zu sehen
+    – kein Fenster, kein Eintrag in der Taskleiste. Wer einen älteren
+    Rechner hat, klickt in der Stille ein zweites Mal.
+
+    Stephan am 2026-08-30: »Wir müssen dem User das Gefühl geben, dass
+    sich was tut und ihn nicht verunsichern.«
+
+    Ein Fortschrittsbalken ist nicht drin – das Startbild kann ein Bild
+    und eine Textzeile, mehr nicht.
+    """
+
+    def setUp(self):
+        self.spec = (WURZEL / "werkzeuge" / "mailburg.spec").read_text(
+            encoding="utf-8"
+        )
+
+    def test_das_bild_liegt_bereit(self):
+        bild = WURZEL / "assets" / "startbild.png"
+
+        self.assertTrue(bild.is_file(), "assets/startbild.png fehlt")
+        self.assertGreater(bild.stat().st_size, 5_000, "verdächtig klein")
+
+    def test_der_bau_bindet_es_ein(self):
+        self.assertIn("Splash(", self.spec)
+        self.assertIn("startbild.png", self.spec)
+
+    def test_die_laufzeile_ist_deutsch(self):
+        """Ohne Angabe stünde dort »Initializing«."""
+        self.assertIn("text_default=", self.spec)
+        self.assertNotIn("Initializing", self.spec)
+
+    def test_die_zeile_sitzt_da_wo_das_bild_platz_laesst(self):
+        from importlib import util
+
+        laden = util.spec_from_file_location(
+            "startbild", WURZEL / "werkzeuge" / "startbild.py"
+        )
+        modul = util.module_from_spec(laden)
+        laden.loader.exec_module(modul)
+
+        self.assertIn(f"text_pos=(20, {modul.TEXTZEILE_Y})", self.spec)
+
+    def test_ohne_bild_wird_trotzdem_gebaut(self):
+        """Ein fehlendes Startbild darf keinen Bauversuch scheitern lassen."""
+        self.assertIn("if STARTBILD.is_file()", self.spec)
+
+    def test_die_etappen_stehen_auf_deutsch_im_ablauf(self):
+        quelle = (WURZEL / "mailburg" / "ui" / "app.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Oberfläche wird vorbereitet", quelle)
+        self.assertIn("Archiv wird geöffnet", quelle)
+        self.assertIn("_startbild(schliessen=True)", quelle)
+
+    def test_ohne_gepackte_fassung_stoert_es_nicht(self):
+        """Aus den Quellen gestartet gibt es kein pyi_splash."""
+        from mailburg.ui.app import _startbild
+
+        # Wirft nicht - das ist die Prüfung.
+        _startbild("Probe")
+        _startbild(schliessen=True)

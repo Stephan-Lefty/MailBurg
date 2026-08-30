@@ -111,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
 
     _fehler_zeigen_statt_sterben()
 
+    _startbild("Oberfläche wird vorbereitet …")
     anwendung = QApplication(argv)
     # Muss am Objekt hängen bleiben: Ein Übersetzer, auf den niemand mehr
     # zeigt, wird weggeräumt – und die Knöpfe stehen wieder auf Englisch.
@@ -161,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         gleich_abrufen = getattr(assistent, "soll_abrufen", False)
 
+    _startbild("Archiv wird geöffnet …")
     from mailburg.ui.hauptfenster import Hauptfenster
 
     fenster = Hauptfenster(archiv)
@@ -168,7 +170,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     merken(archiv)
+    # Zuletzt: Erst wenn das Fenster steht, hat das Startbild ausgedient.
+    # Andersherum blitzte für einen Moment der leere Schreibtisch auf.
     fenster.show()
+    _startbild(schliessen=True)
 
     if gleich_abrufen:
         # **Erst wenn die Ereignisschleife läuft.** Der Abruf zeigt
@@ -258,6 +263,36 @@ def _deutsch(anwendung):
             anwendung.installTranslator(uebersetzer)
             return uebersetzer
     return None
+
+
+def _startbild(text: str = "", schliessen: bool = False) -> None:
+    """Sagt dem Startbild, was gerade geschieht – wenn es eines gibt.
+
+    Nur die gepackte Windows-Fassung hat eines; aus den Quellen
+    gestartet fehlt ``pyi_splash`` einfach, und dann passiert hier
+    nichts. Deshalb der stille Rückzug bei ImportError statt einer
+    Abfrage auf »sind wir gepackt«.
+
+    **Warum überhaupt.** Windows packt die .exe bei jedem Start
+    vollständig aus. Danach lädt Qt, dann öffnen sich Archiv und
+    Suchindex – auf einem älteren Rechner zusammen leicht zwanzig
+    Sekunden, in denen nichts zu sehen ist. Wer nichts sieht, klickt
+    noch einmal.
+    """
+    try:
+        import pyi_splash  # type: ignore[import-not-found]
+    except ImportError:
+        return
+
+    try:
+        if schliessen:
+            pyi_splash.close()
+        elif text:
+            pyi_splash.update_text(text)
+    except Exception:
+        # Ein Startbild ist Beiwerk. Wenn es klemmt, darf es nicht das
+        # Programm mitnehmen, das dahinter startet.
+        pass
 
 
 def _uebersetzungsorte() -> list[str]:

@@ -118,9 +118,47 @@ analyse = Analysis(
 
 pyz = PYZ(analyse.pure)
 
+#: **Das Startbild.** Die .exe ist eine einzige Datei; Windows packt sie
+#: bei jedem Start vollständig aus, und in dieser Zeit tut sich auf dem
+#: Bildschirm nichts – kein Fenster, kein Eintrag in der Taskleiste.
+#: Wer einen älteren Rechner hat, klickt in der Stille ein zweites Mal.
+#:
+#: Das Startbild erscheint *vor* dem Auspacken, also nach etwa einer
+#: Sekunde. Erzeugt wird es von ``werkzeuge/startbild.py``; fehlt es,
+#: wird ohne gebaut, damit ein Bauversuch daran nicht scheitert.
+#:
+#: ``text_pos`` schaltet die Laufzeile ein. PyInstaller schreibt dort
+#: beim Auspacken die Namen der Dateien – technisch, aber es bewegt
+#: sich. Sobald Python läuft, übernimmt ``mailburg.ui.app`` die Zeile
+#: mit deutschen Etappen. Wer die Dateinamen nicht will, entfernt
+#: ``text_pos``: Dann bleibt das Bild stumm, und nur die feste Zeile
+#: »MailBurg wird geladen« steht darin.
+STARTBILD = WURZEL / "assets" / "startbild.png"
+splash = (
+    Splash(
+        str(STARTBILD),
+        binaries=analyse.binaries,
+        datas=analyse.datas,
+        text_pos=(20, 258),
+        text_size=9,
+        # Ausdrücklich gerade und ohne Serifen. Ohne Angabe nimmt Tk
+        # eine Schrift, die neben dem Schriftzug schief wirkt.
+        text_font="Segoe UI",
+        text_color="#5b6672",
+        # Ohne diese Angabe setzt PyInstaller einen englischen
+        # Vorgabetext – in einem Programm, das sonst durchgehend
+        # deutsch spricht.
+        text_default="Wird vorbereitet …",
+        always_on_top=False,
+    )
+    if STARTBILD.is_file()
+    else None
+)
+
 exe = EXE(
     pyz,
     analyse.scripts,
+    *([splash, splash.binaries] if splash else []),
     analyse.binaries,
     analyse.datas,
     [],
