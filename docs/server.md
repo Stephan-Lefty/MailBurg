@@ -20,6 +20,32 @@ angemeldet ist.
 Die Reihenfolge ist deshalb: **erst der Server, dann der Import.** Ein
 Bestand dieser Größe wandert nicht zweimal.
 
+## Das Wappen
+
+Dieselbe Burg in Rot, mit dem Wort **SERVER** über dem »urg« von Burg –
+kantenbündig mit ihm und nicht höher als das »B«, so dass beide zusammen
+einen Block ergeben. Am 2026-08-31 mit Stephan entworfen.
+
+Erzeugt wird es aus der Desktop-Fassung, nicht daneben gezeichnet:
+
+```bash
+python werkzeuge/server_logo.py
+```
+
+Es sind dieselbe Burg, derselbe Schriftzug, dieselben Maße. Zwei getrennt
+gepflegte Zeichnungen würden auseinanderlaufen, sobald jemand am Original
+etwas verschiebt.
+
+**Zwei Dinge daran waren nicht offensichtlich.** Rot verhält sich anders
+als Blau: Auf Weiß kommt es auf 5,62, im dunklen Thema aber nur auf 2,71
+– dort wechselt das Wort deshalb auf den helleren Ton der Palette (7,07).
+Und `textLength`, mit dem das Wort zuerst auf die Breite gezwungen wurde,
+**wertet rsvg nicht aus**; in den erzeugten PNG stand es 162 statt 300
+Einheiten breit. Das Wort besteht deshalb aus Umrissen, eingemessen am
+gerenderten Bild.
+
+Die Farbwerte stehen in [assets/farben.md](../assets/farben.md).
+
 ## Ein Repository, saubere Trennung
 
 Am 2026-08-31 besprochen und entschieden: **Die Server Edition bekommt

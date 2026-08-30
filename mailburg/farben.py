@@ -52,6 +52,32 @@ GRUEN_HELL = "#81c784"  # dasselbe auf dunklem Grund
 #: Der Verlauf des Icons, von oben nach unten.
 ICON_VERLAUF = (BLAU_HELL, BLAU_TIEF)
 
+# -- Die Server Edition ----------------------------------------------------
+#
+# Dasselbe Wappen in Rot. Entschieden am 2026-08-31: Wer ein Bild sieht,
+# soll auf einen Blick wissen, ob er den Arbeitsplatz oder den Server vor
+# sich hat - und trotzdem dieselbe Burg erkennen.
+#
+# **Die Leitfarbe ist das ROT der Palette**, kein eigener Ton. Zwei Rot,
+# die sich um Nuancen unterscheiden, wären schlimmer als eines: Niemand
+# könnte sie auseinanderhalten, aber jeder müsste sich fragen, welches
+# gerade gemeint ist.
+#
+# Das hat einen Preis, und der gehört benannt: In der Weboberfläche des
+# Servers steht dann die Marke in derselben Farbe wie Fehlermeldungen.
+# Dort müssen Fehler deshalb über Form kenntlich sein - Symbol, Rahmen,
+# Text -, nicht über die Farbe allein. Für Menschen mit Farbsehschwäche
+# gilt das ohnehin.
+
+SERVER_ROT = ROT                # Turm, Fahne, Tor, Schriftzug, das Wort SERVER
+SERVER_ROT_HELL = ROT_HELL      # das Wort SERVER auf dunklem Grund
+SERVER_ROT_TIEF = "#7a1414"     # die Fensterschlitze im roten Turm
+SERVER_ROT_LEUCHT = "#e5484d"   # oberes Ende des Verlaufs im Icon
+SERVER_ROT_NACHT = "#8f1616"    # unteres Ende desselben Verlaufs
+
+#: Der Verlauf des Server-Icons, von oben nach unten.
+SERVER_ICON_VERLAUF = (SERVER_ROT_LEUCHT, SERVER_ROT_NACHT)
+
 
 def als_css(dunkel: bool = False) -> str:
     """Die Palette als CSS-Variablen für die Weboberfläche.

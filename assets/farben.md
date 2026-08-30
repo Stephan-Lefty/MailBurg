@@ -54,6 +54,35 @@ wenn sie zur Dekoration werden.
 | `GRUEN` | `#2e7d32` | Erledigtes, Gesendetes |
 | `GRUEN_HELL` | `#81c784` | dasselbe auf dunklem Grund |
 
+## Die Server Edition
+
+Dasselbe Wappen in Rot. Entschieden am 2026-08-31: Wer ein Bild sieht, soll auf
+einen Blick wissen, ob er den Arbeitsplatz oder den Server vor sich hat – und
+trotzdem dieselbe Burg erkennen.
+
+| Name | Wert | Wofür |
+|---|---|---|
+| `SERVER_ROT` | `#c62828` | Turm, Fahne, Tor, Schriftzug, das Wort SERVER |
+| `SERVER_ROT_HELL` | `#ef9a9a` | das Wort SERVER auf dunklem Grund |
+| `SERVER_ROT_TIEF` | `#7a1414` | die Fensterschlitze im roten Turm |
+| `SERVER_ROT_LEUCHT` | `#e5484d` | oberes Ende des Verlaufs im Icon |
+| `SERVER_ROT_NACHT` | `#8f1616` | unteres Ende desselben Verlaufs |
+
+**Die Leitfarbe ist das `ROT` der Palette**, kein eigener Ton. Zwei Rot, die
+sich um Nuancen unterscheiden, wären schlimmer als eines: Niemand könnte sie
+auseinanderhalten, aber jeder müsste sich fragen, welches gerade gemeint ist.
+
+**Das hat einen Preis, und der gehört benannt.** In der Weboberfläche des
+Servers steht die Marke dann in derselben Farbe wie Fehlermeldungen. Dort
+müssen Fehler deshalb über die Form kenntlich sein – Symbol, Rahmen, Text –,
+nicht über die Farbe allein. Für Menschen mit Farbsehschwäche gilt das ohnehin.
+
+**Rot ist heikler als Blau.** Auf Weiß kommt `SERVER_ROT` auf 5,62. Auf dem
+Markenblau wären es 1,10, im dunklen Thema 2,71 – beides unlesbar. Deshalb der
+Wechsel auf `SERVER_ROT_HELL` (7,07), sobald der Grund dunkel ist.
+
+Die Bilder entstehen aus `werkzeuge/server_logo.py`, nicht von Hand.
+
 ## Eine Anmerkung zur Herkunft
 
 Diese Palette ist aus MailBurgs Icon und Banner gewachsen und wurde am

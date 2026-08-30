@@ -11,6 +11,22 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Ein eigenes Wappen für die Server Edition.** Dieselbe Burg in Rot, mit
+  dem Wort SERVER über dem „urg" von Burg — kantenbündig mit ihm und nicht
+  höher als das „B", so dass beide zusammen einen Block ergeben.
+
+  Wer ein Bild sieht, soll auf einen Blick wissen, ob er den Arbeitsplatz
+  oder den Server vor sich hat, und trotzdem dieselbe Burg erkennen.
+  Erzeugt wird es aus der Desktop-Fassung durch `werkzeuge/server_logo.py`,
+  nicht daneben gezeichnet: Zwei getrennt gepflegte Zeichnungen liefen
+  auseinander, sobald jemand am Original etwas verschiebt.
+
+  Die Leitfarbe ist das `ROT` der Palette, kein eigener Ton. Zwei Rot, die
+  sich um Nuancen unterscheiden, wären schlimmer als eines. Das hat einen
+  Preis: In der Weboberfläche steht die Marke dann in derselben Farbe wie
+  Fehlermeldungen — die müssen dort über die Form kenntlich sein, nicht
+  über die Farbe allein.
+
 - **„In Mailprogramm öffnen".** Der dritte und kürzeste Weg aus dem
   Archiv, neben dem Zurücklegen ins Postfach und dem Speichern als Datei:
   Rechte Maustaste auf eine Nachricht, und sie geht in Thunderbird,

@@ -24,6 +24,10 @@ down, with the date they were completed.
   reachability; and **archive encryption moves up**, because the reasoning from
   2026-08-25 no longer holds on a server.
 
+  **The crest is done** (2026-08-31): the same castle in red, SERVER set as a
+  block above the "urg" of Burg. Derived from the desktop artwork by
+  `werkzeuge/server_logo.py`; colours in `assets/farben.md`.
+
   **No separate repository, decided 2026-08-31.** A second repo would mean a
   second core — and two archive formats drifting apart is something nobody
   notices until an archive no longer reads. The separation happens inside the

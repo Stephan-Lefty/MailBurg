@@ -26,6 +26,10 @@ wurde.
   vorn**, weil die Begründung von 2026-08-25 auf einem Server nicht mehr
   trägt.
 
+  **Das Wappen steht** (2026-08-31): dieselbe Burg in Rot, SERVER als
+  Block über dem »urg« von Burg. Erzeugt aus der Desktop-Fassung durch
+  `werkzeuge/server_logo.py`, Farben in `assets/farben.md`.
+
   **Kein eigenes Repository, entschieden am 2026-08-31.** Ein zweites
   Repo hieße ein zweiter Kern – und zwei Archivformate, die
   auseinanderlaufen, merkt niemand, bis ein Archiv nicht mehr lesbar

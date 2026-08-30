@@ -23,9 +23,37 @@ class Form(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertRegex(wert, r"^#[0-9a-f]{6}$")
 
+    #: Namen, die absichtlich auf denselben Wert zeigen. Die Server
+    #: Edition führt kein eigenes Rot: Zwei Rot, die sich um Nuancen
+    #: unterscheiden, wären schlimmer als eines – niemand könnte sie
+    #: auseinanderhalten, aber jeder müsste sich fragen, welches gerade
+    #: gemeint ist. Dass sie gleich *bleiben*, prüft
+    #: ``tests/test_serverlogo.py``.
+    ZWEITNAMEN = {"SERVER_ROT", "SERVER_ROT_HELL"}
+
     def test_keine_farbe_doppelt(self):
-        werte = list(_palette().values())
+        """Zwei Namen für fast denselben Ton sind eine Fehlerquelle.
+
+        Ausgenommen sind ausdrückliche Zweitnamen – die zeigen auf
+        *genau* denselben Wert und sind damit keine zweite Farbe,
+        sondern ein zweiter Blickwinkel auf dieselbe.
+        """
+        werte = [
+            wert for name, wert in _palette().items()
+            if name not in self.ZWEITNAMEN
+        ]
         self.assertEqual(len(werte), len(set(werte)))
+
+    def test_die_zweitnamen_zeigen_wirklich_auf_bekannte_farben(self):
+        """Sonst schmuggelt sich unter dem Etikett eine neue Farbe ein."""
+        palette = _palette()
+        uebrige = {
+            wert for name, wert in palette.items()
+            if name not in self.ZWEITNAMEN
+        }
+        for name in self.ZWEITNAMEN:
+            with self.subTest(name=name):
+                self.assertIn(palette[name], uebrige)
 
     def test_palette_ist_nicht_leer(self):
         self.assertGreaterEqual(len(_palette()), 15)
