@@ -101,7 +101,7 @@ def _schtasks(*argumente: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         [pfad, *argumente],
         capture_output=True, text=True, check=False, timeout=30,
-        errors="replace",
+        **werkzeuge.konsolenkodierung(),
         **werkzeuge.lautlos(),
     )
 

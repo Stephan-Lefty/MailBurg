@@ -116,3 +116,37 @@ def lautlos() -> dict[str, int]:
     if os.name != "nt":
         return {}
     return {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
+
+
+def konsolenkodierung() -> dict[str, str]:
+    """Zusatzangaben für ``subprocess``, damit Umlaute Umlaute bleiben.
+
+    **Der Fund.** Am 2026-08-30 zeigte MailBurg unter Windows diese
+    Meldung an::
+
+        Die Aufgaben-XML enth„lt einen unerwarteten Knoten.
+
+    Der Text kommt von ``schtasks.exe`` und ist richtig – nur falsch
+    gelesen. Konsolenprogramme unter Windows schreiben in der
+    *OEM-Codepage*, in Deutschland cp850. Dort ist »ä« das Byte 0x84.
+    Python dekodiert die Ausgabe ohne weitere Angabe jedoch in der
+    *ANSI-Codepage*, cp1252, und dort steht 0x84 für das untere
+    Anführungszeichen »„«.
+
+    Betroffen ist nicht nur diese eine Meldung: Jeder Fehler, den die
+    Aufgabenplanung zurückgibt, geht denselben Weg. Und es trifft
+    ausgerechnet die Sätze, die jemand lesen soll, wenn etwas schiefging.
+
+    **Warum obendrein ``errors``.** Ohne die Angabe wirft ein einzelnes
+    unerwartetes Byte einen ``UnicodeDecodeError`` – mitten im Einrichten
+    eines Zeitplans, mit einem Programmabbruch statt einer Meldung. Das
+    kann auch unter Linux geschehen: Läuft MailBurg mit ``LANG=C``,
+    dekodiert Python als ASCII, und systemd antwortet durchaus mit
+    typografischen Anführungszeichen. Ein unlesbares Zeichen in einer
+    Fehlermeldung ist ein Schönheitsfehler, ein Abbruch nicht.
+    """
+    if os.name != "nt":
+        return {"errors": "replace"}
+    # »oem« ist der Codec, den Python auf Windows für genau diesen Zweck
+    # mitbringt: die Codepage der Konsole, welche auch immer das ist.
+    return {"encoding": "oem", "errors": "replace"}

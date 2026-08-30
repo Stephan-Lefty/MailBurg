@@ -128,6 +128,7 @@ def sprachen_vorhanden() -> set[str]:
     try:
         ergebnis = subprocess.run(
             ["tesseract", "--list-langs"], capture_output=True, text=True, timeout=15,
+            **werkzeuge.konsolenkodierung(),
             **werkzeuge.lautlos(),
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -229,6 +230,7 @@ def _pdfinfo(pdf: Path) -> Seitenmasse:
     try:
         ergebnis = subprocess.run(
             ["pdfinfo", str(pdf)], capture_output=True, text=True, timeout=30,
+            **werkzeuge.konsolenkodierung(),
             **werkzeuge.lautlos(),
         )
     except (OSError, subprocess.TimeoutExpired):

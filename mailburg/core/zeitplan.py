@@ -98,6 +98,7 @@ def _systemctl(*argumente: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["systemctl", "--user", *argumente],
         capture_output=True, text=True, check=False, timeout=20,
+        **werkzeuge.konsolenkodierung(),
         **werkzeuge.lautlos(),
     )
 

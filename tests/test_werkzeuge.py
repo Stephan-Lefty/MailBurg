@@ -271,3 +271,59 @@ class OhneFensterTest(unittest.TestCase):
                     aufrufe, stumm,
                     f"{name}: {aufrufe} Aufrufe, davon {stumm} ohne Fenster",
                 )
+
+
+class KonsolenkodierungTest(unittest.TestCase):
+    """Was ein Konsolenprogramm sagt, soll auch ankommen.
+
+    Unter Windows meldete die Aufgabenplanung am 2026-08-30: »Die
+    Aufgaben-XML enth„lt einen unerwarteten Knoten.« Der Satz war
+    richtig, nur falsch gelesen – Konsolenprogramme schreiben in der
+    OEM-Codepage, Python dekodierte in der ANSI-Codepage.
+    """
+
+    def test_unter_windows_wird_die_konsolen_codepage_gelesen(self) -> None:
+        with mock.patch.object(os, "name", "nt"):
+            self.assertEqual(werkzeuge.konsolenkodierung().get("encoding"), "oem")
+
+    def test_unter_linux_keine_codepage_aber_ein_notausgang(self) -> None:
+        """Dort stimmt die Vorgabe – ein Abbruch darf trotzdem nicht sein."""
+        with mock.patch.object(os, "name", "posix"):
+            angaben = werkzeuge.konsolenkodierung()
+        self.assertNotIn("encoding", angaben)
+        self.assertEqual(angaben.get("errors"), "replace")
+
+    def test_ein_umlaut_aus_cp850_kaeme_richtig_an(self) -> None:
+        """Die Rechnung hinter dem Fehler, ohne Windows nachvollzogen.
+
+        Byte 0x84 ist in cp850 »ä« und in cp1252 »„«. Genau dieser
+        Unterschied stand in der Meldung.
+        """
+        byte = b"enth\x84lt"
+        self.assertEqual(byte.decode("cp850"), "enthält")
+        self.assertEqual(byte.decode("cp1252"), "enth„lt")
+
+    def test_jede_gelesene_ausgabe_wird_richtig_dekodiert(self) -> None:
+        """Eine vergessene Stelle genügt für die nächste kaputte Meldung."""
+        import re
+
+        betroffen = [
+            "mailburg/extract/ocr.py",
+            "mailburg/extract/pdf.py",
+            "mailburg/core/accounts.py",
+            "mailburg/core/aufgabenplanung.py",
+            "mailburg/core/zeitplan.py",
+        ]
+
+        for name in betroffen:
+            quelle = (WURZEL / name).read_text(encoding="utf-8")
+            # Wer die Ausgabe selbst dekodiert, bestimmt die Kodierung
+            # bereits – hier geht es nur um subprocess' eigenen Textmodus.
+            textmodus = len(re.findall(r"text=True", quelle))
+            angegeben = quelle.count("werkzeuge.konsolenkodierung()")
+            with self.subTest(datei=name):
+                self.assertEqual(
+                    textmodus, angegeben,
+                    f"{name}: {textmodus}× text=True, "
+                    f"davon {angegeben} mit angegebener Kodierung",
+                )

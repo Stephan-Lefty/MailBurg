@@ -50,6 +50,22 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Fehlermeldungen aus der Windows-Aufgabenplanung kamen mit zerlegten
+  Umlauten an.** Zu sehen war: „Die Aufgaben-XML enth„lt einen
+  unerwarteten Knoten." Der Satz stimmte, nur gelesen war er falsch.
+
+  Konsolenprogramme unter Windows schreiben in der OEM-Codepage, in
+  Deutschland cp850; dort ist „ä" das Byte 0x84. Python dekodiert ohne
+  weitere Angabe jedoch in der ANSI-Codepage cp1252, und dort steht
+  dasselbe Byte für ein Anführungszeichen.
+
+  Betroffen war jede Meldung, die `schtasks.exe` zurückgibt — also
+  ausgerechnet die Sätze, die jemand lesen soll, wenn etwas schiefging.
+  Wo MailBurg ein fremdes Programm im Textmodus ausliest, gibt es die
+  Kodierung jetzt ausdrücklich an. Und einen Notausgang für unerwartete
+  Bytes: Ohne ihn wirft ein einzelnes davon einen Programmabbruch mitten
+  im Einrichten eines Zeitplans, statt eine Meldung anzuzeigen.
+
 - **Der Sicherungsdialog überschrieb stillschweigend die eigene
   Einstellung.** Er las zurück, *ob* gesichert wird und *wohin* — nicht
   aber, wie oft und wie viele Stände. Beim Öffnen stand deshalb immer

@@ -364,6 +364,7 @@ def _secretservice_anbieter() -> str:
             ergebnis = subprocess.run(
                 ["busctl", "--user", "list", "--no-legend"],
                 capture_output=True, text=True, timeout=5,
+                **werkzeuge.konsolenkodierung(),
                 **werkzeuge.lautlos(),
             )
             for zeile in ergebnis.stdout.splitlines():
