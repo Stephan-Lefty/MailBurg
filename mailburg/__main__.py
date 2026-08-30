@@ -1502,6 +1502,157 @@ def cmd_einstufen(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_regeln(args: argparse.Namespace) -> int:
+    """Zeigt, ergänzt oder entfernt Einstufungsregeln.
+
+    **Wozu.** In einem Geschäftsarchiv landet private Post, die dort
+    Aufbewahrungsfristen unterliegt, die für sie nicht gelten. Eine
+    Regel nimmt das vorweg: Was aus dem Vereinsordner kommt, ist privat,
+    ohne dass jemand es Mail für Mail nachträgt.
+
+    Die Regel greift beim Aufnehmen, nicht beim Abruf – geholt wird
+    alles, eingestuft nur, was passt. Bestehende Post bleibt
+    unangetastet; dafür gibt es ``regeln anwenden``.
+    """
+    from mailburg.core.archive import Archive
+    from mailburg.core.regeln import BESCHRIFTUNG, FELDER, Regel, Regelwerk
+    from mailburg.core.retention import Category
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+    schreibend = args.was in ("hinzufuegen", "entfernen", "anwenden")
+
+    with Archive.open(archiv_pfad, exclusive=schreibend) as archiv:
+        werk = archiv.regeln
+
+        if args.was == "zeigen":
+            if not len(werk):
+                print("Keine Regeln eingerichtet.")
+                print()
+                print("Eine anlegen, etwa:")
+                print(f"  mailburg regeln {args.archiv} hinzufuegen "
+                      f"von '*@verein.example' privat")
+                return 0
+            print(f"{sprache.anzahl(len(werk), 'Regel', 'Regeln')}, "
+                  f"in dieser Reihenfolge geprüft:")
+            for nummer, regel in enumerate(werk, 1):
+                zustand = "" if regel.aktiv else "  (abgeschaltet)"
+                print(f"  {nummer}. {regel.beschreibung()}{zustand}")
+                if regel.bemerkung:
+                    print(f"     {regel.bemerkung}")
+            print()
+            print("Die erste passende Regel gilt. Eine Ausnahme gehört "
+                  "deshalb nach oben.")
+            return 0
+
+        if args.was == "hinzufuegen":
+            if args.feld not in FELDER:
+                print(f"'{args.feld}' ist kein Feld. Möglich: "
+                      f"{', '.join(FELDER)}", file=sys.stderr)
+                return 2
+            try:
+                kategorie = Category(args.kategorie)
+            except ValueError:
+                print(f"'{args.kategorie}' ist keine Kategorie. Möglich: "
+                      f"{', '.join(k.value for k in Category)}",
+                      file=sys.stderr)
+                return 2
+            try:
+                neu = Regel(
+                    feld=args.feld, muster=args.muster, kategorie=kategorie,
+                    bemerkung=args.bemerkung or "",
+                )
+            except ValueError as fehler:
+                print(str(fehler), file=sys.stderr)
+                return 2
+
+            # Vorne einfügen, wenn gewünscht: Eine Ausnahme muss vor die
+            # allgemeinere Regel, sonst greift sie nie.
+            regeln = list(werk)
+            if args.zuerst:
+                regeln.insert(0, neu)
+            else:
+                regeln.append(neu)
+            archiv.regeln_setzen(Regelwerk(regeln))
+            print(f"Regel angelegt: {neu.beschreibung()}")
+            print("Sie gilt für Post, die ab jetzt aufgenommen wird.")
+            return 0
+
+        if args.was == "entfernen":
+            if not 1 <= args.nummer <= len(werk):
+                print(f"Es gibt keine Regel {args.nummer}. "
+                      f"Vorhanden: 1 bis {len(werk)}", file=sys.stderr)
+                return 2
+            regeln = list(werk)
+            weg = regeln.pop(args.nummer - 1)
+            archiv.regeln_setzen(Regelwerk(regeln))
+            print(f"Entfernt: {weg.beschreibung()}")
+            print("Bereits eingestufte Post bleibt, wie sie ist.")
+            return 0
+
+        # anwenden
+        if not len(werk):
+            print("Keine Regeln eingerichtet – es gibt nichts anzuwenden.")
+            return 0
+
+        treffer = archiv.index.search("", limit=1_000_000)
+        vorgemerkt = []
+        for eintrag in treffer:
+            # **Jeder Fundort zählt.** Dieselbe Mail kann in zwei Ordnern
+            # liegen; trifft eine Regel auch nur auf einen davon zu, ist
+            # sie gemeint. Andersherum entschiede die Reihenfolge, in der
+            # die Datenbank die Ordner ausspuckt – und das wäre Zufall.
+            ordner = [
+                z["folder"] for z in archiv.index.db.execute(
+                    """SELECT l.folder FROM locations l
+                       JOIN messages m ON m.id = l.msg_id
+                       WHERE m.hash = ?""",
+                    (eintrag.hash,),
+                )
+            ] or [""]
+
+            befund = None
+            for einer in ordner:
+                befund = werk.einstufung(
+                    ordner=einer, von=eintrag.from_addr or "", an=""
+                )
+                if befund is not None:
+                    break
+            if befund is None:
+                continue
+            kategorie, begruendung = befund
+            if eintrag.category == kategorie.value:
+                continue
+            vorgemerkt.append((eintrag, kategorie, begruendung))
+
+        if not vorgemerkt:
+            print("Keine Mail müsste umgestuft werden.")
+            return 0
+
+        print(f"{sprache.mails(len(vorgemerkt))} "
+              + ("würde" if len(vorgemerkt) == 1 else "würden")
+              + " umgestuft:")
+        for eintrag, kategorie, _ in vorgemerkt[:10]:
+            print(f"   {eintrag.date or '        '}  "
+                  f"{(eintrag.category or 'unbestimmt'):>13} → "
+                  f"{kategorie.value:<13} {eintrag.subject[:40]}")
+        if len(vorgemerkt) > 10:
+            print(f"   … und {len(vorgemerkt) - 10} weitere")
+
+        if not args.wirklich:
+            print()
+            print("Nichts geändert. Zum Ausführen: --wirklich")
+            return 0
+
+        for eintrag, kategorie, begruendung in vorgemerkt:
+            archiv.classify(
+                eintrag.hash, kategorie, actor="Regel", note=begruendung
+            )
+        print()
+        print(f"Umgestuft: {sprache.mails(len(vorgemerkt))}. "
+              f"Im Journal vermerkt.")
+    return 0
+
+
 def cmd_hilfe_suche(args: argparse.Namespace) -> int:
     """Erklärt die Suchsprache."""
     print(describe_syntax())
@@ -2040,6 +2191,59 @@ def build_parser() -> argparse.ArgumentParser:
         help="die Einstufung tatsächlich vornehmen",
     )
     p.set_defaults(func=cmd_einstufen)
+
+    p = subparsers.add_parser(
+        "regeln",
+        help="Post beim Aufnehmen einstufen lassen",
+        description=(
+            "Regeln stufen eingehende Post ein, ohne dass jemand sie Mail "
+            "für Mail nachträgt. Nützlich vor allem im Geschäftsarchiv: "
+            "Was aus dem Vereinsordner kommt, ist privat und unterliegt "
+            "keiner Aufbewahrungsfrist. Geholt wird trotzdem alles – die "
+            "Regel bestimmt nur die Einstufung."
+        ),
+    )
+    p.add_argument("archiv")
+    unter = p.add_subparsers(dest="was", required=True)
+
+    u = unter.add_parser("zeigen", help="die eingerichteten Regeln auflisten")
+    u.set_defaults(func=cmd_regeln)
+
+    u = unter.add_parser("hinzufuegen", help="eine Regel anlegen")
+    u.add_argument("feld", help="ordner, von oder an")
+    u.add_argument(
+        "muster",
+        help="Suchmuster mit * und ?, etwa »*@verein.example«",
+    )
+    u.add_argument(
+        "kategorie", nargs="?", default="privat",
+        help="privat (Vorgabe), handelsbrief, buchungsbeleg oder unbestimmt",
+    )
+    u.add_argument(
+        "--zuerst", action="store_true",
+        help="ganz nach oben stellen – für Ausnahmen von einer weiteren Regel",
+    )
+    u.add_argument("--bemerkung", default="", help="wozu diese Regel da ist")
+    u.set_defaults(func=cmd_regeln)
+
+    u = unter.add_parser("entfernen", help="eine Regel löschen")
+    u.add_argument("nummer", type=int, help="die Nummer aus »regeln zeigen«")
+    u.set_defaults(func=cmd_regeln)
+
+    u = unter.add_parser(
+        "anwenden",
+        help="die Regeln auf bereits archivierte Post anwenden",
+        description=(
+            "Beim Aufnehmen greifen die Regeln von selbst. Bestehende Post "
+            "rühren sie nicht an – wer das will, sagt es hier ausdrücklich. "
+            "Ohne --wirklich wird nur gezeigt, was geschähe."
+        ),
+    )
+    u.add_argument(
+        "--wirklich", action="store_true",
+        help="die Umstufung tatsächlich vornehmen",
+    )
+    u.set_defaults(func=cmd_regeln)
 
     p = subparsers.add_parser("suchhilfe", help="die Suchsprache erklären")
     p.set_defaults(func=cmd_hilfe_suche)

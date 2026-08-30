@@ -293,3 +293,113 @@ class RegelnAmArchivTest(unittest.TestCase):
         )
 
         self.assertEqual(self._kategorie(ergebnis.hash), "handelsbrief")
+
+
+class RegelnAufDerKommandozeileTest(RegelnAmArchivTest):
+    """Der Befehl ``mailburg regeln`` – geerbt samt Archivaufbau."""
+
+    def _regeln(self, *argumente) -> tuple[int, str]:
+        import contextlib
+        import io
+
+        from mailburg.__main__ import main
+
+        # Das Archiv der Testklasse ist offen; der Befehl öffnet es
+        # selbst. Deshalb vorher schließen und danach neu aufmachen.
+        wurzel = self.archiv.root
+        self.archiv.close()
+        ausgabe = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(ausgabe):
+                code = main(["regeln", str(wurzel), *argumente])
+        finally:
+            from mailburg.core.archive import Archive
+
+            self.archiv = Archive.open(wurzel)
+        return code, ausgabe.getvalue()
+
+    def test_ohne_regeln_wird_erklaert_wie_es_geht(self):
+        code, text = self._regeln("zeigen")
+
+        self.assertEqual(code, 0)
+        self.assertIn("Keine Regeln", text)
+        self.assertIn("hinzufuegen", text)
+
+    def test_hinzufuegen_und_zeigen(self):
+        self._regeln("hinzufuegen", "von", "*@verein.example", "privat")
+        code, text = self._regeln("zeigen")
+
+        self.assertEqual(code, 0)
+        self.assertIn("verein.example", text)
+        self.assertIn("privat", text)
+
+    def test_zuerst_stellt_nach_oben(self):
+        """Eine Ausnahme muss vor die allgemeinere Regel."""
+        self._regeln("hinzufuegen", "von", "*@verein.example", "privat")
+        self._regeln(
+            "hinzufuegen", "von", "kasse@verein.example", "buchungsbeleg",
+            "--zuerst",
+        )
+
+        _, text = self._regeln("zeigen")
+        zeilen = [z for z in text.splitlines() if z.strip().startswith(("1.", "2."))]
+
+        self.assertIn("kasse@verein.example", zeilen[0])
+        self.assertIn("*@verein.example", zeilen[1])
+
+    def test_ein_unbekanntes_feld_wird_abgelehnt(self):
+        code, _ = self._regeln("hinzufuegen", "betreff", "Rechnung", "privat")
+
+        self.assertEqual(code, 2)
+
+    def test_eine_unbekannte_kategorie_wird_abgelehnt(self):
+        code, _ = self._regeln("hinzufuegen", "von", "*@x.example", "wichtig")
+
+        self.assertEqual(code, 2)
+
+    def test_entfernen_nach_nummer(self):
+        self._regeln("hinzufuegen", "von", "*@verein.example", "privat")
+        code, text = self._regeln("entfernen", "1")
+
+        self.assertEqual(code, 0)
+        self.assertIn("Entfernt", text)
+        _, danach = self._regeln("zeigen")
+        self.assertIn("Keine Regeln", danach)
+
+    def test_eine_nummer_die_es_nicht_gibt(self):
+        code, _ = self._regeln("entfernen", "7")
+
+        self.assertEqual(code, 2)
+
+    def test_anwenden_zeigt_erst_nur_an(self):
+        """Ohne --wirklich darf sich nichts ändern."""
+        ergebnis = self.archiv.add(
+            self._mail("vorstand@verein.example"),
+            account="firma", folder="INBOX",
+        )
+        self._regeln("hinzufuegen", "von", "*@verein.example", "privat")
+
+        code, text = self._regeln("anwenden")
+
+        self.assertEqual(code, 0)
+        self.assertIn("Nichts geändert", text)
+        self.assertEqual(self._kategorie(ergebnis.hash), "unbestimmt")
+
+    def test_anwenden_mit_wirklich_stuft_um(self):
+        ergebnis = self.archiv.add(
+            self._mail("vorstand@verein.example"),
+            account="firma", folder="INBOX",
+        )
+        self._regeln("hinzufuegen", "von", "*@verein.example", "privat")
+
+        code, text = self._regeln("anwenden", "--wirklich")
+
+        self.assertEqual(code, 0)
+        self.assertIn("Umgestuft", text)
+        self.assertEqual(self._kategorie(ergebnis.hash), "privat")
+
+    def test_anwenden_ohne_regeln_sagt_es(self):
+        code, text = self._regeln("anwenden")
+
+        self.assertEqual(code, 0)
+        self.assertIn("Keine Regeln", text)
