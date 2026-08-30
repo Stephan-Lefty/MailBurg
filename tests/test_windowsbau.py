@@ -483,6 +483,28 @@ class StartbildTest(unittest.TestCase):
         self.assertTrue(bild.is_file(), "assets/startbild.png fehlt")
         self.assertGreater(bild.stat().st_size, 5_000, "verdächtig klein")
 
+    def test_acht_bit_ohne_alphakanal(self):
+        """Tk kann kein 16-Bit-PNG – und sagt es nicht, es zeigt nichts.
+
+        Beim ersten Wurf schrieb ImageMagick stillschweigend 16 Bit.
+        In der VM erschien daraufhin ein leeres graues Fenster mit dem
+        Titel »tk«: Ohne ladbares Bild kennt der Splash seine Größe
+        nicht und bekommt eine Fensterdekoration.
+        """
+        bild = (WURZEL / "assets" / "startbild.png").read_bytes()
+
+        self.assertEqual(bild[:8], b"\x89PNG\r\n\x1a\n", "kein PNG")
+        # Der IHDR-Block steht immer zuerst: 8 Byte Signatur, 4 Byte
+        # Länge, 4 Byte Typ, dann Breite und Höhe zu je 4 Byte.
+        tiefe = bild[24]
+        farbtyp = bild[25]
+
+        self.assertEqual(tiefe, 8, f"{tiefe} Bit – Tk verlangt 8")
+        self.assertIn(
+            farbtyp, (0, 2, 3),
+            f"Farbtyp {farbtyp}: mit Alphakanal, das mag Tk auch nicht",
+        )
+
     def test_der_bau_bindet_es_ein(self):
         self.assertIn("Splash(", self.spec)
         self.assertIn("startbild.png", self.spec)

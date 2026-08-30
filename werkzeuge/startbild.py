@@ -94,7 +94,14 @@ def bauen() -> int:
             "-stroke", "none", "-fill", SCHRIFT,
             "-font", SCHRIFTART, "-pointsize", "18", "-gravity", "north",
             "-annotate", "+0+208", "MailBurg wird geladen",
-            str(ZIEL),
+            # **8 Bit, ohne Alphakanal, als PNG24.** ImageMagick schreibt
+            # sonst 16 Bit – und Tk, das PyInstaller für das Startbild
+            # benutzt, kann davon nichts anfangen: Das Fenster blieb
+            # leer, bekam mangels bekannter Bildgröße eine Titelleiste
+            # und hieß »tk«. Am 2026-08-30 in der VM zu sehen gewesen.
+            "-alpha", "remove", "-background", HINTERGRUND,
+            "-depth", "8", "-define", "png:color-type=2",
+            f"PNG24:{ZIEL}",
         ],
         check=True,
     )
