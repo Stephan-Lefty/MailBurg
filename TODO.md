@@ -8,6 +8,17 @@ wurde.
 
 ## Offen
 
+- [ ] **Die englische TODO ist stehengeblieben.** `TODO.en.md` führt
+  Texterkennung und OAuth2 als offen, obwohl beides seit Tagen gebaut ist,
+  und kennt nichts vom GoBD-Teil, von den Einstufungsregeln oder von der
+  Windows-Erprobung. Sie stammt aus der Zeit vor dem 26.08.
+
+  Das ist die Umkehrung dessen, was `RECHTLICHES.md` verlangt: nicht zu viel
+  behauptet, sondern zu wenig – aber falsch ist beides. Wer nur Englisch
+  liest, hält MailBurg für weiter zurück, als es ist.
+
+  Der englische README stimmt seit 0.11.0 wieder.
+
 ### Am 2026-08-30 nachmittags erledigt
 
 - [x] **Windows 11 auf echter Hardware geprüft.** Der erste Durchgang

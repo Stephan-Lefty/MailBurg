@@ -46,14 +46,18 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 0.10.0, in daily use.** Archive format, IMAP retrieval, search, the
+**Version 0.11.0, in daily use.** Archive format, IMAP retrieval, search, the
 graphical interface, text recognition for scanned PDFs, backups and scheduled
 retrieval are all in place and used every day — on Linux with a corpus of more
 than 16,000 messages, on Windows with the ready-made `MailBurg.exe`.
 
-Still missing: OAuth2 instead of app passwords, Outlook `.pst`, per-archive
-encryption, packages for all three systems. And macOS remains unverified in
-practice. Full list in [TODO.en.md](TODO.en.md).
+OAuth2 is implemented, but only tested against a mock provider: nobody has yet
+signed in with a real Microsoft or Google account. For those, an app password
+remains the safer choice for now.
+
+Still missing: Outlook `.pst`, per-archive encryption, packages for all three
+systems. And macOS remains unverified in practice. Full list in
+[TODO.en.md](TODO.en.md).
 
 ## How it works
 

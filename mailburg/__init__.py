@@ -6,7 +6,7 @@ bestimmt, und durchsucht Mailtexte wie Anhänge im Volltext.
 
 from __future__ import annotations
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 
 APP_ID = "de.stephanlefty.MailBurg"
 APP_NAME = "MailBurg"

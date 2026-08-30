@@ -47,14 +47,18 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 0.10.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
+**Fassung 0.11.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
 Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
 Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
 Bestand von über 16.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
 
-Was noch fehlt: OAuth2 statt App-Passwörtern, Outlook-`.pst`, Verschlüsselung
-je Archiv, Pakete für alle drei Systeme. Und der Betrieb unter macOS ist
-ungeprüft. Die vollständige Liste steht in [TODO.md](TODO.md).
+OAuth2 ist gebaut, aber nur gegen einen nachgebauten Anbieter geprüft: Bei
+einem echten Microsoft- oder Google-Konto hat sich damit noch niemand
+angemeldet. Wer dort abruft, nimmt vorerst besser ein App-Passwort.
+
+Was noch fehlt: Outlook-`.pst`, Verschlüsselung je Archiv, Pakete für alle
+drei Systeme. Und der Betrieb unter macOS ist ungeprüft. Die vollständige
+Liste steht in [TODO.md](TODO.md).
 
 ## Wie es funktioniert
 
