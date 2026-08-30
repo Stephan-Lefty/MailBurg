@@ -16,6 +16,9 @@
 - **[Postfach entlasten](postfach-entlasten.md)** – der eigentliche Zweck:
   nachweisen, dass alles im Archiv ist, und erst dann beim Anbieter aufräumen
   lassen. Mit der Einstellung in Thunderbird und einer Liste zum Abhaken.
+- **[Private Post im Geschäftsarchiv](regeln.md)** – wie Regeln den Verein
+  und die Familie von selbst als privat einstufen, damit sie nicht unter
+  Aufbewahrungsfristen fallen, die für sie nicht gelten.
 - **[Das Archiv sichern](sicherung.md)** – warum ein Archiv kein Backup ist,
   wie aus zehntausend Dateien eine wird, und wie sie in die Cloud kommt.
 - **[MailBurg unter Windows](windows.md)** – Einrichtung, Ablageorte,
