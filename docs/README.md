@@ -23,6 +23,9 @@
   wie aus zehntausend Dateien eine wird, und wie sie in die Cloud kommt.
 - **[MailBurg unter Windows](windows.md)** – Einrichtung, Ablageorte,
   Thunderbird und Outlook.
+- **[Server Edition](server.md)** – *Entwurf, noch nichts davon gebaut.*
+  Was ein Archivserver für mehrere Benutzer können muss, was dafür fehlt
+  und in welcher Reihenfolge es entstehen sollte.
 
 Die Suchsprache erklärt das Programm selbst:
 
