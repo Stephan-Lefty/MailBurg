@@ -16,6 +16,13 @@ from __future__ import annotations
 import pathlib
 import unittest
 
+try:
+    import PySide6  # noqa: F401
+
+    QT_DA = True
+except ImportError:  # pragma: no cover
+    QT_DA = False
+
 WURZEL = pathlib.Path(__file__).resolve().parent.parent
 
 
@@ -356,3 +363,95 @@ class WeicheTest(unittest.TestCase):
             quelle.index("kommandozeile"),
             quelle.index("from mailburg.ui.app import main"),
         )
+
+
+@unittest.skipUnless(QT_DA, "Ohne PySide6 gibt es keine Qt-Übersetzungen.")
+class UebersetzungTest(unittest.TestCase):
+    """»Look in«, »Directory«, »Choose« neben deutschem Text.
+
+    Der Ordnerdialog kommt von Qt und ist ohne Übersetzung englisch.
+    MailBurg lädt sie – suchte sie aber nur dort, wo Qt beim Bau
+    hingeschrieben hatte. In der gepackten .exe zeigt dieser Pfad ins
+    Leere, weil PyInstaller sich bei jedem Start in einen anderen Ordner
+    auspackt.
+
+    Am 2026-08-30 unter Windows aufgefallen. Stephans Satz dazu: »Bei
+    der Ordnerauswahl möchte ich nicht die englische Bezeichnung.«
+    """
+
+    def test_mehrere_orte_werden_abgesucht(self):
+        from mailburg.ui.app import _uebersetzungsorte
+
+        orte = _uebersetzungsorte()
+
+        self.assertGreater(
+            len(orte), 1,
+            "Ein einzelner Ort reicht nicht – in der .exe liegt es woanders.",
+        )
+
+    def test_der_auspackordner_kommt_vor(self):
+        """In der gepackten Fassung ist das der einzige Ort, der stimmt."""
+        import sys
+        from unittest import mock
+
+        from mailburg.ui.app import _uebersetzungsorte
+
+        with mock.patch.object(sys, "_MEIPASS", "/tmp/aufgepackt", create=True):
+            orte = _uebersetzungsorte()
+
+        self.assertTrue(
+            any("aufgepackt" in o for o in orte),
+            f"Der Auspackordner fehlt: {orte}",
+        )
+
+    def test_hier_wird_auch_wirklich_etwas_gefunden(self):
+        """Auf diesem Rechner muss einer der Orte die Datei enthalten."""
+        import pathlib
+
+        from mailburg.ui.app import _uebersetzungsorte
+
+        treffer = [
+            o for o in _uebersetzungsorte()
+            if o and (pathlib.Path(o) / "qtbase_de.qm").is_file()
+        ]
+
+        self.assertTrue(treffer, "qtbase_de.qm an keinem der Orte gefunden")
+
+
+class AufgabenXmlTest(unittest.TestCase):
+    """»Die Aufgaben-XML enthält einen unerwarteten Knoten.«
+
+    So antwortete die Windows-Aufgabenplanung auf »Übernehmen«, und der
+    Zeitplan ließ sich nicht einrichten. Schuld war ein
+    ``<RandomDelay>`` im ``<Settings>``-Block – dort führt das Schema es
+    nicht, es gehört in den Auslöser. Am 2026-08-30 in der VM
+    aufgefallen.
+    """
+
+    def _xml(self, **k):
+        from mailburg.core.aufgabenplanung import _xml
+
+        return _xml("Probe", "C:\\MailBurg.exe", "abrufen", **k)
+
+    def test_kein_randomdelay_mehr(self):
+        for art in ({"wiederholung": "PT30M"}, {"taeglich": 7}):
+            with self.subTest(art=art):
+                self.assertNotIn("RandomDelay", self._xml(**art))
+
+    def test_die_einstellungen_stehen_noch_drin(self):
+        """Nur der eine Knoten sollte weg sein, nicht der halbe Block."""
+        xml = self._xml(wiederholung="PT30M")
+
+        for muss in (
+            "MultipleInstancesPolicy", "StartWhenAvailable",
+            "InteractiveToken", "ExecutionTimeLimit",
+        ):
+            self.assertIn(muss, xml)
+
+    def test_beide_ausloeser_bleiben_wohlgeformt(self):
+        from xml.etree import ElementTree
+
+        for art in ({"wiederholung": "PT30M"}, {"taeglich": 7}):
+            with self.subTest(art=art):
+                # Wirft bei kaputtem XML - das ist hier die Prüfung.
+                ElementTree.fromstring(self._xml(**art))

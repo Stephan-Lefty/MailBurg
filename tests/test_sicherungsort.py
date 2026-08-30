@@ -110,3 +110,64 @@ class SicherungsortTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CloudordnerTest(unittest.TestCase):
+    """OneDrive fehlte – und damit fand der Vorschlag unter Windows nichts.
+
+    Die Liste der Cloud-Ordner entstand an einem Linux-Rechner. Dort
+    kommt OneDrive nicht vor; auf einem gewöhnlichen Windows ist es der
+    einzige, den es gibt. Der Sicherungsvorschlag lief deshalb dort
+    immer ins Leere und ließ das Feld leer – zu sehen am 2026-08-30 auf
+    einem Bild aus der VM.
+    """
+
+    def test_onedrive_steht_in_der_liste(self):
+        self.assertIn("OneDrive", orte.CLOUD_ORDNER)
+
+    def test_auch_mit_firmenzusatz(self):
+        """Im Geschäftsumfeld heißt er »OneDrive - Firmenname«."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            zuhause = Path(ordner)
+            (zuhause / "OneDrive - Beispiel GmbH").mkdir()
+            (zuhause / "Dokumente").mkdir()
+
+            self.assertEqual(
+                orte._cloudordner_im(zuhause), ["OneDrive - Beispiel GmbH"]
+            )
+
+    def test_was_keine_cloud_ist_bleibt_draussen(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            zuhause = Path(ordner)
+            for name in ("Dokumente", "Bilder", "Musik"):
+                (zuhause / name).mkdir()
+
+            self.assertEqual(orte._cloudordner_im(zuhause), [])
+
+    def test_der_genaue_name_geht_weiterhin(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            zuhause = Path(ordner)
+            (zuhause / "Nextcloud").mkdir()
+
+            self.assertEqual(orte._cloudordner_im(zuhause), ["Nextcloud"])
+
+    def test_ein_ordner_wird_nicht_zweimal_genannt(self):
+        """»OneDrive« und »OneDrive - X« dürfen sich nicht doppeln."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            zuhause = Path(ordner)
+            (zuhause / "OneDrive").mkdir()
+            (zuhause / "OneDrive - Beispiel GmbH").mkdir()
+
+            gefunden = orte._cloudordner_im(zuhause)
+
+            self.assertEqual(len(gefunden), len(set(gefunden)), gefunden)
+            self.assertIn("OneDrive", gefunden)
+            self.assertIn("OneDrive - Beispiel GmbH", gefunden)

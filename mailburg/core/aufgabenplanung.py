@@ -147,6 +147,19 @@ def _xml(beschreibung: str, programm: str, argumente: str,
 
     ``wiederholung`` ist eine ISO-8601-Dauer (``PT30M``) für den Abruf,
     ``taeglich`` ein Abstand in Tagen für die Sicherung.
+
+    **Kein Streuwert.** In den Einstellungen stand einmal
+    ``<RandomDelay>PT2M</RandomDelay>``, damit nicht alle Rechner auf die
+    Sekunde genau beim Anbieter anfragen. Die Aufgabenplanung nimmt das
+    dort nicht an und weist die ganze Aufgabe zurück – »Die Aufgaben-XML
+    enthält einen unerwarteten Knoten«. Nach dem Schema gehört der Wert
+    in den Auslöser, und ``CalendarTrigger`` führt ihn dort nicht einmal
+    als Kindelement.
+
+    Weggelassen statt verschoben: Für einen einzelnen Rechner bringt die
+    Streuung nichts, und ein Zeitplan, der sich gar nicht einrichten
+    lässt, wiegt schwerer als gleichmäßige Last. Am 2026-08-30 unter
+    Windows 11 aufgefallen, beim Klick auf »Übernehmen«.
     """
     # Ein fester, längst vergangener Beginn. Die Aufgabenplanung rechnet
     # von dort aus weiter; ein Datum in der Zukunft ließe die Aufgabe
@@ -206,8 +219,6 @@ def _xml(beschreibung: str, programm: str, argumente: str,
     <Hidden>false</Hidden>
     <!-- Damit ein haengender Server die Aufgabe nicht ewig blockiert. -->
     <ExecutionTimeLimit>PT4H</ExecutionTimeLimit>
-    <!-- Damit nicht alle Rechner auf die Sekunde genau anfragen. -->
-    <RandomDelay>PT2M</RandomDelay>
     <Priority>7</Priority>
   </Settings>
   <Actions Context="Author">

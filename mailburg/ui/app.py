@@ -250,14 +250,54 @@ def _deutsch(anwendung):
     Grund auf deutsch, seine Meldungen sind es und die Suchsprache auch.
     Englische Knöpfe daneben wären kein Entgegenkommen, sondern ein Bruch.
     """
-    from PySide6.QtCore import QLibraryInfo, QTranslator
+    from PySide6.QtCore import QTranslator
 
     uebersetzer = QTranslator()
-    ort = QLibraryInfo.path(QLibraryInfo.TranslationsPath)
-    if uebersetzer.load("qtbase_de", ort):
-        anwendung.installTranslator(uebersetzer)
-        return uebersetzer
+    for ort in _uebersetzungsorte():
+        if uebersetzer.load("qtbase_de", ort):
+            anwendung.installTranslator(uebersetzer)
+            return uebersetzer
     return None
+
+
+def _uebersetzungsorte() -> list[str]:
+    """Wo ``qtbase_de.qm`` liegen kann – in dieser Reihenfolge.
+
+    ``QLibraryInfo.TranslationsPath`` liefert den Pfad, der beim Bau von
+    Qt einkompiliert wurde. In der gepackten ``.exe`` zeigt der ins
+    Leere: Dort liegt alles in einem Ordner, den PyInstaller beim Start
+    frisch auspackt, und dessen Name bei jedem Lauf ein anderer ist.
+
+    Die Folge war eine halbdeutsche Oberfläche – MailBurg auf Deutsch,
+    daneben »Look in«, »Directory« und »Choose« im Ordnerdialog, weil
+    der von Qt kommt. Am 2026-08-30 unter Windows aufgefallen. Die
+    Übersetzungen waren die ganze Zeit in der .exe enthalten, nur nicht
+    an der Stelle, an der gesucht wurde.
+    """
+    import sys
+    from pathlib import Path
+
+    from PySide6.QtCore import QLibraryInfo
+
+    orte = [QLibraryInfo.path(QLibraryInfo.TranslationsPath)]
+
+    # Der Ordner, in den die gepackte Fassung sich auspackt.
+    gepackt = getattr(sys, "_MEIPASS", None)
+    if gepackt:
+        orte.append(str(Path(gepackt) / "PySide6" / "translations"))
+
+    # Und neben dem Modul selbst – so liegt es in einer gewöhnlichen
+    # Installation aus dem Paketverzeichnis.
+    try:
+        import PySide6
+
+        neben = Path(PySide6.__file__).resolve().parent
+        orte.append(str(neben / "Qt" / "translations"))
+        orte.append(str(neben / "translations"))
+    except Exception:  # pragma: no cover – ohne PySide6 kämen wir nicht her
+        pass
+
+    return orte
 
 
 def _symbol():

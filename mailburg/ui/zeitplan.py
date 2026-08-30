@@ -40,6 +40,50 @@ TAKTE: list[tuple[str, int]] = [
     ("einmal am Tag", 1440),
 ]
 
+#: Wie viele Sicherungsstände aufbewahrt werden. Die Null bedeutet
+#: »immer dieselbe Datei überschreiben« – so versteht es auch
+#: ``core.zeitplan._haltung``, das daraus ``--ersetzen`` macht.
+HALTUNGEN: list[tuple[str, int]] = [
+    ("immer dieselbe Datei ersetzen", 0),
+    ("die letzten 2 Stände", 2),
+    ("die letzten 3 Stände", 3),
+    ("die letzten 5 Stände", 5),
+    ("die letzten 7 Stände", 7),
+    ("die letzten 14 Stände", 14),
+    ("die letzten 30 Stände", 30),
+]
+
+
+def _erster_vorhandener(pfad: str | None) -> str:
+    """Ein Startordner, den es wirklich gibt.
+
+    Der Dateidialog bekommt einen Ordner mit, in dem er aufgehen soll.
+    Gibt es ihn nicht, macht Windows sich auf die Suche – über die
+    Netzwerkumgebung, mit Zeitüberschreitung. Für den Anwender sieht das
+    aus, als hinge das Programm: erst eine Sanduhr, dann irgendwann doch
+    der Dialog.
+
+    Das trat auf, seit der Dialog einen Ordner *vorschlägt*: Der
+    Vorschlag ist ja gerade noch nicht angelegt. Am 2026-08-30 unter
+    Windows aufgefallen, einen Tag nachdem der Vorschlag eingebaut
+    wurde.
+
+    Deshalb hier zum nächsten vorhandenen Elternordner hochgehen – bei
+    ``D:\\Sicherungen\\MailBurg-Sicherung`` also zu ``D:\\Sicherungen``
+    oder ``D:\\``. Bleibt gar nichts übrig, das Benutzerverzeichnis.
+    """
+    if pfad and pfad.strip():
+        stelle = Path(pfad.strip()).expanduser()
+        for kandidat in (stelle, *stelle.parents):
+            try:
+                if kandidat.is_dir():
+                    return str(kandidat)
+            except OSError:
+                # Ein abgezogenes Laufwerk oder ein unerreichbarer
+                # Netzpfad – weiter nach oben, nicht aufgeben.
+                continue
+    return str(Path.home())
+
 
 def _wie_das_system_schreibt(pfad: str | None) -> str:
     """Trennzeichen so, wie der Anwender sie kennt.
@@ -159,11 +203,20 @@ class Sicherungswahl(QWidget):
         self.suchen = QPushButton("Auswählen …")
         self.suchen.clicked.connect(self._ordner_waehlen)
 
-        self.behalten = QSpinBox()
-        self.behalten.setRange(0, 99)
-        self.behalten.setValue(0)
-        self.behalten.setSpecialValueText("immer dieselbe Datei ersetzen")
-        self.behalten.setSuffix(" Stände")
+        # **Das war ein Zahlenfeld und sah aus wie eine Auswahlliste.**
+        # Direkt daneben steht mit »Wie oft« eine echte Auswahlliste;
+        # unter Windows 11 gleichen sich die beiden Pfeile so sehr, dass
+        # Stephan am 2026-08-30 darauf klickte und meldete: »das rechte
+        # Pulldown geht nicht«. Es klappte nichts auf, weil es nichts
+        # aufzuklappen gab – man musste die Zahl hineintippen.
+        #
+        # Eine Liste ist hier ohnehin das Richtige: Zwischen 17 und 18
+        # Ständen wählt niemand, und die Fälle, die vorkommen, sind
+        # abzählbar.
+        self.behalten = QComboBox()
+        for beschriftung, wert in HALTUNGEN:
+            self.behalten.addItem(beschriftung, wert)
+        self.behalten.setAccessibleName("Wie viele Stände aufbewahrt werden")
         self.behalten.setToolTip(
             "»Immer dieselbe Datei ersetzen« hält den Platzbedarf "
             "gleich – bei Nextcloud sinnvoll, weil der Server die "
@@ -228,7 +281,7 @@ class Sicherungswahl(QWidget):
 
     def _ordner_waehlen(self) -> None:
         gewaehlt = QFileDialog.getExistingDirectory(
-            self, "Ordner für die Sicherungen", self.ziel.text() or str(Path.home())
+            self, "Ordner für die Sicherungen", _erster_vorhandener(self.ziel.text())
         )
         if gewaehlt:
             self.ziel.setText(_wie_das_system_schreibt(gewaehlt))
@@ -249,7 +302,7 @@ class Sicherungswahl(QWidget):
             return False, "Bitte einen Ordner für die Sicherungen wählen."
         return zeitplan.sicherung_einrichten(
             archiv, self.ziel.text().strip(),
-            self.takt.currentData(), self.behalten.value(),
+            self.takt.currentData(), self.behalten.currentData(),
         )
 
 

@@ -21,6 +21,13 @@ from pathlib import Path
 CLOUD_ORDNER = (
     "Nextcloud", "nextcloud", "ownCloud", "owncloud",
     "Seafile", "Syncthing", "Dropbox", "Cloud",
+    # **OneDrive fehlte hier bis zum 2026-08-30.** Ausgerechnet der
+    # Ordner, den ein Windows-Rechner meistens schon mitbringt – und
+    # damit fand der Sicherungsvorschlag auf einem gewöhnlichen Windows
+    # gar nichts und ließ das Feld leer. Die Liste war an einem
+    # Linux-Rechner entstanden, und dort kommt OneDrive nicht vor.
+    "OneDrive", "OneDrive - Persönlich", "iCloudDrive", "pCloudDrive",
+    "MagentaCLOUD", "GMX Cloud", "WEB.DE Cloud",
 )
 
 #: Wo eingehängte Laufwerke auftauchen. ``/mnt`` steht dabei für von Hand
@@ -187,6 +194,32 @@ def _beschreibbar(pfad: Path) -> bool:
     return pfad.is_dir() and os.access(pfad, os.W_OK)
 
 
+def _cloudordner_im(zuhause: Path) -> list[str]:
+    """Die Cloud-Ordner, die es hier wirklich gibt.
+
+    Feste Namen reichen nicht: OneDrive heißt im Geschäftsumfeld
+    »OneDrive - Firmenname«, und der Zusatz steht nirgends fest. Deshalb
+    zusätzlich alles, was mit einem bekannten Namen *beginnt*.
+
+    Die Reihenfolge folgt ``CLOUD_ORDNER``, damit der Vorschlag
+    berechenbar bleibt und nicht davon abhängt, wie das Dateisystem
+    gerade sortiert.
+    """
+    gefunden: list[str] = []
+    try:
+        vorhanden = sorted(p.name for p in zuhause.iterdir() if p.is_dir())
+    except OSError:
+        vorhanden = []
+
+    for name in CLOUD_ORDNER:
+        if name in vorhanden:
+            gefunden.append(name)
+        for da in vorhanden:
+            if da not in gefunden and da.startswith(name + " -"):
+                gefunden.append(da)
+    return gefunden
+
+
 def vorschlagen() -> list[Ort]:
     """Sammelt die Orte, die sich für ein Archiv anbieten."""
     gefunden: list[Ort] = []
@@ -200,7 +233,7 @@ def vorschlagen() -> list[Ort]:
             auf_systemplatte=True)
     )
 
-    for name in CLOUD_ORDNER:
+    for name in _cloudordner_im(zuhause):
         ordner = zuhause / name
         if not _beschreibbar(ordner):
             continue
