@@ -195,6 +195,13 @@ class Sicherungswahl(QWidget):
         for bezeichnung in zeitplan.TAKTE_SICHERUNG:
             self.takt.addItem(bezeichnung, bezeichnung)
         self.takt.setAccessibleName("Wie oft gesichert wird")
+        # **Zeigen, was eingerichtet ist, nicht die Vorgabe.** Sonst
+        # überschreibt ein Übernehmen die eigene Einstellung, ohne dass
+        # irgendwo etwas davon steht.
+        if stand.takt_sicherung:
+            gefunden = self.takt.findData(stand.takt_sicherung)
+            if gefunden >= 0:
+                self.takt.setCurrentIndex(gefunden)
 
         self.ziel = QLineEdit(_wie_das_system_schreibt(stand.archiv))
         self.ziel.setPlaceholderText(
@@ -217,6 +224,18 @@ class Sicherungswahl(QWidget):
         for beschriftung, wert in HALTUNGEN:
             self.behalten.addItem(beschriftung, wert)
         self.behalten.setAccessibleName("Wie viele Stände aufbewahrt werden")
+        # Auch hier: den eingerichteten Wert zeigen. Steht dort eine
+        # Zahl, die die Liste nicht führt – von Hand eingetragen oder aus
+        # einer früheren Fassung –, kommt sie hinzu, statt stillschweigend
+        # auf die Vorgabe zu fallen.
+        if stand.behalten:
+            gefunden = self.behalten.findData(stand.behalten)
+            if gefunden < 0:
+                self.behalten.addItem(
+                    f"die letzten {stand.behalten} Stände", stand.behalten
+                )
+                gefunden = self.behalten.count() - 1
+            self.behalten.setCurrentIndex(gefunden)
         self.behalten.setToolTip(
             "»Immer dieselbe Datei ersetzen« hält den Platzbedarf "
             "gleich – bei Nextcloud sinnvoll, weil der Server die "

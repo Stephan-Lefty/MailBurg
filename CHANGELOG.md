@@ -11,6 +11,24 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Der Sicherungsdialog überschrieb stillschweigend die eigene
+  Einstellung.** Er las zurück, *ob* gesichert wird und *wohin* — nicht
+  aber, wie oft und wie viele Stände. Beim Öffnen stand deshalb immer
+  „täglich" und „immer dieselbe Datei ersetzen" da, unabhängig davon, was
+  tatsächlich eingerichtet war.
+
+  Wer darin etwas anderes änderte — den Zielordner etwa — und auf
+  Übernehmen ging, schrieb den Zeitplan mit diesen Vorgaben neu. Aus
+  „monatlich mit zwei Ständen" wurde ein tägliches Überschreiben
+  derselben Datei: aus zwei Sicherungsständen einer, ohne Meldung, ohne
+  Nachfrage. Aufgefallen wäre das erst, wenn jemand eine Sicherung
+  gebraucht hätte, die es nicht mehr gibt.
+
+  Gelesen wird jetzt beides, unter Linux aus `OnCalendar` und der
+  Befehlszeile des Dienstes, unter Windows aus der Aufgabe. Steht dort
+  eine Zahl, die der Dialog nicht anbietet — von Hand eingetragen —,
+  kommt sie zur Auswahl hinzu, statt auf die Vorgabe zu fallen.
+
 - **Auf einem Bild in der Anleitung stand der Sicherungsordner des
   Entwicklers** — mitsamt seinem Namen darin. Das Bilderwerkzeug setzt
   jedem Fenster erfundene Daten vor, aber der Zeitplandialog fragt das

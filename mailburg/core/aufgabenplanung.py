@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import getpass
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -375,18 +376,53 @@ def sicherung_abschalten(archiv: Path) -> tuple[bool, str]:
     return True, "Die regelmäßige Sicherung ist abgeschaltet."
 
 
-def sicherung_zustand(archiv: Path | None) -> tuple[bool, str]:
-    """Läuft die Sicherung, und für welches Archiv."""
+def sicherung_zustand(archiv: Path | None) -> tuple[bool, str, str, int]:
+    """Läuft die Sicherung – und mit welchen Einstellungen.
+
+    Gibt zurück: läuft, Zielordner, Takt und Zahl der Stände. Die
+    letzten beiden standen früher nicht darin; der Dialog zeigte
+    deshalb immer die Vorgaben, und wer ihn öffnete und übernahm,
+    überschrieb seine eigene Einstellung (2026-08-30).
+    """
     if archiv is None:
-        return False, ""
+        return False, "", "", 0
     name = _aufgabenname("Sicherung", archiv)
     if not _laeuft(name):
-        return False, ""
+        return False, "", "", 0
 
-    for zeile in _gelesen(name).splitlines():
+    xml = _gelesen(name)
+    ziel, behalten = "", 0
+    for zeile in xml.splitlines():
         if "<Arguments>" in zeile and '"' in zeile:
             teile = zeile.split('"')
             # Vorletztes Anführungspaar ist das Archiv, letztes das Ziel.
             if len(teile) >= 4:
-                return True, teile[-4]
-    return True, ""
+                ziel = teile[-4]
+            # Die Regel, was »ersetzen« und was »sammeln« heißt, steht
+            # in zeitplan – und zwar nur dort. Stünde sie zweimal da,
+            # liefen Linux und Windows irgendwann auseinander.
+            from mailburg.core.zeitplan import _behalten_aus
+
+            behalten = _behalten_aus(zeile)
+    return True, ziel, _takt_aus_xml(xml), behalten
+
+
+def _takt_aus_xml(xml: str) -> str:
+    """Aus ``<DaysInterval>7</DaysInterval>`` wird »wöchentlich«.
+
+    Die Aufgabenplanung kennt nur Abstände in Tagen; der Dialog nur die
+    drei Bezeichnungen. Was dazwischen liegt, wird auf die nächste
+    passende gerundet – ein von Hand auf zehn Tage gestellter Zeitplan
+    zeigt sich als »wöchentlich«, und wer übernimmt, bekommt sieben.
+    Das ist ehrlicher, als eine Zahl anzuzeigen, die der Dialog gar
+    nicht anbietet.
+    """
+    treffer = re.search(r"<DaysInterval>(\d+)</DaysInterval>", xml)
+    if not treffer:
+        return ""
+    tage = int(treffer.group(1))
+    if tage >= 21:
+        return "monatlich"
+    if tage >= 5:
+        return "wöchentlich"
+    return "täglich"

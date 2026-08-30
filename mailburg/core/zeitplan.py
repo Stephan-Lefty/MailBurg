@@ -21,6 +21,7 @@ holt ``Persistent=true`` versäumte Läufe nach, sobald sich jemand anmeldet.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -62,6 +63,23 @@ class Zustand:
     takt: int = STANDARDTAKT
     grund: str = ""
     """Warum es nicht geht – für die Oberfläche, in ganzen Sätzen."""
+
+    takt_sicherung: str = ""
+    """Wie oft gesichert wird: ``täglich``, ``wöchentlich``, ``monatlich``."""
+
+    behalten: int = 0
+    """Wie viele Stände aufbewahrt werden; 0 heißt »dieselbe Datei ersetzen«.
+
+    **Warum das gelesen werden muss.** Der Dialog zeigte beim Öffnen
+    immer die Vorgaben – »täglich« und »dieselbe Datei ersetzen« –,
+    unabhängig davon, was tatsächlich eingerichtet war. Wer darin etwas
+    anderes änderte, den Zielordner etwa, und auf Übernehmen ging,
+    überschrieb damit stillschweigend seine eigene Einstellung.
+
+    Bei einem Archiv, das monatlich mit zwei Ständen gesichert wurde,
+    wäre daraus ein tägliches Überschreiben derselben Datei geworden –
+    aus zwei Sicherungsständen einer. Am 2026-08-30 gefunden.
+    """
 
 
 def _windows() -> bool:
@@ -335,7 +353,13 @@ def sicherung_abschalten(archiv: Path | str) -> tuple[bool, str]:
 
 
 def sicherung_zustand(archiv: Path | str | None = None) -> Zustand:
-    """Was für die Sicherung dieses Archivs eingerichtet ist."""
+    """Was für die Sicherung dieses Archivs eingerichtet ist.
+
+    Liest alles zurück, was ``sicherung_einrichten`` geschrieben hat –
+    Zielordner, Takt und Zahl der Stände. Anders kann der Dialog nicht
+    zeigen, was gilt, und wer ihn öffnet, überschreibt beim Übernehmen
+    seine eigene Einstellung mit den Vorgaben.
+    """
     geht, grund = moeglich()
     stand = Zustand(moeglich=geht, grund=grund)
     if not geht or archiv is None:
@@ -344,7 +368,9 @@ def sicherung_zustand(archiv: Path | str | None = None) -> Zustand:
     if _windows():
         from mailburg.core import aufgabenplanung
 
-        stand.laeuft, stand.archiv = aufgabenplanung.sicherung_zustand(
+        (
+            stand.laeuft, stand.archiv, stand.takt_sicherung, stand.behalten
+        ) = aufgabenplanung.sicherung_zustand(
             Path(archiv).expanduser().resolve()
         )
         return stand
@@ -356,12 +382,41 @@ def sicherung_zustand(archiv: Path | str | None = None) -> Zustand:
 
     dienst = DIENSTE / f"{einheit}.service"
     if dienst.is_file():
-        teile = [
-            t for t in dienst.read_text(encoding="utf-8").split('"') if t.strip()
-        ]
+        text = dienst.read_text(encoding="utf-8")
+        teile = [t for t in text.split('"') if t.strip()]
         if len(teile) >= 2:
             stand.archiv = teile[-1].strip()
+        stand.behalten = _behalten_aus(text)
+
+    uhr = DIENSTE / f"{einheit}.timer"
+    if uhr.is_file():
+        for zeile in uhr.read_text(encoding="utf-8").splitlines():
+            if zeile.startswith("OnCalendar="):
+                stand.takt_sicherung = _takt_aus(zeile.split("=", 1)[1].strip())
     return stand
+
+
+def _behalten_aus(befehlszeile: str) -> int:
+    """Die Zahl hinter ``--behalten``; 0 bei ``--ersetzen``.
+
+    Gegenstück zu ``_haltung``. Steht keines von beidem darin, ist es
+    eine Datei aus einer älteren Fassung – dann gilt die Vorgabe.
+    """
+    if "--ersetzen" in befehlszeile:
+        return 0
+    treffer = re.search(r"--behalten\s+(\d+)", befehlszeile)
+    return int(treffer.group(1)) if treffer else 0
+
+
+def _takt_aus(oncalendar: str) -> str:
+    """Aus ``weekly`` wird wieder ``wöchentlich``.
+
+    Der Dialog kennt nur die deutschen Bezeichnungen; systemd nur seine
+    eigenen. ``TAKTE_SICHERUNG`` bildet in die eine Richtung ab, hier
+    geht es zurück.
+    """
+    rueckwaerts = {wert: name for name, wert in TAKTE_SICHERUNG.items()}
+    return rueckwaerts.get(oncalendar.strip(), "")
 
 
 def zustand(archiv: Path | str | None = None) -> Zustand:

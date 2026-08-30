@@ -4568,3 +4568,54 @@ class SicherungsvorschlagTest(OberflaechenTest):
         wahl.an.setChecked(False)
 
         self.assertEqual(wahl.ziel.text(), vorher)
+
+
+class SicherungszustandImDialogTest(OberflaechenTest):
+    """Was eingerichtet ist, muss im Dialog stehen.
+
+    Sonst überschreibt ein Übernehmen die eigene Einstellung – aus
+    »monatlich mit zwei Ständen« würde wieder »täglich, dieselbe Datei«.
+    """
+
+    def _wahl(self, **stand):
+        from unittest import mock
+
+        from mailburg.core import zeitplan as kern
+        from mailburg.ui import zeitplan as modul
+
+        vorgesetzt = kern.Zustand(moeglich=True, laeuft=True, **stand)
+        for patch in (
+            mock.patch.object(
+                kern, "sicherung_zustand", lambda archiv=None: vorgesetzt
+            ),
+            mock.patch.object(
+                modul.orte, "sicherungsort_vorschlagen", lambda archiv=None: None
+            ),
+        ):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+        return modul.Sicherungswahl(archiv="/home/martha/Archiv")
+
+    def test_monatlich_steht_auch_da(self):
+        wahl = self._wahl(takt_sicherung="monatlich", behalten=2)
+
+        self.assertEqual(wahl.takt.currentData(), "monatlich")
+        self.assertEqual(wahl.behalten.currentData(), 2)
+
+    def test_ersetzen_bleibt_ersetzen(self):
+        wahl = self._wahl(takt_sicherung="täglich", behalten=0)
+
+        self.assertEqual(wahl.behalten.currentData(), 0)
+
+    def test_eine_zahl_ausserhalb_der_liste_kommt_hinzu(self):
+        """Von Hand auf 4 gestellt: nicht stillschweigend auf 0 fallen."""
+        wahl = self._wahl(takt_sicherung="täglich", behalten=4)
+
+        self.assertEqual(wahl.behalten.currentData(), 4)
+        self.assertIn("4", wahl.behalten.currentText())
+
+    def test_ohne_eingerichteten_zeitplan_die_vorgabe(self):
+        wahl = self._wahl()
+
+        self.assertEqual(wahl.behalten.currentData(), 0)
