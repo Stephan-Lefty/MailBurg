@@ -127,6 +127,15 @@ pyz = PYZ(analyse.pure)
 #: Sekunde. Erzeugt wird es von ``werkzeuge/startbild.py``; fehlt es,
 #: wird ohne gebaut, damit ein Bauversuch daran nicht scheitert.
 #:
+#: **Noch nicht belegt.** In der Windows-VM war das Bild bis zuletzt
+#: nicht zu sehen – auch nicht, nachdem zwei echte Fehler behoben
+#: waren (16 Bit statt 8, und ``always_on_top``). Der Bau meldet
+#: »Building Splash«, aber ob die Ressource in der fertigen Datei
+#: ankommt, ließ sich von außen nicht feststellen. Der nächste Versuch
+#: gehört auf einen richtigen Windows-Rechner: In einer VM ohne
+#: Grafikbeschleunigung kann ein randloses Fenster auch aus Gründen
+#: unsichtbar bleiben, die mit MailBurg nichts zu tun haben.
+#:
 #: ``text_pos`` schaltet die Laufzeile ein. PyInstaller schreibt dort
 #: beim Auspacken die Namen der Dateien – technisch, aber es bewegt
 #: sich. Sobald Python läuft, übernimmt ``mailburg.ui.app`` die Zeile

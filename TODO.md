@@ -8,6 +8,35 @@ wurde.
 
 ## Offen
 
+### Als Erstes, wenn ein echtes Windows greifbar ist
+
+- [ ] **Das Startbild ist ungeprüft.** In der VM war es bis zuletzt nicht
+  zu sehen – auch nicht, nachdem zwei echte Fehler behoben waren: Das Bild
+  lag mit 16 Bit Farbtiefe vor (Tk kann nur 8), und `always_on_top` stand
+  auf `False`, wodurch das randlose Fenster hinter den Desktop rutschte.
+
+  Der Bau meldet »Building Splash«, aber ob die Ressource in der fertigen
+  Datei ankommt, ließ sich von außen nicht feststellen. Eine VM ohne
+  Grafikbeschleunigung ist für diese Frage der ungeeignete Ort: Dort kann
+  ein randloses Fenster aus Gründen unsichtbar bleiben, die mit MailBurg
+  nichts zu tun haben.
+
+  **Auf dem Laptop zu prüfen:** Erscheint nach dem Doppelklick binnen
+  einer Sekunde ein randloses Bild mit dem Logo? Läuft die Zeile darunter
+  mit – erst Dateinamen, dann deutsche Sätze? Verschwindet es erst, wenn
+  das Hauptfenster steht?
+
+  Erscheint es weiterhin nicht, ist die nächste Frage nicht »warum«,
+  sondern ob eine einzelne Datei überhaupt der richtige Weg ist. Ein
+  Programmordner spart das Auspacken und damit die Wartezeit ganz – der
+  Preis wäre, dass man nicht mehr eine Datei herunterlädt und
+  doppelklickt.
+
+- [ ] **Die Startzeit messen, wo sie zählt.** In der VM sind es 20–25
+  Sekunden. Wie viel davon auf die Virtualisierung geht und wie viel auf
+  das Auspacken der 154 MB, weiß niemand. Auf dem Laptop mit SSD lässt
+  sich das trennen.
+
 ### Am 2026-08-29 erledigt
 
 - [x] **Die Bilder aus der Historie bereinigt.** Auf einer alten Fassung
