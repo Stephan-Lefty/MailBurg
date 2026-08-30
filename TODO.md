@@ -37,6 +37,19 @@ wurde.
   das Auspacken der 154 MB, weiß niemand. Auf dem Laptop mit SSD lässt
   sich das trennen.
 
+- [ ] **Die `.exe` neu bauen, bevor jemand wieder prüft.** Am 2026-08-30
+  lag ein Bildschirmfoto vor, das den alten Zeitplanfehler zeigte
+  (»unerwarteter Knoten«, `RandomDelay`). Der steckt seit dem Vortag
+  nicht mehr im Quelltext – die gelaufene Datei war also älter als die
+  Korrektur.
+
+  Das ist der teure Fehler dieser Art: Man prüft eine alte Fassung und
+  hält den Befund für aktuell. Wer die nächste Prüfung ansetzt, baut
+  vorher neu und schreibt sich den Commit auf, aus dem gebaut wurde.
+
+  Dasselbe Bild brachte allerdings einen echten Fund: Die Meldung stand
+  als »enth„lt« da statt »enthält«. Behoben, siehe Änderungsprotokoll.
+
 ### Am 2026-08-29 erledigt
 
 - [x] **Die Bilder aus der Historie bereinigt.** Auf einer alten Fassung
