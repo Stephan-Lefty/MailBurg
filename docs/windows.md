@@ -101,6 +101,13 @@ gewachsenen Bestand kann das eine Stunde dauern. Jeder weitere Lauf holt nur
 noch Neues und ist in Sekunden durch. Abbrechen ist unbedenklich: Der nächste
 Abruf macht dort weiter, wo der vorige aufgehört hat.
 
+Danach steht das Hauptfenster da:
+
+![Das Hauptfenster unter Windows 11, hier mit einem Beispielarchiv, in dem eine einzelne Mail liegt. Links die Postfächer mit der Zahl ihrer Mails, oben die Nachrichtenliste mit Anhangsymbol, Datum, Absender, Betreff und Größe, darunter der Lesebereich. Über allem das Suchfeld, unten der Bestand des Archivs und wann zuletzt abgerufen wurde.](bilder/windows-hauptfenster.webp)
+
+Die Bedienung ist dieselbe wie unter Linux — [Die Oberfläche](oberflaeche.md)
+erklärt jedes Fenster und jeden Menüpunkt.
+
 ## Eingescannte PDF durchsuchbar machen
 
 **Das ist bereits eingebaut.** Mehr als die Hälfte der PDF in einem gewachsenen

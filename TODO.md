@@ -42,26 +42,24 @@ wurde.
 
 - [x] **Das Bild des Zeitplandialogs unter Windows** ist in der Anleitung.
 
+### Am 2026-08-30 erledigt
+
+- [x] **Die Windows-Anleitung ist vollständig.** Das letzte fehlende Bild —
+  das Hauptfenster mit dem Beispielarchiv — ist aufgenommen, mit der neuen
+  `.exe` aus Commit `b3d1aa5`. Unten steht jetzt „1 Mail im Archiv" statt
+  „1 Mails": die Gegenprobe für die Korrektur vom Vortag, an genau der
+  Stelle, an der der Fehler aufgefallen war.
+
+- [x] **Die Zahlwörter auf der Kommandozeile.** Zwölf Stellen, darunter
+  „Hash-Kette: unversehrt (1 Einträge)" — die stand in keiner Liste.
+  Gefunden, indem ein Archiv mit einer einzigen Mail angelegt und jeder
+  Befehl einmal aufgerufen wurde.
+
+- [x] **WinError 123 wird erklärt.** Ein Pfad mit unaufgelöster Variable ist
+  kein „Platte weg". Die Behandlung stammte vom Windows-Durchgang am 28.08.
+  und war nie committet worden.
+
 ### Als Nächstes dran
-
-- [ ] **Noch ein »1 Mails«, auf der Kommandozeile.** In
-  `mailburg/__main__.py` (Zeile 544) steht `f"  {len(zeilen)} Mails, davon
-  {len(nur_hier)} nur hier zu finden."` — dieselbe fehlende
-  Fallunterscheidung wie in der Oberfläche, nur eben beim Postfach-Entlasten.
-  `mailburg.core.sprache.mails()` gibt es dafür bereits.
-
-  **Nicht angefasst**, weil an dieser Datei gerade eine zweite Sitzung
-  arbeitet. Wer sie als Nächstes anfasst, nimmt es mit — und sieht gleich
-  nach, ob im selben Modul noch mehr davon steht.
-
-- [ ] **Das Hauptfenster-Bild für die Windows-Anleitung.** Auf der
-  bisherigen Aufnahme stand noch „1 Mails im Archiv". Die neue `.exe` mit
-  dem Plural-Fix ist am 2026-08-29 gebaut und liegt als Artefakt am Lauf
-  der *Windows-Fassung*; der Durchgang in der VM steht noch aus.
-
-  Aufzunehmen: das Hauptfenster mit dem Beispielarchiv, in dem eine Mail
-  liegt – dort muss jetzt „1 Mail im Archiv" stehen. Das ist zugleich die
-  Gegenprobe für die Korrektur.
 
 ### Nicht anfassen
 
