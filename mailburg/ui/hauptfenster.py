@@ -1064,6 +1064,8 @@ class Hauptfenster(QMainWindow):
         lesen = menue.addAction("Öffnen")
         lesen.triggered.connect(self._oeffnen_zum_lesen)
         menue.addSeparator()
+        im_programm = menue.addAction("In Mailprogramm öffnen")
+        im_programm.triggered.connect(self._im_mailprogramm)
         zurueck = menue.addAction("Im Postfach wiederherstellen …")
         zurueck.triggered.connect(self._zuruecklegen)
         speichern = menue.addAction("Als Datei speichern …")
@@ -1096,6 +1098,32 @@ class Hauptfenster(QMainWindow):
                 f"ob mehr fehlt.",
             )
             return None
+
+    def _im_mailprogramm(self) -> None:
+        """Die Nachricht im gewohnten Mailprogramm öffnen.
+
+        Ohne Rückfrage und ohne Dialog: Der Weg ist ungefährlich, weil
+        er nichts verändert – weder im Archiv noch in einem Postfach.
+        Wer ihn wählt, will die Mail *jetzt* sehen.
+        """
+        from mailburg.core import rueckgabe
+
+        treffer = self._gewaehlter_treffer()
+        if treffer is None:
+            return
+        roh = self._rohdaten(treffer)
+        if roh is None:
+            return
+
+        try:
+            rueckgabe.im_mailprogramm_oeffnen(roh, treffer.subject)
+        except rueckgabe.RueckgabeFehler as exc:
+            QMessageBox.warning(self, "Kein Mailprogramm gefunden", str(exc))
+        except OSError as exc:
+            QMessageBox.warning(
+                self, "Öffnen nicht möglich",
+                f"Die Nachricht ließ sich nicht ablegen.\n\n{exc}",
+            )
 
     def _zuruecklegen(self) -> None:
         from mailburg.ui.zurueck import Zurueckdialog

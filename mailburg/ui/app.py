@@ -186,7 +186,15 @@ def main(argv: list[str] | None = None) -> int:
 
         QTimer.singleShot(0, fenster._abrufen)
 
-    return anwendung.exec()
+    code = anwendung.exec()
+
+    # **Zuletzt aufräumen.** Wer eine Nachricht »In Mailprogramm öffnen«
+    # gewählt hat, hinterlässt eine vollständige .eml im Cache. Sie soll
+    # nicht bis zum nächsten Start dort liegen bleiben.
+    from mailburg.core import rueckgabe
+
+    rueckgabe.aufraeumen_beim_beenden()
+    return code
 
 
 def _fehler_zeigen_statt_sterben() -> None:

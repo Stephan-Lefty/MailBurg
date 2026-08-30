@@ -254,6 +254,19 @@ vergleichen; Strg+W oder Esc schließt sie wieder.</p>
 <p>Ein Klick mit der <b>rechten Maustaste</b> auf eine Nachricht führt
 weiter:</p>
 
+<p><b>In Mailprogramm öffnen.</b> Der kürzeste Weg zurück: Die
+Nachricht geht in dem Programm auf, das Sie für E-Mail-Dateien
+eingerichtet haben – Thunderbird, Outlook, Apple Mail. Von dort können
+Sie sie lesen, weiterleiten oder beantworten. Verändert wird dabei
+nichts, weder im Archiv noch in einem Postfach.</p>
+
+<p><b>Wo die Datei dabei liegt.</b> MailBurg legt die Nachricht kurz im
+Zwischenspeicher Ihres Benutzerkontos ab, in einem Ordner, den nur Sie
+lesen dürfen – nicht im allgemeinen Temp-Verzeichnis, in das auf einem
+gemeinsam genutzten Rechner jeder hineinsehen kann. Aufgeräumt wird
+zweimal: Was älter als vier Stunden ist, verschwindet beim nächsten
+Öffnen, und beim Beenden von MailBurg der ganze Ordner.</p>
+
 <p><b>Im Postfach wiederherstellen.</b> MailBurg legt die Nachricht in
 den <b>Posteingang</b> des gewählten Postfachs – vollständig, mit allen
 Anhängen und mit ihrem ursprünglichen Datum, damit sie im Mailprogramm

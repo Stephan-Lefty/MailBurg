@@ -7,6 +7,25 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **„In Mailprogramm öffnen".** Der dritte und kürzeste Weg aus dem
+  Archiv, neben dem Zurücklegen ins Postfach und dem Speichern als Datei:
+  Rechte Maustaste auf eine Nachricht, und sie geht in Thunderbird,
+  Outlook oder Apple Mail auf. Verändert wird dabei nichts.
+
+  Der heikle Teil ist nicht das Öffnen, sondern die Datei, die dafür
+  entsteht. Eine `.eml` ist die vollständige Nachricht — Text, Anhänge,
+  Adressen. Im allgemeinen Temp-Verzeichnis dürfte auf einem gemeinsam
+  genutzten Rechner jeder mitlesen; sie liegt deshalb im Zwischenspeicher
+  des Benutzerkontos, in einem Ordner, der nur ihm gehört.
+
+  Und sie verschwindet wieder: was älter als vier Stunden ist beim
+  nächsten Öffnen, der ganze Ordner beim Beenden von MailBurg. Sofort
+  löschen ginge nicht — das Mailprogramm liest die Datei ja noch.
+
 ## [0.11.0] – 2026-08-30
 
 ### Hinzugefügt
@@ -823,6 +842,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[Unveröffentlicht]: https://github.com/Stephan-Lefty/MailBurg/compare/v0.11.0...HEAD
 [0.11.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v0.1.0...v0.9.0

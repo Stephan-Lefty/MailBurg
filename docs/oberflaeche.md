@@ -48,9 +48,21 @@ Strg+W oder Esc schließt sie.
 
 ![Der Dialog zum Zurückholen einer Nachricht ins Postfach. Er erklärt, dass die Mail vollständig und mit ihrem ursprünglichen Datum in den Posteingang kommt und dass es nicht dasselbe Postfach sein muss. Darunter die Wahl des Zielpostfachs und ein Häkchen »Als ungelesen markieren«.](bilder/wiederherstellen.png)
 
-Mit der **rechten Maustaste** auf eine Nachricht: *Im Postfach wiederherstellen*
-legt sie in den Posteingang eines frei gewählten Postfachs – vollständig, mit
-allen Anhängen und mit ihrem ursprünglichen Datum.
+Mit der **rechten Maustaste** auf eine Nachricht stehen drei Wege offen.
+
+*In Mailprogramm öffnen* ist der kürzeste: Die Nachricht geht in dem Programm
+auf, das Sie für E-Mail-Dateien eingerichtet haben. Verändert wird dabei
+nichts.
+
+MailBurg legt sie dafür kurz im Zwischenspeicher Ihres Benutzerkontos ab, in
+einem Ordner, den nur Sie lesen dürfen — nicht im allgemeinen
+Temp-Verzeichnis, in das auf einem gemeinsam genutzten Rechner jeder
+hineinsieht. Was älter als vier Stunden ist, verschwindet beim nächsten
+Öffnen; beim Beenden von MailBurg der ganze Ordner.
+
+*Im Postfach wiederherstellen* legt sie in den Posteingang eines frei
+gewählten Postfachs – vollständig, mit allen Anhängen und mit ihrem
+ursprünglichen Datum.
 
 **Es muss nicht das Postfach sein, aus dem sie stammt.** Post überlebt
 Arbeitgeber, Anbieter und Adressen.

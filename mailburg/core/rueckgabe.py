@@ -25,9 +25,16 @@ die im Archiv.
 from __future__ import annotations
 
 import imaplib
+import os
+import subprocess
+import sys
+import time
+import uuid
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+
+from mailburg.core import paths
 
 
 class RueckgabeFehler(RuntimeError):
@@ -48,6 +55,121 @@ def als_datei(rohdaten: bytes, ziel: Path) -> Path:
     ziel.parent.mkdir(parents=True, exist_ok=True)
     ziel.write_bytes(rohdaten)
     return ziel
+
+
+#: Wie lange eine geöffnete Nachricht liegen bleiben darf, in Sekunden.
+#: Vier Stunden – lang genug für einen Arbeitstag mit Unterbrechungen,
+#: kurz genug, dass nach dem Wochenende nichts mehr herumliegt.
+HALTBARKEIT = 4 * 60 * 60
+
+
+def _aufraeumen(ordner: Path, *, alles: bool = False) -> int:
+    """Wirft weg, was niemand mehr braucht. Gibt die Zahl zurück.
+
+    **Warum nicht sofort nach dem Öffnen löschen.** Das Mailprogramm
+    startet nebenläufig; wer die Datei gleich wieder entfernt, nimmt sie
+    ihm unter den Fingern weg. Deshalb bleibt sie liegen und wird beim
+    *nächsten* Öffnen mit weggeräumt – und spätestens, wenn MailBurg
+    endet.
+    """
+    weg = 0
+    grenze = time.time() - HALTBARKEIT
+    for datei in ordner.glob("*.eml"):
+        try:
+            if alles or datei.stat().st_mtime < grenze:
+                datei.unlink()
+                weg += 1
+        except OSError:
+            # Unter Windows lässt sich eine Datei nicht löschen, solange
+            # das Mailprogramm sie offen hält. Dann eben beim nächsten
+            # Mal – ein Aufräumen darf nichts abbrechen.
+            continue
+    return weg
+
+
+def aufraeumen_beim_beenden() -> int:
+    """Räumt alle geöffneten Nachrichten weg. Für das Programmende."""
+    try:
+        return _aufraeumen(paths.geoeffnet_dir(), alles=True)
+    except OSError:
+        return 0
+
+
+def im_mailprogramm_oeffnen(rohdaten: bytes, betreff: str = "") -> Path:
+    """Legt die Mail als ``.eml`` ab und übergibt sie dem System.
+
+    Der dritte Weg aus dem Archiv, neben dem Zurücklegen ins Postfach
+    und dem Speichern als Datei. Er ist der bequemste: ein Klick, und
+    die alte Rechnung steht im gewohnten Mailprogramm – zum Lesen,
+    Weiterleiten, Beantworten.
+
+    **Die Datei ist der heikle Teil, nicht das Öffnen.** Eine ``.eml``
+    ist die vollständige Nachricht: Text, Anhänge, Adressen. Sie liegt
+    deshalb im Cache-Ordner des Benutzers mit ``0700``, nicht in
+    ``/tmp``, und die Datei selbst bekommt ``0600`` – siehe
+    ``paths.geoeffnet_dir()``.
+
+    **Verschwinden muss sie auch wieder.** Sofort geht nicht, das
+    Mailprogramm liest sie ja noch. Aufgeräumt wird deshalb zweimal:
+    beim nächsten Öffnen alles, was älter als vier Stunden ist, und beim
+    Beenden von MailBurg der ganze Ordner.
+
+    Gibt den Pfad zurück – für die Tests und für den Fall, dass jemand
+    dem Benutzer sagen will, wo die Datei liegt.
+    """
+    ordner = paths.geoeffnet_dir()
+    _aufraeumen(ordner)
+
+    # Der Betreff im Namen, damit im Mailprogramm nicht »tmp8f2a.eml«
+    # im Fenstertitel steht. Die Zufallsziffern verhindern, dass zwei
+    # Nachrichten mit gleichem Betreff einander überschreiben, während
+    # beide offen sind.
+    ziel = ordner / f"{_namensteil(betreff)}-{uuid.uuid4().hex[:8]}.eml"
+    ziel.write_bytes(rohdaten)
+    if sys.platform != "win32":
+        ziel.chmod(0o600)
+
+    _dem_system_uebergeben(ziel)
+    return ziel
+
+
+def _namensteil(betreff: str) -> str:
+    """Ein Dateiname aus dem Betreff, der auf jedem System zulässig ist."""
+    sauber = "".join(
+        "-" if z in '\\/:*?"<>|' else z for z in (betreff or "Nachricht")
+    ).strip()
+    # Kürzer als beim Speichern von Hand: Hier kommen acht Zeichen
+    # Unterscheidung und die Endung noch dazu, und Windows setzt bei
+    # 260 Zeichen für den ganzen Pfad eine Grenze.
+    return sauber[:60].rstrip(". ") or "Nachricht"
+
+
+def _dem_system_uebergeben(datei: Path) -> None:
+    """Öffnet die Datei mit dem Programm, das der Benutzer dafür gewählt hat.
+
+    Drei Systeme, drei Wege. Unter Windows ist ``os.startfile`` der
+    richtige – ``start`` wäre ein Befehl der Eingabeaufforderung und
+    bräuchte eine Shell, mit allem, was ein Dateiname dann anrichten
+    kann.
+    """
+    if sys.platform == "win32":
+        os.startfile(datei)  # noqa: S606 – kein Shell-Aufruf
+        return
+
+    befehl = "open" if sys.platform == "darwin" else "xdg-open"
+    try:
+        subprocess.Popen(
+            [befehl, str(datei)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as exc:
+        raise RueckgabeFehler(
+            f"»{befehl}« ließ sich nicht starten. Auf schlanken "
+            f"Arbeitsumgebungen fehlt es manchmal; unter Debian und "
+            f"Ubuntu liegt es im Paket »xdg-utils«.\n\n"
+            f"Die Nachricht liegt trotzdem bereit:\n{datei}"
+        ) from exc
 
 
 def _zeitstempel(rohdaten: bytes) -> str:

@@ -56,6 +56,32 @@ def data_dir() -> Path:
     return path
 
 
+def geoeffnet_dir() -> Path:
+    """Wo Nachrichten liegen, die gerade im Mailprogramm offen sind.
+
+    **Nicht in ``/tmp``.** Dort darf auf einem Mehrbenutzersystem jeder
+    lesen. Eine Mail aus einem Geschäftsarchiv ist vollständig – mit
+    Anhängen, Adressen und allem, was in ihr steht; sie gehört nicht in
+    ein Verzeichnis, in das der Nachbaraccount hineinsehen kann.
+
+    Deshalb der Cache-Ordner des Benutzers, und darin ein eigenes
+    Verzeichnis mit ``0700``. Unter Windows und macOS liegt der
+    Benutzerordner ohnehin geschützt; unter Linux setzen wir die Rechte
+    ausdrücklich, weil ``XDG_CACHE_HOME`` auch woanders hinzeigen kann.
+
+    Cache und nicht Daten: Der Inhalt ist Wegwerfware. Geht er verloren,
+    fehlt nichts – die Nachricht liegt im Archiv.
+    """
+    path = _base("cache") / "geoeffnet"
+    path.mkdir(parents=True, exist_ok=True)
+    if sys.platform != "win32":
+        # Nachträglich, nicht über den mkdir-Modus: Der greift nur beim
+        # Anlegen, und das Verzeichnis kann aus einem früheren Lauf
+        # stammen – womöglich aus einer Fassung, die das noch nicht tat.
+        path.chmod(0o700)
+    return path
+
+
 def index_path(archive_uuid: str) -> Path:
     """Der Suchindex zu einem bestimmten Archiv.
 

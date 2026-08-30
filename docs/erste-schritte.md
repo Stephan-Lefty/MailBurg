@@ -200,8 +200,8 @@ Unter dem Suchfeld steht das Ergebnis, links stehen Ihre Postfächer mit ihren
 Ordnern, rechts die Treffer und darunter die gewählte Nachricht.
 
 Ein **Doppelklick** öffnet eine Nachricht in einem eigenen Fenster. Mit der
-**rechten Maustaste** legen Sie sie in ein Postfach zurück oder speichern sie
-als Datei.
+**rechten Maustaste** öffnen Sie sie in Ihrem Mailprogramm, legen sie in ein
+Postfach zurück oder speichern sie als Datei.
 
 Mehr zur Oberfläche: [Die Oberfläche](oberflaeche.md).
 Mehr zur Suchsprache: **Hilfe → Suchsprache** oder `mailburg suchhilfe`.
