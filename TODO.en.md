@@ -24,6 +24,17 @@ down, with the date they were completed.
   reachability; and **archive encryption moves up**, because the reasoning from
   2026-08-25 no longer holds on a server.
 
+  **No separate repository, decided 2026-08-31.** A second repo would mean a
+  second core — and two archive formats drifting apart is something nobody
+  notices until an archive no longer reads. The separation happens inside the
+  repo instead: its own `mailburg/server/` directory, which may not touch
+  anything in `mailburg/ui/`, and vice versa. `tests/test_schichten.py` holds
+  that in place, since 2026-08-31 and thus before the first line of server code.
+
+  **To be resolved first:** `core/archive.py` and `core/nachfrage.py` reach into
+  `ui/app.py` for remembered paths. Harmless today — the import is lazy and pulls
+  in no Qt — but the wrong direction for a service. Those belong in the core.
+
   **Per-mailbox permissions, decided 2026-08-31.** Up to 50 users, up to 60
   mailboxes; an administrator decides on the server who may see which — from a
   single one to all of them.

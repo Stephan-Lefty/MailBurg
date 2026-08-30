@@ -26,6 +26,19 @@ wurde.
   vorn**, weil die Begründung von 2026-08-25 auf einem Server nicht mehr
   trägt.
 
+  **Kein eigenes Repository, entschieden am 2026-08-31.** Ein zweites
+  Repo hieße ein zweiter Kern – und zwei Archivformate, die
+  auseinanderlaufen, merkt niemand, bis ein Archiv nicht mehr lesbar
+  ist. Getrennt wird stattdessen im Repo: eigenes Verzeichnis
+  `mailburg/server/`, das nichts aus `mailburg/ui/` anfassen darf und
+  umgekehrt. `tests/test_schichten.py` hält das fest, seit dem
+  2026-08-31 und damit vor der ersten Zeile Servercode.
+
+  **Vorher aufzulösen:** `core/archive.py` und `core/nachfrage.py` holen
+  sich gemerkte Pfade aus `ui/app.py`. Heute harmlos – der Import ist
+  träge und zieht kein Qt nach –, für einen Dienst aber die falsche
+  Richtung. Die Sachen gehören in den Kern.
+
   **Rechte je Postfach, entschieden am 2026-08-31.** Bis zu 50 Benutzer,
   bis zu 60 Postfächer; der Verwalter legt am Server fest, wer welche
   sehen darf – von einem einzigen bis zu allen.

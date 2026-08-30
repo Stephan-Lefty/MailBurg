@@ -20,6 +20,62 @@ angemeldet ist.
 Die Reihenfolge ist deshalb: **erst der Server, dann der Import.** Ein
 Bestand dieser Größe wandert nicht zweimal.
 
+## Ein Repository, saubere Trennung
+
+Am 2026-08-31 besprochen und entschieden: **Die Server Edition bekommt
+kein eigenes Repository.**
+
+Der Gedanke dahinter war Sauberkeit – und genau die spricht dagegen. Ein
+zweites Repo hieße ein zweiter Kern: Archivformat, Journal, Hash-Kette,
+Index. Zwei Fassungen davon laufen auseinander, und zwar unbemerkt. Der
+Tag, an dem ein Server ein Archiv schreibt, das der Desktop nicht mehr
+liest, ist der schlimmste Tag, den ein Archivprogramm haben kann – er
+fällt erst Jahre später auf.
+
+Dazu kommt: **Die Rechteprüfung gehört in den Kern**, nicht in den
+Server (siehe unten). Bei zwei Repositorys läge der
+sicherheitsentscheidende Teil im jeweils anderen.
+
+Und das Muster gibt es schon. Die Desktop-Oberfläche ist auch nur ein
+Zusatz – `pip install "mailburg[oberflaeche]"`, hundertfünfzig Megabyte
+PySide6, und trotzdem kein eigenes Repo. Der Server wird das dritte
+Frontend nach demselben Muster: `mailburg[server]`.
+
+**Getrennt wird trotzdem, nur an der richtigen Stelle:**
+
+* Ein eigenes Verzeichnis `mailburg/server/`, das **nichts** aus
+  `mailburg/ui/` anfassen darf – und umgekehrt. Beide kennen den Kern,
+  sonst nichts voneinander. `tests/test_schichten.py` hält das fest,
+  seit dem 2026-08-31 und damit vor der ersten Zeile Servercode.
+* Eigene Doku für Verwalter, getrennt von der Anwenderdoku.
+* Eigene Release-Artefakte für Debian und Windows Server.
+* Ein CI-Lauf, der **beide Frontends gegen dasselbe Archiv prüft**. Das
+  ist der Test, den zwei Repositorys gerade nicht hergeben.
+
+Zu ändern wäre die Entscheidung, wenn der Server einmal eine andere
+Lizenz bekommt oder jemand anderem gehört. Beides ist heute nicht so.
+
+### Eine Altlast, die vorher weg muss
+
+Beim Prüfen der Schichten am 2026-08-31 aufgefallen: `core/archive.py`
+und `core/nachfrage.py` holen sich aus `ui/app.py`, was der Anwender
+zuletzt geöffnet hat – `zuletzt_benutzte_pfade`, `gemerktes`,
+`merken_unter`.
+
+Schlimm ist es heute nicht: Der Import steht in der Funktion, und
+`ui/app.py` selbst lädt PySide6 erst in seinen eigenen Funktionen. Es
+zieht also kein Qt nach.
+
+Sauber ist es trotzdem nicht, und für einen Dienst ist es die falsche
+Adresse: Gemerkte Pfade und Einstellungen sind kein Anliegen der
+Oberfläche, sondern des Programms. **Vor der Server Edition gehören sie
+in den Kern.** Ein Serverdienst hat keine »zuletzt benutzten Pfade«
+eines Menschen, und er soll kein Modul einladen, das `ui` heißt.
+
+Der Schichtentest duldet die drei Stellen ausdrücklich und namentlich –
+und prüft mit, ob es sie überhaupt noch gibt, damit die Ausnahme nicht
+stehen bleibt, wenn ihr Grund weg ist.
+
 ## Was schon trägt
 
 `core`, `search`, `sources` und `extract` sind vollständig frei von Qt –
@@ -234,6 +290,10 @@ Projekt.
 
 Jede Stufe ist für sich brauchbar und prüfbar:
 
+0. **Die Altlast auflösen:** gemerkte Pfade und Einstellungen aus
+   `ui/app.py` in den Kern. Klein, und es muss vor allem anderen
+   geschehen – sonst baut Stufe 1 auf einer Schicht auf, die in die
+   falsche Richtung zeigt.
 1. **Benutzer, Rechte und Anmeldung** im Kern – ohne Web, mit
    Kommandozeilenbefehlen zum Anlegen und Zuordnen. Journal mit
    geprüftem `actor`. Dazu die Rechteprüfung an der Stelle, an der die
