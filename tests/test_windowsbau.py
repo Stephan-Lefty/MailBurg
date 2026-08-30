@@ -457,112 +457,50 @@ class AufgabenXmlTest(unittest.TestCase):
                 ElementTree.fromstring(self._xml(**art))
 
 
-class StartbildTest(unittest.TestCase):
-    """Zwanzig Sekunden Stille beim Start.
+class KeinStartbildTest(unittest.TestCase):
+    """Das Startbild ist wieder ausgebaut – und soll es bleiben.
 
-    Die .exe ist eine einzige Datei; Windows packt sie bei jedem Start
-    vollständig aus, und solange ist auf dem Bildschirm nichts zu sehen
-    – kein Fenster, kein Eintrag in der Taskleiste. Wer einen älteren
-    Rechner hat, klickt in der Stille ein zweites Mal.
+    **Die Geschichte, damit sie niemand ein zweites Mal durchläuft.**
+    Gedacht war es gegen die Stille beim Start: Die .exe ist eine
+    einzige Datei, Windows packt sie bei jedem Start aus, und in einer
+    Windows-VM dauerte das 20–25 Sekunden ohne jedes Lebenszeichen.
 
-    Stephan am 2026-08-30: »Wir müssen dem User das Gefühl geben, dass
-    sich was tut und ihn nicht verunsichern.«
+    Drei Anläufe, zwei davon mit echten Fehlern: ein PNG mit 16 Bit
+    Farbtiefe (Tk kann nur 8 und sagt es nicht, es zeigt nichts) und
+    ``always_on_top=False``, wodurch das randlose Fenster hinter den
+    Desktop rutschte. Beide behoben – und trotzdem kam auf einem
+    richtigen Windows-11-Laptop am 2026-08-30 nur ein leeres Fenster:
+    »es ist genau das selbe Fenster was ohne Inhalt aufgeht«.
 
-    Ein Fortschrittsbalken ist nicht drin – das Startbild kann ein Bild
-    und eine Textzeile, mehr nicht.
+    **Ausgebaut wurde es aber aus einem anderen Grund.** Auf echter
+    Hardware startet MailBurg in wenigen Sekunden – Stephan: »das
+    Programm startet so schnell, das wir das fast übergehen können«.
+    Damit ist der Anlass weg. Was bleibt, wäre ein leeres Fenster, das
+    aufblitzt: mehr Verunsicherung als die Wartezeit, gegen die es
+    antreten sollte.
+
+    Wer es wieder einbauen will, braucht zuerst eine Antwort darauf,
+    warum die Ressource nicht ankommt. Das Bild war zuletzt
+    einwandfrei: 520×300, 8 Bit, TrueColor, nicht verschränkt, kein
+    Alphakanal. Der Bau meldete »Building Splash«.
     """
 
-    def setUp(self):
-        self.spec = (WURZEL / "werkzeuge" / "mailburg.spec").read_text(
-            encoding="utf-8"
-        )
-
-    def test_das_bild_liegt_bereit(self):
-        bild = WURZEL / "assets" / "startbild.png"
-
-        self.assertTrue(bild.is_file(), "assets/startbild.png fehlt")
-        self.assertGreater(bild.stat().st_size, 5_000, "verdächtig klein")
-
-    def test_acht_bit_ohne_alphakanal(self):
-        """Tk kann kein 16-Bit-PNG – und sagt es nicht, es zeigt nichts.
-
-        Beim ersten Wurf schrieb ImageMagick stillschweigend 16 Bit.
-        In der VM erschien daraufhin ein leeres graues Fenster mit dem
-        Titel »tk«: Ohne ladbares Bild kennt der Splash seine Größe
-        nicht und bekommt eine Fensterdekoration.
-        """
-        bild = (WURZEL / "assets" / "startbild.png").read_bytes()
-
-        self.assertEqual(bild[:8], b"\x89PNG\r\n\x1a\n", "kein PNG")
-        # Der IHDR-Block steht immer zuerst: 8 Byte Signatur, 4 Byte
-        # Länge, 4 Byte Typ, dann Breite und Höhe zu je 4 Byte.
-        tiefe = bild[24]
-        farbtyp = bild[25]
-
-        self.assertEqual(tiefe, 8, f"{tiefe} Bit – Tk verlangt 8")
-        self.assertIn(
-            farbtyp, (0, 2, 3),
-            f"Farbtyp {farbtyp}: mit Alphakanal, das mag Tk auch nicht",
-        )
-
-    def test_der_bau_bindet_es_ein(self):
-        self.assertIn("Splash(", self.spec)
-        self.assertIn("startbild.png", self.spec)
-
-    def test_die_laufzeile_ist_deutsch(self):
-        """Ohne Angabe stünde dort »Initializing«."""
-        self.assertIn("text_default=", self.spec)
-        self.assertNotIn("Initializing", self.spec)
-
-    def test_die_zeile_sitzt_da_wo_das_bild_platz_laesst(self):
-        from importlib import util
-
-        laden = util.spec_from_file_location(
-            "startbild", WURZEL / "werkzeuge" / "startbild.py"
-        )
-        modul = util.module_from_spec(laden)
-        laden.loader.exec_module(modul)
-
-        self.assertIn(f"text_pos=(20, {modul.TEXTZEILE_Y})", self.spec)
-
-    def test_ohne_bild_wird_trotzdem_gebaut(self):
-        """Ein fehlendes Startbild darf keinen Bauversuch scheitern lassen."""
-        self.assertIn("if STARTBILD.is_file()", self.spec)
-
-    def test_die_etappen_stehen_auf_deutsch_im_ablauf(self):
-        quelle = (WURZEL / "mailburg" / "ui" / "app.py").read_text(
-            encoding="utf-8"
-        )
-
-        self.assertIn("Oberfläche wird vorbereitet", quelle)
-        self.assertIn("Archiv wird geöffnet", quelle)
-        self.assertIn("_startbild(schliessen=True)", quelle)
-
-    def test_ohne_gepackte_fassung_stoert_es_nicht(self):
-        """Aus den Quellen gestartet gibt es kein pyi_splash."""
-        from mailburg.ui.app import _startbild
-
-        # Wirft nicht - das ist die Prüfung.
-        _startbild("Probe")
-        _startbild(schliessen=True)
-
-
-class StartbildSichtbarkeitTest(unittest.TestCase):
-    """Das Bild war da und trotzdem nicht zu sehen.
-
-    ``always_on_top=False`` schien höflich – ein Startbild, das sich
-    nicht vordrängt. Tatsächlich bekommt ein randloses Fenster unter
-    Windows keinen Fokus und rutscht sofort hinter den Desktop, von dem
-    aus gestartet wurde. Wer doppelklickt, sieht dann wieder nichts:
-    genau der Zustand, den das Bild verhindern soll.
-
-    Am 2026-08-30 in der VM: »es dauert und es kommt auch kein Bild«.
-    """
-
-    def test_das_bild_bleibt_oben(self):
+    def test_im_bau_steht_kein_splash_mehr(self):
         spec = (WURZEL / "werkzeuge" / "mailburg.spec").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn("always_on_top=True", spec)
-        self.assertNotIn("always_on_top=False", spec)
+        # Der Erklärtext darf davon sprechen, der Bauteil nicht.
+        gebaut = "\n".join(
+            z for z in spec.splitlines() if not z.lstrip().startswith("#")
+        )
+        self.assertNotIn("Splash(", gebaut)
+        self.assertNotIn("startbild.png", gebaut)
+
+    def test_der_start_ruft_nichts_mehr_auf(self):
+        quelle = (WURZEL / "mailburg" / "ui" / "app.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotIn("pyi_splash", quelle)
+        self.assertNotIn("_startbild", quelle)

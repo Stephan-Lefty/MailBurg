@@ -118,64 +118,31 @@ analyse = Analysis(
 
 pyz = PYZ(analyse.pure)
 
-#: **Das Startbild.** Die .exe ist eine einzige Datei; Windows packt sie
-#: bei jedem Start vollständig aus, und in dieser Zeit tut sich auf dem
-#: Bildschirm nichts – kein Fenster, kein Eintrag in der Taskleiste.
-#: Wer einen älteren Rechner hat, klickt in der Stille ein zweites Mal.
+#: **Hier stand ein Startbild – bewusst nicht mehr.** Gedacht war es
+#: gegen die Stille beim Start: Die .exe ist eine einzige Datei, Windows
+#: packt sie bei jedem Start aus, und in einer VM dauerte das 20–25
+#: Sekunden ohne jedes Lebenszeichen.
 #:
-#: Das Startbild erscheint *vor* dem Auspacken, also nach etwa einer
-#: Sekunde. Erzeugt wird es von ``werkzeuge/startbild.py``; fehlt es,
-#: wird ohne gebaut, damit ein Bauversuch daran nicht scheitert.
+#: Drei Anläufe. Zwei echte Fehler dabei behoben (ein PNG mit 16 Bit
+#: Farbtiefe – Tk kann nur 8 und meldet es nicht –, und
+#: ``always_on_top=False``, wodurch das randlose Fenster hinter den
+#: Desktop rutschte). Danach war das Bild einwandfrei: 520×300, 8 Bit,
+#: TrueColor, nicht verschränkt, kein Alphakanal. Der Bau meldete
+#: »Building Splash«. Auf einem richtigen Windows-11-Laptop kam am
+#: 2026-08-30 trotzdem nur ein leeres Fenster.
 #:
-#: **Noch nicht belegt.** In der Windows-VM war das Bild bis zuletzt
-#: nicht zu sehen – auch nicht, nachdem zwei echte Fehler behoben
-#: waren (16 Bit statt 8, und ``always_on_top``). Der Bau meldet
-#: »Building Splash«, aber ob die Ressource in der fertigen Datei
-#: ankommt, ließ sich von außen nicht feststellen. Der nächste Versuch
-#: gehört auf einen richtigen Windows-Rechner: In einer VM ohne
-#: Grafikbeschleunigung kann ein randloses Fenster auch aus Gründen
-#: unsichtbar bleiben, die mit MailBurg nichts zu tun haben.
+#: **Ausgebaut aus einem anderen Grund als dem Fehler.** Auf echter
+#: Hardware startet MailBurg in wenigen Sekunden – der Anlass ist damit
+#: weg. Ein Bild, das aufblitzt und wieder verschwindet, verunsichert
+#: mehr als die Wartezeit, gegen die es antreten sollte. Und ein leeres
+#: erst recht.
 #:
-#: ``text_pos`` schaltet die Laufzeile ein. PyInstaller schreibt dort
-#: beim Auspacken die Namen der Dateien – technisch, aber es bewegt
-#: sich. Sobald Python läuft, übernimmt ``mailburg.ui.app`` die Zeile
-#: mit deutschen Etappen. Wer die Dateinamen nicht will, entfernt
-#: ``text_pos``: Dann bleibt das Bild stumm, und nur die feste Zeile
-#: »MailBurg wird geladen« steht darin.
-STARTBILD = WURZEL / "assets" / "startbild.png"
-splash = (
-    Splash(
-        str(STARTBILD),
-        binaries=analyse.binaries,
-        datas=analyse.datas,
-        text_pos=(20, 258),
-        text_size=9,
-        # Ausdrücklich gerade und ohne Serifen. Ohne Angabe nimmt Tk
-        # eine Schrift, die neben dem Schriftzug schief wirkt.
-        text_font="Segoe UI",
-        text_color="#5b6672",
-        # Ohne diese Angabe setzt PyInstaller einen englischen
-        # Vorgabetext – in einem Programm, das sonst durchgehend
-        # deutsch spricht.
-        text_default="Wird vorbereitet …",
-        # **Muss oben bleiben.** Hier stand einmal False – gedacht als
-        # Höflichkeit, damit sich das Bild nicht vordrängt. Das Ergebnis
-        # war, dass es gar nicht zu sehen war: Ein randloses Fenster
-        # bekommt unter Windows keinen Fokus und rutscht sofort hinter
-        # den Desktop, von dem aus gestartet wurde. Wer doppelklickt,
-        # sieht dann wieder nichts – genau das, was das Bild verhindern
-        # soll. Am 2026-08-30 in der VM: »es dauert und es kommt auch
-        # kein Bild«.
-        always_on_top=True,
-    )
-    if STARTBILD.is_file()
-    else None
-)
+#: Wer es wieder aufgreift, sucht zuerst die Antwort darauf, warum die
+#: Ressource nicht ankommt – nicht am Bild, das war in Ordnung.
 
 exe = EXE(
     pyz,
     analyse.scripts,
-    *([splash, splash.binaries] if splash else []),
     analyse.binaries,
     analyse.datas,
     [],

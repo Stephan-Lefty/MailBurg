@@ -48,6 +48,21 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Kommandozeile als `mailburg regeln`. Erklärt in
   [docs/regeln.md](docs/regeln.md).
 
+### Entfernt
+
+- **Das Startbild der Windows-Fassung.** Es sollte die Stille beim Start
+  überbrücken: Die `.exe` ist eine einzige Datei, Windows packt sie bei
+  jedem Start aus, und in einer virtuellen Maschine dauerte das 20–25
+  Sekunden ohne jedes Lebenszeichen.
+
+  Auf echter Hardware startet MailBurg in wenigen Sekunden. Damit ist der
+  Anlass weg — ein Bild, das aufblitzt und wieder verschwindet,
+  verunsichert mehr als die Wartezeit, gegen die es antreten sollte.
+
+  Dass es zuletzt ohnehin nur ein leeres Fenster zeigte, gab den Anstoß,
+  war aber nicht der Grund. Wer es wieder aufgreift, findet die Spuren in
+  `werkzeuge/mailburg.spec`.
+
 ### Behoben
 
 - **Fehlermeldungen aus der Windows-Aufgabenplanung kamen mit zerlegten

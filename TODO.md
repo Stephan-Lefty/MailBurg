@@ -8,39 +8,36 @@ wurde.
 
 ## Offen
 
-### Als Erstes, wenn ein echtes Windows greifbar ist
+### Am 2026-08-30 nachmittags erledigt
 
-- [ ] **Das Startbild ist ungeprüft.** In der VM war es bis zuletzt nicht
-  zu sehen – auch nicht, nachdem zwei echte Fehler behoben waren: Das Bild
-  lag mit 16 Bit Farbtiefe vor (Tk kann nur 8), und `always_on_top` stand
-  auf `False`, wodurch das randlose Fenster hinter den Desktop rutschte.
+- [x] **Windows 11 auf echter Hardware geprüft.** Der erste Durchgang
+  außerhalb der VM, mit einer frisch gebauten `.exe` aus Commit
+  `70403ee`. Zeitplan, Sicherungsdialog und alles Übrige liefen –
+  Stephan: »Ansonsten haben alle Dinge funktioniert.«
 
-  Der Bau meldet »Building Splash«, aber ob die Ressource in der fertigen
-  Datei ankommt, ließ sich von außen nicht feststellen. Eine VM ohne
-  Grafikbeschleunigung ist für diese Frage der ungeeignete Ort: Dort kann
-  ein randloses Fenster aus Gründen unsichtbar bleiben, die mit MailBurg
-  nichts zu tun haben.
+  Zwei Ergebnisse, die keine VM hätte liefern können:
 
-  **Auf dem Laptop zu prüfen:** Erscheint nach dem Doppelklick binnen
-  einer Sekunde ein randloses Bild mit dem Logo? Läuft die Zeile darunter
-  mit – erst Dateinamen, dann deutsche Sätze? Verschwindet es erst, wenn
-  das Hauptfenster steht?
+  **Der Start dauert Sekunden, nicht zwanzig.** In der VM waren es 20–25
+  Sekunden; davon ging fast alles auf die Virtualisierung, nicht auf das
+  Auspacken der 160 MB. Damit ist auch die Frage erledigt, ob eine
+  einzelne Datei der richtige Weg ist – sie ist es.
 
-  Erscheint es weiterhin nicht, ist die nächste Frage nicht »warum«,
-  sondern ob eine einzelne Datei überhaupt der richtige Weg ist. Ein
-  Programmordner spart das Auspacken und damit die Wartezeit ganz – der
-  Preis wäre, dass man nicht mehr eine Datei herunterlädt und
-  doppelklickt.
+  **Das Startbild ist ausgebaut.** Es erschien auch auf echter Hardware
+  nicht, sondern nur ein leeres Fenster: »es ist genau das selbe Fenster
+  was ohne Inhalt aufgeht, wie in der VM«. Zwei echte Fehler waren zuvor
+  behoben (16 Bit statt 8, `always_on_top`), das Bild war zuletzt
+  einwandfrei – warum die Ressource nicht ankommt, ist weiterhin offen.
 
-- [ ] **Die Startzeit messen, wo sie zählt.** In der VM sind es 20–25
-  Sekunden. Wie viel davon auf die Virtualisierung geht und wie viel auf
-  das Auspacken der 154 MB, weiß niemand. Auf dem Laptop mit SSD lässt
-  sich das trennen.
+  Ausgebaut wurde es trotzdem, und aus einem anderen Grund: Bei einem
+  Start von wenigen Sekunden ist der Anlass weg. Ein Bild, das aufblitzt
+  und verschwindet, verunsichert mehr als die Wartezeit, gegen die es
+  antreten sollte – ein leeres erst recht. Die Begründung steht in
+  `werkzeuge/mailburg.spec`, ein Test hält sie fest.
 
-- [ ] **Die `.exe` neu bauen, bevor jemand wieder prüft.** Am 2026-08-30
-  lag ein Bildschirmfoto vor, das den alten Zeitplanfehler zeigte
-  (»unerwarteter Knoten«, `RandomDelay`). Der steckt seit dem Vortag
-  nicht mehr im Quelltext – die gelaufene Datei war also älter als die
+- [x] **Die `.exe` vor dem Prüfen neu bauen.** Am Vormittag lag ein
+  Bildschirmfoto vor, das den alten Zeitplanfehler zeigte
+  (»unerwarteter Knoten«, `RandomDelay`) – der steckte seit dem Vortag
+  nicht mehr im Quelltext. Die gelaufene Datei war älter als die
   Korrektur.
 
   Das ist der teure Fehler dieser Art: Man prüft eine alte Fassung und
