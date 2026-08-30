@@ -185,21 +185,36 @@ In dieser Reihenfolge, mit Stephan am 2026-08-26 abends verabredet.
   Archiv, dem man Post anvertraut, ist eine `.eml`, die in `/tmp`
   liegenbleibt, kein Detail.
 
-- [ ] **Ausschlussregeln für private Mails.** Ordner, Absender oder
-  Betreffmuster von der Archivierung ausnehmen. Der praktisch wichtigste
-  Datenschutzbaustein: Wenn ein Firmenkonto auch privat genutzt werden darf,
-  dürfen private Nachrichten nicht ohne Weiteres mitarchiviert werden. Siehe
-  [RECHTLICHES.md](RECHTLICHES.md).
+- [x] **Ausschlussregeln für private Mails** (2026-08-30). Gebaut als
+  Einstufungsregeln: `core/regeln.py`, `mailburg regeln`, *Post → Beim
+  Aufnehmen einstufen …*, [docs/regeln.md](docs/regeln.md).
 
-  **Für Stephans eigenen Bestand nicht dringend** (2026-08-26): Er würde
-  bei beruflicher Nutzung einer Adresse die Postfächer neu strukturieren,
-  statt sich auf Filter zu verlassen. Das ist der sauberere Weg – eine
-  Ausschlussregel greift erst nach dem Abruf und ist eine Zusicherung, die
-  das Programm geben muss; getrennte Postfächer sind eine Tatsache. Der
-  Punkt bleibt trotzdem offen: MailBurg ist öffentlich, und wer ein
-  gemischt genutztes Firmenkonto erbt, kann nicht mehr neu strukturieren.
-  Dann sollte die Doku wenigstens sagen, dass die Trennung an der Quelle
-  vorzuziehen ist.
+  **Anders als hier ursprünglich gedacht.** Der Punkt hieß
+  »Ausschluss« – Post von der Archivierung ausnehmen. Mit Stephan am
+  2026-08-30 anders entschieden: Geholt wird alles, die Regel bestimmt
+  nur die Einstufung. Eine Regel, die schon das Holen verhindert, wirft
+  weg, was sie trifft; wer später merkt, dass sie zu weit griff, hat die
+  Post verloren, falls sie im Postfach inzwischen gelöscht wurde. Eine
+  falsche Einstufung lässt sich zurücknehmen.
+
+  Damit ist der ursprüngliche Zweck erfüllt – private Post unterliegt
+  keiner Aufbewahrungsfrist mehr –, der Datenschutzgedanke des alten
+  Eintrags aber nur halb: Die Mail *liegt* weiterhin im Geschäftsarchiv.
+  Wer sie dort gar nicht haben will, löscht sie; als privat eingestuft
+  steht dem keine Frist entgegen.
+
+  Der Hinweis von 2026-08-26 gilt weiter und steht jetzt auch in der
+  Anleitung: **Die Trennung an der Quelle ist vorzuziehen.** Getrennte
+  Postfächer sind eine Tatsache, eine Regel ist eine Zusicherung, die
+  das Programm geben muss. Wer aber ein gemischt genutztes Firmenkonto
+  erbt, kann nicht mehr neu strukturieren – für den ist die Regel da.
+
+- [ ] **Betreffmuster als Regelfeld?** Bewusst weggelassen: Der Betreff
+  lässt sich fälschen, er wechselt im Verlauf eines Austauschs, und eine
+  Regel auf »Rechnung« träfe auch die Werbemail, die so tut. Ordner und
+  Absender sind belastbarer. Sollte jemand danach fragen, wäre es ein
+  Zweizeiler in `FELDER` – die Frage ist nicht, ob es geht, sondern ob es
+  gut ist.
 
 
 ### Danach

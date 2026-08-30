@@ -9,6 +9,45 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- **Regeln, die eingehende Post von selbst einstufen.** Wer geschäftlich
+  archiviert, bekommt private Post mit ins Archiv — den Verein, die
+  Familie, den Handwerker für die eigene Wohnung. Sie unterliegt dort
+  Aufbewahrungsfristen von sechs bis zehn Jahren, die für sie gar nicht
+  gelten; umgekehrt verlangt die DSGVO, personenbezogene Daten zu löschen,
+  sobald der Zweck entfällt.
+
+  Eine Regel schaut auf Ordner, Absender oder Empfänger und bestimmt die
+  Einstufung. Als Muster dienen `*` und `?`, nicht reguläre Ausdrücke:
+  `*@verein.example` versteht jeder, und ein verunglückter regulärer
+  Ausdruck kann alles treffen, ohne dass man es ihm ansieht.
+
+  Drei Festlegungen bestimmen den Entwurf:
+
+  **Beim Einstufen, nicht beim Abruf.** Geholt wird alles. Eine Regel, die
+  schon das Holen verhindert, wirft weg, was sie trifft — und wer später
+  merkt, dass sie zu weit griff, hat die Post verloren, falls sie im
+  Postfach inzwischen gelöscht wurde. Eine falsche Einstufung lässt sich
+  zurücknehmen.
+
+  **Die erste passende gewinnt.** Nicht die schärfste, nicht die zuletzt
+  angelegte. Das ist die einzige Regelung, die sich ohne Nachdenken
+  vorhersagen lässt; wer eine Ausnahme braucht, schiebt sie nach oben.
+
+  **Bestehende Post bleibt unangetastet.** Eine später angelegte Regel
+  überfährt keine Einstufung, die jemand von Hand vorgenommen hat — sonst
+  wöge eine bewusste Entscheidung weniger als ein Suchmuster. Wer
+  nachstufen will, verlangt es ausdrücklich.
+
+  Jede Anwendung steht im Journal, mit der Regel als Urheber statt eines
+  Menschen. Jede Änderung an den Regeln ebenfalls: Welche Regel wann galt,
+  gehört zur Verfahrensdokumentation.
+
+  In der Oberfläche unter *Post → Beim Aufnehmen einstufen …*, auf der
+  Kommandozeile als `mailburg regeln`. Erklärt in
+  [docs/regeln.md](docs/regeln.md).
+
 ### Behoben
 
 - **Der Sicherungsdialog überschrieb stillschweigend die eigene
