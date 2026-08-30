@@ -418,8 +418,43 @@ class Archive:
             flags=flags,
             attachment_text=attachment_text,
         )
+
+        # **Regeln greifen nur bei neu aufgenommener Post.** Eine Mail,
+        # die schon im Archiv liegt und von Hand eingestuft wurde, darf
+        # eine später angelegte Regel nicht überfahren – sonst wäre eine
+        # bewusste Entscheidung des Anwenders weniger wert als ein
+        # Suchmuster. Wer bestehende Post nachstufen will, tut das
+        # ausdrücklich über »Regeln anwenden«.
+        if indexed:
+            self._regel_anwenden(result.hash, folder=folder, parsed=parsed)
+
         return AddResult(
             hash=result.hash, bucket=result.bucket, stored=result.stored, indexed=indexed
+        )
+
+    def _regel_anwenden(self, digest: str, *, folder: str, parsed) -> None:
+        """Stuft eine frisch aufgenommene Mail ein, falls eine Regel greift.
+
+        Der Journaleintrag nennt die Regel als Urheber, nicht den
+        angemeldeten Benutzer. Wer später liest, wer diese Mail für
+        privat erklärt hat, soll nicht fälschlich einen Menschen dort
+        finden.
+        """
+        regelwerk = self.regeln
+        if not len(regelwerk):
+            return
+
+        befund = regelwerk.einstufung(
+            ordner=folder,
+            von=parsed.from_addr or "",
+            an=" ".join(getattr(parsed, "to_addrs", None) or []),
+        )
+        if befund is None:
+            return
+
+        kategorie, begruendung = befund
+        self.classify(
+            digest, kategorie, actor="Regel", note=begruendung
         )
 
     # -------------------------------------------------------------- Löschen
@@ -759,6 +794,62 @@ class Archive:
             jurisdiction=Jurisdiction(settings.get("jurisdiction", "de")),
             bafin_supervised=bool(settings.get("bafin_supervised", False)),
         )
+
+    @property
+    def regeln(self):
+        """Die Einstufungsregeln dieses Archivs.
+
+        Wird bei jedem Zugriff neu gebaut statt zwischengespeichert: Der
+        Aufwand ist eine Handvoll Zeichenketten, und eine zweite Sitzung
+        kann die Regeln inzwischen geändert haben.
+        """
+        from mailburg.core.regeln import Regelwerk
+
+        return Regelwerk.aus_daten(self.meta.get("regeln", []))
+
+    def regeln_setzen(self, regelwerk, *, actor: str = "") -> None:
+        """Ersetzt die Regeln – und schreibt den Vorgang ins Journal.
+
+        **Erst das Journal, dann die Datei.** Bricht etwas dazwischen ab,
+        steht im Protokoll eine Änderung, die nicht wirksam wurde – das
+        ist nachvollziehbar. Andersherum wäre eine wirksame Änderung
+        ohne Eintrag entstanden, und die sieht aus wie eine Manipulation.
+
+        Welche Regeln wann galten, gehört zur Verfahrensdokumentation:
+        Wer erklären muss, warum eine Mail nicht der Aufbewahrung
+        unterlag, zeigt auf diesen Eintrag.
+        """
+        vorher = self.meta.get("regeln", [])
+        nachher = regelwerk.als_daten()
+        if vorher == nachher:
+            return
+
+        self.journal.append(
+            "rules",
+            rules=nachher,
+            previous=vorher,
+            actor=actor or _angemeldeter_benutzer(),
+        )
+        self.journal.flush()
+
+        self.meta["regeln"] = nachher
+        self._meta_schreiben()
+
+    def _meta_schreiben(self) -> None:
+        """Schreibt ``archive.json`` – über eine Zwischendatei.
+
+        Ein abgebrochenes Schreiben mitten in der Datei hinterließe ein
+        Archiv, das sich nicht mehr öffnen lässt. Deshalb erst
+        vollständig danebenschreiben, dann umbenennen: Das ist auf jedem
+        gängigen Dateisystem unteilbar.
+        """
+        ziel = self.root / ARCHIVE_FILE
+        neben = ziel.with_suffix(".json.neu")
+        neben.write_text(
+            json.dumps(self.meta, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        neben.replace(ziel)
 
     def close(self) -> None:
         try:

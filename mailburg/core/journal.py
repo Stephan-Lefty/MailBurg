@@ -52,7 +52,18 @@ _SEGMENT_RE = re.compile(r"^(\d{6})\.jsonl(\.zst|\.xz)?$")
 #: ``classify``  Aufbewahrungskategorie einer Mail gesetzt oder geändert
 #: ``seal``      Siegel über den bisherigen Stand, optional mit Zeitstempel
 #: ``note``      Protokollnotiz, etwa eine geänderte Einstellung
-OPERATIONS = frozenset({"create", "add", "delete", "classify", "seal", "note"})
+#: Die zulässigen Vorgänge. Eine geschlossene Liste, damit ein
+#: Tippfehler nicht stillschweigend eine neue Vorgangsart erfindet, nach
+#: der später niemand sucht.
+#:
+#: ``rules`` kam am 2026-08-30 dazu: Welche Einstufungsregeln wann
+#: galten, gehört zur Verfahrensdokumentation. Wer erklären muss, warum
+#: eine Mail nicht der Aufbewahrung unterlag, zeigt auf diesen Eintrag –
+#: und er hängt in der Hash-Kette, lässt sich also nicht nachträglich
+#: glattziehen.
+OPERATIONS = frozenset({
+    "create", "add", "delete", "classify", "seal", "note", "rules",
+})
 
 
 def canonical(entry: dict[str, Any]) -> bytes:
