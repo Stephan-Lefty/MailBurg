@@ -160,6 +160,11 @@ prüfen. Bis dahin steht es hier und nicht in der laufenden Liste.
   Wege aus dem Archiv. Rechte Maustaste auf eine Nachricht, und sie geht
   in Thunderbird, Outlook oder Apple Mail auf.
 
+  Noch am selben Abend an Stephans Rechner bestätigt: »funktioniert
+  1a«. Damit ist der Weg nicht nur gebaut, sondern gelaufen – unter
+  Linux mit Thunderbird. Windows und macOS bleiben ungeprüft; dort
+  entscheidet `os.startfile` beziehungsweise `open`, was passiert.
+
   **Die Frage war nie das Öffnen, sondern die Datei.** Eine `.eml` ist
   die vollständige Nachricht – Text, Anhänge, Adressen. In `/tmp` darf
   auf einem Mehrbenutzersystem jeder mitlesen; sie liegt deshalb im

@@ -148,6 +148,11 @@ Until then it sits here and not in the running list.
   archive now exist. Right-click a message and it opens in Thunderbird, Outlook
   or Apple Mail.
 
+  Confirmed on Stephan's machine the same evening: "works perfectly". So the
+  route is not merely built but exercised — on Linux with Thunderbird. Windows
+  and macOS remain unverified; there it is `os.startfile` and `open` that decide
+  what happens.
+
   **The question was never the opening, it was the file.** An `.eml` is the
   complete message — body, attachments, addresses. In a shared temp directory
   anyone on a multi-user machine could read it; it therefore lives in the user's
