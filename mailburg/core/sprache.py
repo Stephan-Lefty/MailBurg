@@ -41,3 +41,7 @@ def nachrichten(zahl: int) -> str:
 
 def postfaecher(zahl: int) -> str:
     return anzahl(zahl, "Postfach", "Postfächer")
+
+
+def eintraege(zahl: int) -> str:
+    return anzahl(zahl, "Eintrag", "Einträge")

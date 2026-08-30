@@ -137,3 +137,102 @@ class UnversehrtheitTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UngueltigerPfadTest(unittest.TestCase):
+    """Ein Pfad mit unaufgelöster Variable ist kein »Platte weg«.
+
+    WinError 123 heißt »Die Syntax für den Dateinamen ist falsch« und
+    trifft fast immer denselben Fall: Wer einen PowerShell-Befehl in die
+    klassische Eingabeaufforderung tippt, bekommt »$env:USERPROFILE«
+    wörtlich in den Pfad geschrieben.
+
+    Am 2026-08-29 unter Windows genau so passiert – und die gepackte
+    Fassung zeigte dafür ein Traceback-Fenster, weil sie noch von vor
+    der Fehlerbehandlung stammte.
+    """
+
+    def _lauf(self, fehler):
+        import contextlib
+        import io
+
+        from mailburg.__main__ import main
+
+        strom = io.StringIO()
+        with mock.patch("mailburg.__main__.cmd_anlegen", side_effect=fehler):
+            with contextlib.redirect_stderr(strom):
+                code = main(["anlegen", "egal"])
+        return code, strom.getvalue()
+
+    def _winerror(self, nummer: int, datei: str):
+        fehler = OSError("Die Syntax für den Dateinamen ist falsch")
+        fehler.winerror = nummer
+        fehler.filename = datei
+        return fehler
+
+    def test_die_variable_wird_benannt(self) -> None:
+        code, text = self._lauf(
+            self._winerror(123, r"C:\Users\test\env:USERPROFILE\Beispiel")
+        )
+
+        self.assertEqual(code, 2)
+        self.assertIn("nicht verwendbar", text)
+        self.assertIn("USERPROFILE", text)
+
+    def test_beide_schreibweisen_werden_erklaert(self) -> None:
+        """PowerShell und Eingabeaufforderung lösen verschieden auf."""
+        _code, text = self._lauf(self._winerror(123, "irgendwas"))
+
+        self.assertIn("PowerShell", text)
+        self.assertIn("Eingabeaufforderung", text)
+
+    def test_kein_traceback(self) -> None:
+        """Das war der eigentliche Mangel: ein Wall aus Python-Zeilen."""
+        _code, text = self._lauf(self._winerror(123, "irgendwas"))
+
+        self.assertNotIn("Traceback", text)
+        self.assertNotIn("line ", text)
+
+    def test_der_pfad_beim_anlegen_heisst_anders(self) -> None:
+        """»anlegen« nennt sein Argument ``pfad``, nicht ``archiv``.
+
+        Ohne diesen Fall meldete der Handler nur »Fehler beim Zugriff«
+        und verschwieg, worum es ging.
+        """
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "__main__.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('getattr(args, "pfad", None)', quelle)
+
+
+class ZahlwoerterAufDerKommandozeileTest(unittest.TestCase):
+    """»1 Mails«, »1 Einträge« – auch hier, nicht nur in der Oberfläche.
+
+    Am 2026-08-29 wurde die Oberfläche umgestellt; die Kommandozeile
+    blieb liegen, weil an dieser Datei gerade gearbeitet wurde. Beim
+    Nachziehen am Tag darauf kamen elf Stellen zusammen – gefunden nicht
+    durch Suchen, sondern indem ein Archiv mit genau einer Mail angelegt
+    und jeder Befehl einmal aufgerufen wurde.
+    """
+
+    def test_die_quelle_zaehlt_nicht_mehr_selbst(self):
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "__main__.py"
+        ).read_text(encoding="utf-8")
+
+        # Was hier stünde, wäre eine Zahl unmittelbar vor einem Wort in
+        # der Mehrzahl – genau die Form, die bei der Eins schiefgeht.
+        for muster in (
+            "} Mails laut", "} Mails ohne", "} Dateien in der",
+            "} Dateien ohne", "} Einträge", "} Postfächer sind",
+        ):
+            self.assertNotIn(muster, quelle, f"»{muster}« zählt noch selbst")
+
+    def test_eintraege_hat_eine_einzahl(self):
+        from mailburg.core.sprache import eintraege
+
+        self.assertEqual(eintraege(1), "1 Eintrag")
+        self.assertEqual(eintraege(2), "2 Einträge")

@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 from mailburg import APP_NAME, __version__
-from mailburg.core import accounts
+from mailburg.core import accounts, sprache
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
 from mailburg.core.importer import importieren
@@ -118,7 +118,7 @@ def cmd_importieren(args: argparse.Namespace) -> int:
         print(f"Dauer: {seconds:.1f} s ({rate:.0f} Mails/s)")
 
         if mit_text:
-            print(f"Mit Anhangstext: {stat.mit_anhangstext} Mails")
+            print(f"Mit Anhangstext: {sprache.mails(stat.mit_anhangstext)}")
             if stat.eingescannt:
                 print(
                     f"Davon {stat.eingescannt} PDF ohne Textebene – vermutlich "
@@ -541,10 +541,14 @@ def cmd_loeschen(args: argparse.Namespace) -> int:
 
         auch_anderswo = len(zeilen) - len(nur_hier)
         print(f"Postfach '{args.konto}' in '{archive.name}':")
-        print(f"  {len(zeilen)} Mails, davon {len(nur_hier)} nur hier zu finden.")
+        print(f"  {sprache.mails(len(zeilen))}, davon {len(nur_hier)} "
+              f"nur hier zu finden.")
         if auch_anderswo:
-            print(f"  {auch_anderswo} liegen auch unter einem anderen Postfach "
-                  f"und bleiben unangetastet.")
+            print(f"  {auch_anderswo} "
+                  + ("liegt" if auch_anderswo == 1 else "liegen")
+                  + " auch unter einem anderen Postfach "
+                  + ("und bleibt" if auch_anderswo == 1 else "und bleiben")
+                  + " unangetastet.")
 
         if not args.wirklich:
             print()
@@ -692,7 +696,9 @@ def _konten_waehlen(liste, archive, gewuenscht: str | None, *, laut: bool = True
         # nichts mehr ankommt, soll hier lesen, warum.
         namen = ", ".join(k.name for k in offen)
         print(
-            f"\n{len(offen)} Postfächer sind keinem Archiv zugeordnet und "
+            f"\n{sprache.postfaecher(len(offen))} "
+            + ("ist" if len(offen) == 1 else "sind")
+            + " keinem Archiv zugeordnet und "
             f"werden übergangen: {namen}\n"
             f"Zuordnen mit: mailburg konten zuordnen <Archiv> <Postfach>",
             file=sys.stderr,
@@ -806,7 +812,11 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
                 print(f"  Hinweis: {warnung}", file=sys.stderr)
             if stat.fehlgeschlagen:
                 print(
-                    f"  {stat.fehlgeschlagen} Mails sind vorgemerkt und werden beim "
+                    f"  {sprache.mails(stat.fehlgeschlagen)} "
+                    + ("ist" if stat.fehlgeschlagen == 1 else "sind")
+                    + " vorgemerkt und "
+                    + ("wird" if stat.fehlgeschlagen == 1 else "werden")
+                    + " beim "
                     f"nächsten Abruf erneut geholt.",
                     file=sys.stderr if not laut else sys.stdout,
                 )
@@ -1091,22 +1101,24 @@ def cmd_pruefen(args: argparse.Namespace) -> int:
         report = archive.verify()
 
         if report["chain_ok"]:
-            print(f"  Hash-Kette:  unversehrt ({report['chain_entries']} Einträge)")
+            print(f"  Hash-Kette:  unversehrt "
+                  f"({sprache.eintraege(report['chain_entries'])})")
         else:
             print(f"  Hash-Kette:  BESCHÄDIGT ({len(report['chain_errors'])} Fundstellen)")
             for problem in report["chain_errors"][:20]:
                 print(f"    - {problem}")
 
-        print(f"  Erwartet:    {report['expected']} Mails laut Journal")
-        print(f"  Vorhanden:   {report['on_disk']} Dateien in der Ablage")
+        print(f"  Erwartet:    {sprache.mails(report['expected'])} laut Journal")
+        print(f"  Vorhanden:   {sprache.dateien(report['on_disk'])} in der Ablage")
 
         if report["missing"]:
-            print(f"  FEHLEND:     {len(report['missing'])} Mails ohne Datei")
+            print(f"  FEHLEND:     {sprache.mails(len(report['missing']))} ohne Datei")
             for digest in report["missing"][:10]:
                 print(f"    - {digest[:16]}…")
 
         if report["unexpected"]:
-            print(f"  UNBEKANNT:   {len(report['unexpected'])} Dateien ohne Journaleintrag")
+            print(f"  UNBEKANNT:   {sprache.dateien(len(report['unexpected']))} "
+                  f"ohne Journaleintrag")
             print("               Diese Mails wurden nicht über MailBurg aufgenommen.")
             for digest in report["unexpected"][:10]:
                 print(f"    - {digest[:16]}…")
@@ -1127,7 +1139,8 @@ def cmd_neuaufbau(args: argparse.Namespace) -> int:
 
         count = archive.rebuild_index(progress=progress)
         print(" " * 60, end="\r")
-        print(f"Fertig: {count} Mails in {time.monotonic() - started:.1f} s indiziert.")
+        print(f"Fertig: {sprache.mails(count)} in "
+              f"{time.monotonic() - started:.1f} s indiziert.")
     return 0
 
 
@@ -1135,7 +1148,7 @@ def cmd_siegel(args: argparse.Namespace) -> int:
     """Setzt ein Siegel über den aktuellen Stand."""
     with Archive.open(Path(args.archiv)) as archive:
         entry = archive.seal()
-        print(f"Siegel gesetzt über {entry['count']} Einträge.")
+        print(f"Siegel gesetzt über {sprache.eintraege(entry['count'])}.")
         print(f"  Stand: {entry['covers'][:32]}…")
         print(f"  Zeit:  {entry['ts']}")
     return 0
@@ -1156,7 +1169,7 @@ def cmd_info(args: argparse.Namespace) -> int:
         print(f"  Fundorte:     {stats['fundorte']:,}".replace(",", "."))
         print(f"  Rohgröße:     {_human_size(stats['bytes'])}")
         print(f"  Auf Platte:   {_human_size(archive.store.disk_usage())}")
-        print(f"  Journal:      {archive.journal.count} Einträge")
+        print(f"  Journal:      {sprache.eintraege(archive.journal.count)}")
 
         accounts = archive.index.accounts()
         if accounts:
@@ -1382,7 +1395,9 @@ def cmd_faellig(args: argparse.Namespace) -> int:
                     nach_jahr.get((eintrag.date or "????")[:4], 0) + 1
                 )
             print(
-                f"{len(alte)} Mails sind älter als {jahre} Jahre.\n"
+                f"{sprache.mails(len(alte))} "
+                + ("ist" if len(alte) == 1 else "sind")
+                + f" älter als {jahre} Jahre.\n"
             )
             for jahr in sorted(nach_jahr):
                 print(f"  {jahr}: {nach_jahr[jahr]}")
@@ -1549,7 +1564,7 @@ def cmd_sichern(args) -> int:
     if not args.leise:
         print(f"Gesichert: {befund.ziel}")
         print(
-            f"  {befund.dateien} Dateien, "
+            f"  {sprache.dateien(befund.dateien)}, "
             f"{befund.ziel_bytes / 1024 / 1024:.0f} MB "
             f"({befund.ersparnis}% kleiner als das Original)"
         )
@@ -2068,7 +2083,32 @@ def main(argv: list[str] | None = None) -> int:
         # dazwischen ab, fehlt höchstens der letzte Eintrag. Am
         # 2026-08-28 nachgestellt: 1000 Mails abgelegt, Platte mitten im
         # Lauf gezogen, danach Hash-Kette unversehrt.
-        archiv = getattr(args, "archiv", None)
+        # **Ein ungültiger Pfad ist die häufigere Ursache.** WinError 123
+        # heißt »Die Syntax für den Dateinamen ist falsch« und trifft
+        # fast immer denselben Fall: eine Umgebungsvariable, die nicht
+        # aufgelöst wurde. Wer einen PowerShell-Befehl in die klassische
+        # Eingabeaufforderung tippt, bekommt »$env:USERPROFILE« wörtlich
+        # in den Pfad geschrieben. Am 2026-08-29 unter Windows genau so
+        # passiert.
+        if getattr(exc, "winerror", None) == 123 or isinstance(
+            exc, (NotADirectoryError,)
+        ):
+            print(
+                f"Dieser Pfad ist nicht verwendbar:\n"
+                f"  {getattr(exc, 'filename', '') or exc}\n"
+                f"\n"
+                f"Steht darin noch eine Variable wie »$env:USERPROFILE« "
+                f"oder »%USERPROFILE%«? Die löst nur die passende "
+                f"Eingabeschale auf – »$env:…« in PowerShell, »%…%« in "
+                f"der Eingabeaufforderung. Am sichersten ist der "
+                f"ausgeschriebene Pfad.",
+                file=sys.stderr,
+            )
+            return 2
+
+        # Der Pfad kann unter verschiedenen Namen ankommen: »archiv« bei
+        # den meisten Befehlen, »pfad« beim Anlegen.
+        archiv = getattr(args, "archiv", None) or getattr(args, "pfad", None)
         weg = archiv is not None and not Path(archiv).expanduser().is_dir()
         if weg:
             print(
