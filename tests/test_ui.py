@@ -4619,3 +4619,127 @@ class SicherungszustandImDialogTest(OberflaechenTest):
         wahl = self._wahl()
 
         self.assertEqual(wahl.behalten.currentData(), 0)
+
+
+class RegeldialogTest(OberflaechenTest):
+    """Die Verwaltung der Einstufungsregeln.
+
+    Der Kern dieser Ansicht ist die Reihenfolge: Es gilt die erste
+    passende Regel. Wer das nicht sieht, legt eine Ausnahme an, die nie
+    greift – deshalb sind die Regeln nummeriert und verschiebbar.
+    """
+
+    def _dialog(self, *regeln):
+        from unittest import mock
+
+        from mailburg.core.regeln import Regel, Regelwerk
+        from mailburg.ui.regeln import Regeldialog
+
+        archiv = mock.Mock()
+        archiv.regeln = Regelwerk(list(regeln))
+        return Regeldialog(archiv=archiv), archiv
+
+    def _regel(self, muster="*@verein.example", feld="von"):
+        from mailburg.core.regeln import Regel
+
+        return Regel(feld=feld, muster=muster)
+
+    def test_die_regeln_stehen_in_der_tabelle(self):
+        dialog, _ = self._dialog(self._regel(), self._regel("INBOX/Privat", "ordner"))
+
+        self.assertEqual(dialog.tabelle.rowCount(), 2)
+        self.assertEqual(dialog.tabelle.item(0, 1).text(), "*@verein.example")
+        self.assertEqual(dialog.tabelle.item(1, 1).text(), "INBOX/Privat")
+
+    def test_eine_regel_anlegen(self):
+        dialog, _ = self._dialog()
+        dialog.muster.setText("*@familie.example")
+
+        dialog._anlegen()
+
+        self.assertEqual(len(dialog.werk), 1)
+        self.assertEqual(dialog.werk.regeln[0].muster, "*@familie.example")
+        self.assertEqual(dialog.muster.text(), "", "Feld sollte leer sein")
+
+    def test_ohne_muster_wird_nichts_angelegt(self):
+        from unittest import mock
+
+        dialog, _ = self._dialog()
+        dialog.muster.setText("   ")
+
+        with mock.patch(
+            "mailburg.ui.regeln.QMessageBox.information"
+        ) as gemeldet:
+            dialog._anlegen()
+
+        gemeldet.assert_called_once()
+        self.assertEqual(len(dialog.werk), 0)
+
+    def test_nach_oben_schieben(self):
+        """Eine Ausnahme muss vor die allgemeinere Regel."""
+        dialog, _ = self._dialog(
+            self._regel("*@verein.example"),
+            self._regel("kasse@verein.example"),
+        )
+        dialog.tabelle.setCurrentCell(1, 0)
+
+        dialog._schieben(-1)
+
+        self.assertEqual(dialog.werk.regeln[0].muster, "kasse@verein.example")
+        self.assertEqual(dialog.tabelle.currentRow(), 0)
+
+    def test_am_rand_wird_nicht_geschoben(self):
+        dialog, _ = self._dialog(self._regel())
+        dialog.tabelle.setCurrentCell(0, 0)
+
+        dialog._schieben(-1)
+
+        self.assertEqual(len(dialog.werk), 1)
+
+    def test_die_knoepfe_richten_sich_nach_der_auswahl(self):
+        dialog, _ = self._dialog(self._regel("a*"), self._regel("b*"))
+
+        dialog.tabelle.setCurrentCell(0, 0)
+        self.assertFalse(dialog.hoch.isEnabled(), "oben gibt es kein Höher")
+        self.assertTrue(dialog.runter.isEnabled())
+
+        dialog.tabelle.setCurrentCell(1, 0)
+        self.assertTrue(dialog.hoch.isEnabled())
+        self.assertFalse(dialog.runter.isEnabled())
+
+    def test_entfernen_fragt_nach(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog, _ = self._dialog(self._regel())
+        dialog.tabelle.setCurrentCell(0, 0)
+
+        with mock.patch(
+            "mailburg.ui.regeln.QMessageBox.question",
+            return_value=QMessageBox.No,
+        ):
+            dialog._entfernen()
+
+        self.assertEqual(len(dialog.werk), 1, "Nein muss Nein heißen")
+
+    def test_speichern_reicht_die_regeln_durch(self):
+        dialog, archiv = self._dialog(self._regel())
+
+        dialog._speichern()
+
+        archiv.regeln_setzen.assert_called_once_with(dialog.werk)
+
+    def test_unbestimmt_steht_nicht_zur_wahl(self):
+        """Eine Regel, die nichts entscheidet, ist keine Regel."""
+        dialog, _ = self._dialog()
+
+        # Category ist ein StrEnum – Qt gibt die Werte als Zeichenkette
+        # zurück, nicht als Aufzählungsglied.
+        stufen = [
+            str(dialog.stufe.itemData(i))
+            for i in range(dialog.stufe.count())
+        ]
+
+        self.assertNotIn("unbestimmt", stufen)
+        self.assertIn("privat", stufen)

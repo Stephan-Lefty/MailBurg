@@ -574,6 +574,20 @@ gefundenen Mails als Buchungsbeleg, Handelsbrief oder privat ein. Das
 Fenster zeigt vorher, wie viele betroffen sind und wie lange sie danach
 geschützt sind. Nur im Geschäftsarchiv; ein Privatarchiv kennt keine
 Fristen.</p>
+
+<p><b>Post → Beim Aufnehmen einstufen …</b><br>Dasselbe im Voraus:
+Regeln, die eingehende Post von selbst einordnen. Wer geschäftlich
+archiviert, bekommt private Post mit ins Archiv – den Verein, die
+Familie –, und die unterliegt dort Fristen, die für sie nicht gelten.
+Eine Regel schaut auf Ordner, Absender oder Empfänger und bestimmt die
+Einstufung.</p>
+
+<p><b>Geholt wird trotzdem alles.</b> Die Regel verhindert nichts, sie
+stuft nur ein – eine nicht geholte Mail lässt sich nicht zurückholen,
+eine falsche Einstufung schon. Es gilt die erste passende Regel, weshalb
+Ausnahmen nach oben gehören. Bereits archivierte Post bleibt
+unangetastet, bis man es im selben Fenster ausdrücklich verlangt. Nur im
+Geschäftsarchiv.</p>
 """
 
 

@@ -306,6 +306,18 @@ class Hauptfenster(QMainWindow):
         self.einstufen_aktion.triggered.connect(self._einstufen)
         post.addAction(self.einstufen_aktion)
 
+        # **Neben dem Einstufen von Hand, nicht darunter.** Beides
+        # beantwortet dieselbe Frage – wozu zählt diese Post –, nur das
+        # eine rückblickend und das andere im Voraus.
+        self.regeln_aktion = QAction("Beim Aufnehmen einstufen …", self)
+        self.regeln_aktion.setStatusTip(
+            "Regeln, die eingehende Post von selbst einordnen – etwa "
+            "alles aus dem Vereinsordner als privat, damit es nicht "
+            "unter Aufbewahrungsfristen fällt, die dafür nicht gelten."
+        )
+        self.regeln_aktion.triggered.connect(self._regeln)
+        post.addAction(self.regeln_aktion)
+
         # Einstellungen sind kein Handeln: Was hier steht, gilt fort,
         # bis es jemand ändert. Deshalb ein eigenes Menü - und deshalb
         # weit rechts, kurz vor der Hilfe: Was man täglich braucht,
@@ -1307,6 +1319,10 @@ class Hauptfenster(QMainWindow):
         ("einstufen_aktion", "Aufbewahrungsfristen gibt es nur im "
                              "Geschäftsarchiv – ein Privatarchiv kennt "
                              "keine."),
+        ("regeln_aktion", "Einstufungsregeln sind für das "
+                          "Geschäftsarchiv gedacht: Sie halten private "
+                          "Post aus den Aufbewahrungsfristen heraus. Im "
+                          "Privatarchiv gibt es keine."),
         ("doku_aktion", "Eine Verfahrensdokumentation nach GoBD "
                         "verlangt nur, wer geschäftlich archiviert."),
         ("auskunft_aktion", "Ein Privatarchiv fällt unter die "
@@ -1428,6 +1444,19 @@ class Hauptfenster(QMainWindow):
         if jahre:
             self.suchfeld.setText(f"jahr:1900-{jahre[-1]}")
             self._suchen()
+
+    def _regeln(self) -> None:
+        """Öffnet die Verwaltung der Einstufungsregeln."""
+        from mailburg.ui.regeln import Regeldialog
+
+        if self.archiv is None:
+            return
+        dialog = Regeldialog(self, archiv=self.archiv)
+        dialog.resize(760, 560)
+        if dialog.exec():
+            # Die Statuszeile kann sich geändert haben, wenn beim
+            # Anwenden Mails umgestuft wurden.
+            self._bestand_zeigen()
 
     def _einstufen(self) -> None:
         """Ordnet die gerade gefundenen Mails aufbewahrungsrechtlich ein."""
