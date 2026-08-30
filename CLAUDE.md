@@ -3,6 +3,73 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-08-30, Sonntag)
+
+**0.11.0 ist veröffentlicht**, mit `MailBurg.exe` am Release. Der Tag
+brachte zwei Dinge: die Einstufungsregeln und den ersten Durchgang auf
+einem richtigen Windows-11-Rechner.
+
+**Die Tests lokal vollständig laufen lassen** – bitte so, nicht mit dem
+System-Python:
+
+```bash
+PYTHONPATH="$PWD" QT_QPA_PLATFORM=offscreen \
+  ~/.local/share/mailburg/venv/bin/python3 -m unittest discover -s tests
+```
+
+Das sind 1087 Tests. Mit `python -m unittest` aus dem Systempfad sind es
+1062, und 325 werden **stillschweigend übersprungen** – PySide6 liegt
+nur in der venv von `install.sh`. Wer das nicht weiß, prüft einen ganzen
+Tag lang an der Oberfläche vorbei und merkt es erst in der CI. Genau das
+ist am 30.08. passiert.
+
+**Die Einstufungsregeln** (`core/regeln.py`, `mailburg regeln`, *Post →
+Beim Aufnehmen einstufen …*, [docs/regeln.md](docs/regeln.md)). Drei
+Festlegungen, die nicht wieder aufgemacht werden sollten, ohne den Grund
+zu kennen: Geholt wird alles – die Regel bestimmt nur die Einstufung.
+Die erste passende gewinnt. Bestehende Post bleibt unangetastet.
+
+**Windows auf echter Hardware.** Alles lief. Zwei Ergebnisse, die eine VM
+nicht liefern konnte:
+
+*Der Start dauert Sekunden, nicht zwanzig.* Fast die ganze Wartezeit in
+der VM ging auf die Virtualisierung. Damit ist die einzelne Datei als
+Vertriebsform bestätigt.
+
+*Das Startbild ist ausgebaut.* Es erschien auch dort nicht – aber
+entfernt wurde es, weil der Anlass weg ist, nicht weil der Fehler
+unlösbar wäre. Die Spuren stehen in `werkzeuge/mailburg.spec`.
+
+**Zwei Fehler, die kein Test gefunden hätte**, beide aus einem
+Bildschirmfoto von Stephan:
+
+*Die OEM-Codepage.* Fehlermeldungen von `schtasks.exe` kamen als
+»enth„lt« statt »enthält« an – Konsolenprogramme unter Windows schreiben
+in cp850, Python las cp1252. `werkzeuge.konsolenkodierung()` gibt die
+Kodierung jetzt überall an, wo ein fremdes Programm im Textmodus
+ausgelesen wird.
+
+*Der Sicherungsdialog überschrieb die eigene Einstellung.* Er las beim
+Öffnen nicht zurück, wie oft gesichert wird und wie viele Stände
+bleiben. Aus »monatlich mit zwei Ständen« wurde beim nächsten Übernehmen
+ein tägliches Überschreiben derselben Datei.
+
+**Die Lehre des Tages steht in der TODO:** Das erste Bildschirmfoto
+zeigte einen Fehler, der seit dem Vortag behoben war – die gelaufene
+`.exe` war älter als die Korrektur. Wer eine Prüfung ansetzt, baut
+vorher neu und notiert sich den Commit.
+
+**Neu und nicht offensichtlich:** `werkzeuge/vorfuehrarchiv.py` legt ein
+Archiv mit 27 erfundenen Mails an, das *stehen bleibt* – für
+Vorführungen und Videos. `screenshots.py` taugt dafür nicht, es räumt
+sein Archiv wieder weg. Ein Test wacht darüber, dass jede Adresse auf
+`.example` endet.
+
+**Als Nächstes:** der Rückweg »In Mailprogramm öffnen« – der letzte
+offene Punkt unter *Muss vor dem ersten echten Einsatz passieren*. Und
+`TODO.en.md` ist seit dem 26.08. stehengeblieben; sie führt Dinge als
+offen, die es längst gibt.
+
 ## Hier war Schluss (Stand 2026-08-29, Samstag)
 
 **OAuth2 ist gebaut** – Ablauf, Bedienung auf beiden Wegen,
