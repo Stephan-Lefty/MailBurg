@@ -870,7 +870,7 @@ class KontenSeite(QWizardPage):
 
         # Dasselbe Postfach nicht zweimal einrichten. Der Name ist frei
         # gewählt und sagt darüber nichts aus - wer beim ersten Mal "Firma"
-        # eingetragen hat, bekäme es hier als "post@firma.de" erneut
+        # eingetragen hat, bekäme es hier als "post@example.org" erneut
         # angeboten und riefe es fortan doppelt ab.
         schon_da = Kontenliste().finden_nach_postfach(konto.benutzer, konto.server)
         if schon_da is not None:

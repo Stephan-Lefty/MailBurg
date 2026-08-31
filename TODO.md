@@ -425,7 +425,7 @@ Prüfung steht es hier und nicht in der laufenden Liste.
   mit der bestehenden zusammenfällt. 196 Commits, beide Tags stehen, das
   Release v0.10.0 samt `.exe` ist unversehrt.
 
-  Sicherung: `/mnt/raid/VMs/MailBurg-vor-bildbereinigung-2026-08-29.bundle`
+  Sicherung: `…/MailBurg-vor-bildbereinigung-2026-08-29.bundle`, ausserhalb des Repos
 
 - [x] **Zehn Fehler aus dem Bilder-Durchgang.** Ausgelöst von einem
   Beispielarchiv mit genau einer Mail darin: „1 Mails im Archiv" in der

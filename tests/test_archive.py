@@ -131,7 +131,7 @@ class TestAufnehmen(ArchiveTestCase):
         self.assertEqual(self.archive.index.statistics()["anhaenge"], 1)
 
     def test_mail_ohne_datum(self) -> None:
-        roh = b"From: a@b.de\r\nSubject: Zeitlos\r\n\r\nOhne Datumszeile"
+        roh = b"From: a@example.org\r\nSubject: Zeitlos\r\n\r\nOhne Datumszeile"
         result = self.archive.add(roh, account="firma", folder="INBOX")
         self.archive.index.commit()
         self.assertTrue(result.stored)

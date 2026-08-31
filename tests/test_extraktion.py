@@ -172,7 +172,7 @@ class TestGanzeMail(unittest.TestCase):
 
         kodiert = base64.b64encode(nutzdaten).decode()
         roh = (
-            "From: a@b.de\r\nSubject: Mit Anhang\r\n"
+            "From: a@example.org\r\nSubject: Mit Anhang\r\n"
             'Content-Type: multipart/mixed; boundary="G"\r\n\r\n'
             "--G\r\nContent-Type: text/plain\r\n\r\nSiehe Anhang.\r\n"
             f"--G\r\nContent-Type: application/octet-stream\r\n"
@@ -196,7 +196,7 @@ class TestGanzeMail(unittest.TestCase):
     def test_mail_ohne_anhang(self) -> None:
         from mailburg.extract.message import parse
 
-        zerlegt = parse(b"From: a@b.de\r\nSubject: X\r\n\r\nNur Text", with_payloads=True)
+        zerlegt = parse(b"From: a@example.org\r\nSubject: X\r\n\r\nNur Text", with_payloads=True)
         inhalt, zaehlung = text.aus_mail(zerlegt)
         self.assertEqual(inhalt, "")
         self.assertEqual(zaehlung, {})

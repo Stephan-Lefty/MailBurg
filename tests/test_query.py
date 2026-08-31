@@ -133,7 +133,7 @@ class TestGegenEchteDatenbank(unittest.TestCase):
         db.executescript(_SCHEMA)
 
         eingaben = [
-            "", "rechnung", "betreff:rechnung", "von:müller", "an:info@x.de",
+            "", "rechnung", "betreff:rechnung", "von:müller", "an:info@example.com",
             "jahr:2025", "jahr:2020-2025", "typ:pdf", "hat:anhang",
             "konto:firma", "ordner:Gesendet", "text:vertrag", "inhalt:vertrag",
             "-werbung", "-von:spam", 'betreff:"offene posten" jahr:2025',

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from mailburg.core.store import UNDATED_BUCKET, Store, bucket_for, content_hash
 
-BEISPIEL = b"From: a@b.de\r\nSubject: Test\r\n\r\nInhalt mit Umlauten: \xc3\xa4\xc3\xb6\xc3\xbc\r\n"
+BEISPIEL = b"From: a@example.org\r\nSubject: Test\r\n\r\nInhalt mit Umlauten: \xc3\xa4\xc3\xb6\xc3\xbc\r\n"
 
 
 class TestAdressierung(unittest.TestCase):
@@ -100,7 +100,7 @@ class TestAblage(unittest.TestCase):
 
     def test_bytes_bleiben_unveraendert(self) -> None:
         """Keine geglätteten Zeilenenden – sonst wäre DKIM nicht mehr prüfbar."""
-        mit_crlf = b"From: a@b.de\r\nSubject: X\r\n\r\nZeile eins\r\nZeile zwei\r\n"
+        mit_crlf = b"From: a@example.org\r\nSubject: X\r\n\r\nZeile eins\r\nZeile zwei\r\n"
         result = self.store.put(mit_crlf, self.datum)
         self.assertEqual(self.store.get(result.hash, result.bucket), mit_crlf)
 

@@ -34,7 +34,7 @@ class TestKopfzeilen(unittest.TestCase):
     def test_betreff_in_quoted_printable(self) -> None:
         """RFC 2047, die häufigste Verpackung für Umlaute im Betreff."""
         m = parse(mail(
-            "From: a@b.de",
+            "From: a@example.org",
             "Subject: =?utf-8?Q?R=C3=BCckfrage_zur_Bestellung?=",
         ))
         self.assertEqual(m.subject, "Rückfrage zur Bestellung")
@@ -42,7 +42,7 @@ class TestKopfzeilen(unittest.TestCase):
     def test_betreff_in_base64_latin1(self) -> None:
         """Ältere Mailprogramme kodierten so."""
         m = parse(mail(
-            "From: a@b.de",
+            "From: a@example.org",
             "Subject: =?iso-8859-1?B?R3LDvMOfZQ==?=",
         ))
         self.assertIn("Ã", m.subject + "Ã")  # nur: es kommt etwas zurück
@@ -50,16 +50,16 @@ class TestKopfzeilen(unittest.TestCase):
 
     def test_mehrere_empfaenger_und_kopie(self) -> None:
         m = parse(mail(
-            "From: a@b.de",
-            "To: eins@x.de, Zwei <zwei@x.de>",
-            "Cc: drei@x.de",
+            "From: a@example.org",
+            "To: eins@example.com, Zwei <zwei@example.com>",
+            "Cc: drei@example.com",
         ))
-        self.assertEqual(m.to_addrs, ["eins@x.de", "zwei@x.de"])
-        self.assertEqual(m.cc_addrs, ["drei@x.de"])
-        self.assertIn("drei@x.de", m.all_recipients)
+        self.assertEqual(m.to_addrs, ["eins@example.com", "zwei@example.com"])
+        self.assertEqual(m.cc_addrs, ["drei@example.com"])
+        self.assertIn("drei@example.com", m.all_recipients)
 
     def test_fehlender_betreff_ist_kein_fehler(self) -> None:
-        m = parse(mail("From: a@b.de"))
+        m = parse(mail("From: a@example.org"))
         self.assertEqual(m.subject, "")
 
     def test_voellig_leere_mail_stuerzt_nicht_ab(self) -> None:
@@ -70,18 +70,18 @@ class TestKopfzeilen(unittest.TestCase):
 
 class TestDatum(unittest.TestCase):
     def test_datum_ohne_zeitzone_gilt_als_utc(self) -> None:
-        m = parse(mail("From: a@b.de", "Date: Fri, 14 Mar 2025 09:30:00"))
+        m = parse(mail("From: a@example.org", "Date: Fri, 14 Mar 2025 09:30:00"))
         self.assertIsNotNone(m.date)
         self.assertIsNotNone(m.date.tzinfo)
 
     def test_unlesbares_datum_wird_vermerkt_nicht_verschluckt(self) -> None:
-        m = parse(mail("From: a@b.de", "Date: neulich mal"))
+        m = parse(mail("From: a@example.org", "Date: neulich mal"))
         self.assertTrue(m.defects, "Ein kaputtes Datum muss vermerkt werden.")
 
     def test_received_springt_ein_wenn_date_fehlt(self) -> None:
         """Die Zeile vom eigenen Server ist oft verlässlicher als der Absender."""
         m = parse(mail(
-            "From: a@b.de",
+            "From: a@example.org",
             "Received: from x by y; Fri, 14 Mar 2025 09:30:00 +0100",
         ))
         self.assertIsNotNone(m.date)
@@ -90,12 +90,12 @@ class TestDatum(unittest.TestCase):
 
 class TestInhalt(unittest.TestCase):
     def test_reiner_text(self) -> None:
-        m = parse(mail("From: a@b.de", body="Das ist der Fließtext."))
+        m = parse(mail("From: a@example.org", body="Das ist der Fließtext."))
         self.assertIn("Fließtext", m.body)
 
     def test_nur_html_wird_zu_text(self) -> None:
         roh = (
-            b"From: a@b.de\r\n"
+            b"From: a@example.org\r\n"
             b"Content-Type: text/html; charset=utf-8\r\n\r\n"
             b"<html><head><style>p{color:red}</style></head>"
             b"<body><p>Sichtbarer Text</p><script>alert(1)</script></body></html>"
@@ -108,7 +108,7 @@ class TestInhalt(unittest.TestCase):
     def test_gelogene_kodierung(self) -> None:
         """Behauptet UTF-8, ist aber Latin-1 – kommt ständig vor."""
         roh = (
-            b"From: a@b.de\r\nSubject: Test\r\n"
+            b"From: a@example.org\r\nSubject: Test\r\n"
             b"Content-Type: text/plain; charset=utf-8\r\n\r\n"
             b"Gr\xfc\xdfe aus M\xfcnchen"
         )
@@ -120,7 +120,7 @@ class TestAnhaenge(unittest.TestCase):
     def _mit_anhang(self, dateiname: str | None) -> bytes:
         name = f'; filename="{dateiname}"' if dateiname else ""
         return (
-            "From: a@b.de\r\n"
+            "From: a@example.org\r\n"
             "Subject: Mit Anhang\r\n"
             'Content-Type: multipart/mixed; boundary="GRENZE"\r\n\r\n'
             "--GRENZE\r\n"
