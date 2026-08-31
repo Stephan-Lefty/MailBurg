@@ -8,87 +8,11 @@ gefragt würde, wo denn sein Archiv liege, würde sich zu Recht wundern.
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
 from mailburg import APP_NAME, __version__
-from mailburg.core import paths
-
-
-def _datei() -> Path:
-    return paths.config_dir() / "oberflaeche.json"
-
-
-def gemerktes() -> dict:
-    """Alles, was sich die Oberfläche von Sitzung zu Sitzung merkt."""
-    try:
-        inhalt = json.loads(_datei().read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return inhalt if isinstance(inhalt, dict) else {}
-
-
-def merken_unter(schluessel: str, wert) -> None:
-    """Ändert einen Eintrag, ohne die übrigen zu verlieren.
-
-    Die frühere Fassung schrieb die Datei jedes Mal komplett neu. Damit
-    hätte das Merken des Archivs die gemerkte Fenstergröße gelöscht – ein
-    Fehler, der erst Wochen später als »das Fenster vergisst wieder alles«
-    aufgefallen wäre.
-    """
-    stand = gemerktes()
-    stand[schluessel] = wert
-    try:
-        _datei().write_text(
-            json.dumps(stand, ensure_ascii=False), encoding="utf-8"
-        )
-    except OSError:
-        # Sich etwas nicht merken zu können ist ärgerlich, aber kein
-        # Grund, das Programm nicht zu starten.
-        pass
-
-
-def zuletzt_gemerkt() -> Path | None:
-    """Das Archiv, das zuletzt offen war."""
-    pfad = gemerktes().get("archiv")
-    if not pfad:
-        return None
-    ort = Path(pfad)
-    # Nur wenn dort auch heute noch ein Archiv liegt: Eine externe Platte
-    # kann abgezogen sein, ein Ordner umbenannt.
-    return ort if (ort / "archive.json").exists() else None
-
-
-#: So viele Archive stehen im Menü. Wenige genug, dass die Liste nicht
-#: selbst zur Suche wird.
-ZULETZT = 6
-
-
-def merken(pfad: Path) -> None:
-    merken_unter("archiv", str(pfad))
-
-    # Die zuletzt benutzten obenauf, ohne Doppelungen. Wer zwei Archive
-    # führt - ein geschäftliches und ein privates -, wechselt ständig
-    # zwischen ihnen und soll dafür keinen Dateidialog brauchen.
-    liste = [str(pfad)] + [p for p in zuletzt_benutzte_pfade() if p != str(pfad)]
-    merken_unter("zuletzt", liste[:ZULETZT])
-
-
-def zuletzt_benutzte_pfade() -> list[str]:
-    """Die zuletzt geöffneten Archive, ungeprüft."""
-    liste = gemerktes().get("zuletzt", [])
-    return [p for p in liste if isinstance(p, str)]
-
-
-def zuletzt_benutzte() -> list[Path]:
-    """Die zuletzt geöffneten Archive, die es auch heute noch gibt.
-
-    Eine externe Platte kann abgezogen, ein Ordner umbenannt sein. Ein
-    Menüeintrag, der ins Leere führt, ist ärgerlicher als ein fehlender.
-    """
-    return [Path(p) for p in zuletzt_benutzte_pfade()
-            if (Path(p) / "archive.json").exists()]
+from mailburg.core.einstellungen import merken, zuletzt_gemerkt
 
 
 def main(argv: list[str] | None = None) -> int:

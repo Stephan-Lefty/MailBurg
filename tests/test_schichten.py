@@ -27,23 +27,17 @@ WURZEL = Path(__file__).resolve().parent.parent
 #: werden und selbst keines kennen.
 KERN = ("core", "search", "sources", "extract")
 
-#: **Bekannte Ausnahmen, die verschwinden müssen.** Diese drei Stellen
-#: holen sich aus ``ui/app.py``, was der Anwender zuletzt geöffnet hat.
-#: Der Import ist träge und zieht heute kein Qt nach – ``ui/app.py``
-#: selbst importiert PySide6 erst in seinen Funktionen.
+#: **Hier standen einmal Ausnahmen.** ``core/archive.py`` und
+#: ``core/nachfrage.py`` holten sich aus ``ui/app.py``, was der Anwender
+#: zuletzt geöffnet hatte. Am 2026-08-31 aufgelöst: Das Gemerkte liegt
+#: jetzt in ``core/einstellungen.py``, wohin es gehört – es ist Zustand
+#: des Programms, nicht der Oberfläche.
 #:
-#: Sauber ist es trotzdem nicht: Gemerkte Pfade und Einstellungen sind
-#: kein Anliegen der Oberfläche, sondern des Programms. **Vor der
-#: Server Edition gehören sie in den Kern** – ein Dienst hat keine
-#: »zuletzt benutzten Pfade« eines Menschen, und er soll kein Modul
-#: einladen, das ``ui`` heißt.
-#:
-#: Der Test lässt sie stehen, damit er heute grün ist – aber er nennt
-#: sie, damit sie niemand übersieht. Wer sie auflöst, streicht sie hier.
-GEDULDET = {
-    "core/archive.py": "zuletzt_benutzte_pfade",
-    "core/nachfrage.py": "gemerktes, merken_unter",
-}
+#: Die Liste bleibt leer stehen, mitsamt dem Test darunter. Wer je wieder
+#: eine Ausnahme braucht, trägt sie hier ein und muss sie benennen; und
+#: der Test sorgt dafür, dass sie nicht liegen bleibt, wenn ihr Grund
+#: wegfällt.
+GEDULDET: dict[str, str] = {}
 
 
 def _importe(datei: Path) -> set[str]:

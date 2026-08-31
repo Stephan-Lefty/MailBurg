@@ -82,7 +82,7 @@ class Hauptfenster(QMainWindow):
         # Aufteilungen, und die gibt es vorher noch nicht.
         self._groesse_herstellen()
 
-        from mailburg.ui.app import gemerktes
+        from mailburg.core.einstellungen import gemerktes
 
         stufe = gemerktes().get("schriftstufe", 0)
         if isinstance(stufe, int) and stufe:
@@ -474,14 +474,14 @@ class Hauptfenster(QMainWindow):
 
         self._oeffnen(assistent.archiv_pfad)
         if self.archiv is not None:
-            from mailburg.ui.app import merken
+            from mailburg.core.einstellungen import merken
 
             merken(assistent.archiv_pfad)
             if getattr(assistent, "soll_abrufen", False):
                 self._abrufen()
 
     def _zuletzt_fuellen(self) -> None:
-        from mailburg.ui.app import zuletzt_benutzte
+        from mailburg.core.einstellungen import zuletzt_benutzte
 
         self.zuletzt_menue.clear()
         andere = [
@@ -502,7 +502,7 @@ class Hauptfenster(QMainWindow):
             )
 
     def _wechseln(self, pfad) -> None:
-        from mailburg.ui.app import merken
+        from mailburg.core.einstellungen import merken
 
         self._oeffnen(pfad)
         if self.archiv is not None:
@@ -569,7 +569,7 @@ class Hauptfenster(QMainWindow):
         Beim allerersten Start gibt es nichts herzustellen – dann gilt die
         Standardansicht.
         """
-        from mailburg.ui.app import gemerktes
+        from mailburg.core.einstellungen import gemerktes
 
         stand = gemerktes()
         breite, hoehe = stand.get("breite"), stand.get("hoehe")
@@ -654,7 +654,7 @@ class Hauptfenster(QMainWindow):
 
     def _ansicht_laden(self) -> None:
         """Kehrt zur gespeicherten eigenen Ansicht zurück."""
-        from mailburg.ui.app import gemerktes
+        from mailburg.core.einstellungen import gemerktes
 
         if "breite" not in gemerktes():
             QMessageBox.information(
@@ -695,7 +695,7 @@ class Hauptfenster(QMainWindow):
             teil.setFont(schrift)
         self.menuBar().setFont(schrift)
 
-        from mailburg.ui.app import merken_unter
+        from mailburg.core.einstellungen import merken_unter
 
         merken_unter("schriftstufe", self.schriftstufe)
         self.stand.setText(
@@ -743,7 +743,7 @@ class Hauptfenster(QMainWindow):
         self._baumspalten_einrichten()
 
     def _groesse_merken(self) -> None:
-        from mailburg.ui.app import merken_unter
+        from mailburg.core.einstellungen import merken_unter
 
         # Breite und Höhe als schlichte Zahlen, nicht als saveGeometry().
         # Unter Wayland darf ein Fenster seine Position nicht kennen; Qt
@@ -911,7 +911,7 @@ class Hauptfenster(QMainWindow):
         )
 
     def _reihenfolge_merken(self) -> None:
-        from mailburg.ui.app import merken_unter
+        from mailburg.core.einstellungen import merken_unter
 
         merken_unter("postfachreihenfolge", self.baum.reihenfolge())
 
@@ -920,7 +920,7 @@ class Hauptfenster(QMainWindow):
         if self.archiv is None:
             return
 
-        from mailburg.ui.app import gemerktes
+        from mailburg.core.einstellungen import gemerktes
 
         alle = QTreeWidgetItem(["Alle Postfächer", ""])
         alle.setData(0, Qt.UserRole, "")

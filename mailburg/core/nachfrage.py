@@ -28,7 +28,7 @@ SCHLUESSEL = "fristenpruefung"
 
 def zuletzt_gefragt(kennung: str) -> int | None:
     """Das Jahr, in dem zuletzt gefragt wurde – ``None``, wenn noch nie."""
-    from mailburg.ui.app import gemerktes
+    from mailburg.core.einstellungen import gemerktes
 
     stand = gemerktes().get(SCHLUESSEL, {})
     if not isinstance(stand, dict):
@@ -41,7 +41,7 @@ def zuletzt_gefragt(kennung: str) -> int | None:
 
 def gefragt_vermerken(kennung: str, jahr: int | None = None) -> None:
     """Hält fest, dass für dieses Archiv in diesem Jahr gefragt wurde."""
-    from mailburg.ui.app import gemerktes, merken_unter
+    from mailburg.core.einstellungen import gemerktes, merken_unter
 
     stand = gemerktes().get(SCHLUESSEL, {})
     if not isinstance(stand, dict):

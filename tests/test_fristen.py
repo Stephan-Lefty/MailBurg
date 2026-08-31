@@ -171,7 +171,7 @@ class MerkerTest(unittest.TestCase):
     def test_nichts_gemerkt_heisst_noch_nie_gefragt(self) -> None:
         from mailburg.core import nachfrage as fristen
 
-        with mock.patch("mailburg.ui.app.gemerktes", return_value={}):
+        with mock.patch("mailburg.core.einstellungen.gemerktes", return_value={}):
             self.assertIsNone(fristen.zuletzt_gefragt("abc"))
 
     def test_vermerken_und_wiederfinden(self) -> None:
@@ -182,8 +182,8 @@ class MerkerTest(unittest.TestCase):
         def merken(schluessel, wert):
             stand[schluessel] = wert
 
-        with mock.patch("mailburg.ui.app.gemerktes", side_effect=lambda: stand):
-            with mock.patch("mailburg.ui.app.merken_unter", side_effect=merken):
+        with mock.patch("mailburg.core.einstellungen.gemerktes", side_effect=lambda: stand):
+            with mock.patch("mailburg.core.einstellungen.merken_unter", side_effect=merken):
                 fristen.gefragt_vermerken("abc", 2026)
                 self.assertEqual(fristen.zuletzt_gefragt("abc"), 2026)
 
@@ -196,8 +196,8 @@ class MerkerTest(unittest.TestCase):
         def merken(schluessel, wert):
             stand[schluessel] = wert
 
-        with mock.patch("mailburg.ui.app.gemerktes", side_effect=lambda: stand):
-            with mock.patch("mailburg.ui.app.merken_unter", side_effect=merken):
+        with mock.patch("mailburg.core.einstellungen.gemerktes", side_effect=lambda: stand):
+            with mock.patch("mailburg.core.einstellungen.merken_unter", side_effect=merken):
                 fristen.gefragt_vermerken("privat", 2026)
                 self.assertIsNone(fristen.zuletzt_gefragt("geschaeftlich"))
 
@@ -205,7 +205,7 @@ class MerkerTest(unittest.TestCase):
         """Eine von Hand verhunzte Datei darf das Programm nicht aufhalten."""
         from mailburg.core import nachfrage as fristen
 
-        with mock.patch("mailburg.ui.app.gemerktes",
+        with mock.patch("mailburg.core.einstellungen.gemerktes",
                         return_value={fristen.SCHLUESSEL: "unsinn"}):
             self.assertIsNone(fristen.zuletzt_gefragt("abc"))
 

@@ -171,7 +171,7 @@ class Zeitplanwahl(QWidget):
             return zeitplan.abschalten(self.archiv)
         archiv = self.archiv
         if archiv is None:
-            from mailburg.ui.app import zuletzt_gemerkt
+            from mailburg.core.einstellungen import zuletzt_gemerkt
 
             archiv = zuletzt_gemerkt()
         if archiv is None:
@@ -310,7 +310,7 @@ class Sicherungswahl(QWidget):
             return True, ""
         archiv = self.archiv
         if archiv is None:
-            from mailburg.ui.app import zuletzt_gemerkt
+            from mailburg.core.einstellungen import zuletzt_gemerkt
 
             archiv = zuletzt_gemerkt()
         if archiv is None:

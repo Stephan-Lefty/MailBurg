@@ -210,7 +210,7 @@ def archivnamen() -> dict[str, str]:
     """
     import json
 
-    from mailburg.ui.app import zuletzt_benutzte_pfade
+    from mailburg.core.einstellungen import zuletzt_benutzte_pfade
 
     namen: dict[str, str] = {}
     for roh in zuletzt_benutzte_pfade():

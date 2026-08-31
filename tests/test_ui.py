@@ -1310,7 +1310,7 @@ class FenstergroesseTest(OberflaechenTest):
         # Die frühere Fassung schrieb die Datei komplett neu. Das Merken
         # des Archivs hätte die Fenstergröße gelöscht - ein Fehler, der
         # erst als "das Fenster vergisst wieder alles" aufgefallen wäre.
-        from mailburg.ui.app import gemerktes, merken
+        from mailburg.core.einstellungen import gemerktes, merken
 
         fenster = self._fenster()
         fenster.resize(1111, 700)
@@ -1344,7 +1344,7 @@ class StandardansichtTest(FenstergroesseTest):
         # "Auf Standard" ist eine Ansicht für jetzt, kein Löschbefehl.
         # Wer sich eine eigene Ansicht abgelegt hat, soll sie über
         # "Eigene Ansicht laden" zurückbekommen.
-        from mailburg.ui.app import gemerktes
+        from mailburg.core.einstellungen import gemerktes
 
         fenster = self._fenster()
         fenster.resize(640, 480)
@@ -1675,7 +1675,7 @@ class EigeneAnsichtTest(FenstergroesseTest):
         # Position nicht kennen, Qt schreibt dort Platzhalter, und
         # restoreGeometry() stellt anschließend gehorsam 720x720 an
         # Position 40,40 her. Die eingestellte Größe war nie gespeichert.
-        from mailburg.ui.app import gemerktes
+        from mailburg.core.einstellungen import gemerktes
 
         fenster = self._fenster()
         fenster.resize(640, 480)
@@ -2098,7 +2098,7 @@ class ArchivwechselTest(OberflaechenTest):
         return ort
 
     def test_zuletzt_benutzte_stehen_im_menue(self):
-        from mailburg.ui.app import merken, zuletzt_benutzte
+        from mailburg.core.einstellungen import merken, zuletzt_benutzte
 
         geschaeftlich = self._archiv("G", "Geschäftsarchiv")
         privat = self._archiv("P", "Privatarchiv Familie")
@@ -2112,7 +2112,7 @@ class ArchivwechselTest(OberflaechenTest):
         # ins Leere führt, ist ärgerlicher als ein fehlender.
         import shutil
 
-        from mailburg.ui.app import merken, zuletzt_benutzte
+        from mailburg.core.einstellungen import merken, zuletzt_benutzte
 
         weg = self._archiv("W", "Weg")
         merken(weg)
@@ -2121,7 +2121,7 @@ class ArchivwechselTest(OberflaechenTest):
         self.assertEqual(zuletzt_benutzte(), [])
 
     def test_dasselbe_archiv_steht_nur_einmal_da(self):
-        from mailburg.ui.app import merken, zuletzt_benutzte
+        from mailburg.core.einstellungen import merken, zuletzt_benutzte
 
         eins = self._archiv("E", "Eins")
         merken(eins)
@@ -3915,7 +3915,7 @@ class KontenZuordnungTest(OberflaechenTest):
                 encoding="utf-8",
             )
             with mock.patch(
-                "mailburg.ui.app.zuletzt_benutzte_pfade", lambda: [str(wo)]
+                "mailburg.core.einstellungen.zuletzt_benutzte_pfade", lambda: [str(wo)]
             ):
                 from mailburg.core.archive import archivnamen
 
@@ -3935,7 +3935,7 @@ class KontenZuordnungTest(OberflaechenTest):
 
         from mailburg.core.archive import archivnamen
 
-        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade", lambda: []):
+        with mock.patch("mailburg.core.einstellungen.zuletzt_benutzte_pfade", lambda: []):
             kennung = "220b2cd0-f3b1-49ea"
             name = archivnamen().get(kennung, kennung[:8] + "…")
 

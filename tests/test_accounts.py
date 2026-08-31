@@ -537,7 +537,7 @@ class ZuordnungsanzeigeTest(unittest.TestCase):
 
         from mailburg.core.archive import archivnamen
 
-        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
+        with mock.patch("mailburg.core.einstellungen.zuletzt_benutzte_pfade",
                         return_value=self.pfade):
             return archivnamen()
 
@@ -556,7 +556,7 @@ class ZuordnungsanzeigeTest(unittest.TestCase):
 
         from mailburg.core.archive import archivnamen
 
-        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
+        with mock.patch("mailburg.core.einstellungen.zuletzt_benutzte_pfade",
                         return_value=[*self.pfade, "/gibt/es/nicht"]):
             namen = archivnamen()
 
@@ -581,7 +581,7 @@ class ZuordnungsanzeigeTest(unittest.TestCase):
         ]
 
         ausgabe = io.StringIO()
-        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
+        with mock.patch("mailburg.core.einstellungen.zuletzt_benutzte_pfade",
                         return_value=self.pfade):
             with mock.patch.object(cli, "Kontenliste", return_value=liste):
                 with contextlib.redirect_stdout(ausgabe):
@@ -611,7 +611,7 @@ class ZuordnungsanzeigeTest(unittest.TestCase):
         ]
 
         ausgabe = io.StringIO()
-        with mock.patch("mailburg.ui.app.zuletzt_benutzte_pfade",
+        with mock.patch("mailburg.core.einstellungen.zuletzt_benutzte_pfade",
                         return_value=self.pfade):
             with mock.patch.object(cli, "Kontenliste", return_value=liste):
                 with contextlib.redirect_stdout(ausgabe):

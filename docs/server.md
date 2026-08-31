@@ -81,26 +81,35 @@ Frontend nach demselben Muster: `mailburg[server]`.
 Zu ändern wäre die Entscheidung, wenn der Server einmal eine andere
 Lizenz bekommt oder jemand anderem gehört. Beides ist heute nicht so.
 
-### Eine Altlast, die vorher weg muss
+### Eine Altlast, erledigt am 2026-08-31
 
-Beim Prüfen der Schichten am 2026-08-31 aufgefallen: `core/archive.py`
-und `core/nachfrage.py` holen sich aus `ui/app.py`, was der Anwender
-zuletzt geöffnet hat – `zuletzt_benutzte_pfade`, `gemerktes`,
+Beim Prüfen der Schichten aufgefallen: `core/archive.py` und
+`core/nachfrage.py` holten sich aus `ui/app.py`, was der Anwender
+zuletzt geöffnet hatte – `zuletzt_benutzte_pfade`, `gemerktes`,
 `merken_unter`.
 
-Schlimm ist es heute nicht: Der Import steht in der Funktion, und
-`ui/app.py` selbst lädt PySide6 erst in seinen eigenen Funktionen. Es
-zieht also kein Qt nach.
+Schlimm war es nicht: Der Import stand in der Funktion, und `ui/app.py`
+selbst lädt PySide6 erst in seinen eigenen Funktionen. Es zog also kein
+Qt nach.
 
-Sauber ist es trotzdem nicht, und für einen Dienst ist es die falsche
-Adresse: Gemerkte Pfade und Einstellungen sind kein Anliegen der
-Oberfläche, sondern des Programms. **Vor der Server Edition gehören sie
-in den Kern.** Ein Serverdienst hat keine »zuletzt benutzten Pfade«
-eines Menschen, und er soll kein Modul einladen, das `ui` heißt.
+Sauber war es trotzdem nicht, und für einen Dienst die falsche Adresse:
+Gemerkte Pfade und Einstellungen sind kein Anliegen der Oberfläche,
+sondern des Programms.
 
-Der Schichtentest duldet die drei Stellen ausdrücklich und namentlich –
-und prüft mit, ob es sie überhaupt noch gibt, damit die Ausnahme nicht
-stehen bleibt, wenn ihr Grund weg ist.
+**Aufgelöst am 2026-08-31.** Sie liegen jetzt in
+`core/einstellungen.py`. Die Ausnahmeliste im Schichtentest ist leer;
+der Kern kennt kein Frontend mehr.
+
+Die Datei heißt weiterhin `oberflaeche.json` – umbenennen hieße, dass
+jeder beim nächsten Start seine Fenstergröße, seine Archivliste und
+seine Schriftgröße verliert. Dafür ist ein stimmiger Dateiname zu wenig
+wert.
+
+**Eine Frage bleibt offen:** `core/archive.py` löst Archivkennungen zu
+Namen auf und nimmt dafür die zuletzt benutzten Pfade als Suchraum. Für
+einen Dienst ergibt das keinen Sinn – er hat keine »zuletzt benutzten«
+Pfade eines Menschen, sein Archiv steht in seiner Konfiguration. Das
+braucht dort eine eigene Antwort.
 
 ## Was schon trägt
 
@@ -316,10 +325,8 @@ Projekt.
 
 Jede Stufe ist für sich brauchbar und prüfbar:
 
-0. **Die Altlast auflösen:** gemerkte Pfade und Einstellungen aus
-   `ui/app.py` in den Kern. Klein, und es muss vor allem anderen
-   geschehen – sonst baut Stufe 1 auf einer Schicht auf, die in die
-   falsche Richtung zeigt.
+0. ~~**Die Altlast auflösen:** gemerkte Pfade und Einstellungen aus
+   `ui/app.py` in den Kern.~~ Erledigt am 2026-08-31.
 1. **Benutzer, Rechte und Anmeldung** im Kern – ohne Web, mit
    Kommandozeilenbefehlen zum Anlegen und Zuordnen. Journal mit
    geprüftem `actor`. Dazu die Rechteprüfung an der Stelle, an der die

@@ -401,7 +401,7 @@ class ArchivZuordnung(QDialog):
         """Kennung und Name der zuletzt geöffneten Archive."""
         import json
 
-        from mailburg.ui.app import zuletzt_benutzte_pfade
+        from mailburg.core.einstellungen import zuletzt_benutzte_pfade
 
         gefunden = []
         for pfad in zuletzt_benutzte_pfade():
