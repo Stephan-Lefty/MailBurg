@@ -6,7 +6,70 @@ Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 ## Hier war Schluss (Stand 2026-08-31, Montag)
 
 **0.12.0 ist veröffentlicht**, danach ging der ganze Tag in die **Server
-Edition** – und zum Schluss in den **Gesprächsverlauf**. 1346 Tests.
+Edition**, den **Gesprächsverlauf** und zuletzt die
+**Archivverschlüsselung**. 1422 Tests.
+
+### Die Archivverschlüsselung
+
+`core/krypto.py`, `core/passwort.py`, Anleitung in
+[docs/verschluesselung.md](docs/verschluesselung.md). **Gebaut und
+getestet, aber im Alltag noch nie benutzt** – das ist der wichtigste
+Satz dazu.
+
+Vier Entscheidungen, die nicht ohne Kenntnis des Grundes aufgemacht
+werden sollten:
+
+**Zwei Ebenen.** Die Daten hängen an einem zufälligen Archivschlüssel,
+der eingewickelt in `archive.json` liegt – einmal mit dem Passwort,
+einmal mit dem Notschlüssel. Hinge alles direkt am Passwort, müsste ein
+Wechsel 700.000 Dateien neu schreiben.
+
+**Auch die Dateinamen.** Der Klartext-Hash hätte verraten, ob eine
+bestimmte Mail im Archiv liegt – berechnen kann ihn jeder, der die Mail
+hat.
+
+**Das Journal gehört mit darunter.** In ihm stehen Absender, Betreff,
+Postfach und Ordner. Verschlüsselt wird Zeile für Zeile; die Hash-Kette
+rechnet weiter über den Klartext und bleibt unverändert prüfbar.
+
+**scrypt, nicht Argon2id** – gegen den ursprünglichen Entwurf in der
+TODO. Es steckt in `hashlib`, und ein Archivprogramm sollte in zwanzig
+Jahren ohne nachzuinstallierende Pakete an seine Schlüssel kommen.
+
+**Die offene Flanke ist der Suchindex.** Er liegt außerhalb des Archivs
+und enthält Betreff, Absender und Volltext im Klartext. Für den Anlass
+(Sicherung in der Cloud, verlorene Platte) genügt der Zuschnitt, weil er
+nicht mitwandert; auf einem Server hilft nur eine verschlüsselte Platte.
+Der Hinweis steht in `krypto.hinweis_suchindex()` und muss in jeder
+Anleitung auftauchen, solange das so ist.
+
+### Was dabei an alten Fehlern hochkam
+
+**Ein Stromausfall mitten im Abruf sperrte das Archiv aus.** Der
+Docstring von `journal._scan_tail` behauptete seit jeher, eine
+angefangene letzte Zeile zu überspringen – der Code tat es nicht. Jetzt
+wird sie übersprungen *und aus der Datei entfernt*; ohne das Zweite
+klebte der nächste Eintrag an ihr fest.
+
+**Die Kennwerte der Schlüsselableitung** wurden aus dem Modul gelesen,
+der Schlüssel aber mit den Vorgabeargumenten erzeugt. Wer `SCRYPT_N`
+erhöht hätte, hätte Archive angelegt, die sich mit dem richtigen
+Passwort nicht mehr öffnen lassen.
+
+**Und ein Namenskonflikt**, den nur der Durchstich über die echte
+Kommandozeile fand: Es gab schon ein `_passwort_erfragen` für
+Postfächer, das meines überschrieb. Kein Test der Verschlüsselung hätte
+das gefunden, weil keiner durch die Kommandozeile ging – jetzt gibt es
+`tests/test_verschluesselung_cli.py`.
+
+**Die CI hatte zweimal recht.** Der erste Job installiert bewusst nichts
+außer dem Kern; dort fehlten `cryptography` *und* PySide6. Lokal in der
+venv ist alles da, also sah ich nichts. **Nachstellen lässt sich das so:**
+
+```bash
+mkdir -p /tmp/blocker && printf 'raise ImportError()\n' > /tmp/blocker/cryptography.py
+PYTHONPATH="/tmp/blocker:$PWD" python3 -m unittest discover -s tests
+```
 
 **Die Server Edition steht** (`mailburg/server/`), bis auf die
 Archivverschlüsselung: Zugänge im Archiv (`core/benutzer.py`), die
@@ -47,10 +110,11 @@ mitziehen, was daran hängt; drei Dinge fielen erst beim Nachfassen auf:
 
 Alle drei stehen in `tests/test_index_fassung.py`.
 
-**Was noch offen ist:** die Archivverschlüsselung (der letzte Brocken der
-Server Edition) und die Frage nach dem Betreffmuster als Regelfeld.
-Windows Server und die 700.000 Mails sind auf **Mitte Oktober 2026**
-vertagt – Stephan kann das vorher nicht prüfen.
+**Was noch offen ist:** die Verschlüsselung an einem echten Archiv
+erproben (die Liste dazu steht in der TODO), der Suchindex, Outlook-PST,
+Pakete für alle drei Systeme, RFC-3161-Zeitstempel und die Frage nach
+dem Betreffmuster als Regelfeld. Windows Server und die 700.000 Mails
+sind auf **Mitte Oktober 2026** vertagt.
 
 ## Hier war Schluss (Stand 2026-08-30, Sonntag)
 
@@ -365,6 +429,8 @@ mailburg/
 │   ├── retention.py   Aufbewahrungsfristen DE/AT/CH, rein rechnend
 │   ├── compress.py    Zstandard mit Rückfall auf LZMA
 │   ├── benutzer.py    Zugänge und Rechte – liegen im Archiv, nicht beim Dienst
+│   ├── krypto.py      Schlüssel und Hüllen verschlüsselter Archive
+│   ├── passwort.py    woher das Archivpasswort kommt: Umgebung, Tresor, Frage
 │   ├── sicht.py       woraus die Rechteprüfung in jeder Abfrage entsteht
 │   ├── tresor.py      Passwörter ohne Schlüsselbund, für den Server
 │   ├── sprache.py     Zahlen und Datumsangaben für Menschen – deutsch, fest
@@ -378,7 +444,8 @@ mailburg/
 │                      imap.py (Postfächer)
 ├── ui/                die Oberfläche: hauptfenster, assistent, konten,
 │                      suchmaske, vorschau, hilfe, zeitplan, sichern,
-│                      einstufen, fristen, auskunft, anmelden, zugaenge
+│                      einstufen, fristen, auskunft, anmelden, zugaenge,
+│                      archivpasswort
 └── __main__.py        Kommandozeile
 
 install.sh / install.ps1   Einrichtung; laufen in der CI wirklich durch
