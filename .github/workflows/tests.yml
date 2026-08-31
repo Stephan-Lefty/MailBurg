@@ -70,6 +70,16 @@ jobs:
       #
       # Kein eigener Job, sondern ein Schritt im selben: GitHub rundet je
       # Job auf volle Minuten auf, je Schritt nicht.
+      # PySide6 bringt seine Qt-Bibliotheken mit, aber nicht die
+      # Systembibliotheken darunter. Ohne libEGL scheitert schon der
+      # Import - auch im Offscreen-Betrieb, in dem gar nichts gezeichnet
+      # wird.
+      - name: Systembibliotheken für Qt
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3
+
       - name: Zusätze installieren
         run: pip install -e ".[oberflaeche,imap,anhaenge,packen,server]"
 
