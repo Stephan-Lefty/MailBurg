@@ -88,7 +88,17 @@ def main(argv: list[str] | None = None) -> int:
     from mailburg.ui.hauptfenster import Hauptfenster
 
     fenster = Hauptfenster(archiv)
-    if fenster.archiv is None:
+    # **Ein laufender Indexaufbau ist kein Fehlschlag.** Während er läuft,
+    # ist ``archiv`` absichtlich None: Das eigene Handle muss weg, weil
+    # der Aufbau selbst in den Index schreibt. Ohne die zweite Bedingung
+    # sah das hier aus wie »Archiv lässt sich nicht öffnen«, und MailBurg
+    # beendete sich, kaum dass jemand im Dialog auf »Ja« geklickt hatte.
+    #
+    # Am 2026-08-31 von Stephan gemeldet: Fenster zu, kein Aufbau, keine
+    # Meldung. Nicht in den Tests aufgefallen, sondern beim ersten Start
+    # der 1.0 an einem Archiv aus 0.12 – also auf genau dem Weg, den nach
+    # einer Aktualisierung jeder geht.
+    if fenster.archiv is None and not fenster.baut_auf:
         return 1
 
     merken(archiv)

@@ -4765,3 +4765,99 @@ class RegeldialogTest(OberflaechenTest):
 
         self.assertNotIn("unbestimmt", stufen)
         self.assertIn("privat", stufen)
+
+
+class IndexNeuaufbauBeimStartTest(OberflaechenTest):
+    """Der Weg, den nach einer Aktualisierung jeder geht.
+
+    **Der Fehler, den dieser Test verhindert.** Beim Start an einem
+    Archiv aus einer älteren Fassung fragt MailBurg, ob der Suchindex
+    neu gebaut werden soll. Bis zum 2026-08-31 ging das Fenster bei
+    »Ja« einfach zu: Während des Aufbaus ist ``archiv`` absichtlich
+    ``None`` – das Handle muss weg, weil der Aufbau selbst in den Index
+    schreibt –, und ``ui/app.py`` las das als »Archiv lässt sich nicht
+    öffnen« und beendete das Programm.
+
+    Gemeldet hat es Stephan beim ersten Start der 1.0 unter Manjaro.
+    Kein Test hatte den Weg je genommen; geprüft war nur der Kern.
+    """
+
+    def setUp(self) -> None:
+        import sqlite3
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive, Mode
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        basis = pathlib.Path(self._tmp.name)
+
+        patcher = mock.patch.object(
+            paths, "data_dir", return_value=basis / "daten"
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        (basis / "daten").mkdir(parents=True, exist_ok=True)
+
+        self.wurzel = basis / "Archiv"
+        with Archive.create(self.wurzel, mode=Mode.PRIVAT, name="Alt") as archiv:
+            archiv.add(
+                b"From: a@example.org\r\nSubject: Rechnung\r\n\r\nText\r\n",
+                account="privat", folder="INBOX",
+            )
+            archiv.index.commit()
+            datei = paths.index_path(archiv.uuid)
+
+        # Auf Fassung 1 zurückdrehen - so sieht ein Archiv aus 0.12 aus.
+        db = sqlite3.connect(datei)
+        db.execute("PRAGMA user_version = 1")
+        db.commit()
+        db.close()
+
+    def _fenster(self, antwort):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        with mock.patch.object(
+            QMessageBox, "question", staticmethod(lambda *a, **k: antwort)
+        ):
+            fenster = Hauptfenster(self.wurzel)
+        self.addCleanup(fenster.close)
+        return fenster
+
+    def test_bei_ja_wird_aufgebaut_statt_zu_beenden(self):
+        from PySide6.QtWidgets import QMessageBox
+
+        fenster = self._fenster(QMessageBox.Yes)
+
+        self.assertTrue(fenster.baut_auf, "Der Aufbau wurde nicht angestoßen")
+        # Genau die Bedingung aus ui/app.py - sie entscheidet, ob das
+        # Programm weiterläuft oder sich beendet.
+        beendet_sich = fenster.archiv is None and not fenster.baut_auf
+        self.assertFalse(beendet_sich, "MailBurg hätte sich beendet")
+
+    def test_bei_nein_bleibt_alles_wie_es_war(self):
+        from PySide6.QtWidgets import QMessageBox
+
+        fenster = self._fenster(QMessageBox.No)
+
+        self.assertFalse(fenster.baut_auf)
+        self.assertIsNone(fenster.archiv)
+
+    def test_app_py_fragt_wirklich_nach_dem_merker(self):
+        """Sonst nützt der Merker nichts – dort stand die Bedingung.
+
+        Ein Test am Fenster allein hätte den Fehler nicht gefunden: Das
+        Fenster verhielt sich richtig, geschlossen wurde es woanders.
+        """
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "ui" / "app.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("fenster.baut_auf", quelle)

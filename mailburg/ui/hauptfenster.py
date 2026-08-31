@@ -77,6 +77,12 @@ class Hauptfenster(QMainWindow):
         self._geheimnis_fuer: Path | None = None
         self.laeufer: Läufer | None = None
         self.ocr_laeufer: Läufer | None = None
+        #: Ob gerade ein Suchindex neu gebaut wird. ``ui/app.py`` fragt
+        #: danach: Waehrend des Aufbaus ist ``archiv`` None, und das sah
+        #: dort bis zum 2026-08-31 aus wie "Archiv nicht zu oeffnen" -
+        #: das Programm beendete sich, kaum dass jemand "Ja" geklickt
+        #: hatte. Das Fenster ging einfach zu.
+        self.baut_auf = False
 
         from PySide6.QtWidgets import QApplication
 
@@ -1034,13 +1040,22 @@ class Hauptfenster(QMainWindow):
         self._aufbau_pfad = pfad
         self._geheimnis = geheimnis
         self._geheimnis_fuer = pfad
+        self.baut_auf = True
         auftrag.fortschritt.connect(self._erkennung_schritt)
         auftrag.fertig.connect(self._nach_neuaufbau)
-        auftrag.gescheitert.connect(self._abruf_gescheitert)
+        auftrag.gescheitert.connect(self._aufbau_gescheitert)
         self.aufbau_laeufer = Läufer(auftrag)
-        self.aufbau_laeufer.starten()
+
+        # **Erst wenn die Ereignisschleife laeuft.** Beim Start kommt
+        # dieser Weg aus dem Konstruktor, und dort gibt es noch keine:
+        # QApplication.exec() wird erst danach aufgerufen. Ein QThread,
+        # der ohne sie startet, liefert seine Signale an niemanden.
+        # Derselbe Fehler wie beim ersten Abruf am 2026-08-28, an
+        # derselben Stelle nachzulesen in ui/app.py.
+        QTimer.singleShot(0, self.aufbau_laeufer.starten)
 
     def _nach_neuaufbau(self, _anzahl=None) -> None:
+        self.baut_auf = False
         self.balken.hide()
         self.balken.setFormat("%p%")
         # Das Passwort liegt vom Aufbau noch vor; danach noch einmal zu
@@ -1436,6 +1451,29 @@ class Hauptfenster(QMainWindow):
         self.abrufen_aktion.setEnabled(True)
         self.stand.setText("Abruf gescheitert")
         QMessageBox.critical(self, "Abruf gescheitert", text)
+
+    def _aufbau_gescheitert(self, text: str) -> None:
+        """Eigener Weg, weil hier womöglich kein Archiv offen ist.
+
+        Beim Start kommt der Aufbau aus :meth:`_index_veraltet`;
+        scheitert er, sitzt der Anwender vor einem leeren Fenster ohne
+        Archiv. ``_abruf_gescheitert`` schaltete stattdessen den
+        Abrufknopf wieder ein und meldete »Abruf gescheitert« – beides
+        falsch, und das Zweite auch noch irreführend.
+        """
+        self.baut_auf = False
+        self.aufbau_laeufer = None
+        self.balken.hide()
+        self.balken.setFormat("%p%")
+        self.stand.setText("Der Suchindex konnte nicht aufgebaut werden.")
+        QMessageBox.critical(
+            self,
+            "Suchindex nicht aufgebaut",
+            f"{text}\n\n"
+            f"Ihre Mails sind davon nicht betroffen – der Index liegt "
+            f"außerhalb des Archivs. Versuchen Sie es beim nächsten Start "
+            f"erneut oder auf der Kommandozeile mit »mailburg neuaufbau«.",
+        )
 
     # --------------------------------------------------------------- Sonst
 
