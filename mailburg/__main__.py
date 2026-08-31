@@ -1339,12 +1339,172 @@ def cmd_passwort_vergessen(args: argparse.Namespace) -> int:
 
 
 def cmd_siegel(args: argparse.Namespace) -> int:
-    """Setzt ein Siegel über den aktuellen Stand."""
+    """Setzt ein Siegel – oder zeigt die vorhandenen, oder gibt sie aus.
+
+    **Schalter statt Unterbefehle**, anders als bei ``passwort``: Es gibt
+    ``mailburg siegel ARCHIV`` seit der ersten Fassung. Unterbefehle
+    hätten daraus »unbekannter Befehl: /pfad/zum/archiv« gemacht – bei
+    jedem, der es in einem Skript stehen hat.
+    """
+    from mailburg.core import zeitstempel
+
+    if getattr(args, "liste", False):
+        return cmd_siegel_liste(args)
+    if getattr(args, "ausgeben", None):
+        return cmd_siegel_ausgeben(args)
+
+    dienst = ""
+    if getattr(args, "zeitstempel", None):
+        # Ein Kurzname oder eine eigene Adresse - beides ist zulässig,
+        # denn wer einen bezahlten Dienst nutzt, hat eine eigene.
+        dienst = zeitstempel.DIENSTE.get(args.zeitstempel, args.zeitstempel)
+        if not dienst.startswith(("http://", "https://")):
+            print(
+                f"»{args.zeitstempel}« ist weder eine Adresse noch einer der "
+                f"bekannten Dienste ({', '.join(sorted(zeitstempel.DIENSTE))}).",
+                file=sys.stderr,
+            )
+            return 2
+        print(f"Hole einen Zeitstempel von {dienst} …")
+        print("  Übertragen wird ein SHA-256 des Archivstands, sonst nichts.")
+
     with oeffnen(Path(args.archiv)) as archive:
-        entry = archive.seal()
+        try:
+            entry = archive.seal(zeitstempeldienst=dienst)
+        except zeitstempel.ZeitstempelFehler as fehler:
+            # **Kein Siegel ohne Stempel setzen.** Wer ausdrücklich einen
+            # verlangt hat, will kein Siegel, das aussieht wie eines mit -
+            # und nachträglich stempeln geht nicht, das Siegel hängt dann
+            # schon in der Kette.
+            print(f"Fehler: {fehler}", file=sys.stderr)
+            return 5
+
         print(f"Siegel gesetzt über {sprache.eintraege(entry['count'])}.")
         print(f"  Stand: {entry['covers'][:32]}…")
         print(f"  Zeit:  {entry['ts']}")
+        if entry.get("tsa_zeit"):
+            print(f"  Beglaubigt: {sprache.zeitpunkt(entry['tsa_zeit'])} "
+                  f"durch {entry.get('tsa_dienst', '')}")
+            print()
+            print("  Die Signatur des Dienstes prüft MailBurg nicht mit.")
+            print("  »mailburg siegel liste« sagt, wie das geht.")
+    return 0
+
+
+def cmd_siegel_liste(args: argparse.Namespace) -> int:
+    """Zeigt alle Siegel eines Archivs und was ihre Stempel taugen."""
+    from base64 import b64decode
+
+    from mailburg.core import zeitstempel
+
+    with oeffnen(Path(args.archiv), exclusive=False) as archive:
+        siegel = [e for e in archive.journal.read_all() if e.get("op") == "seal"]
+
+    if not siegel:
+        print("Kein Siegel gesetzt.")
+        print()
+        print("Ein Siegel hält fest, wie das Archiv zu einem Zeitpunkt")
+        print("aussah:  mailburg siegel ARCHIV")
+        return 0
+
+    mit_stempel = False
+    for eintrag in siegel:
+        print(f"Siegel über {sprache.eintraege(eintrag.get('count', 0))} "
+              f"vom {sprache.zeitpunkt(eintrag.get('ts', ''))}")
+        print(f"  Stand: {eintrag.get('covers', '')[:32]}…")
+
+        token = eintrag.get("tsa")
+        if not token:
+            print("  Zeitstempel: keiner")
+            print()
+            continue
+
+        mit_stempel = True
+        try:
+            befund = zeitstempel.pruefen(
+                b64decode(token), zeitstempel.digest_fuer(eintrag["covers"])
+            )
+        except Exception as fehler:  # noqa: BLE001 – eine Auskunft darf nicht scheitern
+            print(f"  Zeitstempel: unlesbar ({fehler})")
+            print()
+            continue
+
+        if befund.passt and befund.zeit:
+            print(f"  Zeitstempel: {sprache.zeitpunkt(befund.zeit.isoformat())}"
+                  f" – und er gehört zu diesem Stand")
+        elif befund.passt:
+            print("  Zeitstempel: gehört zu diesem Stand, Zeit nicht lesbar")
+        else:
+            print("  Zeitstempel: gehört NICHT zu diesem Stand")
+        if befund.hinweis:
+            print(f"  {befund.hinweis}")
+        if eintrag.get("tsa_dienst"):
+            print(f"  Ausgestellt von: {eintrag['tsa_dienst']}")
+        print()
+
+    if mit_stempel:
+        print("Was hier nicht geprüft wird: ob der Dienst den Stempel")
+        print("tatsächlich ausgestellt hat. Das sagt nur seine Signatur:")
+        print()
+        print("  mailburg siegel ARCHIV --ausgeben ORDNER")
+        print()
+        print("schreibt Stand und Stempel als Dateien heraus, mitsamt dem")
+        print("openssl-Befehl, der beides prüft.")
+    return 0
+
+
+def cmd_siegel_ausgeben(args: argparse.Namespace) -> int:
+    """Schreibt Stempel und Stand als Dateien heraus – für openssl.
+
+    **Damit die Prüfung nicht am Format scheitert.** Das Token liegt
+    base64-kodiert im Journal, und ``openssl`` will es als DER; den Stand
+    will es als genau die Bytes, die gestempelt wurden. Beides von Hand
+    herauszuklauben ist die Sorte Arbeit, bei der man sich vertut und
+    danach glaubt, der Stempel sei falsch.
+    """
+    from base64 import b64decode
+
+    ziel = Path(args.ausgeben)
+    ziel.mkdir(parents=True, exist_ok=True)
+
+    with oeffnen(Path(args.archiv), exclusive=False) as archive:
+        siegel = [
+            e for e in archive.journal.read_all()
+            if e.get("op") == "seal" and e.get("tsa")
+        ]
+
+    if not siegel:
+        print(
+            "Kein Siegel mit Zeitstempel vorhanden. Eines setzen:\n"
+            "    mailburg siegel ARCHIV --zeitstempel freetsa",
+            file=sys.stderr,
+        )
+        return 2
+
+    letztes = siegel[-1]
+    stand = ziel / "stand.txt"
+    stempel = ziel / "stempel.tst"
+
+    # Ohne Zeilenumbruch am Ende: Gestempelt wurde der Hash genau dieser
+    # Bytes. Ein zusätzliches \n ergäbe einen anderen Hash, und die
+    # Prüfung schlüge fehl - ohne dass jemand den Grund sähe.
+    stand.write_bytes(letztes["covers"].encode("ascii"))
+    stempel.write_bytes(b64decode(letztes["tsa"]))
+
+    print(f"Geschrieben nach {ziel}:")
+    print(f"  stand.txt    der gestempelte Stand ({len(siegel)}. Siegel)")
+    print("  stempel.tst  der Zeitstempel, wie openssl ihn erwartet")
+    print()
+    print("Prüfen mit dem Wurzelzertifikat des Dienstes:")
+    print()
+    print(f"  openssl ts -verify -data {stand} \\")
+    print(f"      -in {stempel} -token_in -CAfile wurzel.pem")
+    print()
+    print("»Verification: OK« heißt: Der Dienst hat diesen Stand zu der")
+    print("Zeit gestempelt, die im Stempel steht.")
+    print()
+    print("Das Wurzelzertifikat gibt es beim Dienst selbst – bei FreeTSA")
+    print("etwa als »cacert.pem«.")
     return 0
 
 
@@ -2558,8 +2718,33 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("archiv")
     q.set_defaults(func=cmd_passwort_vergessen)
 
-    p = subparsers.add_parser("siegel", help="ein Siegel über den Stand setzen")
+    p = subparsers.add_parser(
+        "siegel",
+        help="ein Siegel über den Stand setzen",
+        description="Ein Siegel hält fest, wie viele Einträge das Journal "
+                    "zu diesem Zeitpunkt hatte und welchen Hash der letzte "
+                    "trug. Mit --zeitstempel bestätigt ein Dienst von "
+                    "dritter Seite, dass der Stand damals schon so vorlag.",
+    )
     p.add_argument("archiv")
+    p.add_argument(
+        "--zeitstempel",
+        metavar="DIENST",
+        help="einen Zeitstempel nach RFC 3161 holen: »freetsa«, »dfn« oder "
+             "eine eigene Adresse. Übertragen wird dabei nur ein SHA-256 "
+             "des Archivstands.",
+    )
+    p.add_argument(
+        "--liste",
+        action="store_true",
+        help="die vorhandenen Siegel zeigen, statt eines zu setzen",
+    )
+    p.add_argument(
+        "--ausgeben",
+        metavar="ORDNER",
+        help="Stand und Zeitstempel als Dateien herausschreiben, zum Prüfen "
+             "mit openssl",
+    )
     p.set_defaults(func=cmd_siegel)
 
     p = subparsers.add_parser("info", help="Kennzahlen des Archivs zeigen")
