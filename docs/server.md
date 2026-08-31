@@ -312,9 +312,23 @@ Bleiben drei Wege, und die Wahl gehört Stephan:
 * **Servy** — jung, ausdrücklich für Windows 11 und Server 2025. Für ein
   Archivprogramm wäre eine unerprobte Abhängigkeit ein Risiko.
 
-Empfehlung: **pywin32**, als eigenes Extra `mailburg[server-windows]`.
-Mit dem ausdrücklichen Vermerk, dass es hier nicht geprüft werden kann —
-wie bei OAuth2 auch.
+**Entschieden am 2026-08-31: pywin32**, als eigenes Extra
+`mailburg[server-windows]`. Gebaut in
+`mailburg/server/windows_dienst.py`:
+
+```
+python -m mailburg.server.windows_dienst install
+python -m mailburg.server.windows_dienst start
+```
+
+**Und nie gelaufen.** Hier steht kein Windows-Rechner zur Verfügung;
+die Prüfung ist für Mitte Oktober 2026 verabredet. Bis dahin gilt für
+diesen Teil dasselbe wie für OAuth2: geschrieben, nicht belegt.
+
+Wer ihn zum ersten Mal einrichtet, lässt `mailburg server` von Hand
+danebenlaufen und prüft damit die Einstellungen, bevor der Dienst dran
+ist. Ein Dienst, der nicht startet, sagt in `services.msc` nur, dass er
+nicht startet.
 
 ## 4. Erreichbarkeit und HTTPS
 

@@ -70,6 +70,14 @@ oberflaeche = ["PySide6-Essentials>=6.6", "keyring>=24"]
 # schlimmer als eine klare Absage.
 server = ["cryptography>=42", "starlette>=0.37", "uvicorn>=0.30"]
 
+# Der Dienst unter Windows. Eigenes Extra, weil pywin32 sich auf keinem
+# anderen System installieren laesst - stuende es bei "server", waere
+# das Extra unter Linux unbrauchbar.
+#
+# **Ungeprueft.** Hier steht kein Windows-Rechner zur Verfuegung; die
+# Pruefung ist fuer Mitte Oktober 2026 verabredet.
+server-windows = ["mailburg[server]", "pywin32>=306"]
+
 alles = ["mailburg[imap,anhaenge,packen,oberflaeche]"]
 
 [project.urls]

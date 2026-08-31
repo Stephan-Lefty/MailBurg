@@ -151,10 +151,25 @@ down, with the date they were completed.
   recorded at archiving time and never touched again. For an archive that is
   defensible — the question is whether anyone expects otherwise.
 
-### Postponed — late October 2026 at the earliest
+### Postponed — for testing in mid-October 2026
 
-Stephan on 2026-08-30: this cannot be tested for another six to eight weeks.
-Until then it sits here and not in the running list.
+Stephan on 2026-08-31: anything to do with Windows Server or the 700,000
+messages moves to mid-October, because he cannot test it before then.
+
+Both are built or prepared — they have simply never run. Until the test
+they sit here and not in the running list.
+
+- [ ] **The Windows service.** `mailburg/server/windows_dienst.py` via
+  pywin32, as `mailburg[server-windows]`. Written to the pattern from the
+  pywin32 examples, looked up on 2026-08-31 — but never run on Windows.
+
+  Two findings drove the choice: Task Scheduler will start a program
+  without a logged-in user but will not keep it alive — if it crashes, it
+  stays down. And NSSM, the most widespread wrapper, has had no stable
+  release in over a decade.
+
+  **When setting it up the first time**, run `mailburg server` by hand
+  alongside to verify the settings before touching the service.
 
 - [ ] **Pull mail out of MailStore Home** — and with it the load test against
   roughly 700,000 messages. The Windows VM has been up since 2026-08-27;

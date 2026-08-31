@@ -167,10 +167,28 @@ wurde.
   angefasst. Für ein Archiv ist das vertretbar – die Frage ist, ob jemand
   das anders erwartet.
 
-### Vertagt – frühestens Ende Oktober 2026
+### Vertagt – zum Test Mitte Oktober 2026
 
-Stephan am 2026-08-30: Das lässt sich erst in sechs bis acht Wochen
-prüfen. Bis dahin steht es hier und nicht in der laufenden Liste.
+Stephan am 2026-08-31: »Alles was mit Windows Server, den 700.000
+Mails zu tun hat, können wir auf Mitte Oktober dann zum Test
+verschieben! Das kann ich vorher nicht testen!«
+
+Beides ist gebaut oder vorbereitet – nur eben nie gelaufen. Bis zur
+Prüfung steht es hier und nicht in der laufenden Liste.
+
+- [ ] **Der Windows-Dienst.** `mailburg/server/windows_dienst.py` über
+  pywin32, mit `mailburg[server-windows]`. Geschrieben nach dem Muster
+  aus den pywin32-Beispielen, nachgeschlagen am 2026-08-31 – aber auf
+  keinem Windows gelaufen.
+
+  Zwei Befunde der Recherche, die die Wahl bestimmt haben: Die
+  Aufgabenplanung startet ein Programm auch ohne angemeldeten
+  Benutzer, hält es aber nicht am Leben – stürzt es ab, bleibt es
+  unten. Und NSSM, der verbreitetste Wrapper, hat seit über einem
+  Jahrzehnt kein stabiles Release mehr.
+
+  **Beim ersten Einrichten** `mailburg server` von Hand danebenlaufen
+  lassen, um die Einstellungen zu prüfen, bevor der Dienst dran ist.
 
 - [ ] **Mails aus MailStore Home holen** – und damit der Lasttest an
   rund 700.000 Mails. Die Windows-VM steht seit dem 2026-08-27;

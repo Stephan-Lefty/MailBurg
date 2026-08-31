@@ -230,5 +230,69 @@ class SystemdTest(unittest.TestCase):
         self.assertIn("MAILBURG_ADRESSE=127.0.0.1", self.text)
 
 
+class WindowsDienstTest(unittest.TestCase):
+    """Der Dienst unter Windows – geprüft am Quelltext, nicht im Betrieb.
+
+    **Hier steht kein Windows-Rechner zur Verfügung.** Die Prüfung im
+    Betrieb ist für Mitte Oktober 2026 verabredet; bis dahin ist dieser
+    Teil geschrieben, aber nie gelaufen. Was sich ohne Windows prüfen
+    lässt, ist, dass die Zusagen im Quelltext stehen – und dass der
+    Rest von MailBurg nicht darüber stolpert.
+    """
+
+    def setUp(self):
+        self.quelle = (
+            WURZEL / "mailburg" / "server" / "windows_dienst.py"
+        ).read_text(encoding="utf-8")
+
+    def test_das_modul_laesst_sich_ohne_pywin32_laden(self):
+        """Sonst brächte ein Import unter Linux alles zum Stehen."""
+        from mailburg.server import windows_dienst
+
+        self.assertIn(windows_dienst.HAT_PYWIN32, (True, False))
+
+    def test_ohne_pywin32_gibt_es_eine_klare_ansage(self):
+        from mailburg.server import windows_dienst
+
+        if windows_dienst.HAT_PYWIN32:  # pragma: no cover – nur auf Windows
+            self.skipTest("pywin32 ist vorhanden")
+
+        self.assertEqual(windows_dienst.main([]), 2)
+
+    def test_der_dienst_traegt_einen_namen_und_eine_beschreibung(self):
+        """In services.msc steht sonst nur eine Kennung."""
+        from mailburg.server import windows_dienst
+
+        self.assertTrue(windows_dienst.NAME)
+        self.assertTrue(windows_dienst.ANZEIGE)
+        self.assertIn("MAILBURG_ARCHIV", windows_dienst.BESCHREIBUNG)
+
+    def test_uvicorn_laeuft_in_einem_eigenen_faden(self):
+        """Sonst könnte SvcStop nichts ausrichten.
+
+        ``uvicorn.run()`` kehrt erst zurück, wenn der Server endet – der
+        Faden des Dienstes muss aber frei bleiben, um auf das
+        Halte-Ereignis zu warten.
+        """
+        self.assertIn("threading.Thread", self.quelle)
+        self.assertIn("WaitForSingleObject", self.quelle)
+
+    def test_beim_beenden_wird_uvicorn_zuerst_bescheid_gesagt(self):
+        """Andersherum endete der Prozess mitten in einer Anfrage."""
+        stelle = self.quelle.index("def SvcStop")
+        ende = self.quelle.index("def SvcDoRun")
+        stop = self.quelle[stelle:ende]
+
+        self.assertLess(stop.index("should_exit"), stop.index("SetEvent"))
+
+    def test_fehler_gehen_ins_ereignisprotokoll(self):
+        """Ein Dienst hat keine Konsole, auf die er schreiben könnte."""
+        self.assertIn("LogErrorMsg", self.quelle)
+
+    def test_der_vermerk_ueber_die_fehlende_pruefung_steht_da(self):
+        """Er gilt, bis jemand es wirklich ausprobiert hat."""
+        self.assertIn("Nicht geprüft", self.quelle)
+
+
 if __name__ == "__main__":
     unittest.main()
