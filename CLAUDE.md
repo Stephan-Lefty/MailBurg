@@ -3,6 +3,82 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-08-31, Montag abends)
+
+**1.0.0 ist getaggt, 1.0.1 vorbereitet.** Der Tag `v1.0.1` steht auf
+GitHub, veröffentlicht ist er noch nicht – das löst auch den Bau der
+`MailBurg.exe` aus. Notizen dafür liegen im Sitzungsordner.
+
+### Der Tag in einem Satz
+
+Vormittags Verschlüsselung und Gesprächsverlauf, nachmittags die 1.0,
+abends sechs Runden Oberfläche – und die haben mehr gebracht als alles
+Geplante zusammen.
+
+### Was Stephans Meldungen zutage gefördert haben
+
+Er hat die 1.0 an seinem echten Archiv gestartet, und **jede einzelne
+Meldung war ein echter Fehler.** Das ist die Lehre des Tages: Diese
+Fehlerklasse findet kein Test, den ich mir ausdenke, sondern nur
+jemand, der das Programm benutzt.
+
+**Das Fenster ging beim Neuaufbau einfach zu.** Während des Aufbaus ist
+`archiv` absichtlich `None`; `ui/app.py` las das als »lässt sich nicht
+öffnen« und beendete das Programm. Dazu startete der Arbeitsfaden vor
+der Ereignisschleife – derselbe Fehler wie am 28.08. beim ersten Abruf,
+und die Begründung stand seitdem zwei Zeilen weiter in derselben Datei.
+
+**Strg++ vergrößerte nichts.** `QKeySequence.ZoomIn` *ist* unter Linux
+Strg++, und daneben stand dasselbe noch einmal von Hand. Qt hält zwei
+gleiche Kürzel für mehrdeutig und löst dann keines aus. Das Menü zeigte
+es brav an – deshalb sucht man dort zuletzt.
+
+**Die Schriftgröße wirkte nur auf das Hauptfenster.** Menüs, Dialoge
+und das Lesefenster sind in Qt eigene Fenster, keine Kinder. Und Qt
+führt neben der Anwendungsschrift eine je Widgetklasse: Breeze setzt
+Menüs auf 14 pt, die Anwendung auf 9 – wer beide gleichsetzt, macht die
+Menüs beim Vergrößern erst einmal *kleiner*.
+
+**Und viermal Text, der nicht hineinpasste.** Auswahlfelder so breit
+wie das Layout statt wie ihr Inhalt; aufgeklappte Listen, die bei
+120 px blieben; Dialoggrößen als geratene Zahlen; umbrechende Texte,
+die zusammengedrückt wurden, weil Qt nur auf ausdrückliche Ansage nach
+der nötigen Höhe fragt (`setHeightForWidth`).
+
+### Zwei Regeln, die daraus folgen
+
+**In der Standardgröße wird nicht gerollt.** Stephans Regel. Der
+Rollbereich ist die Rückfalllinie für kleine Bildschirme, nicht der
+Normalzustand. Mein erster Anlauf hat das verletzt und es dadurch
+*schlimmer* gemacht: Der Dialog ging winzig auf, man sah drei Zeilen.
+
+**Geratene Maße sitzen falsch, sobald jemand die Schrift ändert.** Und
+die lässt sich in MailBurg einstellen. Jede feste Pixelzahl in einem
+Dialog ist ein Fehler, der auf sein Auftreten wartet.
+
+### Das Werkzeug dafür
+
+```bash
+QT_QPA_PLATFORM=offscreen python3 werkzeuge/lesbarkeit.py
+```
+
+Öffnet neun Fenster, misst nach, meldet abgeschnittenen Text und
+Rollbalken, die es nicht geben dürfte. Bei 9 bis 24 pt ohne Befund.
+
+**Aber Vorsicht, und das steht auch in der TODO:** Qt meldet offscreen
+»does not support propagateSizeHints«. Fenstergrößen sind dort nicht
+verlässlich zu messen. Was das Werkzeug findet, ist echt; was es *nicht*
+findet, ist damit nicht erledigt. Der letzte gemeldete Punkt – die
+Breite bei fünffach vergrößerter Schrift – konnte deshalb nicht
+abschließend geprüft werden.
+
+### Neu an diesem Abend
+
+`core/der.py` und `core/zeitstempel.py` – **Zeitstempel nach RFC 3161**.
+ASN.1 von Hand, weil der Kern ohne Fremdpakete auskommen soll; geprüft
+gegen `openssl`, das die Anfragen liest und die Stempel verifiziert. Ein
+echter Dienst wurde noch nie gefragt.
+
 ## Hier war Schluss (Stand 2026-08-31, Montag)
 
 **Die Fassung steht auf 1.0.0**, der Tag ist noch nicht gesetzt – das

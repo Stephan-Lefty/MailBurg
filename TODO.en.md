@@ -7,6 +7,32 @@ down, with the date they were completed.
 
 ## Open
 
+### Next session, first
+
+- [ ] **Check window sizes on a real screen.** On 2026-08-31 Stephan
+  reported missing text six times over: first a dropdown, then height,
+  then width. Every round turned up a real fault, but the last one could
+  not be verified.
+
+  **The reason, and it matters next time:** Qt reports "does not support
+  propagateSizeHints" when running offscreen. Window sizes are not
+  measurable there — `werkzeuge/lesbarkeit.py` can come back clean and
+  it can still be wrong on a real screen. What the tool finds is real;
+  what it does *not* find is not thereby settled.
+
+  **And the rule, from Stephan:** at the default size everything must
+  always be readable without scrolling. The scroll area is the fallback
+  for small screens, not the normal state.
+
+- [ ] **Rebuilding the index does not bring back recognised text.** The
+  docstring of `erkennung.vorrat_aufbauen` claims the rebuild finds it
+  again via the older key — the code does no such thing. After a rebuild
+  you have to run `mailburg texterkennung` as a second step.
+
+- [ ] **Publish release 1.0.1.** Version, changelog and READMEs are
+  committed and the `v1.0.1` tag is on GitHub. Only publishing is left —
+  that also triggers the `MailBurg.exe` build.
+
 ### For 1.1
 
 - [ ] **macOS.** The test suite and the setup pass in CI, but nobody has
@@ -86,11 +112,6 @@ down, with the date they were completed.
   must therefore be: listen on `127.0.0.1` only, opt in explicitly for the home
   network, and for access from outside point to VPN or Tailscale rather than a
   port forward in the router.
-
-- [ ] **RFC 3161 timestamps.** Hooking a TSA service into the seal. The field is
-  already provided for in the format. To be settled: which service, what happens
-  without an internet connection, and whether a free provider such as FreeTSA
-  carries enough evidentiary weight.
 
 - [ ] **Encrypt the search index too.** The open flank of archive
   encryption: it lives outside the archive and holds subject, sender and
@@ -213,6 +234,39 @@ they sit here and not in the running list.
 ## Done
 
 ### 2026-08-31
+
+- [x] **RFC 3161 timestamps.** (2026-08-31)
+  `mailburg siegel ARCHIVE --zeitstempel freetsa` fetches third-party
+  attestation. The hash chain proves the *order* of entries, not the
+  point in time — that timestamp comes from your own machine, and clocks
+  can be set.
+
+  What travels is a SHA-256, 32 bytes. Explicitly opt-in and never
+  preset: MailBurg promises to connect only to the mail servers you
+  entered yourself.
+
+  ASN.1 by hand (`core/der.py`), no third-party library — verified
+  against `openssl`, which reads the requests and verifies the tokens.
+  MailBurg does not check the service's signature itself; `siegel
+  --ausgeben` writes state and token to files along with the
+  `openssl ts -verify` that does.
+
+  **Still open:** no real service has ever been asked. Testing is against
+  a timestamp authority set up locally with `openssl ts`.
+
+- [x] **Interface legibility.** (2026-08-31) One report about a
+  too-narrow dropdown turned into six rounds and four classes of fault:
+  dropdowns sized by the layout rather than their contents; popup lists
+  stuck at 120 px while the box grew; dialog sizes as guessed numbers;
+  and wrapped text squeezed flat because Qt only asks for the required
+  height when told to.
+
+  Plus: the font size only reached the main window — menus, dialogs and
+  the reading window are separate windows. And **Ctrl++ did nothing**,
+  because the same shortcut sat twice on the same action; Qt treats that
+  as ambiguous and fires neither.
+
+  `werkzeuge/lesbarkeit.py` makes the check repeatable.
 
 - [x] **Archive encryption.** (2026-08-31) The last open piece of the
   Server Edition. `mailburg anlegen … --verschluesseln`, or the checkbox

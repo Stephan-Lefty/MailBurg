@@ -8,6 +8,50 @@ wurde.
 
 ## Offen
 
+### Beim nächsten Mal zuerst
+
+- [ ] **Die Fenstergrößen am echten Bildschirm nachsehen.** Am
+  2026-08-31 hat Stephan in sechs Runden gemeldet, dass Text fehlt:
+  erst in einem Auswahlfeld, dann in der Höhe, dann in der Breite. Jede
+  Runde brachte einen echten Fehler zutage, aber die letzte konnte ich
+  nicht mehr abschließend prüfen.
+
+  **Der Grund, und er ist wichtig für den nächsten Anlauf:** Qt meldet
+  im Offscreen-Betrieb »does not support propagateSizeHints«.
+  Fenstergrößen sind dort nicht verlässlich zu messen – `werkzeuge/
+  lesbarkeit.py` sieht sauber aus, und trotzdem kann es am echten
+  Bildschirm klemmen. Was das Werkzeug findet, ist echt; was es *nicht*
+  findet, ist damit nicht erledigt.
+
+  Zu prüfen, mit vergrößerter Schrift (Strg++ mehrfach):
+
+  1. *Was von selbst laufen soll* – Höhe und Breite, alle vier Absätze
+     vollständig, kein Rollbalken bei gewöhnlicher Schrift.
+  2. Die anderen acht Fenster, die das Werkzeug kennt.
+  3. Die Menüs der Menüleiste beim Aufklappen.
+
+  **Und die Regel dazu, von Stephan:** In der Standardgröße muss immer
+  alles ohne Rollen lesbar sein. Der Rollbereich ist die Rückfalllinie
+  für kleine Bildschirme, nicht der Normalzustand.
+
+- [ ] **Der Neuaufbau holt den erkannten Text nicht zurück.** Der
+  Docstring von `erkennung.vorrat_aufbauen` behauptet, der Neuaufbau
+  finde ihn über den älteren Schlüssel wieder – im Code steht das
+  nirgends. Wer den Index neu baut, muss deshalb anschließend
+  `mailburg texterkennung` laufen lassen.
+
+  Das dauert nur Minuten, weil der Textspeicher unter
+  `~/.local/share/mailburg/ocr` unangetastet bleibt und erkannter Text
+  von dort kommt statt aus `tesseract`. Aber es ist ein zweiter
+  Schritt, den niemand erwartet – und ein Kommentar, der etwas
+  verspricht, was der Code nicht tut.
+
+- [ ] **Das Release 1.0.1 veröffentlichen.** Fassung, CHANGELOG und
+  READMEs sind committet, der Tag `v1.0.1` steht auf GitHub. Nur das
+  Veröffentlichen fehlt – dabei baut der Workflow die `MailBurg.exe`
+  von selbst. Die vorbereiteten Notizen liegen im Sitzungsordner unter
+  `scratchpad/release-1.0.1.md`.
+
 ### Für die 1.1
 
 - [ ] **macOS.** Tests und Einrichtung laufen dort in der CI durch,
@@ -93,11 +137,6 @@ wurde.
   Post. Standard muss deshalb sein: nur auf `127.0.0.1` lauschen,
   ausdrücklich freizuschalten fürs Heimnetz, und für unterwegs der Verweis
   auf VPN oder Tailscale statt einer Portfreigabe im Router.
-
-- [ ] **Zeitstempel nach RFC 3161.** Anbindung an einen TSA-Dienst für das
-  Siegel. Das Feld ist im Format vorgesehen. Zu klären: welcher Dienst, was bei
-  fehlender Internetverbindung geschieht, und ob ein kostenloser Anbieter wie
-  FreeTSA für den Beweiswert genügt.
 
 - [ ] **Auch den Suchindex verschlüsseln.** Die offene Flanke der
   Archivverschlüsselung: Er liegt außerhalb des Archivs und enthält
@@ -231,6 +270,44 @@ Prüfung steht es hier und nicht in der laufenden Liste.
 ## Erledigtes
 
 ### Am 2026-08-31
+
+- [x] **Zeitstempel nach RFC 3161.** (2026-08-31)
+  `mailburg siegel ARCHIV --zeitstempel freetsa` holt eine Beglaubigung
+  von dritter Seite. Die Hash-Kette beweist die *Reihenfolge* der
+  Einträge, nicht den Zeitpunkt – die Uhrzeit darin stammt vom eigenen
+  Rechner, und die lässt sich stellen.
+
+  Übertragen wird ein SHA-256, 32 Byte. Der Dienst erfährt, dass jemand
+  um 14:03 Uhr *etwas* gestempelt hat. Trotzdem ausdrücklich
+  einzuschalten und nirgends voreingestellt: MailBurg verspricht, sich
+  nur mit den eingetragenen Mailservern zu verbinden.
+
+  ASN.1 von Hand (`core/der.py`), keine Fremdbibliothek – geprüft
+  gegen `openssl`, das die Anfragen liest und die Stempel verifiziert.
+  Die Signatur des Dienstes prüft MailBurg nicht selbst; dafür
+  schreibt `siegel --ausgeben` Stand und Stempel als Dateien heraus,
+  mitsamt dem `openssl ts -verify`, der beides prüft.
+
+  **Offen geblieben:** Es hat noch nie jemand einen echten Dienst
+  gefragt. Geprüft ist gegen eine selbst aufgesetzte Zeitstempelstelle
+  aus `openssl ts`. FreeTSA und die DFN-Stelle sind als Kurznamen
+  hinterlegt, aber ungetestet – wie bei OAuth2 fehlt die Gegenprobe am
+  echten Gegenüber.
+
+- [x] **Die Lesbarkeit der Oberfläche.** (2026-08-31) Aus einer
+  Meldung Stephans über ein zu schmales Auswahlfeld wurden sechs
+  Runden und vier Fehlerklassen: Auswahlfelder so breit wie das Layout
+  statt wie ihr Inhalt; aufgeklappte Listen, die bei 120 px blieben,
+  während die Box mitwuchs; Dialoggrößen als geratene Zahlen; und
+  umbrechende Texte, die zusammengedrückt wurden, weil Qt nur auf
+  ausdrückliche Ansage nach der nötigen Höhe fragt.
+
+  Dazu: Die Schriftgröße wirkte nur auf das Hauptfenster – Menüs,
+  Dialoge und das Lesefenster sind eigene Fenster. Und **Strg++ tat
+  gar nichts**, weil dasselbe Kürzel zweimal an derselben Aktion hing;
+  Qt hält das für mehrdeutig und löst dann keines aus.
+
+  `werkzeuge/lesbarkeit.py` macht die Prüfung wiederholbar.
 
 - [x] **Die Archivverschlüsselung.** (2026-08-31) Der letzte offene
   Brocken der Server Edition. `mailburg anlegen … --verschluesseln` oder
