@@ -340,7 +340,7 @@ def entpacken(datei: Path, ziel: Path, *, fortschritt=None) -> Befund:
 
 
 def uebernehmen(ziel_archiv, datei: Path, *, fortschritt=None,
-                abbruch=None) -> Befund:
+                abbruch=None, passwort: str = "") -> Befund:
     """Nimmt die Mails einer Sicherung in ein vorhandenes Archiv auf.
 
     Anders als :func:`entpacken` entsteht kein zweites Archiv: Die
@@ -353,6 +353,11 @@ def uebernehmen(ziel_archiv, datei: Path, *, fortschritt=None,
     wird nicht zweimal abgelegt; sie bekommt höchstens einen weiteren
     Fundort. Man kann dieselbe Sicherung also gefahrlos zweimal
     einlesen.
+
+    ``passwort`` gilt der *Sicherung*, nicht dem Ziel. Stammt sie aus
+    einem verschlüsselten Archiv, ist sie es selbst auch – gepackt wird
+    das Verzeichnis so, wie es liegt. Es kann ein anderes Passwort sein
+    als das des Zielarchivs; die beiden haben miteinander nichts zu tun.
     """
     import tempfile
 
@@ -367,7 +372,9 @@ def uebernehmen(ziel_archiv, datei: Path, *, fortschritt=None,
 
         # Nur lesend und ohne Index: Wir brauchen die Rohdaten und die
         # Angaben aus dem Protokoll, sonst nichts.
-        with Archive.open(ausgepackt, exclusive=False) as quelle:
+        with Archive.open(
+            ausgepackt, exclusive=False, passwort=passwort
+        ) as quelle:
             eintraege = [
                 e for e in quelle.journal.read_all()
                 if e.get("op") == "add" and e.get("hash")

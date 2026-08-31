@@ -22,6 +22,23 @@ erfüllen – man löscht den Inhalt, nicht die Tatsache.
 zu groß, schließt sie das Journal ab, packt sie und fängt eine neue an.
 Abgeschlossene Dateien ändern sich nie wieder, was Nextcloud sehr entgegen
 kommt.
+
+**Mit Schlüssel wird jede Zeile einzeln verschlüsselt.** Nicht die Datei
+als Ganzes: Angehängt wird laufend, und eine Datei, die bei jedem Eintrag
+komplett neu verschlüsselt werden müsste, wäre bei 700.000 Mails
+unbenutzbar.
+
+Die Hash-Kette bleibt davon unberührt. Sie rechnet über den Klartext des
+Eintrags, genau wie vorher – ``verify()`` funktioniert also unverändert,
+sobald der Schlüssel da ist. Das Verschlüsseln kommt erst danach, beim
+Hinschreiben. Und weil AES-GCM jede Zeile mit einer Prüfsumme versieht,
+fällt eine veränderte Journaldatei jetzt doppelt auf.
+
+**Das Journal ist nicht Beiwerk, sondern die Wahrheit** – deshalb gehört
+es mit unter die Verschlüsselung. In ihm stehen Absender, Betreff,
+Postfach und Ordner jeder Mail. Ein verschlüsseltes ``mail/`` neben
+einem lesbaren ``meta/`` wäre ein verschlossener Schrank mit einem
+Inhaltsverzeichnis an der Tür.
 """
 
 from __future__ import annotations
@@ -30,6 +47,7 @@ import hashlib
 import json
 import os
 import re
+from base64 import b64decode, b64encode
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -85,6 +103,16 @@ def entry_hash(entry: dict[str, Any]) -> str:
     return hashlib.sha256(canonical(without_self)).hexdigest()
 
 
+class JournalBeschaedigt(RuntimeError):
+    """Das Protokoll lässt sich nicht einmal mehr lesen.
+
+    Nicht zu verwechseln mit einer gerissenen Kette: Die meldet
+    :meth:`Journal.verify` als Befund, und das Archiv bleibt benutzbar.
+    Hier geht schon das Öffnen nicht – und dann ist eine verständliche
+    Ansage nötig, kein Traceback über eine JSON-Zeile.
+    """
+
+
 @dataclass(frozen=True)
 class ChainError:
     """Eine Fundstelle, an der die Kette nicht stimmt."""
@@ -117,13 +145,45 @@ class Journal:
     es geöffnet ist – siehe :mod:`mailburg.core.archive`.
     """
 
-    def __init__(self, meta_dir: Path) -> None:
+    def __init__(self, meta_dir: Path, schluessel=None) -> None:
         self.meta_dir = meta_dir
+        self.schluessel = schluessel
         self.meta_dir.mkdir(parents=True, exist_ok=True)
         self._last_seq = 0
         self._last_hash = GENESIS_PREV
         self._dirty = False
         self._scan_tail()
+
+    # --------------------------------------------------------- Eine Zeile
+
+    def _zeile_schreiben(self, entry: dict[str, Any]) -> bytes:
+        """Aus einem Eintrag wird die Zeile, die in der Datei landet."""
+        klartext = canonical(entry)
+        if self.schluessel is None:
+            return klartext
+        return b64encode(self.schluessel.verschluesseln(klartext))
+
+    def _zeile_lesen(self, zeile: bytes) -> dict[str, Any]:
+        """Und zurück. Wirft dieselben Fehler wie vorher ``json.loads``.
+
+        **Ein falscher Schlüssel muss wie eine kaputte Datei aussehen**,
+        jedenfalls für die Kettenprüfung: Sie fängt ``JSONDecodeError``
+        und ``UnicodeDecodeError``, und wenn hier etwas anderes flöge,
+        bräche ``verify()`` mit einem Traceback ab, statt die Stelle zu
+        melden. Wer sich am Passwort vertippt hat, erfährt das ohnehin
+        schon beim Öffnen des Archivs.
+        """
+        if self.schluessel is None:
+            return json.loads(zeile)
+        from mailburg.core.krypto import KryptoFehler
+
+        try:
+            klartext = self.schluessel.entschluesseln(b64decode(zeile))
+        except (KryptoFehler, ValueError, TypeError) as fehler:
+            raise json.JSONDecodeError(
+                f"Zeile nicht entschlüsselbar: {fehler}", "", 0
+            ) from fehler
+        return json.loads(klartext)
 
     # ---------------------------------------------------------------- Lesen
 
@@ -136,8 +196,8 @@ class Journal:
                 found.append((int(match.group(1)), path))
         return [path for _, path in sorted(found)]
 
-    def _read_segment(self, path: Path) -> Iterator[dict[str, Any]]:
-        """Gibt die Einträge einer Journaldatei aus, gepackt oder nicht."""
+    def _rohzeilen(self, path: Path) -> list[bytes]:
+        """Die nicht leeren Zeilen einer Journaldatei, gepackt oder nicht."""
         from mailburg.core import compress
 
         raw = path.read_bytes()
@@ -145,10 +205,12 @@ class Journal:
             if path.name.endswith(suffix):
                 raw = compress.decompress(raw, suffix)
                 break
-        for line in raw.decode("utf-8").splitlines():
-            line = line.strip()
-            if line:
-                yield json.loads(line)
+        return [zeile.strip() for zeile in raw.splitlines() if zeile.strip()]
+
+    def _read_segment(self, path: Path) -> Iterator[dict[str, Any]]:
+        """Gibt die Einträge einer Journaldatei aus, gepackt oder nicht."""
+        for zeile in self._rohzeilen(path):
+            yield self._zeile_lesen(zeile)
 
     def read_all(self) -> Iterator[dict[str, Any]]:
         """Gibt sämtliche Einträge des Journals der Reihe nach aus."""
@@ -162,13 +224,66 @@ class Journal:
         hinterlassen. Die überspringen wir hier stillschweigend – der Eintrag
         war nie vollständig, gilt also als nicht geschrieben. Beim Prüfen der
         Kette fällt so etwas trotzdem auf, weil dort jede Zeile gelesen wird.
+
+        **Nur die letzte.** Bis zum 2026-08-31 stand das zwar so im Text,
+        im Code aber nicht: Eine unvollständige Zeile ließ ``json.loads``
+        werfen, und das Archiv war überhaupt nicht mehr zu öffnen – nach
+        einem Stromausfall mitten im Abruf. Aufgefallen ist es erst beim
+        verschlüsselten Journal, weil dort jede veränderte Zeile
+        unlesbar wird.
+
+        Die Toleranz gilt bewusst nur der letzten Zeile. Ein Absturz kann
+        keine frühere zerstören; ist dort etwas kaputt, hat es einen
+        anderen Grund, und dann soll es krachen statt still zu
+        überspringen. Denn was hier übersprungen wird, zählt beim
+        Fortschreiben nicht mehr mit – und eine Folgenummer, die
+        zurückspringt, zerreißt die Kette dauerhaft.
         """
         segments = self.segments()
         if not segments:
             return
-        for entry in self._read_segment(segments[-1]):
+        zeilen = self._rohzeilen(segments[-1])
+        gut: list[bytes] = []
+        for nummer, zeile in enumerate(zeilen, 1):
+            try:
+                entry = self._zeile_lesen(zeile)
+            except (json.JSONDecodeError, UnicodeDecodeError) as fehler:
+                if nummer == len(zeilen):
+                    self._rest_abschneiden(segments[-1], gut)
+                    break
+                raise JournalBeschaedigt(
+                    f"Zeile {nummer} von {len(zeilen)} in "
+                    f"{segments[-1].name} lässt sich nicht lesen.\n\n"
+                    f"Das kann kein abgebrochener Schreibvorgang sein – "
+                    f"der träfe nur die letzte Zeile. Entweder wurde die "
+                    f"Datei verändert, oder der Datenträger hat einen "
+                    f"Fehler.\n\n"
+                    f"Ihre Mails liegen davon unberührt in mail/. Holen "
+                    f"Sie meta/ aus einer Sicherung zurück und prüfen Sie "
+                    f"anschließend mit »mailburg pruefen«.\n\n"
+                    f"Im Einzelnen: {fehler}"
+                ) from fehler
+            gut.append(zeile)
             self._last_seq = entry.get("seq", self._last_seq)
             self._last_hash = entry.get("self", self._last_hash)
+
+    def _rest_abschneiden(self, segment: Path, gut: list[bytes]) -> None:
+        """Entfernt die angefangene letzte Zeile aus der offenen Datei.
+
+        **Ohne das wäre die Nachsicht von oben eine Falle.** Eine
+        abgebrochene Zeile endet nicht auf einem Zeilenumbruch – der kam
+        ja nicht mehr dazu. Der nächste Eintrag würde direkt an sie
+        angehängt und verschmölze mit ihr zu einer einzigen unlesbaren
+        Zeile. Aus einem verlorenen Eintrag würden zwei, und der zweite
+        wäre einer, den MailBurg gerade für geschrieben hält.
+
+        Angefasst wird nur die *offene* Datei. Ein gepacktes Segment ist
+        abgeschlossen und ändert sich nie wieder; steht dort etwas nicht
+        recht, gehört das gemeldet und nicht stillschweigend begradigt.
+        """
+        if segment.suffix != ".jsonl":
+            return
+        segment.write_bytes(b"".join(zeile + b"\n" for zeile in gut))
 
     # -------------------------------------------------------------- Schreiben
 
@@ -217,7 +332,7 @@ class Journal:
 
         target = self._open_segment()
         with target.open("ab") as handle:
-            handle.write(canonical(entry) + b"\n")
+            handle.write(self._zeile_schreiben(entry) + b"\n")
 
         self._last_seq = entry["seq"]
         self._last_hash = entry["self"]

@@ -241,29 +241,39 @@ class Archive:
         *,
         exclusive: bool = True,
         index_verwerfen: bool = False,
+        schluessel=None,
     ) -> None:
         self.root = root
         self.meta = meta
+        self.schluessel = schluessel
+        #: Nur beim Anlegen gesetzt und nur dort etwas wert – siehe
+        #: :meth:`create`. Ein geöffnetes Archiv kennt ihn nicht.
+        self.notschluessel = ""
         self._lock_held = False
 
         if exclusive:
             self._acquire_lock()
 
-        self.store = Store(root / "mail")
-        self.journal = Journal(root / "meta")
-        index_datei = paths.index_path(self.uuid)
-        if index_verwerfen:
-            index_modul.verwerfen(index_datei)
+        # **Die Sperre darf nicht liegenbleiben.** Sie ist oben schon
+        # gesetzt, ``close()`` ruft hier aber niemand mehr - ein
+        # ``__init__``, das fliegt, hinterlässt kein Objekt. Aus »der
+        # Index ist veraltet« würde sonst obendrein »das Archiv ist
+        # gesperrt«, und der Anwender hätte zwei Probleme statt einem,
+        # das zweite ohne erkennbaren Grund.
+        #
+        # Der Bereich umfasst auch das Journal: Auch das kann beim
+        # Öffnen scheitern, wenn das Protokoll beschädigt ist.
+        self.journal = None
         try:
+            self.store = Store(root / "mail", schluessel)
+            self.journal = Journal(root / "meta", schluessel)
+            index_datei = paths.index_path(self.uuid)
+            if index_verwerfen:
+                index_modul.verwerfen(index_datei)
             self.index = Index(index_datei)
         except Exception:
-            # **Die Sperre darf nicht liegenbleiben.** Sie ist oben schon
-            # gesetzt, ``close()`` ruft hier aber niemand mehr - ein
-            # ``__init__``, das fliegt, hinterlässt kein Objekt. Aus
-            # »der Index ist veraltet« würde sonst obendrein »das Archiv
-            # ist gesperrt«, und der Anwender hätte zwei Probleme statt
-            # einem, das zweite ohne erkennbaren Grund.
-            self.journal.close()
+            if self.journal is not None:
+                self.journal.close()
             self._release_lock()
             raise
 
@@ -278,8 +288,16 @@ class Archive:
         jurisdiction: Jurisdiction = Jurisdiction.DE,
         name: str = "",
         bafin_supervised: bool = False,
+        passwort: str = "",
     ) -> Archive:
-        """Legt ein neues Archiv an."""
+        """Legt ein neues Archiv an.
+
+        Mit ``passwort`` wird es verschlüsselt. Der dabei erzeugte
+        Notschlüssel steht danach in :attr:`Archive.notschluessel` – und
+        zwar genau einmal, in diesem einen Objekt. Wer ihn nicht
+        weitergibt oder ausgibt, hat ihn verloren; im Archiv steht er
+        nicht.
+        """
         root = Path(root).expanduser().resolve()
         if (root / ARCHIVE_FILE).exists():
             raise ArchiveError(f"In {root} liegt bereits ein Archiv.")
@@ -298,11 +316,21 @@ class Archive:
             },
             "encryption": None,
         }
+
+        schluessel = None
+        notschluessel = ""
+        if passwort:
+            from mailburg.core import krypto
+
+            huelle, schluessel, notschluessel = krypto.Huelle.anlegen(passwort)
+            meta["encryption"] = huelle.als_json()
+
         (root / ARCHIVE_FILE).write_text(
             json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-        archive = cls(root, meta)
+        archive = cls(root, meta, schluessel=schluessel)
+        archive.notschluessel = notschluessel
         # Der erste Eintrag verankert die Kette. Ohne ihn ließe sich später
         # nicht belegen, wann das Archiv entstand und mit welchen Vorgaben.
         archive.journal.append(
@@ -313,6 +341,7 @@ class Archive:
             jurisdiction=str(jurisdiction),
             format_version=FORMAT_VERSION,
             program=meta["created_by"],
+            encrypted=bool(passwort),
         )
         archive.journal.flush()
         return archive
@@ -324,6 +353,7 @@ class Archive:
         *,
         exclusive: bool = True,
         index_verwerfen: bool = False,
+        passwort: str = "",
     ) -> Archive:
         """Öffnet ein vorhandenes Archiv.
 
@@ -332,6 +362,12 @@ class Archive:
         älteren Programmfassung lässt sich nicht öffnen (siehe
         :class:`~mailburg.core.index.IndexOutdated`), und der Befehl, der
         das Problem behebt, käme sonst selbst nicht an das Archiv heran.
+
+        ``passwort`` gilt für verschlüsselte Archive und nimmt auch den
+        Notschlüssel entgegen. Fehlt es dort, wirft
+        :class:`~mailburg.core.krypto.FalschesPasswort` – nicht
+        ``ArchiveError``, damit ein Aufrufer »noch einmal fragen« von
+        »geht gar nicht« unterscheiden kann.
         """
         root = Path(root).expanduser().resolve()
         marker = root / ARCHIVE_FILE
@@ -350,7 +386,41 @@ class Archive:
                 f"(Format {version}, dieses Programm kann {FORMAT_VERSION}). "
                 f"Bitte MailBurg aktualisieren."
             )
-        return cls(root, meta, exclusive=exclusive, index_verwerfen=index_verwerfen)
+        schluessel = None
+        if meta.get("encryption"):
+            from mailburg.core import krypto
+
+            huelle = krypto.Huelle.aus_json(meta["encryption"])
+            if not passwort:
+                raise krypto.FalschesPasswort(
+                    f"Das Archiv »{meta.get('name', root.name)}« ist "
+                    f"verschlüsselt und braucht sein Passwort."
+                )
+            schluessel = huelle.oeffnen(passwort)
+
+        return cls(
+            root,
+            meta,
+            exclusive=exclusive,
+            index_verwerfen=index_verwerfen,
+            schluessel=schluessel,
+        )
+
+    @staticmethod
+    def ist_verschluesselt(root: Path) -> bool:
+        """Ob ein Archiv ein Passwort braucht – ohne es zu öffnen.
+
+        Damit ein Aufrufer fragen kann, *bevor* er ins Leere greift: Das
+        Fenster braucht die Antwort, um überhaupt einen Passwortdialog
+        zu zeigen, und die Kommandozeile, um nach dem Passwort zu
+        fragen, statt mit einem Fehler abzubrechen.
+        """
+        marker = Path(root).expanduser().resolve() / ARCHIVE_FILE
+        try:
+            meta = json.loads(marker.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        return bool(meta.get("encryption"))
 
     # -------------------------------------------------------------- Sperren
 
@@ -720,9 +790,15 @@ class Archive:
             elif entry.get("op") == "delete":
                 expected.pop(entry.get("hash", ""), None)
 
+        # Im verschlüsselten Archiv heißen die Dateien nicht nach ihrem
+        # Hash. Verglichen wird deshalb über den Namen, den die Ablage
+        # einem Hash gibt – rückwärts geht es nicht, und das ist der Sinn.
+        namen = {self.store.name_fuer(digest): digest for digest in expected}
         on_disk = dict(self.store.iter_all())
-        missing = sorted(set(expected) - set(on_disk))
-        unexpected = sorted(set(on_disk) - set(expected))
+        missing = sorted(
+            digest for name, digest in namen.items() if name not in on_disk
+        )
+        unexpected = sorted(set(on_disk) - set(namen))
 
         return {
             "chain_ok": chain.ok,

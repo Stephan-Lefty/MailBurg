@@ -251,5 +251,70 @@ class TestGrabsteine(unittest.TestCase):
         self.assertTrue(self.journal.verify().ok)
 
 
+class TestAbgebrocheneZeile(unittest.TestCase):
+    """Ein Stromausfall mitten im Schreiben.
+
+    Der Docstring von ``_scan_tail`` hat das seit jeher behauptet, der
+    Code tat es bis zum 2026-08-31 nicht: Eine halb geschriebene letzte
+    Zeile ließ ``json.loads`` werfen, und das Archiv war überhaupt nicht
+    mehr zu öffnen. Aufgefallen ist es am verschlüsselten Journal – gilt
+    aber genauso ohne Verschlüsselung.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.meta = Path(self._tmp.name) / "meta"
+        journal = Journal(self.meta)
+        journal.append("add", hash="a" * 64, bucket="2025/03", account="firma")
+        journal.append("add", hash="b" * 64, bucket="2025/03", account="firma")
+        journal.close()
+        self.datei = next(self.meta.glob("*.jsonl"))
+
+    def test_eine_halbe_letzte_zeile_sperrt_nicht_das_ganze_archiv(self) -> None:
+        with self.datei.open("ab") as handle:
+            handle.write(b'{"seq":3,"op":"a')
+
+        wieder = Journal(self.meta)
+
+        # Der angefangene Eintrag zählt als nie geschrieben.
+        self.assertEqual(wieder.count, 2)
+
+    def test_danach_geht_es_lueckenlos_weiter(self) -> None:
+        """Der nächste Eintrag muss anschließen, nicht mit dem Rest verschmelzen.
+
+        Eine abgebrochene Zeile endet nicht auf einem Zeilenumbruch – der
+        kam ja nicht mehr. Bliebe sie stehen, klebte der nächste Eintrag
+        an ihr fest, und aus einem verlorenen würden zwei.
+        """
+        with self.datei.open("ab") as handle:
+            handle.write(b'{"seq":3,"op":"a')
+
+        wieder = Journal(self.meta)
+        wieder.append("add", hash="c" * 64, bucket="2025/03", account="firma")
+
+        eintraege = list(wieder.read_all())
+        self.assertEqual([e["seq"] for e in eintraege], [1, 2, 3])
+        self.assertTrue(wieder.verify().ok)
+
+    def test_eine_kaputte_zeile_mittendrin_wird_nicht_verschwiegen(self) -> None:
+        """Die kann kein Absturz verursacht haben – da ist etwas anderes los.
+
+        Und sie wird als solche gemeldet, nicht als Traceback über eine
+        JSON-Zeile: Wer sein Archiv nicht mehr aufbekommt, braucht einen
+        Satz dazu, wo seine Mails geblieben sind.
+        """
+        from mailburg.core.journal import JournalBeschaedigt
+
+        zeilen = self.datei.read_bytes().splitlines()
+        zeilen[0] = b'{"seq":1,"op":"kap'
+        self.datei.write_bytes(b"\n".join(zeilen) + b"\n")
+
+        with self.assertRaises(JournalBeschaedigt) as gefangen:
+            Journal(self.meta)
+
+        self.assertIn("Ihre Mails liegen davon unberührt", str(gefangen.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

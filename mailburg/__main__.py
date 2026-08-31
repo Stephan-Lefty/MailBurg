@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import json
+import os
 import shutil
 import sys
 import time
@@ -21,6 +23,7 @@ from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
 from mailburg.core.importer import importieren
 from mailburg.core.index import IndexOutdated
+from mailburg.core.krypto import KryptoFehler
 from mailburg.core.retention import Jurisdiction, describe
 from mailburg.core.sync import Abrufzustand
 from mailburg.extract import pdf
@@ -39,19 +42,110 @@ def _human_size(count: int) -> str:
     return f"{value:.1f} TB"
 
 
+def oeffnen(pfad, **kwargs) -> Archive:
+    """Öffnet ein Archiv und besorgt sich das Passwort, falls nötig.
+
+    **Warum alle Befehle hierüber gehen und nicht über
+    ``Archive.open``.** Es gibt zwei Dutzend Unterbefehle, die ein Archiv
+    öffnen. Jedem einzeln eine Passwortabfrage anzubauen hieße, sie
+    zweiundzwanzigmal richtig zu machen – und beim dreiundzwanzigsten,
+    der später dazukommt, zu vergessen. Der scheitert dann an einem
+    verschlüsselten Archiv mit einer Meldung, die niemand erwartet.
+
+    Gefragt wird nur, wenn das Passwort nicht ohnehin hinterlegt ist und
+    wirklich jemand davorsitzt. Im Zeitplan ist beides nicht der Fall;
+    dort muss es aus Umgebung oder Tresor kommen.
+    """
+    pfad = Path(pfad)
+    if not Archive.ist_verschluesselt(pfad):
+        return Archive.open(pfad, **kwargs)
+
+    from mailburg.core import passwort as passwort_modul
+
+    vorrat = passwort_modul.hinterlegt(pfad)
+    if vorrat:
+        return Archive.open(pfad, passwort=vorrat, **kwargs)
+
+    if not sys.stdin.isatty():
+        from mailburg.core.krypto import FalschesPasswort
+
+        raise FalschesPasswort(
+            f"Das Archiv ist verschlüsselt, und hier sitzt niemand, der "
+            f"das Passwort eintippen könnte.\n\n"
+            f"Für den Zeitplan und den Dienst gehört es hinterlegt:\n"
+            f"    mailburg passwort hinterlegen ARCHIV\n\n"
+            f"Oder in die Umgebung, etwa in einer systemd-Einheit:\n"
+            f"    {passwort_modul.UMGEBUNG_DATEI}=/pfad/zur/datei"
+        )
+
+    return Archive.open(
+        pfad, passwort=getpass.getpass("Passwort für das Archiv: "), **kwargs
+    )
+
+
+def _passwort_erfragen() -> str:
+    """Fragt ein neues Archivpasswort ab – zweimal, wie es sich gehört.
+
+    **Zweimal, weil es hier keine Korrektur gibt.** Ein Tippfehler in
+    einem Anmeldepasswort ist eine Unbequemlichkeit; ein Tippfehler
+    hier verschlüsselt zwanzig Jahre Post mit einer Zeichenkette, die
+    niemand kennt. Auffallen würde er erst beim nächsten Öffnen.
+    """
+    import getpass
+
+    while True:
+        erstes = getpass.getpass("Passwort für das Archiv: ")
+        if not erstes:
+            print("Ohne Passwort keine Verschlüsselung.", file=sys.stderr)
+            return ""
+        if erstes == getpass.getpass("Noch einmal zur Sicherheit: "):
+            return erstes
+        print("Die beiden stimmen nicht überein. Noch einmal.", file=sys.stderr)
+
+
+def _notschluessel_ausgeben(wert: str) -> None:
+    """Der einzige Moment, in dem der Notschlüssel zu sehen ist."""
+    print()
+    print("  ┌─ Notschlüssel " + "─" * 43 + "┐")
+    print(f"  │   {wert}   │")
+    print("  └" + "─" * 58 + "┘")
+    print()
+    print("  Drucken Sie ihn aus und legen Sie ihn dorthin, wo Sie auch")
+    print("  wichtige Papiere aufbewahren. Er öffnet das Archiv anstelle")
+    print("  des Passworts.")
+    print()
+    print("  Er steht hier zum einzigen Mal. MailBurg hat ihn nicht")
+    print("  gespeichert und kann ihn nicht noch einmal ausgeben.")
+
+
 def cmd_anlegen(args: argparse.Namespace) -> int:
     """Legt ein neues Archiv an."""
     mode = Mode(args.modus)
+
+    passwort = ""
+    if getattr(args, "verschluesseln", False):
+        from mailburg.core import krypto
+
+        print(krypto.hinweis_suchindex())
+        print()
+        passwort = _passwort_erfragen()
+        if not passwort:
+            return 2
+
     archive = Archive.create(
         Path(args.pfad),
         mode=mode,
         jurisdiction=Jurisdiction(args.recht),
         name=args.name or "",
+        passwort=passwort,
     )
     try:
         print(f"Archiv angelegt: {archive.root}")
         print(f"  Kennung:     {archive.uuid}")
         print(f"  Betriebsart: {mode.value}")
+        if passwort:
+            print("  Verschlüsselt: ja (AES-256-GCM)")
+            _notschluessel_ausgeben(archive.notschluessel)
         if mode.is_business:
             print(f"  Fristen:     {describe(archive.policy)}")
             print()
@@ -90,7 +184,7 @@ def cmd_importieren(args: argparse.Namespace) -> int:
             )
     print(f"Anhänge im Volltext: {'ja' if mit_text else 'nein'}")
 
-    with Archive.open(Path(args.archiv)) as archive:
+    with oeffnen(Path(args.archiv)) as archive:
         started = time.monotonic()
 
         def fortschritt(stat) -> None:
@@ -516,7 +610,7 @@ def cmd_loeschen(args: argparse.Namespace) -> int:
     der Befehl erst, was er täte, und tut es erst auf ausdrückliche
     Ansage.
     """
-    with Archive.open(Path(args.archiv)) as archive:
+    with oeffnen(Path(args.archiv)) as archive:
         zeilen = archive.index.db.execute(
             """SELECT DISTINCT m.hash, m.bucket, m.subject
                  FROM messages m JOIN locations l ON l.msg_id = m.id
@@ -588,7 +682,7 @@ def cmd_loeschen(args: argparse.Namespace) -> int:
 def cmd_konten_zuordnen(args: argparse.Namespace) -> int:
     """Weist ein Postfach einem Archiv zu – oder nimmt es wieder heraus."""
     liste = Kontenliste()
-    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+    with oeffnen(Path(args.archiv), exclusive=False) as archive:
         kennung = archive.uuid
         name = archive.name
 
@@ -728,7 +822,7 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
         if laut:
             print(text)
 
-    with Archive.open(Path(args.archiv)) as archive:
+    with oeffnen(Path(args.archiv)) as archive:
         konten, meldung = _konten_waehlen(liste, archive, args.konto, laut=laut)
         if meldung:
             print(meldung, file=sys.stderr)
@@ -893,7 +987,7 @@ def cmd_abgleich(args: argparse.Namespace) -> int:
     print("Geprüft wird, was der Server hat und im Archiv fehlt.\n")
 
     bedenklich = 0
-    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+    with oeffnen(Path(args.archiv), exclusive=False) as archive:
         konten, meldung = _konten_waehlen(liste, archive, args.konto)
         if meldung:
             print(meldung, file=sys.stderr)
@@ -961,7 +1055,7 @@ def cmd_vorrat(args: argparse.Namespace) -> int:
     """Macht schon erkannten Text für künftige Läufe wiederverwendbar."""
     from mailburg.core import erkennung
 
-    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+    with oeffnen(Path(args.archiv), exclusive=False) as archive:
         print("Der schon erkannte Text wird ein zweites Mal abgelegt –")
         print("unter dem Fingerabdruck des Anhangs statt dem der Mail.")
         print("Es wird nichts neu erkannt.")
@@ -1006,7 +1100,7 @@ def cmd_texterkennung(args: argparse.Namespace) -> int:
         print(f"Texterkennung nicht möglich: {hinweis}", file=sys.stderr)
         return 2
 
-    with Archive.open(Path(args.archiv)) as archive:
+    with oeffnen(Path(args.archiv)) as archive:
         if args.nochmal:
             # Nach einer Verbesserung an der Erkennung selbst: Was
             # gestern unlesbar war, kann heute lesbar sein.
@@ -1068,7 +1162,7 @@ def cmd_suchen(args: argparse.Namespace) -> int:
     """Durchsucht das Archiv."""
     expression = " ".join(args.ausdruck)
 
-    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+    with oeffnen(Path(args.archiv), exclusive=False) as archive:
         started = time.monotonic()
         try:
             hits = archive.index.search(expression, limit=args.limit)
@@ -1097,7 +1191,7 @@ def cmd_suchen(args: argparse.Namespace) -> int:
 
 def cmd_pruefen(args: argparse.Namespace) -> int:
     """Prüft Hash-Kette und Ablage."""
-    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+    with oeffnen(Path(args.archiv), exclusive=False) as archive:
         print(f"Prüfe {archive.name} …")
         report = archive.verify()
 
@@ -1136,7 +1230,7 @@ def cmd_neuaufbau(args: argparse.Namespace) -> int:
     # ausgerechnet der Befehl, auf den die Meldung verweist, käme nicht
     # an das Archiv heran. Verloren geht nichts: Die Zeilen darunter
     # bauen ihn ohnehin von Grund auf neu.
-    with Archive.open(Path(args.archiv), index_verwerfen=True) as archive:
+    with oeffnen(Path(args.archiv), index_verwerfen=True) as archive:
         print("Baue den Suchindex neu. Das Archiv selbst wird dabei nur gelesen.")
         started = time.monotonic()
 
@@ -1150,9 +1244,101 @@ def cmd_neuaufbau(args: argparse.Namespace) -> int:
     return 0
 
 
+def _nur_verschluesselt(pfad: Path) -> bool:
+    if Archive.ist_verschluesselt(pfad):
+        return True
+    print(
+        "Dieses Archiv ist nicht verschlüsselt – es gibt kein Passwort.\n"
+        "Nachträglich verschlüsseln lässt es sich nicht; dafür legen Sie\n"
+        "ein neues an und spielen eine Sicherung hinein.",
+        file=sys.stderr,
+    )
+    return False
+
+
+def cmd_passwort_aendern(args: argparse.Namespace) -> int:
+    """Setzt ein anderes Passwort – ohne das Archiv anzufassen."""
+    pfad = Path(args.archiv)
+    if not _nur_verschluesselt(pfad):
+        return 2
+
+    from mailburg.core import krypto
+
+    meta = json.loads((pfad / "archive.json").read_text(encoding="utf-8"))
+    huelle = krypto.Huelle.aus_json(meta["encryption"])
+
+    altes = getpass.getpass("Bisheriges Passwort (oder Notschlüssel): ")
+    schluessel = huelle.oeffnen(altes)
+
+    neues = _passwort_erfragen()
+    if not neues:
+        return 2
+
+    meta["encryption"] = huelle.passwort_wechseln(schluessel, neues).als_json()
+    # Erst daneben schreiben, dann an den Platz rücken. Ein Absturz
+    # mitten im Schreiben von archive.json wäre das Ende des Archivs -
+    # ohne diese Datei kommt niemand mehr an die Schlüssel.
+    neben = pfad / "archive.json.neu"
+    neben.write_text(
+        json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    os.replace(neben, pfad / "archive.json")
+
+    print("Das Passwort ist geändert.")
+    print()
+    print("  Der Notschlüssel gilt weiterhin – er hängt nicht am Passwort.")
+    print("  Die Mails selbst wurden nicht angefasst: Verschlüsselt sind")
+    print("  sie mit einem Schlüssel, der sich nie ändert, und der lag")
+    print("  nur neu eingewickelt in archive.json.")
+
+    from mailburg.core import passwort as passwort_modul
+
+    if passwort_modul.aus_tresor(pfad) is not None:
+        passwort_modul.in_tresor(pfad, neues)
+        print()
+        print("  Im Tresor ist es ebenfalls nachgezogen.")
+    return 0
+
+
+def cmd_passwort_hinterlegen(args: argparse.Namespace) -> int:
+    """Legt das Passwort im Tresor ab – für Zeitplan und Dienst."""
+    pfad = Path(args.archiv)
+    if not _nur_verschluesselt(pfad):
+        return 2
+
+    from mailburg.core import krypto, passwort as passwort_modul
+
+    meta = json.loads((pfad / "archive.json").read_text(encoding="utf-8"))
+    huelle = krypto.Huelle.aus_json(meta["encryption"])
+
+    # Erst prüfen, dann ablegen: Ein hinterlegtes Passwort, das nicht
+    # stimmt, fiele erst nachts um drei auf - und dann als schweigender
+    # Abruf, der nichts holt.
+    eingabe = getpass.getpass("Passwort für das Archiv: ")
+    huelle.oeffnen(eingabe)
+
+    passwort_modul.in_tresor(pfad, eingabe)
+    print(f"Hinterlegt im Tresor unter »{passwort_modul.tresorname(pfad)}«.")
+    print()
+    print("  Damit laufen Zeitplan und Dienst ohne Nachfrage. Der Preis:")
+    print("  Wer als Ihr Benutzer Programme ausführen kann, kommt an das")
+    print("  Archiv – der Hauptschlüssel des Tresors liegt ja bereit.")
+    return 0
+
+
+def cmd_passwort_vergessen(args: argparse.Namespace) -> int:
+    """Nimmt das Passwort wieder aus dem Tresor."""
+    from mailburg.core import passwort as passwort_modul
+
+    pfad = Path(args.archiv)
+    passwort_modul.aus_tresor_entfernen(pfad)
+    print("Aus dem Tresor entfernt. MailBurg fragt jetzt wieder nach.")
+    return 0
+
+
 def cmd_siegel(args: argparse.Namespace) -> int:
     """Setzt ein Siegel über den aktuellen Stand."""
-    with Archive.open(Path(args.archiv)) as archive:
+    with oeffnen(Path(args.archiv)) as archive:
         entry = archive.seal()
         print(f"Siegel gesetzt über {sprache.eintraege(entry['count'])}.")
         print(f"  Stand: {entry['covers'][:32]}…")
@@ -1162,7 +1348,7 @@ def cmd_siegel(args: argparse.Namespace) -> int:
 
 def cmd_info(args: argparse.Namespace) -> int:
     """Zeigt, was im Archiv steckt."""
-    with Archive.open(Path(args.archiv), exclusive=False) as archive:
+    with oeffnen(Path(args.archiv), exclusive=False) as archive:
         stats = archive.index.statistics()
         print(f"{archive.name}")
         print(f"  Ort:          {archive.root}")
@@ -1252,7 +1438,7 @@ def cmd_verfahrensdoku(args: argparse.Namespace) -> int:
     from mailburg.core.archive import Archive
 
     archiv_pfad = Path(args.archiv).expanduser().resolve()
-    with Archive.open(archiv_pfad, exclusive=False) as archiv:
+    with oeffnen(archiv_pfad, exclusive=False) as archiv:
         konten = None
         try:
             konten = Kontenliste()
@@ -1321,7 +1507,7 @@ def cmd_auskunft(args: argparse.Namespace) -> int:
     from mailburg.core.archive import Archive
 
     archiv_pfad = Path(args.archiv).expanduser().resolve()
-    with Archive.open(archiv_pfad, exclusive=bool(args.ziel)) as archiv:
+    with oeffnen(archiv_pfad, exclusive=bool(args.ziel)) as archiv:
         befund = auskunft.zusammenstellen(
             archiv, args.adresse, im_text=args.im_text
         )
@@ -1379,7 +1565,7 @@ def cmd_faellig(args: argparse.Namespace) -> int:
     from mailburg.core.archive import Archive
 
     archiv_pfad = Path(args.archiv).expanduser().resolve()
-    with Archive.open(archiv_pfad, exclusive=False) as archiv:
+    with oeffnen(archiv_pfad, exclusive=False) as archiv:
         if not archiv.mode.is_business:
             # **Ein Privatarchiv kennt keine Fristen.** Was hier gezeigt
             # wird, ist deshalb keine Fälligkeit, sondern eine Auskunft
@@ -1475,7 +1661,7 @@ def cmd_einstufen(args: argparse.Namespace) -> int:
               file=sys.stderr)
         return 2
 
-    with Archive.open(archiv_pfad, exclusive=args.wirklich) as archiv:
+    with oeffnen(archiv_pfad, exclusive=args.wirklich) as archiv:
         treffer = archiv.index.search(args.suche, limit=1_000_000)
         if not treffer:
             print(f"Keine Treffer für: {args.suche}")
@@ -1520,7 +1706,7 @@ def cmd_zugaenge(args: argparse.Namespace) -> int:
     archiv_pfad = Path(args.archiv).expanduser().resolve()
     schreibend = args.was != "liste"
 
-    with Archive.open(archiv_pfad, exclusive=schreibend) as archiv:
+    with oeffnen(archiv_pfad, exclusive=schreibend) as archiv:
         liste = archiv.benutzer
 
         if args.was == "liste":
@@ -1831,7 +2017,7 @@ def cmd_regeln(args: argparse.Namespace) -> int:
     archiv_pfad = Path(args.archiv).expanduser().resolve()
     schreibend = args.was in ("hinzufuegen", "entfernen", "anwenden")
 
-    with Archive.open(archiv_pfad, exclusive=schreibend) as archiv:
+    with oeffnen(archiv_pfad, exclusive=schreibend) as archiv:
         werk = archiv.regeln
 
         if args.was == "zeigen":
@@ -1983,7 +2169,7 @@ def cmd_sichern(args) -> int:
     if ziel.is_dir() or not ziel.suffix:
         name = args.name
         if not name:
-            with Archive.open(archiv_pfad, exclusive=False) as archiv:
+            with oeffnen(archiv_pfad, exclusive=False) as archiv:
                 name = archiv.name
         ziel = ziel / (
             sicherung.dateiname(name) if args.ersetzen
@@ -2087,6 +2273,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Rechtsraum für die Aufbewahrungsfristen",
     )
     p.add_argument("--name", help="Anzeigename des Archivs")
+    p.add_argument(
+        "--verschluesseln",
+        action="store_true",
+        help="das Archiv verschlüsseln; fragt nach einem Passwort",
+    )
     p.set_defaults(func=cmd_anlegen)
 
     p = subparsers.add_parser("importieren", help="Mails aus einer Quelle einlesen")
@@ -2344,6 +2535,26 @@ def build_parser() -> argparse.ArgumentParser:
     p = subparsers.add_parser("neuaufbau", help="den Suchindex neu erzeugen")
     p.add_argument("archiv")
     p.set_defaults(func=cmd_neuaufbau)
+
+    p = subparsers.add_parser(
+        "passwort", help="das Passwort eines verschlüsselten Archivs"
+    )
+    unter = p.add_subparsers(dest="was", required=True)
+
+    q = unter.add_parser("aendern", help="ein anderes Passwort setzen")
+    q.add_argument("archiv")
+    q.set_defaults(func=cmd_passwort_aendern)
+
+    q = unter.add_parser(
+        "hinterlegen",
+        help="im Tresor ablegen, damit Zeitplan und Dienst ohne Nachfrage laufen",
+    )
+    q.add_argument("archiv")
+    q.set_defaults(func=cmd_passwort_hinterlegen)
+
+    q = unter.add_parser("vergessen", help="aus dem Tresor entfernen")
+    q.add_argument("archiv")
+    q.set_defaults(func=cmd_passwort_vergessen)
 
     p = subparsers.add_parser("siegel", help="ein Siegel über den Stand setzen")
     p.add_argument("archiv")
@@ -2687,6 +2898,12 @@ def main(argv: list[str] | None = None) -> int:
     except ArchiveLocked as exc:
         print(f"Archiv gesperrt:\n{exc}", file=sys.stderr)
         return 3
+    except KryptoFehler as exc:
+        # Auch hier kein Traceback. Ein falsches Passwort ist keine
+        # Störung des Programms, sondern eine Auskunft an den Anwender,
+        # und die Meldung erklärt schon, wie es weitergeht.
+        print(f"{exc}", file=sys.stderr)
+        return 4
     except IndexOutdated as exc:
         # Ein Traceback wäre hier besonders unangebracht: Wer nach einer
         # Aktualisierung sein Archiv nicht mehr öffnen kann, denkt an
