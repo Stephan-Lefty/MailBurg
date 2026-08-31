@@ -835,6 +835,45 @@ class Archive:
         self.meta["regeln"] = nachher
         self._meta_schreiben()
 
+    @property
+    def benutzer(self):
+        """Die Zugänge dieses Archivs.
+
+        Wie bei den Regeln bei jedem Zugriff frisch gelesen: Eine zweite
+        Sitzung – oder der Verwalter am Server – kann sie inzwischen
+        geändert haben, und ein zwischengespeicherter Stand hieße hier,
+        dass ein entzogenes Recht noch eine Weile gilt.
+        """
+        from mailburg.core.benutzer import Benutzerliste
+
+        return Benutzerliste.lesen(self.root)
+
+    def benutzer_setzen(self, liste, *, actor: str = "") -> None:
+        """Ersetzt die Zugänge – und schreibt den Vorgang ins Journal.
+
+        **Ohne Prüfwerte im Protokoll.** Ins Journal kommt, wer angelegt,
+        geändert oder stillgelegt wurde und welche Rechte er hat – nicht
+        aber der Prüfwert seines Passworts. Ein Protokoll, das nicht
+        verändert werden darf, ist der denkbar schlechteste Ort für ein
+        Geheimnis: Es lässt sich nachträglich nicht mehr herausnehmen.
+
+        Erst das Journal, dann die Datei – aus demselben Grund wie bei
+        den Regeln.
+        """
+        vorher = _ohne_pruefwerte(self.benutzer.als_daten())
+        nachher = _ohne_pruefwerte(liste.als_daten())
+
+        if vorher != nachher:
+            self.journal.append(
+                "users",
+                users=nachher,
+                previous=vorher,
+                actor=actor or _angemeldeter_benutzer(),
+            )
+            self.journal.flush()
+
+        liste.schreiben(self.root)
+
     def _meta_schreiben(self) -> None:
         """Schreibt ``archive.json`` – über eine Zwischendatei.
 
@@ -867,3 +906,20 @@ class Archive:
 
 class RetentionLocked(RuntimeError):
     """Die Mail darf wegen einer laufenden Aufbewahrungsfrist noch nicht weg."""
+
+
+def _ohne_pruefwerte(daten: dict) -> dict:
+    """Dieselben Angaben, aber ohne die Prüfwerte der Passwörter.
+
+    Für das Journal. Was dort einmal steht, steht dort für immer – ein
+    Prüfwert, der sich als angreifbar herausstellt, ließe sich später
+    nicht mehr entfernen, ohne die Hash-Kette zu zerreißen.
+    """
+    return {
+        **daten,
+        "benutzer": [
+            {schluessel: wert for schluessel, wert in eintrag.items()
+             if schluessel != "pruefwert"}
+            for eintrag in daten.get("benutzer", [])
+        ],
+    }

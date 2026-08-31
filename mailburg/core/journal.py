@@ -63,6 +63,7 @@ _SEGMENT_RE = re.compile(r"^(\d{6})\.jsonl(\.zst|\.xz)?$")
 #: glattziehen.
 OPERATIONS = frozenset({
     "create", "add", "delete", "classify", "seal", "note", "rules",
+    "users",
 })
 
 
