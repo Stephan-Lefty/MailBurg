@@ -1546,8 +1546,23 @@ class Einrichtungsassistent(QWizard):
         # Eine Größe für alle Schritte. Ein Assistent, dessen Fenster bei
         # jedem Weiter springt, wirkt unfertig - und man verliert die
         # Stelle, an der man gerade gelesen hat.
-        self.setMinimumSize(880, 720)
-        self.resize(880, 720)
+        # **So groß, wie der Bildschirm es zulässt.** 880x720 war eine
+        # geratene Zahl und saß bei größerer Schrift falsch: Die
+        # Willkommensseite rollte dann schon beim Öffnen, obwohl
+        # daneben noch Platz war. In der Standardgröße soll alles ohne
+        # Rollen lesbar sein – gerollt wird nur, wenn es physisch nicht
+        # anders geht.
+        from PySide6.QtWidgets import QApplication
+
+        breite, hoehe = 880, 720
+        schirm = self.screen() or QApplication.primaryScreen()
+        if schirm is not None:
+            frei = schirm.availableGeometry()
+            breite = min(max(breite, int(frei.width() * 0.55)), frei.width() - 60)
+            hoehe = min(max(hoehe, int(frei.height() * 0.85)), frei.height() - 60)
+
+        self.setMinimumSize(min(880, breite), min(600, hoehe))
+        self.resize(breite, hoehe)
 
         self.addPage(WillkommenSeite())
         self.addPage(ArchivSeite())

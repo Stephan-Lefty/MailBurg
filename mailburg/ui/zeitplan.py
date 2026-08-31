@@ -11,6 +11,7 @@ from PySide6.QtCore import Qt
 from pathlib import Path
 
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -379,6 +380,33 @@ class Zeitplandialog(QDialog):
         rollbar.setFrameShape(QScrollArea.NoFrame)
         # Waagerecht rollen zu müssen ist immer ein Fehler im Aufbau.
         rollbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # **Der Rollbereich ist das Sicherheitsnetz, nicht der Normalfall.**
+        # Ohne die nächsten Zeilen meldet er »ich komme mit jeder Größe
+        # klar«, und der Dialog geht winzig auf: Man sieht drei Zeilen
+        # und rollt sich durch den Rest. Das ist schlimmer als der
+        # abgeschnittene Text, den er beheben sollte.
+        #
+        # Also: Er verlangt so viel Platz, wie sein Inhalt braucht – und
+        # gibt sich erst dann mit weniger zufrieden, wenn der Bildschirm
+        # es nicht hergibt. Gerollt wird nur bei kleinem Bildschirm oder
+        # wenn jemand das Fenster ausdrücklich kleiner zieht.
+        # **In der Standardgröße muss alles ohne Rollen lesbar sein.**
+        # Stephans Regel, und sie ist richtig: Ein Einstellungsfenster,
+        # in dem man scrollen muss, um die Erklärung zu Ende zu lesen,
+        # ist ein schlechtes Einstellungsfenster.
+        #
+        # Die Grenze liegt deshalb dort, wo der Bildschirm sie zieht,
+        # und nicht bei einem gemütlichen Bruchteil davon. Gerollt wird
+        # nur, wenn es physisch nicht anders geht - bei sehr großer
+        # Schrift auf einem kleinen Bildschirm.
+        gebraucht = inhalt.sizeHint().height()
+        bildschirm = self.screen() or QApplication.primaryScreen()
+        if bildschirm is not None:
+            # Was die Knöpfe und der Fensterrahmen brauchen, geht ab.
+            platz = bildschirm.availableGeometry().height() - 120
+            gebraucht = min(gebraucht, max(240, platz))
+        rollbar.setMinimumHeight(gebraucht)
 
         aufbau = QVBoxLayout(self)
         aufbau.addWidget(rollbar, 1)

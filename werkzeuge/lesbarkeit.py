@@ -76,12 +76,39 @@ def _befunde(fenster, name: str) -> list[str]:
                 f"braucht {gebraucht} px: »{anfang}…«"
             )
 
-    # **Ein Rollbereich darf kleiner sein als sein Inhalt** – dafür ist
-    # er da. Ohne diese Ausnahme meldete das Werkzeug den
-    # Einrichtungsassistenten, dessen Seiten absichtlich rollen.
-    from PySide6.QtWidgets import QScrollArea
+    # **In der Standardgröße muss alles ohne Rollen lesbar sein.**
+    # Stephans Regel vom 2026-08-31, und sie ist richtig: Ein Fenster,
+    # in dem man scrollen muss, um eine Erklärung zu Ende zu lesen, ist
+    # ein schlechtes Fenster. Der Rollbereich ist die Rückfalllinie für
+    # kleine Bildschirme, nicht der Normalzustand.
+    #
+    # Gemeldet wird deshalb, wenn ein Rollbalken schon beim Öffnen etwas
+    # zu rollen hat – und zwar nur dann, wenn der Bildschirm überhaupt
+    # Platz gehabt hätte.
+    from PySide6.QtWidgets import QApplication, QScrollArea
 
-    if fenster.findChildren(QScrollArea):
+    rollbereiche = fenster.findChildren(QScrollArea)
+    for bereich in rollbereiche:
+        balken = bereich.verticalScrollBar()
+        if balken is None or balken.maximum() <= TOLERANZ:
+            continue
+        # **Am Fenster messen, nicht am Bauteil.** Eine
+        # Assistentenseite ist kein Fenster; ihre Höhe ist die des
+        # Assistenten minus Kopfzeile und Knopfleiste. Wer sie gegen die
+        # Bildschirmhöhe hält, bekommt immer »da wäre noch Platz« –
+        # auch wenn der Assistent längst so groß ist, wie er werden
+        # kann.
+        echtes = fenster.window()
+        schirm = QApplication.primaryScreen()
+        platz = schirm.availableGeometry().height() if schirm else 0
+        if platz and echtes.height() < platz - 150:
+            gefunden.append(
+                f"{name}: rollt schon beim Öffnen ({balken.maximum()} px), "
+                f"obwohl der Bildschirm noch "
+                f"{platz - fenster.height()} px Platz hätte"
+            )
+
+    if rollbereiche:
         return gefunden
 
     inhalt = fenster.sizeHint()
@@ -152,8 +179,10 @@ def _dialoge(anwendung, archiv) -> list[str]:
 
     from mailburg.ui.assistent import Einrichtungsassistent
 
+    # Keine erfundene Größe: Der Assistent bemisst sich seit dem
+    # 2026-08-31 selbst am Bildschirm. Ihn hier zu verkleinern hieße,
+    # etwas anderes zu prüfen, als der Anwender zu sehen bekommt.
     assistent = Einrichtungsassistent()
-    assistent.resize(900, 720)
     assistent.show()
     anwendung.processEvents()
     for kennung in assistent.pageIds():
