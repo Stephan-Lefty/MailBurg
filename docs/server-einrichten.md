@@ -189,33 +189,144 @@ startet.
 
 ## 6. Erreichbar machen
 
-Bis hierher lauscht der Dienst nur lokal. Für das Firmennetz:
+Bis hierher lauscht der Dienst nur auf dem Rechner, auf dem er läuft.
+Wer ihn von woanders erreichen will, hat vier Wege – und welcher richtig
+ist, hängt davon ab, woher »woanders« ist.
+
+| Weg | Wofür | Dagegen spricht |
+|---|---|---|
+| **Reverse Proxy im Firmennetz** | alle sitzen im selben Netz | von außerhalb nicht erreichbar |
+| **Vorhandenes Firmen-VPN** | es gibt schon eines | MailBurg ändert nichts daran – aber jemand muss es betreuen |
+| **Tailscale** | in einer Minute eingerichtet, auch von unterwegs | hängt an einem Anbieter; ab etwa fünf Zugängen kostenpflichtig |
+| **Öffentlich im Internet** | von überall, ohne Zutun der Nutzer | jede Lücke ist weltweit erreichbar |
+
+**Die kurze Antwort:** Im Firmennetz der Reverse Proxy. Von unterwegs
+ein VPN – das vorhandene, sonst Tailscale. Öffentlich nur, wenn beides
+ausscheidet.
+
+### Im Firmennetz
+
+Der einfache Fall. Der Dienst lauscht auf allen Adressen:
 
 ```
 MAILBURG_ADRESSE=0.0.0.0
 ```
 
-**Aber nicht ohne das Folgende.** Der Dienst spricht HTTP, nicht HTTPS.
-Ohne Verschlüsselung gehen Anmeldename und Passwort im Klartext über
-das Netz.
+**Aber nicht ohne TLS davor.** Der Dienst spricht HTTP; ohne
+Verschlüsselung gehen Anmeldename und Passwort im Klartext über das
+Netz – und in einem Firmennetz sitzt nicht nur, wer dort hingehört.
 
-Davor gehört ein Reverse Proxy mit TLS – nginx oder Caddy unter Debian,
-IIS unter Windows. Caddy besorgt sich das Zertifikat von selbst:
+Davor gehört ein Reverse Proxy: nginx oder Caddy unter Debian, IIS unter
+Windows. Mit Caddy sind es drei Zeilen:
 
 ```
-archiv.example.org {
+archiv.firma.intern {
     reverse_proxy 127.0.0.1:8383
 }
 ```
 
-Der Dienst bleibt dabei auf `127.0.0.1`; nur der Proxy ist von außen
-erreichbar.
+**Dann bleibt der Dienst auf `127.0.0.1`** und `MAILBURG_ADRESSE` bleibt
+unangetastet – nur der Proxy ist erreichbar. Das ist die bessere
+Aufteilung: Der Proxy kümmert sich um Zertifikate, Protokoll und
+Anfragenbegrenzung, MailBurg um das Archiv.
 
-> **Für den Zugang von unterwegs ist ein VPN der bessere Weg** als eine
-> Portfreigabe im Router. Ein Archiv mit zwanzig Jahren Geschäftspost
-> ist ein lohnenderes Ziel als das, was sonst so im Netz steht. Wenn es
-> doch öffentlich sein muss: HTTPS erzwingen, HSTS setzen, und die
-> Anmeldeseite hinter eine zusätzliche Hürde stellen.
+**Dafür:** Nichts zu installieren auf den Arbeitsplätzen, kein Konto bei
+Dritten, keine laufenden Kosten. Die Nutzer merken nichts – sie tippen
+eine Adresse ein.
+
+**Dagegen:** Von außerhalb des Netzes geht gar nichts. Wer im
+Homeoffice sitzt oder beim Kunden, kommt nicht heran. Und im internen
+Netz braucht ein Zertifikat entweder eine eigene Zertifizierungsstelle
+oder einen öffentlichen Namen, den die Firma besitzt – sonst warnt
+jeder Browser.
+
+### Von unterwegs: über ein VPN
+
+**Das ist der empfohlene Weg.** Der Dienst bleibt, wo er ist; das VPN
+bringt die Menschen hinein, statt das Archiv hinaus.
+
+Hat die Firma schon ein VPN, ändert sich an MailBurg gar nichts.
+
+Sonst ist **Tailscale** in einer Minute eingerichtet. Ein Befehl auf dem
+Server:
+
+```bash
+tailscale serve 8383
+```
+
+Danach ist das Archiv unter `https://servername.tailnet.ts.net`
+erreichbar – **nur für Geräte im eigenen Tailnet**, mit HTTPS ohne
+eigenes Zertifikat und ohne eine Portfreigabe im Router. Der Dienst
+selbst bleibt auf `127.0.0.1`; von außen ist nichts offen. Beim ersten
+Aufruf führt der Befehl durch das Einschalten der Zertifikate.
+
+Zwei Dinge, bevor das für eine Firma entschieden wird:
+
+**Es hängt an einem Anbieter.** Der Datenverkehr läuft verschlüsselt und
+direkt zwischen den Geräten, aber die Vermittlung übernimmt ein Dienst
+Dritter. Bei Geschäftspost ist das eine Überlegung wert. Wer denselben
+Aufbau selbst betreiben will, nimmt **Headscale**.
+
+**Und es kostet ab einer gewissen Zahl von Nutzern.** Bei fünfzig
+Zugängen ist der kostenlose Bereich verlassen; die Preisstufen ändern
+sich, das gehört vorher nachgerechnet.
+
+> **Nicht verwechseln:** `tailscale funnel` stellt denselben Dienst ins
+> offene Internet. Für ein Mailarchiv ist das der falsche Befehl.
+
+**Dafür:** Nichts steht offen im Netz – der Dienst bleibt auf
+`127.0.0.1`, es gibt keine Portfreigabe im Router und kein Zertifikat zu
+verwalten. Wer keinen Zugang zum Netz hat, sieht die Anmeldeseite gar
+nicht erst. Und ein VPN schützt auch dann noch, wenn in MailBurg selbst
+einmal eine Lücke steckt.
+
+**Dagegen:** Auf jedem Gerät muss etwas installiert und eingerichtet
+werden – bei fünfzig Menschen ist das eine Ansage. Bei Tailscale kommt
+die Abhängigkeit von einem Anbieter dazu und, ab einer gewissen Zahl,
+die Rechnung. Ein selbst betriebenes VPN kostet stattdessen Arbeit:
+Es muss jemand pflegen, aktualisieren und im Zweifel nachts wieder
+zum Laufen bringen.
+
+### Öffentlich – nur wenn es sein muss
+
+Technisch derselbe Reverse Proxy wie im Firmennetz, nur mit einem Namen,
+den die ganze Welt auflösen kann.
+
+**Davon ist abzuraten, solange einer der beiden anderen Wege möglich
+ist.** Nicht weil MailBurg schlecht wäre, sondern weil dann jede Lücke
+in Starlette, uvicorn oder MailBurg selbst aus dem ganzen Internet
+erreichbar ist – vor einem Archiv mit zwanzig Jahren Geschäftspost. Das
+ist ein lohnenderes Ziel als das meiste, was sonst im Netz steht.
+
+Wenn es doch sein muss, gehört dazu:
+
+* **HTTPS erzwingen**, HTTP nur als Weiterleitung, HSTS setzen.
+* **Anmeldeversuche auch auf Proxy-Ebene bremsen.** MailBurg begrenzt
+  sie je Anmeldename; der Proxy sollte es je Herkunftsadresse tun.
+* **Updates nicht schleifen lassen** – auch die von Starlette und
+  uvicorn, nicht nur die von MailBurg.
+* Und die Überlegung, ob das Archiv wirklich öffentlich erreichbar sein
+  muss oder ob ein VPN für die drei Leute genügt, die es von unterwegs
+  brauchen.
+
+**Dafür:** Es funktioniert von überall, ohne dass jemand etwas
+installiert. Ein Link genügt, auch auf einem fremden Rechner. Für
+Menschen, die selten und von wechselnden Orten zugreifen, ist das der
+einzige bequeme Weg.
+
+**Dagegen:** Alles, was am Dienst offensteht, steht der ganzen Welt
+offen – MailBurg, Starlette, uvicorn, der Proxy. Wer eine dieser
+Schichten nicht zeitnah aktualisiert, hat irgendwann ein Problem, von
+dem er nichts weiß. Dazu kommen ständige Anmeldeversuche von Fremden:
+Sie sind erwartbar, sie kommen ab dem ersten Tag, und sie hören nicht
+mehr auf.
+
+**Ein Zwischenweg, der beides mildert:** öffentlich erreichbar, aber
+hinter einer zweiten Hürde – Client-Zertifikate im Proxy, eine
+zusätzliche Anmeldung auf Proxy-Ebene oder eine Beschränkung auf
+bekannte Herkunftsadressen. Dann ist der Dienst nicht mehr ohne
+weiteres auffindbar, und die Anmeldeseite von MailBurg ist nicht das
+Einzige zwischen einem Fremden und dem Archiv.
 
 ## Wenn etwas klemmt
 
