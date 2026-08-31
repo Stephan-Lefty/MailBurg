@@ -192,7 +192,7 @@ def auswahlfelder_verbreitern(anwendung) -> None:
     """
     from PySide6.QtWidgets import QComboBox
 
-    from PySide6.QtWidgets import QDialog, QLabel, QScrollArea
+    from PySide6.QtWidgets import QDialog, QLabel, QLayout, QScrollArea
 
     class _Anpasser(QObject):
         def eventFilter(self, gegenstand, ereignis):
@@ -207,6 +207,7 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             ):
                 gegenstand.setSizeAdjustPolicy(QComboBox.AdjustToContents)
                 gegenstand.adjustSize()
+                self._liste_weiten(gegenstand)
 
             elif isinstance(gegenstand, QLabel) and gegenstand.wordWrap():
                 self._umbruch_hoehe(gegenstand)
@@ -214,6 +215,27 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             elif isinstance(gegenstand, QDialog):
                 self._dialog_weiten(gegenstand)
             return False
+
+        @staticmethod
+        def _liste_weiten(box) -> None:
+            """Gibt der aufgeklappten Liste die Breite ihrer Einträge.
+
+            **Die Liste ist ein eigenes Fenster.** Sie erbt die Breite
+            der Box nicht und bleibt bei dem, was Qt einmal ausgerechnet
+            hat – bei einer Vorgabeschrift. Wer die Schrift vergrößert,
+            bekommt größere Buchstaben in einer gleich schmalen Liste,
+            und die Einträge werden abgeschnitten.
+
+            Am 2026-08-31 von Stephan gemeldet: »Die Menüpunkte bei
+            Abstand sind nicht lesbar.« Nachgemessen: Die Box wuchs von
+            117 auf 223 px mit, die Liste blieb bei 120.
+            """
+            liste = box.view()
+            if liste is None:
+                return
+            gebraucht = liste.sizeHintForColumn(0)
+            # Platz für den Rollbalken, falls die Liste lang wird.
+            liste.setMinimumWidth(max(box.width(), gebraucht + 24))
 
         @staticmethod
         def _umbruch_hoehe(schild) -> None:
@@ -250,6 +272,20 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             """
             if dialog.findChildren(QScrollArea):
                 return
+
+            # **Qt soll es erzwingen, nicht wir es einmal einstellen.**
+            # Ein ``resize`` beim Öffnen hält nur bis zur nächsten
+            # Änderung: Wer danach die Schrift vergrößert, hat wieder
+            # ein Fenster, das zu klein ist für seinen Inhalt – und
+            # genau dann braucht er es am wenigsten.
+            #
+            # ``SetMinimumSize`` bindet die Mindestgröße dauerhaft an
+            # das Layout. Wächst der Text, wächst das Fenster mit; der
+            # Anwender kann es nicht kleiner ziehen, als lesbar ist.
+            aufbau = dialog.layout()
+            if aufbau is not None:
+                aufbau.setSizeConstraint(QLayout.SetMinimumSize)
+
             gebraucht = dialog.sizeHint()
             dialog.resize(
                 max(dialog.width(), gebraucht.width()),
