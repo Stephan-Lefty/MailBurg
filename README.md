@@ -47,7 +47,7 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 0.11.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
+**Fassung 0.12.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
 Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
 Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
 Bestand von über 16.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
@@ -209,7 +209,9 @@ Kontenliste kommt es auch dann nicht.
 
 Bei Gmail, GMX, Web.de und Outlook genügt das Kennwort der Weboberfläche nicht –
 diese Anbieter verlangen für den Zugriff von außen ein eigenes App-Passwort.
-Anmeldung per OAuth2 ist vorgesehen, aber noch nicht gebaut.
+Die Anmeldung per OAuth2 gibt es inzwischen ebenfalls, sie ist aber nur gegen
+einen nachgebauten Anbieter geprüft – siehe
+[Anmeldung per OAuth2](docs/oauth2.md).
 
 **Was übergangen wird:** Papierkorb, Spamverdacht und Entwürfe. Der Anwender hat
 diese Post schon einmal aussortiert; sie ins Archiv zu holen, würde diese

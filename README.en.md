@@ -46,7 +46,7 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 0.11.0, in daily use.** Archive format, IMAP retrieval, search, the
+**Version 0.12.0, in daily use.** Archive format, IMAP retrieval, search, the
 graphical interface, text recognition for scanned PDFs, backups and scheduled
 retrieval are all in place and used every day — on Linux with a corpus of more
 than 16,000 messages, on Windows with the ready-made `MailBurg.exe`.
@@ -180,8 +180,9 @@ password is simply asked for on every fetch. It is not written to the account
 list either way.
 
 Gmail, GMX, Web.de and Outlook do not accept your web password for outside
-access — they require an app-specific password. OAuth2 is planned but not built
-yet.
+access — they require an app-specific password. OAuth2 sign-in exists as well
+by now, but has only been tested against a mock provider — see
+[docs/oauth2.md](docs/oauth2.md) (German).
 
 **What is skipped:** trash, spam and drafts. The user already sorted that mail
 out once; pulling it into the archive would undo that decision. On Gmail, "All
