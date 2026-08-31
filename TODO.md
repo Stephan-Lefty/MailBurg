@@ -10,50 +10,32 @@ wurde.
 
 ### Muss vor dem ersten echten Einsatz passieren
 
-- [ ] **Die Server Edition.** Für **Debian Server** und **Windows Server
-  2025** oder jünger, erreichbar im Firmennetz und über das Internet per
-  Browser. Der Entwurf steht in [docs/server.md](docs/server.md); gebaut
-  ist noch nichts.
+- [ ] **Die Server Edition: die Archivverschlüsselung fehlt noch.** Alles
+  Übrige steht seit dem 2026-08-31 und ist am Vorführarchiv erprobt:
+  Benutzer und Rechte, die Rechteprüfung in der Suche, die Passwörter
+  ohne Schlüsselbund, der Dienst und der lesende Zugriff im Browser samt
+  Suchmaske und Anhängen.
 
-  **Sie kommt vor dem Import der 700.000 Mails** (Stephan, 2026-08-31).
-  Ein Bestand dieser Größe gehört nicht auf einen Arbeitsplatzrechner
-  und wandert nicht zweimal.
+  Zum Einrichten: [docs/server-einrichten.md](docs/server-einrichten.md).
+  Die Überlegungen dahinter: [docs/server.md](docs/server.md).
 
-  Die fünf Brocken, in Kürze: MailBurg kennt **keine Benutzer**; ohne
-  Desktop gibt es **keinen Schlüsselbund** und damit derzeit keinen Weg
-  an die Postfach-Passwörter; der Dienst muss auf beiden Systemen laufen;
-  HTTPS und Erreichbarkeit; und die **Archivverschlüsselung rückt nach
-  vorn**, weil die Begründung von 2026-08-25 auf einem Server nicht mehr
-  trägt.
+  **Warum die Verschlüsselung hierher gehört** und nicht nach unten zu
+  den übrigen Vorhaben: Die Entscheidung vom 2026-08-25, auf sie zu
+  verzichten, hatte eine Begründung – ohne sie wäre ein Startpasswort
+  Theater gewesen, denn die Mails liegen als Dateien im Ordner, und wer
+  am Rechner sitzt, liest sie ohnehin. Auf einem Server ist »wer am
+  Rechner sitzt« nicht mehr dieselbe Person wie »wer die Daten sehen
+  darf«, und Sicherungen wandern womöglich in eine Cloud. Die Begründung
+  trägt dort nicht mehr.
 
-  **Das Wappen steht** (2026-08-31): dieselbe Burg in Rot, SERVER als
-  Block über dem »urg« von Burg. Erzeugt aus der Desktop-Fassung durch
-  `werkzeuge/server_logo.py`, Farben in `assets/farben.md`.
+  Der Entwurf für die Umsetzung steht weiter unten unter
+  »Verschlüsselung, pro Archiv wählbar«.
 
-  **Kein eigenes Repository, entschieden am 2026-08-31.** Ein zweites
-  Repo hieße ein zweiter Kern – und zwei Archivformate, die
-  auseinanderlaufen, merkt niemand, bis ein Archiv nicht mehr lesbar
-  ist. Getrennt wird stattdessen im Repo: eigenes Verzeichnis
-  `mailburg/server/`, das nichts aus `mailburg/ui/` anfassen darf und
-  umgekehrt. `tests/test_schichten.py` hält das fest, seit dem
-  2026-08-31 und damit vor der ersten Zeile Servercode.
-
-  **Vorher aufzulösen:** `core/archive.py` und `core/nachfrage.py` holen
-  sich gemerkte Pfade aus `ui/app.py`. Heute harmlos – der Import ist
-  träge und zieht kein Qt nach –, für einen Dienst aber die falsche
-  Richtung. Die Sachen gehören in den Kern.
-
-  **Rechte je Postfach, entschieden am 2026-08-31.** Bis zu 50 Benutzer,
-  bis zu 60 Postfächer; der Verwalter legt am Server fest, wer welche
-  sehen darf – von einem einzigen bis zu allen.
-
-  Zwei Dinge daran sind die eigentliche Arbeit. Erstens: **Die
-  Rechteprüfung gehört in die Abfrage, nicht dahinter.** Wer erst sucht
-  und dann wegfiltert, verrät über die Trefferzahl, wie viel es sonst
-  noch gäbe. Zweitens: **Eine Mail kann in mehreren Postfächern
-  liegen.** Wer eines davon sehen darf, darf die Mail sehen – aber die
-  Fundortanzeige darf die übrigen nicht nennen, sonst verrät sie die
-  Struktur des ganzen Archivs.
+  **Was der Server außerdem noch nicht kann:** schreiben. Einstufen,
+  Löschen und das Zurücklegen ins Postfach bleiben der Kommandozeile und
+  dem Fenster vorbehalten. Das ist der Zuschnitt, nicht ein Mangel – die
+  Vorgänge schreiben ins Journal, und dort muss vorher geklärt sein, wer
+  sie auslösen darf.
 
 - [ ] **Das Datum folgt der Systemsprache, die Knöpfe nicht.** Ein
   Widerspruch, aufgefallen am 2026-08-31, als die Tests der Oberfläche
