@@ -1369,6 +1369,18 @@ class BestandsanzeigeTest(OberflaechenTest):
     """Ist mein Archiv auf dem Stand? Das muss man sehen, nicht glauben."""
 
     def test_zeitpunkt_wird_lesbar(self):
+        """»heute«, »gestern«, sonst das Datum.
+
+        **Ohne Punkte zu erwarten.** Das Datumsformat kommt aus
+        ``QLocale``, also aus den Systemeinstellungen – auf einem
+        deutschen Rechner »24.08.2026«, auf einem englischen
+        »8/24/2026«, auf einem Bauserver ohne Spracheinstellung
+        »24 08 2026«. Am 2026-08-31 in der CI aufgefallen, als die
+        Tests der Oberfläche dort zum ersten Mal liefen.
+
+        Geprüft wird deshalb, dass Tag, Monat und Jahr vorkommen –
+        nicht, womit sie getrennt sind.
+        """
         from datetime import datetime, timedelta
 
         from mailburg.ui.hauptfenster import _abrufzeit
@@ -1376,8 +1388,14 @@ class BestandsanzeigeTest(OberflaechenTest):
         jetzt = datetime.now().astimezone()
         self.assertIn("heute", _abrufzeit(jetzt.isoformat()))
         self.assertIn("gestern", _abrufzeit((jetzt - timedelta(days=1)).isoformat()))
+
         vorwoche = jetzt - timedelta(days=7)
-        self.assertIn(vorwoche.strftime("%d.%m.%Y"), _abrufzeit(vorwoche.isoformat()))
+        gezeigt = _abrufzeit(vorwoche.isoformat())
+        for teil in (f"{vorwoche:%d}", f"{vorwoche:%m}", f"{vorwoche:%Y}"):
+            with self.subTest(teil=teil):
+                self.assertIn(teil, gezeigt)
+        # Und die Uhrzeit, die MailBurg selbst formatiert.
+        self.assertIn(f"{vorwoche:%H:%M}", gezeigt)
 
     def test_ohne_abruf_wird_das_gesagt(self):
         from mailburg.ui.hauptfenster import _abrufzeit

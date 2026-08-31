@@ -55,6 +55,18 @@ wurde.
   Fundortanzeige darf die übrigen nicht nennen, sonst verrät sie die
   Struktur des ganzen Archivs.
 
+- [ ] **Das Datum folgt der Systemsprache, die Knöpfe nicht.** Ein
+  Widerspruch, aufgefallen am 2026-08-31, als die Tests der Oberfläche
+  zum ersten Mal in der CI liefen: `ui/app.py` stellt Qt **fest** auf
+  Deutsch, mit ausdrücklicher Begründung – das Programm sei von Grund auf
+  deutsch, englische Knöpfe daneben wären ein Bruch. `ui/datum.py` fragt
+  dagegen `QLocale` und damit die Systemeinstellung.
+
+  Auf einem englischen System steht deshalb »Weiter« neben »8/24/2026«,
+  auf einem Server ohne Spracheinstellung »24 08 2026«. Beide
+  Entscheidungen sind für sich vertretbar; zusammen sind sie
+  inkonsequent. Zu klären, welche gilt.
+
 - [ ] **Betreffmuster als Regelfeld?** Bewusst weggelassen: Der Betreff
   lässt sich fälschen, er wechselt im Verlauf eines Austauschs, und eine
   Regel auf »Rechnung« träfe auch die Werbemail, die so tut. Ordner und

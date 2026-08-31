@@ -50,6 +50,16 @@ down, with the date they were completed.
   but the location display must not name the others, or it reveals the structure
   of the whole archive.
 
+- [ ] **Dates follow the system language, the buttons do not.** A
+  contradiction noticed on 2026-08-31, when the interface tests first ran in
+  CI: `ui/app.py` pins Qt to German **deliberately** — the program is German
+  throughout, and English buttons beside it would be a break. `ui/datum.py`
+  asks `QLocale` instead, and thus the system setting.
+
+  On an English system that puts "Weiter" next to "8/24/2026"; on a server
+  with no locale, "24 08 2026". Either decision is defensible on its own;
+  together they are inconsistent. To be settled.
+
 - [ ] **Subject patterns as a rule field?** Deliberately left out: a subject can
   be forged, it changes over the course of an exchange, and a rule matching
   "invoice" would also catch the marketing mail pretending to be one. Folder and
