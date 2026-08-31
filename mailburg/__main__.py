@@ -83,7 +83,7 @@ def oeffnen(pfad, **kwargs) -> Archive:
     )
 
 
-def _passwort_erfragen() -> str:
+def _archivpasswort_erfragen() -> str:
     """Fragt ein neues Archivpasswort ab – zweimal, wie es sich gehört.
 
     **Zweimal, weil es hier keine Korrektur gibt.** Ein Tippfehler in
@@ -128,7 +128,7 @@ def cmd_anlegen(args: argparse.Namespace) -> int:
 
         print(krypto.hinweis_suchindex())
         print()
-        passwort = _passwort_erfragen()
+        passwort = _archivpasswort_erfragen()
         if not passwort:
             return 2
 
@@ -1270,7 +1270,7 @@ def cmd_passwort_aendern(args: argparse.Namespace) -> int:
     altes = getpass.getpass("Bisheriges Passwort (oder Notschlüssel): ")
     schluessel = huelle.oeffnen(altes)
 
-    neues = _passwort_erfragen()
+    neues = _archivpasswort_erfragen()
     if not neues:
         return 2
 

@@ -279,10 +279,11 @@ class Rueckholdialog(QDialog):
 class Uebernahmelauf(Auftrag):
     """Nimmt die Mails einer Sicherung ins offene Archiv auf."""
 
-    def __init__(self, archiv, datei: Path) -> None:
+    def __init__(self, archiv, datei: Path, passwort: str = "") -> None:
         super().__init__()
         self.archiv = archiv
         self.datei = datei
+        self.passwort = passwort
 
     def ausfuehren(self):
         from mailburg.core import sicherung
@@ -293,6 +294,7 @@ class Uebernahmelauf(Auftrag):
             self.datei,
             fortschritt=lambda n, von: self.fortschritt.emit(n, von),
             abbruch=lambda: self.abgebrochen,
+            passwort=self.passwort,
         )
 
 
@@ -347,9 +349,21 @@ class Uebernahmedialog(QDialog):
         if not datei:
             return
 
+        self._quelle = Path(datei)
+        self._starten()
+
+    def _starten(self, passwort: str = "") -> None:
+        """Startet die Übernahme – notfalls ein zweites Mal, mit Passwort.
+
+        **Ob die Sicherung verschlüsselt ist, weiß man erst nach dem
+        Entpacken.** Vorher danach zu fragen hieße, jeden zu fragen; und
+        wer eine unverschlüsselte Sicherung einliest, versteht die Frage
+        nicht. Deshalb: erst versuchen, und wenn es am Passwort liegt,
+        danach fragen.
+        """
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
         self.balken.setVisible(True)
-        auftrag = Uebernahmelauf(self.archiv, Path(datei))
+        auftrag = Uebernahmelauf(self.archiv, self._quelle, passwort)
         auftrag.meldung.connect(self.stand.setText)
         auftrag.fortschritt.connect(self._schritt)
         auftrag.fertig.connect(self._fertig)
@@ -376,6 +390,27 @@ class Uebernahmedialog(QDialog):
     def _gescheitert(self, text: str) -> None:
         self.balken.setVisible(False)
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(True)
+
+        if "verschlüsselt" in text or "Passwort" in text:
+            # Die Sicherung stammt aus einem verschlüsselten Archiv.
+            # Das Passwort kann ein ganz anderes sein als das des
+            # Zielarchivs - die beiden haben miteinander nichts zu tun.
+            from mailburg.ui.archivpasswort import PasswortFragen
+
+            dialog = PasswortFragen(
+                self, archivname="der Sicherung",
+                nochmal=bool(getattr(self, "_schon_gefragt", False)),
+            )
+            self._schon_gefragt = True
+            if dialog.exec() and dialog.geheimnis:
+                self._starten(dialog.geheimnis)
+                return
+            self.stand.setText(
+                "<b>Nicht eingelesen:</b> Ohne Passwort lässt sich diese "
+                "Sicherung nicht öffnen."
+            )
+            return
+
         self.stand.setText(f"<b>Nicht eingelesen:</b> {text}")
 
     def _abbrechen(self) -> None:

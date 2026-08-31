@@ -9,30 +9,31 @@ down, with the date they were completed.
 
 ### Needed before real-world use
 
-- [ ] **The Server Edition: archive encryption is still missing.** Everything
-  else has been in place since 2026-08-31 and exercised against the demo
-  archive: users and permissions, the permission check inside search,
-  passwords without a keyring, the service, and read access in the browser
-  including the search form and attachments.
+- [ ] **Exercise encryption on a real archive.** Built and tested since
+  2026-08-31, but nobody has yet worked with it day to day. In this order:
 
-  Setting it up: [docs/server-einrichten.md](docs/server-einrichten.md)
-  (German). The reasoning behind it: [docs/server.md](docs/server.md).
+  1. Create a small encrypted archive, fetch a few messages, close it,
+     open it, search, restore a message.
+  2. **Actually use the recovery key** — not just print it. A second way
+     in that nobody has ever walked is not a way in.
+  3. Back up, restore the backup into a fresh archive, verify.
+  4. Change the passphrase, then try both: the new one and the recovery
+     key.
+  5. Run the schedule overnight with the passphrase stored. That is where
+     a fault would stay unnoticed the longest.
 
-  **Why encryption belongs here** and not further down with the other
-  plans: the decision of 2026-08-25 to do without it had a reason — without
-  it a startup password would have been theatre, since the messages sit as
-  files in a folder and whoever is at the machine reads them anyway. On a
-  server, "whoever is at the machine" is no longer the same person as
-  "whoever may see the data", and backups may travel to a cloud. That
-  reasoning no longer holds there.
+  **And then the question of whether Stephan's two live archives move.**
+  Encrypting in place is not possible; the route is a backup into a new
+  archive, and the hash chain starts over. For the business archive that
+  is a judgement call, not a formality: the break in the chain of
+  evidence needs a reason, and the old archive has to stay for as long as
+  retention periods run.
 
-  The design for it is further down under "Encryption, selectable per
-  archive".
-
-  **What the server also cannot do yet:** write. Classifying, deleting and
+- [ ] **What the server cannot do:** write. Classifying, deleting and
   restoring to a mailbox stay with the command line and the window. That is
   the scope, not a defect — those operations write to the journal, and who
-  may trigger them has to be settled first.
+  may trigger them has to be settled first. It is listed so that it stays a
+  decision rather than becoming an oversight.
 
 - [ ] **Subject patterns as a rule field?** Deliberately left out: a subject can
   be forged, it changes over the course of an exchange, and a rule matching
@@ -74,12 +75,24 @@ down, with the date they were completed.
   without an internet connection, and whether a free provider such as FreeTSA
   carries enough evidentiary weight.
 
-- [ ] **Encryption, selectable per archive.** Key derived from the passphrase via
-  Argon2id, every file individually with AES-256-GCM. The file name may then no
-  longer be the plaintext hash but `HMAC(key, hash)` — otherwise the directory
-  alone reveals which messages the archive holds. On creation, a printable
-  recovery key must be offered, along with a plain warning: without the
-  passphrase a long-term archive is gone for good.
+- [ ] **Encrypt the search index too.** The open flank of archive
+  encryption: it lives outside the archive and holds subject, sender and
+  full text in the clear.
+
+  For the case it was built for — a backup in the cloud, a lost external
+  disk — the current scope suffices, since the index does not travel
+  along. On a server it sits right next to the archive, and there only
+  full-disk encryption helps.
+
+  **Why it is not easy:** SQLite with FTS5 needs plaintext to search.
+  SQLCipher would be the usual route but is a third-party package that
+  has to be compiled. Keeping it all in memory is out: 5,187 messages
+  make a 95 MB index, so 700,000 would be around 13 GB. Encrypting
+  field by field breaks full-text search.
+
+  While this is open, the caveat in `krypto.hinweis_suchindex()` must
+  stay and must appear in every guide. Encryption with a gap nobody
+  names is worse than none.
 
 - [ ] **More mail sources.** Outlook PST/OST via `libpff`, Apple Mail `.emlx`.
 
@@ -183,6 +196,29 @@ they sit here and not in the running list.
 ## Done
 
 ### 2026-08-31
+
+- [x] **Archive encryption.** (2026-08-31) The last open piece of the
+  Server Edition. `mailburg anlegen … --verschluesseln`, or the checkbox
+  in the wizard; messages and journal are encrypted, that is everything
+  inside the archive folder. Guide:
+  [docs/verschluesselung.md](docs/verschluesselung.md) (German).
+
+  Two levels (an archive key, wrapped in both the passphrase *and* a
+  recovery key) so that changing the passphrase does not mean rewriting
+  700,000 files. File names are masked too — the plaintext hash would
+  have revealed whether a given message is in the archive.
+
+  scrypt instead of Argon2id, against the original design: it ships in
+  `hashlib`, and an archiving program should still reach its keys in
+  twenty years without installing anything.
+
+  **The search index stays open** — see "Encrypt the search index too"
+  above. That caveat is stated in every guide.
+
+  Three faults surfaced while building it, two of them in old code: the
+  derivation parameters that did not match what the key was derived
+  with; the truncated journal line that locked the archive out; and the
+  lock file left behind, again.
 
 - [x] **Conversation threads.** (2026-08-31) When a matter went back and
   forth, MailBurg now shows the whole exchange: in the preview as a line

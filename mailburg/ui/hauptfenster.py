@@ -10,6 +10,7 @@ man dazunehmen kann, aber nicht muss.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -48,6 +49,8 @@ TREFFERANTEIL = 0.42
 from mailburg.core.accounts import Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked
 from mailburg.core.index import IndexOutdated
+from mailburg.core.journal import JournalBeschaedigt
+from mailburg.core.krypto import KryptoFehler
 from mailburg.search.query import QueryError
 from mailburg.ui import datum, farben
 from mailburg.ui import farben
@@ -67,6 +70,11 @@ class Hauptfenster(QMainWindow):
     def __init__(self, archiv_pfad: Path) -> None:
         super().__init__()
         self.archiv: Archive | None = None
+        #: Das Passwort des offenen Archivs, solange es offen ist.
+        #: Gebraucht fuer Arbeitsgaenge, die es selbst noch einmal
+        #: oeffnen - der Neuaufbau etwa laeuft in einem eigenen Faden.
+        self._geheimnis = ""
+        self._geheimnis_fuer: Path | None = None
         self.laeufer: Läufer | None = None
         self.ocr_laeufer: Läufer | None = None
 
@@ -442,21 +450,46 @@ class Hauptfenster(QMainWindow):
 
     # ------------------------------------------------------------- Archiv
 
-    def _oeffnen(self, pfad: Path) -> None:
+    def _oeffnen(self, pfad: Path, geheimnis: str | None = None) -> None:
+        """Öffnet ein Archiv im Fenster.
+
+        ``geheimnis`` überspringt die Passwortabfrage. Das braucht, wer
+        es ohnehin gerade hat: der Assistent direkt nach dem Anlegen und
+        der Neuaufbau, der dasselbe Archiv wieder aufmacht. **Als
+        Parameter und nicht als gemerkter Zustand**, denn beim Wechsel
+        von einem verschlüsselten Archiv zum nächsten wäre ein
+        gemerktes Passwort das falsche - und der Anwender bekäme »geht
+        nicht« statt einer Frage.
+        """
         if self.archiv is not None:
             self.archiv.close()
             self.archiv = None
 
+        if geheimnis is None:
+            geheimnis = self._geheimnis_besorgen(Path(pfad))
+        if geheimnis is None:
+            return
+
         try:
             # Nur lesend: Ein laufender Abruf im Hintergrund soll das
             # Fenster nicht aussperren, und umgekehrt.
-            self.archiv = Archive.open(Path(pfad), exclusive=False)
+            self.archiv = Archive.open(
+                Path(pfad), exclusive=False, passwort=geheimnis
+            )
         except IndexOutdated:
             self._index_veraltet(Path(pfad))
+            return
+        except JournalBeschaedigt as exc:
+            QMessageBox.critical(self, "Das Protokoll ist beschädigt", str(exc))
+            return
+        except KryptoFehler as exc:
+            QMessageBox.critical(self, "Archiv lässt sich nicht öffnen", str(exc))
             return
         except (ArchiveError, ArchiveLocked, OSError) as exc:
             QMessageBox.critical(self, "Archiv lässt sich nicht öffnen", str(exc))
             return
+        self._geheimnis = geheimnis
+        self._geheimnis_fuer = Path(pfad)
 
         self.modell.suchindex = self.archiv.index
         self.setWindowTitle(f"{APP_NAME} – {self.archiv.name}")
@@ -486,7 +519,13 @@ class Hauptfenster(QMainWindow):
         if not assistent.exec() or assistent.archiv_pfad is None:
             return
 
-        self._oeffnen(assistent.archiv_pfad)
+        # Wurde gerade ein verschlüsseltes Archiv angelegt, ist das
+        # Passwort noch warm. Gleich wieder danach zu fragen wäre eine
+        # Zumutung - der Anwender hat es eben zweimal eingetippt.
+        self._oeffnen(
+            assistent.archiv_pfad,
+            geheimnis=getattr(assistent, "archiv_passwort", "") or None,
+        )
         if self.archiv is not None:
             from mailburg.core.einstellungen import merken
 
@@ -860,6 +899,53 @@ class Hauptfenster(QMainWindow):
         if antwort == QMessageBox.Yes:
             self._neuaufbau()
 
+    def _geheimnis_besorgen(self, pfad: Path) -> str | None:
+        """Fragt nach dem Passwort, wenn das Archiv verschlüsselt ist.
+
+        Gibt ``""`` zurück, wenn keines nötig ist, und ``None``, wenn
+        jemand abgebrochen hat – dann bleibt das Fenster, wie es war.
+
+        Gefragt wird nur, wenn es nicht hinterlegt ist. Wer das Passwort
+        im Tresor abgelegt hat, um den Zeitplan laufen zu lassen, will
+        es nicht bei jedem Öffnen wieder eintippen; er hat sich für
+        Bequemlichkeit entschieden, und das gilt dann überall.
+        """
+        if not Archive.ist_verschluesselt(pfad):
+            return ""
+
+        from mailburg.core import passwort as passwort_modul
+
+        hinterlegt = passwort_modul.hinterlegt(pfad)
+        if hinterlegt:
+            return hinterlegt
+
+        from mailburg.core import krypto
+        from mailburg.ui.archivpasswort import PasswortFragen
+
+        name = _archivname(pfad)
+        huelle = None
+        try:
+            meta = json.loads((pfad / "archive.json").read_text(encoding="utf-8"))
+            huelle = krypto.Huelle.aus_json(meta["encryption"])
+        except (OSError, ValueError, KeyError, krypto.KryptoFehler):
+            # Dann scheitert gleich das Öffnen mit einer eigenen Meldung.
+            return ""
+
+        nochmal = False
+        while True:
+            dialog = PasswortFragen(self, archivname=name, nochmal=nochmal)
+            if not dialog.exec():
+                return None
+            try:
+                huelle.oeffnen(dialog.geheimnis)
+            except krypto.KryptoFehler:
+                # **Hier prüfen, nicht erst beim Öffnen.** Sonst müsste
+                # nach jedem Vertipper das halbe Fenster neu aufgebaut
+                # werden, nur um wieder zu fragen.
+                nochmal = True
+                continue
+            return dialog.geheimnis
+
     def _index_veraltet(self, pfad: Path) -> None:
         """Der Index stammt aus einer älteren Fassung – anbieten, ihn zu bauen.
 
@@ -897,9 +983,10 @@ class Hauptfenster(QMainWindow):
         from mailburg.ui.arbeit import Auftrag, Läufer
 
         class Aufbau(Auftrag):
-            def __init__(self, pfad):
+            def __init__(self, pfad, geheimnis):
                 super().__init__()
                 self.pfad = pfad
+                self.geheimnis = geheimnis
 
             def ausfuehren(self):
                 from mailburg.core.archive import Archive
@@ -908,7 +995,9 @@ class Hauptfenster(QMainWindow):
                 # einer älteren Fassung stammen kann und sich dann nicht
                 # öffnen lässt. Für den Neuaufbau ist er ohnehin
                 # wertlos - die nächste Zeile schreibt ihn komplett neu.
-                with Archive.open(self.pfad, index_verwerfen=True) as archiv:
+                with Archive.open(
+                    self.pfad, index_verwerfen=True, passwort=self.geheimnis
+                ) as archiv:
                     return archiv.rebuild_index(progress=self._melden)
 
             def _melden(self, erledigt, gesamt):
@@ -918,6 +1007,17 @@ class Hauptfenster(QMainWindow):
             # Kommt der Aufruf von einem Menüpunkt, steht hier Qts
             # »checked«-Kennzeichen statt eines Pfads.
             pfad = self.archiv.root
+
+        # Der Aufbau öffnet das Archiv im Arbeitsfaden selbst und
+        # braucht dafür das Passwort. Kommt der Aufruf von
+        # _index_veraltet, ist noch keines abgefragt worden - dort hat
+        # das Öffnen ja nie stattgefunden.
+        geheimnis = self._geheimnis
+        if not geheimnis or pfad != getattr(self, "_geheimnis_fuer", None):
+            geheimnis = self._geheimnis_besorgen(pfad)
+            if geheimnis is None:
+                return
+
         # Ein eigenes Handle muss weg: Der Aufbau schreibt in den Index.
         if self.archiv is not None:
             self.archiv.close()
@@ -928,10 +1028,12 @@ class Hauptfenster(QMainWindow):
         self.balken.setFormat("%v von %m Mails")
         self.balken.show()
 
-        auftrag = Aufbau(pfad)
+        auftrag = Aufbau(pfad, geheimnis)
         # Gebundene Methoden, keine Lambdas - siehe die Regel in
         # ui/arbeit.py. Welches Archiv gemeint ist, steht am Fenster.
         self._aufbau_pfad = pfad
+        self._geheimnis = geheimnis
+        self._geheimnis_fuer = pfad
         auftrag.fortschritt.connect(self._erkennung_schritt)
         auftrag.fertig.connect(self._nach_neuaufbau)
         auftrag.gescheitert.connect(self._abruf_gescheitert)
@@ -941,7 +1043,9 @@ class Hauptfenster(QMainWindow):
     def _nach_neuaufbau(self, _anzahl=None) -> None:
         self.balken.hide()
         self.balken.setFormat("%p%")
-        self._oeffnen(self._aufbau_pfad)
+        # Das Passwort liegt vom Aufbau noch vor; danach noch einmal zu
+        # fragen wäre unverständlich - es hat sich ja nichts geändert.
+        self._oeffnen(self._aufbau_pfad, geheimnis=self._geheimnis or None)
         self.stand.setText("Der Suchindex ist wieder aufgebaut.")
 
     def _bestand_zeigen(self) -> None:

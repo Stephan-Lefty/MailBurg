@@ -38,7 +38,9 @@ def _archiv(lage):
     """
     from mailburg.core.archive import Archive
 
-    return Archive.open(lage.archiv, exclusive=False)
+    return Archive.open(
+        lage.archiv, exclusive=False, passwort=lage.passwort
+    )
 
 
 def routen(lage, sitzungen):

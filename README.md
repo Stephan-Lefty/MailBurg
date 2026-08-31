@@ -44,6 +44,10 @@ MailBurg macht es andersherum:
   ohne MailBurg kommen Sie an jede einzelne heran.
 - **Der Suchindex ist wegwerfbar.** Er lässt sich jederzeit vollständig aus dem
   Archiv neu erzeugen und muss deshalb nicht gesichert werden.
+- **Verschlüsseln, wenn die Post das Haus verlässt.** Wahlweise beim Anlegen:
+  Mails und Protokoll wandern dann verschlüsselt auf die Platte, samt
+  verdeckter Dateinamen. Dazu ein Notschlüssel zum Ausdrucken – ein Archiv
+  überdauert Jahrzehnte, ein Passwort im Kopf nicht.
 
 ## Stand
 
@@ -56,8 +60,11 @@ OAuth2 ist gebaut, aber nur gegen einen nachgebauten Anbieter geprüft: Bei
 einem echten Microsoft- oder Google-Konto hat sich damit noch niemand
 angemeldet. Wer dort abruft, nimmt vorerst besser ein App-Passwort.
 
-Was noch fehlt: Outlook-`.pst`, Verschlüsselung je Archiv, Pakete für alle
-drei Systeme. Und der Betrieb unter macOS ist ungeprüft. Die vollständige
+Verschlüsselte Archive gibt es seit dem 31.08.2026 – gebaut und getestet,
+aber im Alltag noch nicht erprobt. Siehe
+[docs/verschluesselung.md](docs/verschluesselung.md).
+
+Was noch fehlt: Outlook-`.pst`, Pakete für alle drei Systeme. Und der Betrieb unter macOS ist ungeprüft. Die vollständige
 Liste steht in [TODO.md](TODO.md).
 
 ## Wie es funktioniert
@@ -155,6 +162,7 @@ er kann dann auch nur das Nötigste. Was wozu gehört:
 | `imap` | Postfächer abrufen, Passwörter im Schlüsselbund | kein IMAP |
 | `anhaenge` | Text aus PDF und Büroformaten | Anhänge bleiben unauffindbar |
 | `packen` | kleinere Sicherungen (Zstandard) | LZMA, langsamer |
+| `verschluesselung` | verschlüsselte Archive | nur unverschlüsselt |
 
 `pip install ".[oberflaeche]"` genügt also nicht, um Postfächer abzurufen –
 dafür braucht es `imap` dazu. Am einfachsten ist `".[alles]"`.

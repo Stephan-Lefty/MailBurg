@@ -11,6 +11,59 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Die Archivverschlüsselung.** Ein Archiv lässt sich mit einem Passwort
+  anlegen — im Assistenten unter *Schutz*, auf der Kommandozeile mit
+  `mailburg anlegen … --verschluesseln`. Verschlüsselt werden die Mails und
+  das Journal, also alles, was im Archivordner liegt und was in eine
+  Sicherung wandert. Anleitung:
+  [docs/verschluesselung.md](docs/verschluesselung.md).
+
+  **Auch die Dateinamen.** Sie waren der SHA-256 der Mail, und den kann
+  jeder ausrechnen, der die Mail selbst hat: Der Inhalt wäre verschlüsselt
+  und die Frage »liegt diese Nachricht im Archiv?« trotzdem beantwortet.
+  Jetzt steht dort ein HMAC darüber.
+
+  **Zwei Ebenen, damit ein Passwortwechsel möglich bleibt.** Die Daten
+  hängen an einem zufälligen Archivschlüssel, der eingewickelt in
+  `archive.json` liegt — einmal mit dem Passwort, einmal mit einem
+  Notschlüssel. Hinge die Verschlüsselung direkt am Passwort, müsste ein
+  Wechsel 700.000 Dateien neu schreiben, mitten darin ein Archiv, das halb
+  dem alten und halb dem neuen Passwort gehört. So sind es ein paar hundert
+  Byte, und `mailburg passwort aendern` ist in einem Augenblick durch.
+
+  **Der Notschlüssel ist kein Beiwerk.** Ein Langzeitarchiv überlebt das
+  Gedächtnis seines Besitzers — wer nach sieben Jahren eine Rechnung
+  braucht, hat das Passwort von damals womöglich nicht mehr. 32 Zeichen zum
+  Ausdrucken, ohne `I`, `O`, `0` und `1`: Die sind auf Papier nicht sicher
+  zu unterscheiden. Er erscheint genau einmal.
+
+  **Das Journal gehört mit darunter**, Zeile für Zeile. In ihm stehen
+  Absender, Betreff, Postfach und Ordner jeder Mail; ein verschlüsseltes
+  `mail/` neben einem lesbaren `meta/` wäre ein verschlossener Schrank mit
+  einem Inhaltsverzeichnis an der Tür. Die Hash-Kette rechnet weiter über
+  den Klartext und bleibt unverändert prüfbar.
+
+  **scrypt statt Argon2id**, gegen den ursprünglichen Entwurf: scrypt steckt
+  in `hashlib`. Ein Archivprogramm, das seine Daten in zwanzig Jahren noch
+  aufbekommen soll, sollte für die Schlüsselableitung nichts brauchen, was
+  man erst installieren muss.
+
+  **Was nicht geschützt ist, steht überall dabei:** der Suchindex. Er liegt
+  außerhalb des Archivs und enthält Betreff, Absender und Text im Klartext —
+  anders könnte er nicht suchen. Für den Anlass, um den es geht (Sicherung
+  in der Cloud, verlorene Platte, weitergegebener Ordner), genügt das, denn
+  der Index wandert dort nicht mit. Wer den ganzen Rechner absichern will,
+  verschlüsselt die Platte.
+
+  Für Zeitplan und Dienst lässt sich das Passwort hinterlegen
+  (`mailburg passwort hinterlegen`). Ein Abruf, der nachts um drei auf eine
+  Eingabe wartet, ist der gefährlichste Fehlerfall des Programms: kein
+  Krachen, nur Stille, bis Wochen später auffällt, dass nichts mehr
+  archiviert wurde. Was das an Schutz kostet, steht in der Anleitung.
+
+  **Nachträglich verschlüsseln geht nicht.** Der Umstieg führt über eine
+  Sicherung in ein neues Archiv.
+
 - **Die Server Edition.** Ein Archiv, auf das mehrere Menschen aus dem
   Firmennetz und über das Internet zugreifen — im Browser, lesend. Bis zu
   50 Zugänge, bis zu 60 Postfächer.
@@ -79,6 +132,34 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   und der Befehl selbst kommt auch dann noch an das Archiv heran, wenn sein
   Index veraltet ist — sonst verwiese die Meldung auf einen Weg, der am
   selben Fehler scheitert.
+
+### Behoben
+
+- **Ein Stromausfall mitten im Abruf sperrte das Archiv aus.** Bricht das
+  Schreiben mitten in einer Journalzeile ab, bleibt eine halbe Zeile stehen.
+  Der Docstring von `_scan_tail` behauptete seit jeher, die zu überspringen —
+  der Code tat es nicht: `json.loads` warf, und das Archiv war überhaupt
+  nicht mehr zu öffnen.
+
+  Jetzt wird sie übersprungen *und aus der offenen Datei entfernt*. Ohne das
+  Zweite wäre die Nachsicht eine Falle: Eine abgebrochene Zeile endet nicht
+  auf einem Zeilenumbruch, der nächste Eintrag klebte an ihr fest, und aus
+  einem verlorenen würden zwei — der zweite einer, den MailBurg für
+  geschrieben hält.
+
+  Die Nachsicht gilt nur der letzten Zeile. Eine kaputte mittendrin kann kein
+  Absturz verursacht haben; dort soll es krachen.
+
+- **Ein beschädigtes Journal warf einen Traceback.** Wer sein Archiv nicht
+  mehr aufbekommt, denkt an Datenverlust und braucht als Erstes einen Satz
+  dazu, wo seine Mails geblieben sind. Es gibt jetzt eine Meldung, die das
+  sagt und den Weg über die Sicherung nennt.
+
+- **Die Sperrdatei blieb liegen, wenn das Journal beim Öffnen scheiterte.**
+  Derselbe Fehler wie tags zuvor beim Index, an derselben Stelle: Ein
+  `__init__`, das fliegt, hinterlässt kein Objekt, und niemand ruft mehr
+  `close()`. Aus einem Problem wurden zwei, das zweite ohne erkennbaren
+  Grund. Der Bereich umfasst jetzt beides.
 
 ### Geändert
 

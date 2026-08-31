@@ -41,6 +41,7 @@ from mailburg import APP_NAME, QUELLTEXT_URL
 from mailburg.core import accounts, orte, sprache
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, Mode
+from mailburg.core.krypto import KryptoFehler
 from mailburg.core.retention import QUELLEN, Jurisdiction
 from mailburg.ui import bilder, farben
 from mailburg.ui.arbeit import Anmeldeprobe, Läufer, alle_abbrechen
@@ -443,6 +444,30 @@ class ArchivSeite(QWizardPage):
         innen.addWidget(geschaeft_text)
         innen.addLayout(fristen)
 
+        # **Nicht vorangekreuzt.** Verschlüsselung ist die richtige Wahl
+        # für ein Archiv, das aus dem Haus geht - und die falsche für
+        # jemanden, der beim Einrichten schnell weiterklickt und Jahre
+        # später vor einem Passwort steht, das er nie bewusst vergeben
+        # hat. Wer sie einschaltet, soll das gemeint haben.
+        self.verschluesseln = QCheckBox("Das Archiv verschlüsseln")
+        self.verschluesseln.setAccessibleName("Archiv verschlüsseln")
+        verschluesselung_text = QLabel(
+            "Sinnvoll, wenn das Archiv auf einer externen Platte liegt, in "
+            "eine Cloud gesichert wird oder auf einem Server steht. Sie "
+            "vergeben gleich ein Passwort und bekommen einen Notschlüssel "
+            "zum Ausdrucken.\n\n"
+            "Ohne eines von beidem kommt niemand mehr an die Mails, auch "
+            "der Hersteller nicht. Und nachträglich lässt sich ein Archiv "
+            "nicht verschlüsseln."
+        )
+        verschluesselung_text.setWordWrap(True)
+        verschluesselung_text.setIndent(24)
+
+        schutz = QGroupBox("Schutz")
+        schutz_innen = QVBoxLayout(schutz)
+        schutz_innen.addWidget(self.verschluesseln)
+        schutz_innen.addWidget(verschluesselung_text)
+
         inhalt = QWidget()
         innen = QVBoxLayout(inhalt)
         innen.setContentsMargins(0, 0, 12, 0)
@@ -455,6 +480,8 @@ class ArchivSeite(QWizardPage):
         innen.addWidget(hinweis)
         innen.addSpacing(12)
         innen.addWidget(art)
+        innen.addSpacing(12)
+        innen.addWidget(schutz)
         innen.addStretch()
 
         # Wie auf der Willkommensseite: Lieber rollen als abschneiden.
@@ -606,15 +633,40 @@ class ArchivSeite(QWizardPage):
             )
             return False
 
+        passwort = ""
+        if self.verschluesseln.isChecked():
+            from mailburg.ui.archivpasswort import NeuesPasswortFragen
+
+            dialog = NeuesPasswortFragen(self)
+            if not dialog.exec():
+                # Kein Archiv anlegen. Wer die Verschlüsselung
+                # abbricht, will keines ohne - sonst hätte er das
+                # Häkchen nicht gesetzt.
+                return False
+            passwort = dialog.passwort
+
         try:
             archiv = Archive.create(
                 ziel,
                 mode=self.betriebsart,
                 jurisdiction=self.rechtsraum.currentData(),
+                passwort=passwort,
             )
         except (ArchiveError, OSError) as exc:
             QMessageBox.critical(self, "Anlegen gescheitert", str(exc))
             return False
+        except KryptoFehler as exc:
+            # Fehlt »cryptography«, ist hier Schluss - und zwar bevor
+            # ein halbes Archiv dasteht. Die Meldung sagt, was zu tun
+            # ist.
+            QMessageBox.critical(self, "Verschlüsseln nicht möglich", str(exc))
+            return False
+
+        if passwort:
+            from mailburg.ui.archivpasswort import NotschluesselZeigen
+
+            self.wizard().archiv_passwort = passwort
+            NotschluesselZeigen(archiv.notschluessel, self).exec()
 
         # Die Kennung merken, nicht nur den Pfad: Postfächer werden ihr
         # zugeordnet, und ein Archiv auf einer externen Platte liegt
@@ -1427,6 +1479,10 @@ class Einrichtungsassistent(QWizard):
     def __init__(self, eltern=None) -> None:
         super().__init__(eltern)
         self.archiv_pfad: Path | None = None
+        #: Nur gesetzt, wenn gerade ein verschlüsseltes Archiv angelegt
+        #: wurde. Damit das Hauptfenster es gleich öffnen kann, ohne
+        #: unmittelbar nach dem Anlegen wieder danach zu fragen.
+        self.archiv_passwort: str = ""
         self.konten: list[Konto] = []
 
         self.setWindowTitle(f"{APP_NAME} einrichten")

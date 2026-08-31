@@ -105,6 +105,34 @@ getrennt und lässt sich jederzeit neu aufbauen – aus dem Protokoll,
 das die eigentliche Wahrheit ist (siehe <a href="#journal">Das
 Journal</a>).</p>
 
+<h3>Verschlüsselte Archive</h3>
+
+<p>Beim Anlegen können Sie ein Archiv <b>verschlüsseln</b>. Sinnvoll ist
+das, wenn es auf einer externen Platte liegt, in eine Cloud gesichert
+wird oder auf einem Server steht – überall dort, wo die Mails das Haus
+verlassen.</p>
+
+<p>Verschlüsselt werden die Nachrichten und das Protokoll, also alles im
+Archivordner. <b>Nicht der Suchindex:</b> Der liegt außerhalb und
+enthält Betreff, Absender und Text im Klartext – anders könnte er nicht
+suchen. Für eine Sicherung in der Cloud oder eine verlorene Platte
+genügt das, denn der Index wandert dort nicht mit. Wer den ganzen
+Rechner absichern will, verschlüsselt die Platte.</p>
+
+<p><b>Der Notschlüssel ist der wichtigste Teil.</b> Er erscheint einmal
+beim Anlegen und öffnet das Archiv anstelle des Passworts. Drucken Sie
+ihn aus – ein Archiv überdauert Jahrzehnte, ein Passwort im Kopf nicht.
+Legen Sie ihn nicht auf dieselbe Platte: Ein Schlüssel neben dem Schloss
+ist keiner.</p>
+
+<p>Sind Passwort und Notschlüssel beide weg, ist das Archiv verloren. Es
+gibt keine Hintertür – das ist die Bedingung dafür, dass die
+Verschlüsselung überhaupt etwas wert ist.</p>
+
+<p><b>Nachträglich lässt sich ein Archiv nicht verschlüsseln.</b> Wer
+umsteigen will, legt ein neues an und spielt eine Sicherung des alten
+hinein.</p>
+
 {menue}
 """
 

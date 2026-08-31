@@ -10,32 +10,33 @@ wurde.
 
 ### Muss vor dem ersten echten Einsatz passieren
 
-- [ ] **Die Server Edition: die Archivverschlüsselung fehlt noch.** Alles
-  Übrige steht seit dem 2026-08-31 und ist am Vorführarchiv erprobt:
-  Benutzer und Rechte, die Rechteprüfung in der Suche, die Passwörter
-  ohne Schlüsselbund, der Dienst und der lesende Zugriff im Browser samt
-  Suchmaske und Anhängen.
+- [ ] **Die Verschlüsselung an einem echten Archiv erproben.** Gebaut und
+  getestet ist sie seit dem 2026-08-31, aber noch nie hat jemand damit
+  im Alltag gearbeitet. Zu prüfen, in dieser Reihenfolge:
 
-  Zum Einrichten: [docs/server-einrichten.md](docs/server-einrichten.md).
-  Die Überlegungen dahinter: [docs/server.md](docs/server.md).
+  1. Ein kleines verschlüsseltes Archiv anlegen, ein paar Mails abrufen,
+     schließen, öffnen, suchen, eine Nachricht zurückholen.
+  2. **Den Notschlüssel wirklich benutzen** – nicht nur ausdrucken.
+     Ein zweiter Weg hinein, den niemand je gegangen ist, ist keiner.
+  3. Sichern, die Sicherung in ein neues Archiv einspielen, prüfen.
+  4. Das Passwort wechseln und danach beides probieren: neues Passwort
+     und Notschlüssel.
+  5. Den Zeitplan mit hinterlegtem Passwort über Nacht laufen lassen.
+     Das ist der Punkt, an dem ein Fehler am längsten unbemerkt bliebe.
 
-  **Warum die Verschlüsselung hierher gehört** und nicht nach unten zu
-  den übrigen Vorhaben: Die Entscheidung vom 2026-08-25, auf sie zu
-  verzichten, hatte eine Begründung – ohne sie wäre ein Startpasswort
-  Theater gewesen, denn die Mails liegen als Dateien im Ordner, und wer
-  am Rechner sitzt, liest sie ohnehin. Auf einem Server ist »wer am
-  Rechner sitzt« nicht mehr dieselbe Person wie »wer die Daten sehen
-  darf«, und Sicherungen wandern womöglich in eine Cloud. Die Begründung
-  trägt dort nicht mehr.
+  **Und dann die Frage, ob Stephans zwei laufende Archive umziehen.**
+  Nachträglich verschlüsseln geht nicht; der Weg führt über eine
+  Sicherung in ein neues Archiv, und dabei beginnt die Hash-Kette von
+  vorn. Für das Geschäftsarchiv ist das eine Abwägung, keine
+  Selbstverständlichkeit: Der Schnitt in der Nachweiskette will begründet
+  sein, und das alte Archiv muss bleiben, solange Fristen laufen.
 
-  Der Entwurf für die Umsetzung steht weiter unten unter
-  »Verschlüsselung, pro Archiv wählbar«.
-
-  **Was der Server außerdem noch nicht kann:** schreiben. Einstufen,
-  Löschen und das Zurücklegen ins Postfach bleiben der Kommandozeile und
-  dem Fenster vorbehalten. Das ist der Zuschnitt, nicht ein Mangel – die
-  Vorgänge schreiben ins Journal, und dort muss vorher geklärt sein, wer
-  sie auslösen darf.
+- [ ] **Was der Server nicht kann:** schreiben. Einstufen, Löschen und
+  das Zurücklegen ins Postfach bleiben der Kommandozeile und dem Fenster
+  vorbehalten. Das ist der Zuschnitt, nicht ein Mangel – die Vorgänge
+  schreiben ins Journal, und dort muss vorher geklärt sein, wer sie
+  auslösen darf. Steht hier, damit es eine Entscheidung bleibt und nicht
+  ein Versehen wird.
 
 - [ ] **Betreffmuster als Regelfeld?** Bewusst weggelassen: Der Betreff
   lässt sich fälschen, er wechselt im Verlauf eines Austauschs, und eine
@@ -80,12 +81,24 @@ wurde.
   fehlender Internetverbindung geschieht, und ob ein kostenloser Anbieter wie
   FreeTSA für den Beweiswert genügt.
 
-- [ ] **Verschlüsselung, pro Archiv wählbar.** Schlüssel aus dem Passwort über
-  Argon2id, jede Datei einzeln mit AES-256-GCM. Der Dateiname darf dann nicht
-  mehr der Klartext-Hash sein, sondern `HMAC(key, hash)` – sonst verrät schon
-  das Verzeichnis, welche Mails im Archiv liegen. Beim Anlegen muss ein
-  ausdruckbarer Wiederherstellungsschlüssel angeboten werden, samt deutlicher
-  Warnung: ohne Passwort ist ein Langzeitarchiv unwiederbringlich weg.
+- [ ] **Auch den Suchindex verschlüsseln.** Die offene Flanke der
+  Archivverschlüsselung: Er liegt außerhalb des Archivs und enthält
+  Betreff, Absender und Volltext im Klartext.
+
+  Für den Anlass, um den es ging – Sicherung in der Cloud, verlorene
+  Platte –, genügt der jetzige Zuschnitt, denn der Index wandert dort
+  nicht mit. Auf einem Server liegt er aber neben dem Archiv, und dort
+  hilft nur eine verschlüsselte Platte.
+
+  **Warum es nicht einfach ist:** SQLite mit FTS5 braucht Klartext, um
+  zu suchen. SQLCipher wäre der übliche Weg, ist aber ein zu
+  kompilierendes Fremdpaket. Alles im Arbeitsspeicher zu halten, scheidet
+  aus: 5.187 Mails ergeben 95 MB Index, 700.000 wären rund 13 GB.
+  Feldweise zu verschlüsseln macht die Volltextsuche kaputt.
+
+  Solange das offen ist, muss der Hinweis in `krypto.hinweis_suchindex()`
+  stehen bleiben und in jeder Anleitung auftauchen. Eine Verschlüsselung
+  mit einer Lücke, die niemand nennt, ist schlimmer als keine.
 
 - [ ] **Weitere Mailquellen.** Outlook PST/OST über `libpff`, Apple Mail
   `.emlx`.
@@ -200,6 +213,29 @@ Prüfung steht es hier und nicht in der laufenden Liste.
 ## Erledigtes
 
 ### Am 2026-08-31
+
+- [x] **Die Archivverschlüsselung.** (2026-08-31) Der letzte offene
+  Brocken der Server Edition. `mailburg anlegen … --verschluesseln` oder
+  das Häkchen im Assistenten; verschlüsselt werden Mails und Journal,
+  also alles im Archivordner. Anleitung:
+  [docs/verschluesselung.md](docs/verschluesselung.md).
+
+  Zwei Ebenen (Archivschlüssel, eingewickelt in Passwort *und*
+  Notschlüssel), damit ein Passwortwechsel nicht 700.000 Dateien neu
+  schreiben muss. Auch die Dateinamen sind verdeckt – der Klartext-Hash
+  hätte verraten, ob eine bestimmte Mail im Archiv liegt.
+
+  scrypt statt Argon2id, gegen den ursprünglichen Entwurf: Es steckt in
+  `hashlib`, und ein Archivprogramm sollte in zwanzig Jahren ohne
+  nachzuinstallierende Pakete an seine Schlüssel kommen.
+
+  **Der Suchindex bleibt offen** – siehe oben unter »Auch den Suchindex
+  verschlüsseln«. Das steht in jeder Anleitung dabei.
+
+  Drei Fehler kamen dabei ans Licht, zwei in altem Code: die Kennwerte
+  der Ableitung, die nicht zu dem passten, womit abgeleitet wurde; die
+  abgebrochene Journalzeile, die das Archiv aussperrte; und wieder die
+  Sperrdatei, die liegenblieb.
 
 - [x] **Der Gesprächsverlauf.** (2026-08-31) Ging eine Sache mehrmals hin
   und her, zeigt MailBurg jetzt den ganzen Austausch: in der Vorschau als

@@ -43,6 +43,10 @@ MailBurg does the opposite:
   can reach any of them without MailBurg.
 - **The search index is disposable.** It can be rebuilt from the archive at any
   time, so it never needs backing up.
+- **Encryption for mail that leaves the house.** Optional at creation time:
+  messages and journal are then written encrypted, file names masked. Plus a
+  recovery key to print — an archive outlasts decades, a passphrase in your
+  head does not.
 
 ## Status
 
@@ -55,9 +59,12 @@ OAuth2 is implemented, but only tested against a mock provider: nobody has yet
 signed in with a real Microsoft or Google account. For those, an app password
 remains the safer choice for now.
 
-Still missing: Outlook `.pst`, per-archive encryption, packages for all three
-systems. And macOS remains unverified in practice. Full list in
-[TODO.en.md](TODO.en.md).
+Encrypted archives have been available since 2026-08-31 — built and tested,
+but not yet exercised in daily use. See
+[docs/verschluesselung.md](docs/verschluesselung.md) (German).
+
+Still missing: Outlook `.pst`, packages for all three systems. And macOS
+remains unverified in practice. Full list in [TODO.en.md](TODO.en.md).
 
 ## How it works
 

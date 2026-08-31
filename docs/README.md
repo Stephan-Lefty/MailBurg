@@ -21,6 +21,9 @@
   Aufbewahrungsfristen fallen, die für sie nicht gelten.
 - **[Das Archiv sichern](sicherung.md)** – warum ein Archiv kein Backup ist,
   wie aus zehntausend Dateien eine wird, und wie sie in die Cloud kommt.
+- **[Das Archiv verschlüsseln](verschluesselung.md)** – für Post, die das
+  Haus verlässt: Passwort, Notschlüssel, was geschützt ist und was nicht,
+  und wie ein bestehendes Archiv umzieht.
 - **[MailBurg unter Windows](windows.md)** – Einrichtung, Ablageorte,
   Thunderbird und Outlook.
 - **[Die Server Edition einrichten](server-einrichten.md)** – vom leeren

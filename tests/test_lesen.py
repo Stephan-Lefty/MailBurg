@@ -622,5 +622,81 @@ class WebTest(unittest.TestCase):
         self.assertEqual(kunde.get("/lebt").json(), {"lebt": True})
 
 
+@unittest.skipUnless(HAT_STARLETTE, "starlette fehlt")
+class VerschluesseltesArchivImDienstTest(unittest.TestCase):
+    """Der Server an einem verschlüsselten Archiv.
+
+    Auf einem Server sitzt niemand, der ein Passwort eintippen könnte.
+    Es muss also hinterlegt sein – und wenn nicht, muss das *dastehen*,
+    statt dass der Dienst schweigend nichts ausliefert.
+    """
+
+    def setUp(self):
+        from unittest import mock
+
+        from mailburg.core import krypto, paths
+
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        basis = Path(self.ordner.name)
+
+        patcher = mock.patch.object(
+            paths, "data_dir", return_value=basis / "daten"
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        (basis / "daten").mkdir(parents=True, exist_ok=True)
+
+        self._n = krypto.SCRYPT_N
+        krypto.SCRYPT_N = 2 ** 8
+        self.addCleanup(lambda: setattr(krypto, "SCRYPT_N", self._n))
+
+        self.passwort = "ein langes Archivpasswort"
+        self.wo = basis / "Archiv"
+        with Archive.create(
+            self.wo, name="Verschlossen", mode=Mode.GESCHAEFTLICH,
+            passwort=self.passwort,
+        ) as a:
+            a.add(_mail("Rechnung Mai"), account="buchhaltung", folder="INBOX")
+            liste = a.benutzer
+            chef = Benutzer("chef", verwalter=True, alle_postfaecher=True)
+            chef.passwort_setzen("ein-langes-passwort")
+            liste.hinzufuegen(chef)
+            a.benutzer_setzen(liste, actor="chef")
+
+    def _anwendung(self):
+        from mailburg.server.dienst import anwendung
+
+        return anwendung(Serverlage(archiv=self.wo))
+
+    def test_mit_hinterlegtem_passwort_laesst_sich_lesen(self):
+        from unittest import mock
+
+        from mailburg.core import passwort as passwort_modul
+
+        with mock.patch.dict(
+            "os.environ", {passwort_modul.UMGEBUNG: self.passwort}
+        ):
+            kunde = Kunde(self._anwendung())
+            antwort = kunde.post(
+                "/anmelden", {"name": "chef", "passwort": "ein-langes-passwort"}
+            )
+            self.assertEqual(antwort.status_code, 303)
+            self.assertIn("Rechnung Mai", kunde.get("/?q=rechnung").text)
+
+    def test_ohne_passwort_sagt_die_statusseite_was_zu_tun_ist(self):
+        """Sonst suchte ein Administrator im Protokoll nach einer Ursache."""
+        seite = Kunde(self._anwendung()).get("/zustand").text
+
+        self.assertIn("verschlüsselt", seite)
+        self.assertIn("passwort hinterlegen", seite)
+
+    def test_die_statusseite_antwortet_trotzdem(self):
+        """Sie ist die Stelle, an der man nachsieht – sie darf nie ausfallen."""
+        self.assertEqual(
+            Kunde(self._anwendung()).get("/zustand").status_code, 200
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

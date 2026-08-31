@@ -48,7 +48,9 @@ def _zustand(lage) -> dict[str, Any]:
     try:
         # Ohne Sperrdatei: Ein lesender Dienst darf einen laufenden
         # Abruf auf demselben Archiv nicht blockieren.
-        with Archive.open(lage.archiv, exclusive=False) as archiv:
+        with Archive.open(
+            lage.archiv, exclusive=False, passwort=lage.passwort
+        ) as archiv:
             bericht["name"] = archiv.meta.get("name", "")
             bericht["betriebsart"] = str(archiv.mode)
             bericht["mails"] = archiv.index.statistics()["mails"]
@@ -70,6 +72,27 @@ def _zustand(lage) -> dict[str, Any]:
                 )
     except Exception as fehler:  # noqa: BLE001 – die Seite muss antworten
         bericht["sorgen"].append(f"Das Archiv ließ sich nicht öffnen: {fehler}")
+
+    try:
+        from mailburg.core import passwort as passwort_modul
+        from mailburg.core.archive import Archive as _Archive
+
+        if _Archive.ist_verschluesselt(lage.archiv):
+            bericht["verschluesselt"] = True
+            if not lage.passwort:
+                # **Die wichtigste Sorge überhaupt**, wenn sie zutrifft:
+                # Ohne Passwort liefert der Dienst gar nichts aus, und
+                # auf einem Server sitzt niemand, den man fragen könnte.
+                bericht["sorgen"].append(
+                    "Das Archiv ist verschlüsselt, aber es ist kein "
+                    "Passwort hinterlegt. Der Dienst kann nichts "
+                    "ausliefern. Abhilfe: »mailburg passwort hinterlegen "
+                    "ARCHIV« als der Benutzer, unter dem der Dienst läuft "
+                    f"– oder »{passwort_modul.UMGEBUNG_DATEI}« auf eine "
+                    "Datei mit dem Passwort setzen."
+                )
+    except Exception:  # noqa: BLE001 – eine Auskunft darf nie selbst scheitern
+        pass
 
     try:
         if tresor.verfuegbar():
@@ -136,6 +159,7 @@ FELDER = (
     ("mails", "Mails"),
     ("postfaecher", "Postfächer"),
     ("zugaenge", "Zugänge"),
+    ("verschluesselt", "Verschlüsselt"),
     ("tresor", "Tresor"),
     ("adresse", "Erreichbar auf"),
 )
@@ -151,6 +175,11 @@ def seite(bericht: dict[str, Any]) -> str:
             wert = sprache.mails(wert)
         elif schluessel == "postfaecher":
             wert = sprache.postfaecher(wert)
+        elif schluessel == "verschluesselt":
+            # Wenn schon, dann mit der Angabe, ob der Dienst auch
+            # herankommt - »ja« allein sagt nichts darueber, ob gerade
+            # etwas ausgeliefert werden kann.
+            wert = "ja" if wert else "nein"
         elif schluessel == "zugaenge":
             wert = sprache.anzahl(wert, "Zugang", "Zugänge")
             if bericht.get("verwalter"):

@@ -50,6 +50,25 @@ class Serverlage:
         """Ob er über den eigenen Rechner hinaus erreichbar ist."""
         return self.adresse not in ("127.0.0.1", "::1", "localhost")
 
+    @property
+    def passwort(self) -> str:
+        """Das Archivpasswort, falls das Archiv verschlüsselt ist.
+
+        **Wird bei jedem Zugriff neu geholt und nicht gemerkt.** Der
+        Dienst öffnet das Archiv für jede Anfrage; ein beim Start einmal
+        eingelesenes Passwort stünde noch im Speicher, wenn es im Tresor
+        längst gewechselt hat. Der Weg über den Tresor kostet einen
+        Dateizugriff – gemessen an einer Archivsuche ist das nichts.
+
+        Auf einem Server gibt es niemanden, der etwas eintippen könnte.
+        Ist hier nichts hinterlegt, kommt ein leeres Passwort zurück und
+        das Öffnen scheitert – mit einer Meldung, die auf der
+        Statusseite steht.
+        """
+        from mailburg.core import passwort as passwort_modul
+
+        return passwort_modul.hinterlegt(self.archiv) or ""
+
     @classmethod
     def aus_umgebung(cls) -> Serverlage:
         ort = os.environ.get(ARCHIV, "").strip()
