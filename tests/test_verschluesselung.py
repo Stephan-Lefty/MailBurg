@@ -24,6 +24,14 @@ from mailburg.core.archive import Archive, Mode
 from mailburg.core.krypto import FalschesPasswort
 from mailburg.core.retention import Jurisdiction
 
+try:
+    import cryptography  # noqa: F401
+
+    HAT_KRYPTO = True
+except ImportError:  # pragma: no cover – der Kern kommt ohne aus
+    HAT_KRYPTO = False
+
+
 PASSWORT = "ein ziemlich langes Passwort"
 
 #: Alles daran ist verräterisch: Absender, Betreff, Text.
@@ -47,6 +55,7 @@ VERRAETERISCH = [
 ]
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class VerschluesseltesArchivTest(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -236,6 +245,7 @@ class VerschluesseltesArchivTest(unittest.TestCase):
         self.assertFalse((self.wurzel / LOCK_FILE).exists())
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class UnverschluesseltBleibtUnveraendertTest(unittest.TestCase):
     """Der häufigste Fall darf von alldem nichts merken."""
 
@@ -278,6 +288,7 @@ class UnverschluesseltBleibtUnveraendertTest(unittest.TestCase):
         self.assertIn(b'"op":"add"', datei.read_bytes())
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class PasswortWechselAmArchivTest(unittest.TestCase):
     """Der Wechsel darf die Mails nicht anfassen."""
 

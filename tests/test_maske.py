@@ -180,8 +180,16 @@ class DeutschesDatumTest(unittest.TestCase):
                 self.assertNotIn("QLocale(", code)
 
     def test_eingabe_und_anzeige_haben_dieselbe_schreibweise(self):
-        """Zwei Formate für dasselbe Datum im selben Fenster wären eine Zumutung."""
-        from mailburg.ui.datum import MUSTER
+        """Zwei Formate für dasselbe Datum im selben Fenster wären eine Zumutung.
+
+        ``ui/datum.py`` zieht PySide6 herein, und das fehlt im ersten
+        CI-Lauf – der prüft ausdrücklich den Kern ohne Zusätze. Ohne
+        diese Weiche war er seit dem 2026-08-31 rot.
+        """
+        try:
+            from mailburg.ui.datum import MUSTER
+        except ImportError:  # pragma: no cover – nur ohne PySide6
+            self.skipTest("PySide6 fehlt")
 
         self.assertEqual(MUSTER, "dd.MM.yyyy")
 

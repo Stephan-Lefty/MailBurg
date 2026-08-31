@@ -26,7 +26,16 @@ from mailburg.__main__ import main
 from mailburg.core import krypto, paths
 from mailburg.core.archive import Archive
 
+try:
+    import cryptography  # noqa: F401
 
+    HAT_KRYPTO = True
+except ImportError:  # pragma: no cover – der Kern kommt ohne aus
+    HAT_KRYPTO = False
+
+
+
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class VerschluesseltAnlegenTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -99,6 +108,7 @@ class VerschluesseltAnlegenTest(unittest.TestCase):
         self.assertFalse(Archive.ist_verschluesselt(self.wurzel))
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class PasswortBefehlTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -175,6 +185,7 @@ class PasswortBefehlTest(unittest.TestCase):
         self.assertIn("nicht verschlüsselt", fehler.getvalue())
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class OhneTerminalTest(unittest.TestCase):
     """Der gefährlichste Fehlerfall: ein Abruf, der nachts stehen bleibt."""
 

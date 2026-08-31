@@ -9,9 +9,18 @@ from __future__ import annotations
 
 import json
 import unittest
+import unittest.mock
 
 from mailburg.core import krypto
 from mailburg.core.krypto import FalschesPasswort, Huelle, KryptoFehler
+
+try:
+    import cryptography  # noqa: F401
+
+    HAT_KRYPTO = True
+except ImportError:  # pragma: no cover – der Kern kommt ohne aus
+    HAT_KRYPTO = False
+
 
 
 def _huelle(passwort: str = "sehr geheim"):
@@ -29,6 +38,7 @@ def _huelle(passwort: str = "sehr geheim"):
         krypto.SCRYPT_N = original
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class NotschluesselTest(unittest.TestCase):
     """Er wird ausgedruckt und abgetippt – daran hängt die Form."""
 
@@ -71,6 +81,7 @@ class NotschluesselTest(unittest.TestCase):
                 self.assertIsNone(krypto.notschluessel_lesen(eingabe))
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class HuelleTest(unittest.TestCase):
     def test_beide_wege_fuehren_zum_selben_schluessel(self):
         huelle, schluessel, notschluessel = _huelle()
@@ -134,6 +145,7 @@ class HuelleTest(unittest.TestCase):
         self.assertIn("Sicherung", str(gefangen.exception))
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class PasswortWechselTest(unittest.TestCase):
     def test_das_neue_gilt_und_das_alte_nicht_mehr(self):
         huelle, schluessel, _ = _huelle("altes")
@@ -168,6 +180,7 @@ class PasswortWechselTest(unittest.TestCase):
         self.assertNotEqual(neue.salz, huelle.salz)
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class InhaltTest(unittest.TestCase):
     def test_hin_und_zurueck(self):
         _, schluessel, _ = _huelle()
@@ -229,6 +242,7 @@ class InhaltTest(unittest.TestCase):
             schluessel.entschluesseln(b"kurz")
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class DateinamenTest(unittest.TestCase):
     def test_der_name_verraet_den_hash_nicht(self):
         """Sonst wäre die Frage »liegt diese Mail hier?« beantwortet."""
@@ -262,6 +276,7 @@ class DateinamenTest(unittest.TestCase):
         self.assertNotEqual(eins.dateiname("a" * 64), zwei.dateiname("a" * 64))
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class SchluesseltrennungTest(unittest.TestCase):
     """Ein Schlüssel, eine Aufgabe."""
 
@@ -277,6 +292,65 @@ class SchluesseltrennungTest(unittest.TestCase):
         self.assertNotEqual(schluessel.namen, schluessel.archiv)
 
 
+class OhneDasPaketTest(unittest.TestCase):
+    """Der Kern muss ohne ``cryptography`` laufen – das ist eine Zusage.
+
+    Nicht mit ``skipUnless`` versehen: Dieser Test gilt gerade dann,
+    wenn das Paket fehlt, und muss auch dann etwas Sinnvolles prüfen,
+    wenn es da ist.
+    """
+
+    def test_die_meldung_sagt_was_zu_installieren_ist(self):
+        import builtins
+
+        echt = builtins.__import__
+
+        def ohne(name, *rest):
+            if name.startswith("cryptography"):
+                raise ImportError("nicht da")
+            return echt(name, *rest)
+
+        with unittest.mock.patch.object(builtins, "__import__", ohne):
+            with self.assertRaises(KryptoFehler) as gefangen:
+                krypto._aesgcm()
+
+        text = str(gefangen.exception)
+        self.assertIn("mailburg[verschluesselung]", text)
+        # Und der Satz, auf den es ankommt.
+        self.assertIn("Ihre Mails sind davon nicht betroffen", text)
+
+    def test_ein_unverschluesseltes_archiv_merkt_nichts_davon(self):
+        """Der häufige Fall darf nie an einem fehlenden Paket scheitern."""
+        import builtins
+        import tempfile
+        from pathlib import Path
+        from unittest import mock as _mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive
+
+        echt = builtins.__import__
+
+        def ohne(name, *rest):
+            if name.startswith("cryptography"):
+                raise ImportError("nicht da")
+            return echt(name, *rest)
+
+        with tempfile.TemporaryDirectory() as ordner:
+            basis = Path(ordner)
+            with _mock.patch.object(paths, "data_dir", return_value=basis / "d"):
+                (basis / "d").mkdir()
+                with _mock.patch.object(builtins, "__import__", ohne):
+                    with Archive.create(basis / "a", name="Offen") as archiv:
+                        archiv.add(
+                            b"From: a@example.org\r\nSubject: Test\r\n\r\nHallo\r\n",
+                            account="privat", folder="INBOX",
+                        )
+                        archiv.index.commit()
+                        self.assertEqual(archiv.index.count(), 1)
+
+
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class EhrlichkeitTest(unittest.TestCase):
     def test_der_hinweis_nennt_den_suchindex_beim_namen(self):
         """Eine Verschlüsselung, die eine offene Flanke hat, muss sie nennen."""
