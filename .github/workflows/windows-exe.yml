@@ -42,7 +42,16 @@ jobs:
           # Mit allen Zusätzen: Die gepackte Fassung soll können, was
           # MailBurg kann - besonders den Schlüsselbund. Wer sich eine
           # fertige Datei herunterlädt, installiert nichts nach.
-          pip install -e ".[oberflaeche,imap,anhaenge,packen]"
+          #
+          # **Genau daran ist es am 2026-08-31 fast gescheitert.** Die
+          # Verschlüsselung kam dazu, diese Zeile blieb stehen, und die
+          # erste .exe der 1.0 konnte deshalb kein verschlüsseltes
+          # Archiv öffnen - auch keines, das woanders angelegt wurde.
+          # Die Meldung riet zu »pip install«, und bei einer .exe gibt
+          # es kein pip: eine Sackgasse.
+          #
+          # Wer ein Extra hinzufügt, gehört auch in diese Zeile.
+          pip install -e ".[oberflaeche,imap,anhaenge,packen,server,verschluesselung]"
           pip install pyinstaller
 
       - name: Texterkennung beschaffen

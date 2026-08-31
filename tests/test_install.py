@@ -223,3 +223,50 @@ class FassungsnummerTest(unittest.TestCase):
         )
         self.assertNotIn("version", set(daten["project"]) - {"dynamic"})
         self.assertRegex(__version__, r"^\d+\.\d+\.\d+")
+
+
+class WindowsFassungKannAllesTest(unittest.TestCase):
+    """Die ``.exe`` muss enthalten, was MailBurg kann.
+
+    **Wer eine fertige Datei herunterlädt, installiert nichts nach.** Dort
+    gibt es kein pip und keine Extras; was beim Bauen fehlt, fehlt
+    endgültig.
+
+    Am 2026-08-31 wäre genau das schiefgegangen: Die Verschlüsselung kam
+    dazu, die Installationszeile des Bau-Workflows blieb stehen, und die
+    erste ``.exe`` der 1.0 hätte kein verschlüsseltes Archiv geöffnet –
+    auch keines, das auf dem Server oder unter Linux angelegt wurde. Die
+    Meldung hätte zu »pip install« geraten, und das ist bei einer
+    ``.exe`` eine Sackgasse.
+
+    Aufgefallen ist es nur, weil Stephan nach der Server Edition im
+    Release fragte.
+    """
+
+    def setUp(self) -> None:
+        self.wurzel = pathlib.Path(__file__).resolve().parent.parent
+        self.workflow = (
+            self.wurzel / ".github" / "workflows" / "windows-exe.yml"
+        ).read_text(encoding="utf-8")
+
+    def test_jedes_extra_wird_mit_eingebaut(self) -> None:
+        import tomllib
+
+        daten = tomllib.loads(
+            (self.wurzel / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        extras = set(daten["project"]["optional-dependencies"])
+
+        # ``alles`` ist nur eine Sammlung, und der Windows-Dienst hängt
+        # an pywin32 - der ist bis zur Prüfung im Oktober 2026 nicht
+        # dabei. Alles Übrige gehört in die gepackte Fassung.
+        pflicht = extras - {"alles", "server-windows"}
+
+        for extra in sorted(pflicht):
+            with self.subTest(extra=extra):
+                self.assertIn(
+                    extra,
+                    self.workflow,
+                    f"»{extra}« fehlt in der Installationszeile der .exe – "
+                    f"wer sie herunterlädt, kann das nicht nachrüsten",
+                )
