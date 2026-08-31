@@ -135,6 +135,52 @@ gibt es bewusst nicht.</p>
 {menue}
 """
 
+_ZUGAENGE = """
+<h2>Zugänge</h2>
+
+<p>Wer sich an diesem Archiv anmelden darf – und welche Postfächer er
+dabei zu sehen bekommt.</p>
+
+<p><b>Solange MailBurg nur auf diesem Rechner läuft, ändert das
+nichts.</b> Wer am Rechner sitzt, hat das Archiv ohnehin; eine Anmeldung
+davor wäre Theater. Die Zugänge greifen, sobald das Archiv über einen
+Server erreichbar ist und mehrere Menschen darauf zugreifen.</p>
+
+<p><b>Zwei Rechte, und sie sind nicht dasselbe.</b></p>
+
+<p><i>Darf Zugänge verwalten</i> heißt: Diese Person legt Zugänge an,
+vergibt Rechte und legt sie still. <i>Darf alle Postfächer sehen</i>
+heißt: Sie liest jede Post im Archiv.</p>
+
+<p>Das ist absichtlich getrennt. Wer die Technik betreut, muss keine
+Geschäftspost lesen dürfen – und wer alles liest, muss nicht über fremde
+Zugänge bestimmen. Beides in eine Rolle zu werfen wäre bequemer und
+datenschutzrechtlich schlechter.</p>
+
+<p><b>»Alle Postfächer« ist ein Schalter, keine Liste.</b> Wer ihn
+gesetzt hat, sieht auch das Postfach, das nächste Woche dazukommt. Mit
+einer angekreuzten Liste müsste das jemand nachpflegen – und würde es
+nicht, bis jemand etwas vermisst.</p>
+
+<p><b>Stilllegen statt entfernen.</b> Ein stillgelegter Zugang meldet
+sich nicht mehr an, bleibt aber eingetragen. Das ist wichtig für das
+Journal: Dort steht bei jedem Vorgang, wer ihn ausgelöst hat. Wer ganz
+entfernt wird, hinterlässt Einträge, die auf einen Namen zeigen, den es
+nicht mehr gibt.</p>
+
+<p><b>Der letzte Verwalter kann sich nicht selbst aussperren.</b>
+MailBurg lässt es nicht zu, dem letzten verbliebenen Verwalter das Recht
+zu nehmen, ihn stillzulegen oder zu entfernen. Sonst gäbe es niemanden
+mehr, der Zugänge vergeben kann, und das ließe sich nur noch von der
+Kommandozeile aus reparieren.</p>
+
+<p><b>Die Passwörter</b> werden nicht im Klartext gespeichert, sondern
+als Prüfwert, aus dem sich das Passwort nicht zurückrechnen lässt. Ins
+Journal kommen sie nicht: Was dort einmal steht, steht dort für immer.</p>
+
+{menue}
+"""
+
 _ABRUFEN = """
 <h2>Mails holen</h2>
 
@@ -631,6 +677,12 @@ def kapitel() -> list[Kapitel]:
                    "bleibt eingerichtet, wird beim Abruf aber übergangen. "
                    "Die bereits archivierten Mails bleiben in jedem Fall "
                    "erhalten.")
+        ))),
+        Kapitel("zugaenge", "Zugänge", _ZUGAENGE.format(menue=(
+            _menue("Einstellungen → Zugänge verwalten …",
+                   "Wer sich anmelden darf und welche Postfächer er sieht. "
+                   "Nur im Geschäftsarchiv: Ein Privatarchiv gehört einem "
+                   "Menschen, und der sitzt davor.")
         ))),
         Kapitel("abrufen", "Mails holen", _ABRUFEN.format(menue=(
             _menue("Post → Jetzt abrufen (F5)",

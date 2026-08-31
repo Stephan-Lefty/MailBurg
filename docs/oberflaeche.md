@@ -213,6 +213,33 @@ nützlich für ein Konto, das es nicht mehr gibt. **Entfernen** nimmt es samt
 Passwort aus der Liste; die bereits archivierten Mails bleiben in jedem Fall
 erhalten.
 
+**Zugänge verwalten …** *(nur im Geschäftsarchiv)*
+
+Wer sich an diesem Archiv anmelden darf – und welche Postfächer er dabei zu
+sehen bekommt. Solange MailBurg nur auf diesem Rechner läuft, ändert das
+nichts: Wer am Rechner sitzt, hat das Archiv ohnehin. Die Zugänge greifen,
+sobald es über einen Server erreichbar ist.
+
+Links stehen die Menschen, rechts die Rechte des Gewählten. Die wichtigste
+Zeile ist die unterste: Sie sagt in einem Satz, was er sehen darf — auch den
+Fall »Sieht nichts«, der beim Anlegen sonst niemandem auffällt.
+
+**Zwei Rechte, und sie sind nicht dasselbe.** *Darf Zugänge verwalten* legt
+Zugänge an und vergibt Rechte. *Darf alle Postfächer sehen* liest jede Post.
+Wer die Technik betreut, muss keine Geschäftspost lesen dürfen — und wer alles
+liest, nicht über fremde Zugänge bestimmen.
+
+*Alle Postfächer* ist ein Schalter, keine angekreuzte Liste: Wer ihn gesetzt
+hat, sieht auch das Postfach, das nächste Woche dazukommt.
+
+**Stilllegen statt entfernen.** Ein stillgelegter Zugang meldet sich nicht mehr
+an, bleibt aber eingetragen — sein Name muss in alten Journaleinträgen lesbar
+bleiben, sonst stehen dort Vorgänge ohne Urheber.
+
+**Der letzte Verwalter kann sich nicht selbst aussperren.** Ihm das Recht zu
+nehmen, ihn stillzulegen oder zu entfernen, lässt MailBurg nicht zu. Sonst
+gäbe es niemanden mehr, der Zugänge vergeben kann.
+
 **Was von selbst laufen soll (Automatisierung) …**
 
 ![Die Einstellungen für das, was von selbst läuft: oben das Häkchen für den regelmäßigen Abruf im Hintergrund mit einstellbarem Abstand, darunter die regelmäßige Sicherung in eine Datei mit Häufigkeit, Zahl der aufbewahrten Stände und Zielordner. Dazu der Hinweis, nicht auf dieselbe Platte wie das Archiv zu sichern.](bilder/automatisierung.png)

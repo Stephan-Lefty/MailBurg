@@ -308,6 +308,30 @@ class Benutzerliste:
     def verwalter(self) -> list[Benutzer]:
         return [b for b in self.benutzer if b.verwalter and b.aktiv]
 
+    def pruefen_gegen(self, vorher: Benutzerliste) -> None:
+        """Wirft, wenn die Änderung das Archiv verwaltungslos zurückließe.
+
+        **Der letzte Verwalter kann sich nicht selbst entrechten** – und
+        auch nicht stilllegen oder entfernen. Sonst gäbe es niemanden
+        mehr, der Zugänge vergeben kann, und das ließe sich nur noch von
+        der Kommandozeile aus reparieren. Wer am Server sitzt, kann das;
+        wer im Browser vor einer Oberfläche steht, die ihn gerade
+        ausgesperrt hat, nicht.
+
+        **Die Prüfung sitzt hier und nicht im Dialog.** Eine Regel, die
+        nur eine Oberfläche kennt, gilt für die Kommandozeile nicht – und
+        für den Server, der später dazukommt, auch nicht.
+
+        Vorher gar kein Verwalter heißt: Das Archiv fängt gerade erst an.
+        Dann darf die Liste auch ohne einen bleiben, sonst käme man nie
+        zum ersten.
+        """
+        if vorher.verwalter and not self.verwalter:
+            raise BenutzerFehler(
+                "Dann gäbe es niemanden mehr, der Zugänge verwalten kann. "
+                "Bestimmen Sie zuerst einen anderen Verwalter."
+            )
+
     def als_daten(self) -> dict:
         return {
             "fassung": FASSUNG,

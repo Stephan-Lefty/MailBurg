@@ -860,7 +860,13 @@ class Archive:
         Erst das Journal, dann die Datei – aus demselben Grund wie bei
         den Regeln.
         """
-        vorher = _ohne_pruefwerte(self.benutzer.als_daten())
+        bisher = self.benutzer
+        # Wirft, wenn danach niemand mehr verwalten könnte. Die Prüfung
+        # sitzt im Kern, damit sie auch für die Kommandozeile und den
+        # Server gilt - nicht nur für den Dialog, der sie anzeigt.
+        liste.pruefen_gegen(bisher)
+
+        vorher = _ohne_pruefwerte(bisher.als_daten())
         nachher = _ohne_pruefwerte(liste.als_daten())
 
         if vorher != nachher:

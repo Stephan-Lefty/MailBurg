@@ -396,6 +396,16 @@ class Hauptfenster(QMainWindow):
         hintergrund.triggered.connect(self._zeitplan)
         einstellungen.addAction(hintergrund)
 
+        # Nur im Geschäftsarchiv: Ein Privatarchiv gehört einem
+        # Menschen, und der sitzt davor. Zugänge zu verwalten, die
+        # nur für sich selbst gelten, wäre Ballast.
+        self.zugaenge_aktion = QAction("Zugänge verwalten …", self)
+        self.zugaenge_aktion.setStatusTip(
+            "Wer sich anmelden darf und welche Postfächer er sieht - für den Betrieb über einen Server."
+        )
+        self.zugaenge_aktion.triggered.connect(self._zugaenge)
+        einstellungen.addAction(self.zugaenge_aktion)
+
         hilfe = self.menuBar().addMenu("&Hilfe")
         handbuch = QAction("Handbuch …", self)
         handbuch.setShortcut("F1")
@@ -1357,6 +1367,9 @@ class Hauptfenster(QMainWindow):
                             "Haushaltsausnahme der DSGVO; ein "
                             "Auskunftsrecht nach Artikel 15 besteht "
                             "dort nicht."),
+        ("zugaenge_aktion", "Zugänge trennen, was mehrere Menschen "
+                            "sehen dürfen. Ein Privatarchiv gehört "
+                            "einem – und der sitzt davor."),
     )
 
     def _betriebsart_anwenden(self) -> None:
@@ -1472,6 +1485,14 @@ class Hauptfenster(QMainWindow):
         if jahre:
             self.suchfeld.setText(f"jahr:1900-{jahre[-1]}")
             self._suchen()
+
+    def _zugaenge(self) -> None:
+        """Öffnet die Verwaltung der Zugänge."""
+        from mailburg.ui.zugaenge import Zugangsdialog
+
+        if self.archiv is None:
+            return
+        Zugangsdialog(self, archiv=self.archiv).exec()
 
     def _regeln(self) -> None:
         """Öffnet die Verwaltung der Einstufungsregeln."""
