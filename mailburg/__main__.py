@@ -1502,6 +1502,119 @@ def cmd_einstufen(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_tresor(args: argparse.Namespace) -> int:
+    """Passwörter auf einem Rechner ohne Schlüsselbund."""
+    from mailburg.core import accounts, tresor
+
+    if args.was == "schluessel":
+        try:
+            neu = tresor.schluessel_erzeugen()
+        except tresor.TresorFehler as fehler:
+            print(fehler, file=sys.stderr)
+            return 1
+
+        print("Ein neuer Hauptschlüssel:\n")
+        print(f"  {neu}\n")
+        print("Legen Sie ihn dorthin, wo der Dienst ihn findet – und sonst")
+        print("niemand. Zum Beispiel:\n")
+        print("  install -m 600 /dev/null /etc/mailburg/schluessel")
+        print(f"  echo '{neu}' > /etc/mailburg/schluessel")
+        print(f"  export {tresor.UMGEBUNG_DATEI}=/etc/mailburg/schluessel\n")
+        print("**Bewahren Sie ihn zusätzlich außerhalb dieses Rechners auf.**")
+        print("Ohne ihn sind die abgelegten Passwörter verloren – dann müssen")
+        print("sie alle neu eingegeben werden.")
+        return 0
+
+    if args.was == "liste":
+        eintraege = tresor.eintraege()
+        if not eintraege:
+            print("Im Tresor liegt nichts.")
+            return 0
+        print(f"{sprache.anzahl(len(eintraege), 'Eintrag', 'Einträge')}:")
+        for name in eintraege:
+            print(f"  {name}")
+        return 0
+
+    if args.was == "pruefen":
+        if not tresor.verfuegbar():
+            print(
+                "Es ist kein Hauptschlüssel eingerichtet. "
+                f"Setzen Sie {tresor.UMGEBUNG_DATEI} oder {tresor.UMGEBUNG}.",
+                file=sys.stderr,
+            )
+            return 1
+
+        eintraege = tresor.eintraege()
+        schlecht = 0
+        for name in eintraege:
+            try:
+                tresor.holen(name)
+                print(f"  {name}: lesbar")
+            except tresor.TresorFehler:
+                print(f"  {name}: NICHT LESBAR", file=sys.stderr)
+                schlecht += 1
+
+        if not eintraege:
+            print("Im Tresor liegt nichts.")
+        elif schlecht:
+            print(
+                f"\n{sprache.anzahl(schlecht, 'Eintrag', 'Einträge')} "
+                f"nicht lesbar. Vermutlich der falsche Hauptschlüssel.",
+                file=sys.stderr,
+            )
+            return 1
+        return 0
+
+    # uebernehmen
+    if not tresor.verfuegbar():
+        print(
+            "Es ist kein Hauptschlüssel eingerichtet. Legen Sie zuerst "
+            "einen an:\n\n  mailburg tresor schluessel\n",
+            file=sys.stderr,
+        )
+        return 1
+    if not accounts.schluesselbund_verfuegbar():
+        print(
+            "Auf diesem Rechner ist kein Schlüsselbund erreichbar – es gibt "
+            "also nichts zu übernehmen. Dieser Befehl gehört auf den "
+            "Arbeitsplatz, auf dem die Postfächer eingerichtet wurden.",
+            file=sys.stderr,
+        )
+        return 1
+
+    # **Am Tresor vorbei lesen.** ``passwort_holen`` nähme sonst den
+    # Tresor, weil der ja gerade eingerichtet ist - und übernähme dessen
+    # eigene Einträge auf sich selbst.
+    import keyring
+
+    liste = accounts.Kontenliste()
+    uebernommen, ohne = 0, []
+    for konto in liste.konten:
+        try:
+            wort = keyring.get_password(APP_ID, konto.schluessel)
+        except Exception:  # noqa: BLE001 – ein gesperrter Schlüsselbund wirft
+            wort = None
+        if wort:
+            tresor.setzen(konto.schluessel, wort)
+            uebernommen += 1
+        else:
+            ohne.append(konto.name)
+
+    print(f"{sprache.anzahl(uebernommen, 'Passwort', 'Passwörter')} übernommen.")
+    if ohne:
+        print(
+            f"Ohne hinterlegtes Passwort: {', '.join(ohne)}. "
+            f"Diese müssen auf dem Server neu eingegeben werden."
+        )
+    print(
+        "\nDie Datei liegt unter:\n"
+        f"  {paths.config_dir() / tresor.DATEI}\n\n"
+        "Sie und der Hauptschlüssel gehören auf den Server – aber nicht "
+        "denselben Weg.\nWer beides zusammen abfängt, hat die Postfächer."
+    )
+    return 0
+
+
 def cmd_regeln(args: argparse.Namespace) -> int:
     """Zeigt, ergänzt oder entfernt Einstufungsregeln.
 
@@ -2191,6 +2304,42 @@ def build_parser() -> argparse.ArgumentParser:
         help="die Einstufung tatsächlich vornehmen",
     )
     p.set_defaults(func=cmd_einstufen)
+
+    p = subparsers.add_parser(
+        "tresor",
+        help="Passwörter ohne Schlüsselbund – für den Serverbetrieb",
+        description=(
+            "Auf einem Server ohne Desktop gibt es keinen Schlüsselbund: "
+            "Er hängt an einer Anmeldesitzung, und ein Dienst läuft ohne. "
+            "Der Tresor tritt dort an seine Stelle – eine verschlüsselte "
+            "Datei, deren Hauptschlüssel woanders liegt. Er greift nur, "
+            "wenn ein Hauptschlüssel eingerichtet ist; auf einem "
+            "Arbeitsplatz bleibt alles beim Schlüsselbund."
+        ),
+    )
+    unter = p.add_subparsers(dest="was", required=True)
+
+    u = unter.add_parser(
+        "schluessel", help="einen neuen Hauptschlüssel erzeugen")
+    u.set_defaults(func=cmd_tresor)
+
+    u = unter.add_parser(
+        "uebernehmen",
+        help="Passwörter aus dem Schlüsselbund in den Tresor legen",
+        description=(
+            "Für den Umzug: Auf dem Arbeitsplatz ausführen, auf dem die "
+            "Postfächer eingerichtet sind. Die entstandene Datei gehört "
+            "dann auf den Server."
+        ),
+    )
+    u.set_defaults(func=cmd_tresor)
+
+    u = unter.add_parser("liste", help="was im Tresor liegt")
+    u.set_defaults(func=cmd_tresor)
+
+    u = unter.add_parser(
+        "pruefen", help="ob sich alle Einträge lesen lassen")
+    u.set_defaults(func=cmd_tresor)
 
     p = subparsers.add_parser(
         "regeln",

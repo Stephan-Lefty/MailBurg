@@ -16,6 +16,13 @@ fragt das Passwort dann aber bei jedem Abruf neu ab.
 
 In der Konfigurationsdatei steht nur, **wo** ein Postfach liegt und **wie**
 es heißt, nie, womit man hineinkommt.
+
+**Auf einem Server gibt es keinen Schlüsselbund.** Er hängt an einer
+Anmeldesitzung, und ein Dienst läuft ohne. Dort tritt der Tresor an
+seine Stelle – eine verschlüsselte Datei, deren Hauptschlüssel woanders
+liegt; siehe :mod:`mailburg.core.tresor`. Er greift nur, wenn er
+ausdrücklich eingerichtet ist, damit auf einem Arbeitsplatz nichts am
+Schlüsselbund vorbei geschrieben wird.
 """
 
 from __future__ import annotations
@@ -27,7 +34,7 @@ from pathlib import Path
 from mailburg.core import werkzeuge
 
 from mailburg import APP_ID
-from mailburg.core import paths
+from mailburg.core import paths, tresor
 
 #: Ordner, die standardmäßig nicht archiviert werden. Papierkorb und
 #: Spamverdacht sind schon vom Benutzer aussortiert worden - sie ins Archiv
@@ -380,7 +387,10 @@ def _secretservice_anbieter() -> str:
 
 
 def passwort_holen(konto: Konto) -> str | None:
-    """Holt das Passwort aus dem Schlüsselbund."""
+    """Holt das Passwort – aus dem Tresor oder dem Schlüsselbund."""
+    if tresor.verfuegbar():
+        return tresor.holen(konto.schluessel)
+
     if not schluesselbund_verfuegbar():
         return None
     import keyring
@@ -400,6 +410,10 @@ def token_holen(konto: Konto):
     """
     from mailburg.core.oauth2 import Token
 
+    if tresor.verfuegbar():
+        roh = tresor.holen(konto.token_schluessel)
+        return Token.aus_json(roh) if roh else None
+
     if not schluesselbund_verfuegbar():
         return None
     import keyring
@@ -414,10 +428,16 @@ def token_holen(konto: Konto):
 def token_setzen(konto: Konto, token) -> bool:
     """Legt die OAuth2-Token im Schlüsselbund ab.
 
-    **Nie in eine Datei.** Ein Erneuerungs-Token ist auf Monate hinaus
-    ein Vollzugang zum Postfach – es ist mehr wert als das Passwort,
-    weil es die Zwei-Faktor-Anmeldung bereits hinter sich hat.
+    **Nie unverschlüsselt in eine Datei.** Ein Erneuerungs-Token ist auf
+    Monate hinaus ein Vollzugang zum Postfach – es ist mehr wert als das
+    Passwort, weil es die Zwei-Faktor-Anmeldung bereits hinter sich hat.
+    Auf einem Server ohne Schlüsselbund kommt es deshalb in den Tresor,
+    nicht daneben.
     """
+    if tresor.verfuegbar():
+        tresor.setzen(konto.token_schluessel, token.als_json())
+        return True
+
     if not schluesselbund_verfuegbar():
         return False
     import keyring
@@ -431,6 +451,10 @@ def token_setzen(konto: Konto, token) -> bool:
 
 def token_loeschen(konto: Konto) -> None:
     """Nimmt die Token zurück – beim Abmelden oder Entfernen des Kontos."""
+    if tresor.verfuegbar():
+        tresor.loeschen(konto.token_schluessel)
+        return
+
     if not schluesselbund_verfuegbar():
         return
     import keyring
@@ -442,7 +466,11 @@ def token_loeschen(konto: Konto) -> None:
 
 
 def passwort_setzen(konto: Konto, passwort: str) -> bool:
-    """Legt das Passwort im Schlüsselbund ab. Gibt zurück, ob es geklappt hat."""
+    """Legt das Passwort ab. Gibt zurück, ob es geklappt hat."""
+    if tresor.verfuegbar():
+        tresor.setzen(konto.schluessel, passwort)
+        return True
+
     if not schluesselbund_verfuegbar():
         return False
     import keyring
@@ -455,7 +483,11 @@ def passwort_setzen(konto: Konto, passwort: str) -> bool:
 
 
 def passwort_loeschen(konto: Konto) -> None:
-    """Entfernt das Passwort aus dem Schlüsselbund."""
+    """Entfernt das Passwort."""
+    if tresor.verfuegbar():
+        tresor.loeschen(konto.schluessel)
+        return
+
     if not schluesselbund_verfuegbar():
         return
     import keyring

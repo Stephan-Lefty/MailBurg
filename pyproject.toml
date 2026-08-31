@@ -60,6 +60,16 @@ packen = ["zstandard>=0.22"]
 # schlimmer als einer, der gar nicht erst fragt.
 oberflaeche = ["PySide6-Essentials>=6.6", "keyring>=24"]
 
+# Der Serverbetrieb. Bisher nur der Tresor - die Weboberflaeche kommt
+# noch dazu.
+#
+# **cryptography ist hier Pflicht, nicht Kuer.** Auf einem Server gibt es
+# keinen Schluesselbund; ohne Verschluesselung laege das Postfachpasswort
+# im Klartext neben der Konfiguration. Einen Rueckfall darauf gibt es
+# nicht - eine Datei, die aussieht wie ein Tresor und keiner ist, waere
+# schlimmer als eine klare Absage.
+server = ["cryptography>=42"]
+
 alles = ["mailburg[imap,anhaenge,packen,oberflaeche]"]
 
 [project.urls]

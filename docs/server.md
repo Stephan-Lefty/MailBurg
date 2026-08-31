@@ -206,7 +206,7 @@ personenbezogener Daten – nämlich darüber, wonach Mitarbeiter suchen.
 Das gehört bedacht, bevor es gebaut wird: vermutlich Zugriffe auf
 einzelne Nachrichten ja, jede getippte Suchanfrage nein.
 
-## 2. Ohne Desktop gibt es keinen Schlüsselbund
+## 2. Ohne Desktop gibt es keinen Schlüsselbund – gelöst
 
 Die Postfach-Passwörter liegen im Schlüsselbund des Betriebssystems.
 Der hängt an einer **Anmeldesitzung** – unter Linux an gnome-keyring
@@ -221,17 +221,37 @@ Weg** an ein Passwort. Fehlt der Schlüsselbund, meldet MailBurg das und
 hört auf. Für den Desktop ist das richtig; für einen Server ist es das
 Ende.
 
-Was der Server stattdessen braucht – zu entscheiden:
+**Gebaut am 2026-08-31:** `core/tresor.py`. Eine Datei mit
+verschlüsselten Passwörtern, deren Hauptschlüssel woanders liegt – in
+einer Umgebungsvariablen oder einer eigenen Datei.
 
-**Eine Schlüsseldatei neben der Konfiguration**, nur für das Dienstkonto
-lesbar (`0600`), Inhalt mit einem Hauptschlüssel verschlüsselt. Der
-Hauptschlüssel kommt beim Start aus einer Umgebungsvariablen oder einer
-Datei, die nach dem Lesen zugeklappt wird. Einfach, überall gleich, und
-ehrlich benennbar: Wer den Server-Benutzer hat, hat die Passwörter.
+```bash
+mailburg tresor schluessel        # Hauptschlüssel erzeugen
+mailburg tresor uebernehmen       # vom Arbeitsplatz in den Tresor
+mailburg tresor pruefen           # kommt der Server an alles heran?
+```
 
-**Oder der systemd-Weg:** `LoadCredential=` reicht Geheimnisse an den
-Dienst durch, ohne dass sie im Dateisystem des Dienstes stehen. Sauber,
-aber nur unter Linux – für Windows bräuchte es ohnehin den ersten Weg.
+**Der Tresor greift nur, wenn er eingerichtet ist.** Sonst gilt der
+Schlüsselbund wie bisher: Auf einem Arbeitsplatz soll nichts an ihm
+vorbei geschrieben werden, nur weil eine Datei existiert.
+
+**Wogegen das schützt, und wogegen nicht.** Es schützt gegen
+Sicherungskopien des Konfigurationsordners, versehentlich weitergegebene
+Ordner und jeden, der an die Datei kommt, aber nicht an den Schlüssel –
+der häufige Fall. Es schützt *nicht* gegen jemanden, der als der
+Dienstbenutzer Programme ausführen kann: Der hat beides, denn der Dienst
+braucht beides. Ein Passwort, mit dem sich ein Programm ohne Zutun
+anmelden soll, lässt sich nicht vor diesem Programm verstecken.
+
+**Ohne `cryptography` gibt es keinen Rückfall auf Klartext**, sondern
+eine Absage. Eine Datei, die aussieht wie ein Tresor und keiner ist,
+wäre schlimmer als gar keine. Das Paket kommt mit `mailburg[server]`.
+
+**Was der systemd-Weg noch beitragen kann:** `LoadCredential=` reicht
+den Hauptschlüssel an den Dienst durch, ohne dass er im Dateisystem des
+Dienstes steht. Das ist die bessere Aufbewahrung und ändert an MailBurg
+nichts – es liest ihn aus `MAILBURG_SCHLUESSELDATEI`, egal wer die Datei
+dorthin gelegt hat.
 
 Was **nicht** geht: den Desktop-Schlüsselbund auf einem Server
 nachbauen zu wollen. Ein entsperrter Schlüsselbund ohne angemeldeten
@@ -327,12 +347,17 @@ Jede Stufe ist für sich brauchbar und prüfbar:
 
 0. ~~**Die Altlast auflösen:** gemerkte Pfade und Einstellungen aus
    `ui/app.py` in den Kern.~~ Erledigt am 2026-08-31.
-1. **Benutzer, Rechte und Anmeldung** im Kern – ohne Web, mit
+1. ~~**Benutzer, Rechte und Anmeldung** im Kern~~ Erledigt am
+   2026-08-31, samt Rechteprüfung in der Suche und der Oberfläche
+   dazu. Was dort ursprünglich stand:
+
+   **Benutzer, Rechte und Anmeldung** im Kern – ohne Web, mit
    Kommandozeilenbefehlen zum Anlegen und Zuordnen. Journal mit
    geprüftem `actor`. Dazu die Rechteprüfung an der Stelle, an der die
    Suchabfrage entsteht, mit Tests, die belegen: Was ein Benutzer nicht
    sehen darf, taucht auch in keiner Zahl auf.
-2. **Passwörter ohne Schlüsselbund**, sonst ruft der Server nie ab.
+2. ~~**Passwörter ohne Schlüsselbund**, sonst ruft der Server nie ab.~~
+   Erledigt am 2026-08-31.
 3. **Der Dienst**, auf beiden Systemen, mit einer Seite, die »läuft«
    sagt. Damit ist der Betrieb geklärt, bevor Funktion dazukommt.
 4. **Lesender Zugriff** im Browser: Suche, Lesen, Herunterladen.
