@@ -68,7 +68,7 @@ oberflaeche = ["PySide6-Essentials>=6.6", "keyring>=24"]
 # im Klartext neben der Konfiguration. Einen Rueckfall darauf gibt es
 # nicht - eine Datei, die aussieht wie ein Tresor und keiner ist, waere
 # schlimmer als eine klare Absage.
-server = ["cryptography>=42"]
+server = ["cryptography>=42", "starlette>=0.37", "uvicorn>=0.30"]
 
 alles = ["mailburg[imap,anhaenge,packen,oberflaeche]"]
 

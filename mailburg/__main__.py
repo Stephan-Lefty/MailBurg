@@ -1502,6 +1502,49 @@ def cmd_einstufen(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_server(args: argparse.Namespace) -> int:
+    """Startet den Dienst der Server Edition."""
+    from mailburg.server import einstellungen as serverlage
+
+    try:
+        from mailburg.server.dienst import starten
+    except ImportError:
+        print(
+            "Für den Dienst fehlen Pakete.\n"
+            "Nachrüsten mit:  pip install 'mailburg[server]'",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        lage = serverlage.Serverlage.aus_umgebung()
+    except serverlage.Fehlt as fehler:
+        print(fehler, file=sys.stderr)
+        print(
+            f"\nErwartet werden diese Umgebungsvariablen:\n"
+            f"  {serverlage.ARCHIV}   der Ordner des Archivs (nötig)\n"
+            f"  {serverlage.ADRESSE}  worauf gelauscht wird "
+            f"(Vorgabe {serverlage.STANDARD_ADRESSE})\n"
+            f"  {serverlage.ANSCHLUSS}     der Port "
+            f"(Vorgabe {serverlage.STANDARD_ANSCHLUSS})",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"MailBurg Server {__version__}")
+    print(f"  Archiv:     {lage.archiv}")
+    print(f"  Erreichbar: http://{lage.adresse}:{lage.anschluss}/")
+    if lage.oeffentlich:
+        print(
+            "\n  Achtung: Dieser Dienst lauscht über den eigenen Rechner\n"
+            "  hinaus. Solange es keine Anmeldung gibt, gehört er hinter\n"
+            "  ein VPN oder eine Firewall.",
+            file=sys.stderr,
+        )
+    print()
+    return starten(lage)
+
+
 def cmd_tresor(args: argparse.Namespace) -> int:
     """Passwörter auf einem Rechner ohne Schlüsselbund."""
     from mailburg.core import accounts, tresor
@@ -2304,6 +2347,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="die Einstufung tatsächlich vornehmen",
     )
     p.set_defaults(func=cmd_einstufen)
+
+    p = subparsers.add_parser(
+        "server",
+        help="MailBurg als Dienst betreiben (Server Edition)",
+        description=(
+            "Startet den Dienst. Er liest seine Einstellungen aus "
+            "Umgebungsvariablen – den Weg kennen systemd, Docker und die "
+            "Windows-Dienstverwaltung gleichermaßen.\n\n"
+            "In der Vorgabe lauscht er nur auf dem eigenen Rechner. Ein "
+            "Archivdienst, der beim ersten Start ungefragt im ganzen Netz "
+            "steht, wäre eine böse Überraschung."
+        ),
+    )
+    p.set_defaults(func=cmd_server)
 
     p = subparsers.add_parser(
         "tresor",

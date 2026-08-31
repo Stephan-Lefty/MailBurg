@@ -61,6 +61,23 @@ jobs:
       - name: Tests
         run: python -m unittest discover -s tests
 
+      # **Und noch einmal mit den Zusätzen.** Der Lauf darüber prüft, dass
+      # MailBurg ohne ein einziges Fremdpaket auskommt - das ist die
+      # Zusage des Kerns. Er überspringt dabei aber alles, was Qt oder
+      # cryptography braucht, und dazu gehört der Tresor: der Ort, an dem
+      # die Postfach-Passwörter eines Servers liegen. Sicherheitskritischer
+      # Code, der nie geprüft wird, ist eine schlechte Verabredung.
+      #
+      # Kein eigener Job, sondern ein Schritt im selben: GitHub rundet je
+      # Job auf volle Minuten auf, je Schritt nicht.
+      - name: Zusätze installieren
+        run: pip install -e ".[oberflaeche,imap,anhaenge,packen,server]"
+
+      - name: Tests mit allen Zusätzen
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests
+
       - name: Testmails erzeugen
         run: |
           python - <<'PY'

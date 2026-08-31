@@ -257,19 +257,64 @@ Was **nicht** geht: den Desktop-Schlüsselbund auf einem Server
 nachbauen zu wollen. Ein entsperrter Schlüsselbund ohne angemeldeten
 Menschen ist eine Datei mit Extraschritten.
 
-## 3. Als Dienst laufen
+## 3. Als Dienst laufen – Debian gebaut, Windows offen
 
-**Debian:** eine systemd-Unit. Das Muster steht schon – `core/zeitplan.py`
-legt Benutzereinheiten für den Abruf an. Für den Server wäre es eine
-Systemeinheit unter einem eigenen Benutzer (`mailburg`), mit
-`ProtectSystem`, `PrivateTmp` und einem Arbeitsverzeichnis, das nur ihm
-gehört.
+```bash
+mailburg server
+```
 
-**Windows Server 2025:** hier fehlt mir belastbares Wissen. Ein
-Python-Programm wird dort nicht von selbst zum Dienst; üblich sind
-Wrapper wie NSSM oder WinSW, oder `pywin32`. Was auf Windows Server 2025
-der empfohlene Weg ist, muss nachgeschlagen werden – nicht geraten. Das
-ist ein eigener Arbeitsschritt und gehört vor die erste Zeile Code.
+Der Dienst liest seine Einstellungen aus Umgebungsvariablen – den Weg
+kennen systemd, Docker und die Windows-Dienstverwaltung gleichermaßen:
+
+| Variable | wofür |
+|---|---|
+| `MAILBURG_ARCHIV` | der Ordner des Archivs (nötig) |
+| `MAILBURG_ADRESSE` | worauf gelauscht wird (Vorgabe `127.0.0.1`) |
+| `MAILBURG_PORT` | der Port (Vorgabe 8383) |
+| `MAILBURG_SCHLUESSELDATEI` | der Hauptschlüssel des Tresors |
+
+**Die Vorgabe lauscht nur auf dem eigenen Rechner.** Ein Archivdienst,
+der beim ersten Start ungefragt im ganzen Netz steht, wäre eine böse
+Überraschung. Wer ihn im Firmennetz erreichbar machen will, sagt es
+ausdrücklich — und die Statusseite erinnert daran, solange es noch keine
+Anmeldung gibt.
+
+Drei Adressen gibt es bisher: `/` zeigt den Zustand als Seite,
+`/zustand.json` dasselbe maschinenlesbar, `/lebt` antwortet nur »ja«,
+ohne das Archiv anzufassen — für den Neustart-Wächter des Systems.
+
+**Debian:** die Vorlage liegt in
+[`werkzeuge/mailburg-server.service`](../werkzeuge/mailburg-server.service),
+mit eigenem Benutzer, `ProtectSystem=strict`, `Restart=on-failure` und
+dem Hauptschlüssel über `LoadCredential=` — so steht er weder in der
+Prozessliste noch im Dateisystem des Dienstes.
+
+### Windows Server 2025 – zu entscheiden
+
+Nachgeschlagen am 2026-08-31, nicht geraten:
+
+**Die Aufgabenplanung reicht nicht.** Sie kann ein Programm »beim
+Systemstart« und ohne Anmeldung starten — das tut MailBurg für den
+regelmäßigen Abruf bereits. Aber sie hält es nicht am Leben: Stürzt es
+ab, bleibt es unten. Für einen Dienst, der lauscht, ist das zu wenig.
+
+**NSSM scheidet aus.** Der verbreitetste Wrapper hat seit über einem
+Jahrzehnt kein stabiles Release mehr. Für ein Archiv, das zwanzig Jahre
+halten soll, ist das die falsche Grundlage.
+
+Bleiben drei Wege, und die Wahl gehört Stephan:
+
+* **pywin32** — echte Anmeldung beim Dienstmanager, Python-nativ, kein
+  zusätzliches Programm. Etabliert und gepflegt. Dafür der meiste Code,
+  und er lässt sich hier nicht prüfen.
+* **WinSW** — XML-gesteuerter Wrapper, verbreitet (Jenkins nutzt ihn),
+  aber im Wartungsmodus.
+* **Servy** — jung, ausdrücklich für Windows 11 und Server 2025. Für ein
+  Archivprogramm wäre eine unerprobte Abhängigkeit ein Risiko.
+
+Empfehlung: **pywin32**, als eigenes Extra `mailburg[server-windows]`.
+Mit dem ausdrücklichen Vermerk, dass es hier nicht geprüft werden kann —
+wie bei OAuth2 auch.
 
 ## 4. Erreichbarkeit und HTTPS
 

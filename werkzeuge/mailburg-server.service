@@ -1,0 +1,77 @@
+# MailBurg Server Edition als systemd-Dienst.
+#
+# Ablegen unter /etc/systemd/system/mailburg-server.service, die Pfade
+# unten anpassen, dann:
+#
+#   systemctl daemon-reload
+#   systemctl enable --now mailburg-server
+#   systemctl status mailburg-server
+#
+# Vorher einmalig:
+#
+#   adduser --system --group --home /var/lib/mailburg mailburg
+#   install -d -o mailburg -g mailburg -m 700 /var/lib/mailburg
+#   install -d -o root -g mailburg -m 750 /etc/mailburg
+#   mailburg tresor schluessel > /etc/mailburg/schluessel
+#   chown root:mailburg /etc/mailburg/schluessel
+#   chmod 640 /etc/mailburg/schluessel
+
+[Unit]
+Description=MailBurg Server Edition
+Documentation=https://github.com/Stephan-Lefty/MailBurg/blob/main/docs/server.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+
+# **Ein eigener Benutzer, kein root.** Der Dienst liest ein Archiv und
+# lauscht auf einem Port; für beides braucht es keine Rechte am System.
+User=mailburg
+Group=mailburg
+
+Environment=MAILBURG_ARCHIV=/var/lib/mailburg/Archiv
+Environment=MAILBURG_ADRESSE=127.0.0.1
+Environment=MAILBURG_PORT=8383
+
+# **Der Hauptschlüssel des Tresors über LoadCredential.** Damit legt
+# systemd ihn in ein Verzeichnis, das nur dieser Dienst lesen kann - er
+# steht dann nicht in der Prozessliste und nicht in seinem eigenen
+# Dateisystem. Die Quelldatei darf root gehören.
+LoadCredential=schluessel:/etc/mailburg/schluessel
+Environment=MAILBURG_SCHLUESSELDATEI=%d/schluessel
+
+ExecStart=/usr/local/bin/mailburg server
+
+# Bei einem Absturz wiederkommen, aber nicht in einer Schleife brennen.
+Restart=on-failure
+RestartSec=10s
+
+# --- Was der Dienst nicht darf ------------------------------------------
+#
+# Ein Archivdienst liest Dateien und öffnet einen Port. Alles andere kann
+# ihm das System verwehren, und dann kann ein Fehler in MailBurg auch
+# nicht mehr anrichten als das.
+
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+# Schreiben darf er genau hier: sein Archiv und seine Einstellungen.
+ReadWritePaths=/var/lib/mailburg
+
+# Nur die Adressfamilien, die er wirklich braucht - IPv4, IPv6 und
+# Unix-Sockets. Kein AF_PACKET, kein Netlink.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
