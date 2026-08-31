@@ -16,7 +16,7 @@ auseinander.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QDate, QLocale, Qt
+from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QDateEdit,
     QCheckBox,
@@ -39,14 +39,20 @@ from mailburg.search.maske import quoten  # noqa: E402, F401
 
 
 def _datumsmuster() -> str:
-    """Das Datumsmuster der Systemsprache, mit vierstelligem Jahr.
+    """Das Datumsmuster – fest deutsch, wie überall sonst im Programm.
 
-    Dieselbe Regel wie in :mod:`mailburg.ui.datum`: Qts Kurzformat kürzt
-    die Jahreszahl auf zwei Stellen, und in einem Archiv stünden Post von
-    1998 und Post von 2098 dann beide als »98« da.
+    Kam bis zum 2026-08-31 aus ``QLocale``, also aus der Systemsprache.
+    Das stand im Widerspruch zum übrigen Programm, das fest deutsch
+    spricht; mit Stephan an diesem Tag entschieden. Die Begründung steht
+    in :mod:`mailburg.ui.datum`.
+
+    Hier zählt noch etwas: Wer in dieses Feld tippt, tippt in derselben
+    Schreibweise wie in die Suchsprache (``seit:01.01.2025``). Zwei
+    Formate für dasselbe Datum im selben Fenster wären eine Zumutung.
     """
-    muster = QLocale().dateFormat(QLocale.ShortFormat)
-    return muster if "yyyy" in muster else muster.replace("yy", "yyyy")
+    from mailburg.ui.datum import MUSTER
+
+    return MUSTER
 
 
 class Suchmaske(QDialog):

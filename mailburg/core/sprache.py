@@ -68,15 +68,16 @@ def groesse(bytes_zahl: int) -> str:
 def zeitpunkt(iso: str) -> str:
     """»25.08.2026, 09:46« aus einem ISO-Zeitstempel.
 
-    **Fest deutsch, nicht nach Systemsprache.** Anders als
-    ``ui/datum.py``, das ``QLocale`` fragt – auf einem Server gibt es
-    keine sinnvolle Systemsprache, und der Dienst spricht ohnehin
-    deutsch wie der Rest des Programms.
+    **Fest deutsch, nicht nach Systemsprache.** Am 2026-08-31 mit
+    Stephan so entschieden: Das Programm spricht durchgehend deutsch –
+    seine Meldungen, seine Knöpfe, seine Suchsprache. Ein Datum, das
+    davon abweicht, weil der Rechner anders eingestellt ist, wäre der
+    einzige Fremdkörper.
 
-    Dass beide Wege nebeneinander bestehen, ist ein offener Punkt in der
-    TODO. Bis er entschieden ist, hat der Server die Fassung, die auf
-    einem Rechner ohne Spracheinstellung nicht in »25 08 2026«
-    umschlägt.
+    Diese Funktion ist seitdem die einzige Stelle, an der ein Datum für
+    Menschen entsteht – ``ui/datum.py`` ruft sie auf, der Server
+    ebenfalls. Zwei Fassungen desselben Formats liefen früher oder
+    später auseinander.
     """
     from datetime import datetime
 

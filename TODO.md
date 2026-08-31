@@ -37,18 +37,6 @@ wurde.
   Vorgänge schreiben ins Journal, und dort muss vorher geklärt sein, wer
   sie auslösen darf.
 
-- [ ] **Das Datum folgt der Systemsprache, die Knöpfe nicht.** Ein
-  Widerspruch, aufgefallen am 2026-08-31, als die Tests der Oberfläche
-  zum ersten Mal in der CI liefen: `ui/app.py` stellt Qt **fest** auf
-  Deutsch, mit ausdrücklicher Begründung – das Programm sei von Grund auf
-  deutsch, englische Knöpfe daneben wären ein Bruch. `ui/datum.py` fragt
-  dagegen `QLocale` und damit die Systemeinstellung.
-
-  Auf einem englischen System steht deshalb »Weiter« neben »8/24/2026«,
-  auf einem Server ohne Spracheinstellung »24 08 2026«. Beide
-  Entscheidungen sind für sich vertretbar; zusammen sind sie
-  inkonsequent. Zu klären, welche gilt.
-
 - [ ] **Betreffmuster als Regelfeld?** Bewusst weggelassen: Der Betreff
   lässt sich fälschen, er wechselt im Verlauf eines Austauschs, und eine
   Regel auf »Rechnung« träfe auch die Werbemail, die so tut. Ordner und
@@ -210,6 +198,23 @@ Prüfung steht es hier und nicht in der laufenden Liste.
   Antwort, privat eilt nichts.
 
 ## Erledigtes
+
+### Am 2026-08-31
+
+- [x] **Das Datum folgt jetzt auch dem Rest: Deutsch.** (2026-08-31)
+  `ui/datum.py` fragte `QLocale` und damit die Systemeinstellung,
+  während `ui/app.py` Qts eigene Beschriftungen **fest** auf Deutsch
+  stellt. Heraus kam »Weiter« neben »8/24/2026«, auf einem Bauserver
+  ohne Spracheinstellung »24 08 2026«.
+
+  Stephans Entscheidung: alles auf Deutsch. Die Umrechnung liegt jetzt
+  in `core/sprache.py` – damit Fenster und Weboberfläche dieselbe
+  benutzen. Auch die Eingabefelder der Suchmaske folgen ihr, denn wer
+  dort tippt, tippt in derselben Schreibweise wie in die Suchsprache
+  (`seit:01.01.2025`).
+
+  Der Test, der vorher festhielt, dass die Sprache das Format bestimmt,
+  hält jetzt das Gegenteil fest.
 
 ### Am 2026-08-30
 

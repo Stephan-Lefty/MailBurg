@@ -1,32 +1,44 @@
-"""Datumsangaben so schreiben, wie der Anwender sie liest.
+"""Datumsangaben so schreiben, wie MailBurg spricht: deutsch.
 
 Intern ist alles ISO: ``2026-08-26T21:14:03+02:00``. Das ist richtig so –
 eindeutig, sortierbar, zeitzonenfest. Nur hinschreiben sollte man es
-niemandem. Wer in Deutschland sitzt, liest ``26.08.2026``, wer in den USA
-sitzt, ``8/26/2026``, und beide sind es aus ihrer Sicht gewohnt.
+niemandem.
 
-Das Format kommt deshalb von :class:`QLocale`, also aus den
-Systemeinstellungen. MailBurg legt es nicht fest, es fragt nach.
+**Fest deutsch, nicht nach Systemsprache.** Bis zum 2026-08-31 kam das
+Format aus :class:`QLocale`, also aus den Systemeinstellungen. Das war
+für sich vertretbar – wer in den USA sitzt, liest ``8/26/2026`` – stand
+aber im Widerspruch zu ``ui/app.py``, das Qts eigene Beschriftungen
+**fest** auf Deutsch stellt, mit der Begründung: Das Programm ist von
+Grund auf deutsch, seine Meldungen sind es und die Suchsprache auch;
+englische Knöpfe daneben wären kein Entgegenkommen, sondern ein Bruch.
 
-**Jahreszahlen immer vierstellig.** Qts Kurzformat kürzt sie auf zwei
-Stellen ab – in einem Mailarchiv ein handfestes Problem: Post von 1998
-und Post von 2098 stünden beide als »98« da. Ein Archiv ist genau die
-Sorte Programm, in der alte Jahreszahlen vorkommen.
+Beides zusammen ergab »Weiter« neben »8/26/2026«. Aufgefallen ist es am
+2026-08-31, als die Tests der Oberfläche zum ersten Mal in der CI
+liefen: Auf einem Bauserver ohne Spracheinstellung stand dort
+»26 08 2026«. Mit Stephan entschieden: **alles auf Deutsch.**
+
+Die Umrechnung selbst liegt in :mod:`mailburg.core.sprache` – damit
+Fenster und Weboberfläche dieselbe benutzen und nicht zwei Fassungen
+desselben Formats auseinanderlaufen.
+
+**Jahreszahlen immer vierstellig.** Qts Kurzformat kürzte sie auf zwei
+Stellen – in einem Mailarchiv ein handfestes Problem: Post von 1998 und
+Post von 2098 stünden beide als »98« da. Ein Archiv ist genau die Sorte
+Programm, in der alte Jahreszahlen vorkommen.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from PySide6.QtCore import QDateTime, QLocale, Qt
+from PySide6.QtCore import QDateTime, Qt
 
+from mailburg.core import sprache
 
-def _muster(art: QLocale.FormatType) -> str:
-    """Das Datumsmuster der Systemsprache, mit vierstelligem Jahr."""
-    muster = QLocale().dateFormat(art)
-    if "yyyy" not in muster:
-        muster = muster.replace("yy", "yyyy")
-    return muster
+#: Das Muster für Eingabefelder, die ein Datum entgegennehmen –
+#: ``QDateEdit`` und Verwandte. Dieselbe Schreibweise wie in der Anzeige
+#: und in der Suchsprache (``seit:01.01.2025``).
+MUSTER = "dd.MM.yyyy"
 
 
 def tag(wert: str | datetime | None) -> str:
@@ -34,7 +46,7 @@ def tag(wert: str | datetime | None) -> str:
     zeitpunkt = _lesen(wert)
     if zeitpunkt is None:
         return ""
-    return QLocale().toString(zeitpunkt.date(), _muster(QLocale.ShortFormat))
+    return sprache.zeitpunkt(_iso(zeitpunkt)).split(",")[0]
 
 
 def tag_und_zeit(wert: str | datetime | None) -> str:
@@ -42,11 +54,11 @@ def tag_und_zeit(wert: str | datetime | None) -> str:
     zeitpunkt = _lesen(wert)
     if zeitpunkt is None:
         return ""
-    ort = QLocale()
-    return (
-        f"{ort.toString(zeitpunkt.date(), _muster(QLocale.ShortFormat))} "
-        f"{ort.toString(zeitpunkt.time(), 'HH:mm')}"
-    )
+    return sprache.zeitpunkt(_iso(zeitpunkt)).replace(",", "")
+
+
+def _iso(zeitpunkt: QDateTime) -> str:
+    return zeitpunkt.toString(Qt.ISODate)
 
 
 def _lesen(wert: str | datetime | None) -> QDateTime | None:

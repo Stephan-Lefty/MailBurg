@@ -1369,17 +1369,13 @@ class BestandsanzeigeTest(OberflaechenTest):
     """Ist mein Archiv auf dem Stand? Das muss man sehen, nicht glauben."""
 
     def test_zeitpunkt_wird_lesbar(self):
-        """»heute«, »gestern«, sonst das Datum.
+        """»heute«, »gestern«, sonst das Datum – deutsch geschrieben.
 
-        **Ohne Punkte zu erwarten.** Das Datumsformat kommt aus
-        ``QLocale``, also aus den Systemeinstellungen – auf einem
-        deutschen Rechner »24.08.2026«, auf einem englischen
+        Das Format kam bis zum 2026-08-31 aus ``QLocale`` und damit aus
+        den Systemeinstellungen: auf einem englischen Rechner
         »8/24/2026«, auf einem Bauserver ohne Spracheinstellung
-        »24 08 2026«. Am 2026-08-31 in der CI aufgefallen, als die
-        Tests der Oberfläche dort zum ersten Mal liefen.
-
-        Geprüft wird deshalb, dass Tag, Monat und Jahr vorkommen –
-        nicht, womit sie getrennt sind.
+        »24 08 2026«. Seitdem ist es fest deutsch, wie der Rest des
+        Programms – deshalb dürfen hier wieder Punkte erwartet werden.
         """
         from datetime import datetime, timedelta
 
@@ -1391,10 +1387,7 @@ class BestandsanzeigeTest(OberflaechenTest):
 
         vorwoche = jetzt - timedelta(days=7)
         gezeigt = _abrufzeit(vorwoche.isoformat())
-        for teil in (f"{vorwoche:%d}", f"{vorwoche:%m}", f"{vorwoche:%Y}"):
-            with self.subTest(teil=teil):
-                self.assertIn(teil, gezeigt)
-        # Und die Uhrzeit, die MailBurg selbst formatiert.
+        self.assertIn(f"{vorwoche:%d.%m.%Y}", gezeigt)
         self.assertIn(f"{vorwoche:%H:%M}", gezeigt)
 
     def test_ohne_abruf_wird_das_gesagt(self):
@@ -1442,15 +1435,26 @@ class DatumsformatTest(OberflaechenTest):
         QLocale.setDefault(QLocale(sprache))
         return getattr(datum, was)("2026-08-26T21:14:03+02:00")
 
-    def test_die_reihenfolge_folgt_der_sprache(self):
-        self.assertEqual(self._mit("de_DE", "tag"), "26.08.2026")
-        self.assertEqual(self._mit("en_US", "tag"), "8/26/2026")
-        self.assertEqual(self._mit("en_GB", "tag"), "26/08/2026")
+    def test_die_schreibweise_bleibt_deutsch(self):
+        """Am 2026-08-31 gedreht: vorher folgte sie der Systemsprache.
+
+        Das stand im Widerspruch zum übrigen Programm, das Qts eigene
+        Beschriftungen **fest** auf Deutsch stellt – heraus kam »Weiter«
+        neben »8/26/2026«. Mit Stephan entschieden: alles auf Deutsch.
+
+        Der Test steht auf dem Kopf, was er vorher prüfte, und das ist
+        der Punkt: Er hielt die alte Entscheidung fest, jetzt hält er
+        die neue.
+        """
+        for sprache in ("de_DE", "en_US", "en_GB", "fr_FR", "C"):
+            with self.subTest(sprache=sprache):
+                self.assertEqual(self._mit(sprache, "tag"), "26.08.2026")
 
     def test_jahreszahlen_bleiben_vierstellig(self):
-        # Qts Kurzformat kürzt auf zwei Stellen. In einem Mailarchiv ist
+        # Qts Kurzformat kürzte auf zwei Stellen. In einem Mailarchiv ist
         # das ein handfestes Problem: Post von 1998 und Post von 2098
-        # stünden beide als "98" da.
+        # stünden beide als "98" da. Seit der festen Schreibweise kann
+        # das nicht mehr passieren - geprüft wird es trotzdem.
         for sprache in ("de_DE", "en_US", "en_GB", "fr_FR", "it_IT"):
             with self.subTest(sprache=sprache):
                 self.assertIn("2026", self._mit(sprache, "tag"))

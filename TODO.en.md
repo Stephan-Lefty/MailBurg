@@ -34,16 +34,6 @@ down, with the date they were completed.
   the scope, not a defect — those operations write to the journal, and who
   may trigger them has to be settled first.
 
-- [ ] **Dates follow the system language, the buttons do not.** A
-  contradiction noticed on 2026-08-31, when the interface tests first ran in
-  CI: `ui/app.py` pins Qt to German **deliberately** — the program is German
-  throughout, and English buttons beside it would be a break. `ui/datum.py`
-  asks `QLocale` instead, and thus the system setting.
-
-  On an English system that puts "Weiter" next to "8/24/2026"; on a server
-  with no locale, "24 08 2026". Either decision is defensible on its own;
-  together they are inconsistent. To be settled.
-
 - [ ] **Subject patterns as a rule field?** Deliberately left out: a subject can
   be forged, it changes over the course of an exchange, and a rule matching
   "invoice" would also catch the marketing mail pretending to be one. Folder and
@@ -191,6 +181,21 @@ they sit here and not in the running list.
   urgent.
 
 ## Done
+
+### 2026-08-31
+
+- [x] **Dates now follow the rest: German.** (2026-08-31) `ui/datum.py`
+  asked `QLocale` and thus the system setting, while `ui/app.py` pins Qt's
+  own labels to German **deliberately**. The result was "Weiter" beside
+  "8/24/2026", and on a build server with no locale, "24 08 2026".
+
+  Stephan's decision: German everywhere. The conversion now lives in
+  `core/sprache.py`, so the window and the web interface use the same one.
+  The search form's date fields follow it too — whoever types there types
+  in the same notation as the query language (`seit:01.01.2025`).
+
+  The test that used to assert the language decides the format now asserts
+  the opposite.
 
 ### 2026-08-30
 

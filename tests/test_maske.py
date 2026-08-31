@@ -140,5 +140,51 @@ class BeideMaskenTest(unittest.TestCase):
         self.assertIn("from mailburg.search.maske import", quelle)
 
 
+
+
+class DeutschesDatumTest(unittest.TestCase):
+    """Ein Datum sieht überall gleich aus – am 2026-08-31 entschieden.
+
+    Vorher kam das Format aus ``QLocale``, also aus den
+    Systemeinstellungen, während das übrige Programm fest deutsch
+    spricht. Auf einem englischen Rechner stand »Weiter« neben
+    »8/24/2026«, auf einem Bauserver »24 08 2026«.
+    """
+
+    def test_der_kern_schreibt_deutsch(self):
+        from mailburg.core.sprache import zeitpunkt
+
+        self.assertEqual(
+            zeitpunkt("2026-08-25T07:46:11+00:00"), "25.08.2026, 07:46"
+        )
+
+    def test_unbrauchbares_bleibt_stehen_statt_zu_werfen(self):
+        """In zwanzig Jahren Mail steht alles Mögliche in einem Datumsfeld."""
+        from mailburg.core.sprache import zeitpunkt
+
+        self.assertEqual(zeitpunkt(""), "")
+        self.assertEqual(zeitpunkt("unsinn"), "unsinn")
+
+    def test_die_oberflaeche_fragt_nicht_mehr_die_systemsprache(self):
+        from pathlib import Path
+
+        wurzel = Path(__file__).resolve().parent.parent / "mailburg" / "ui"
+        for name in ("datum.py", "suchmaske.py"):
+            quelle = (wurzel / name).read_text(encoding="utf-8")
+            # Im Fließtext darf QLocale vorkommen - im Code nicht mehr.
+            code = "\n".join(
+                zeile for zeile in quelle.splitlines()
+                if not zeile.lstrip().startswith(("#", '"', "*", "-"))
+            )
+            with self.subTest(datei=name):
+                self.assertNotIn("QLocale(", code)
+
+    def test_eingabe_und_anzeige_haben_dieselbe_schreibweise(self):
+        """Zwei Formate für dasselbe Datum im selben Fenster wären eine Zumutung."""
+        from mailburg.ui.datum import MUSTER
+
+        self.assertEqual(MUSTER, "dd.MM.yyyy")
+
+
 if __name__ == "__main__":
     unittest.main()
