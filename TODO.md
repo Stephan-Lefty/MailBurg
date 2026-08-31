@@ -8,7 +8,25 @@ wurde.
 
 ## Offen
 
-### Muss vor dem ersten echten Einsatz passieren
+### Für die 1.1
+
+- [ ] **macOS.** Tests und Einrichtung laufen dort in der CI durch,
+  benutzt hat MailBurg dort noch niemand. Für ein Archivprogramm ist das
+  zu wenig, um es zu empfehlen: Was beim Aufnehmen schiefgeht, fällt erst
+  Jahre später auf. Seit der 1.0 sagt das README das auch so, und die
+  Classifier in `pyproject.toml` nennen nur noch Linux und Windows.
+
+  **Was fehlt, ist ein Gerät.** Zu prüfen wären dann: der Schlüsselbund
+  (macOS statt gnome-keyring/ksecretd), Apple Mail als Quelle (`.emlx`),
+  `launchd` für den Zeitplan – dafür gibt es bisher nur eine
+  Beispieldatei in [docs/zeitsteuerung.md](docs/zeitsteuerung.md), nie
+  gelaufen –, und ob die Oberfläche dort brauchbar aussieht.
+
+  **Und die Frage nach dem `.dmg`.** Ohne Signatur meldet Gatekeeper das
+  Programm als nicht überprüfbar; Anwender müssten es über einen
+  versteckten Rechtsklick-Umweg starten. Ein Entwicklerkonto bei Apple
+  kostet 99 $ im Jahr – das ist eine Entscheidung, keine technische
+  Frage.
 
 - [ ] **Die Verschlüsselung an einem echten Archiv erproben.** Gebaut und
   getestet ist sie seit dem 2026-08-31, aber noch nie hat jemand damit

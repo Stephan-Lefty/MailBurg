@@ -5,9 +5,37 @@ Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 
 ## Hier war Schluss (Stand 2026-08-31, Montag)
 
-**0.12.0 ist veröffentlicht**, danach ging der ganze Tag in die **Server
-Edition**, den **Gesprächsverlauf** und zuletzt die
-**Archivverschlüsselung**. 1422 Tests.
+**Die Fassung steht auf 1.0.0**, der Tag ist noch nicht gesetzt – das
+Release macht Stephan, sobald er die `MailBurg.exe` geprüft hat. Sie
+entsteht von selbst, sobald ein Release veröffentlicht wird
+(`windows-exe.yml` hört auf `release: published`).
+
+Der Tag brachte: die **Server Edition**, den **Gesprächsverlauf** und die
+**Archivverschlüsselung**. 1423 Tests mit allen Zusätzen, 1406 ohne.
+
+### Was 1.0 heißt und was nicht
+
+Stephans Entscheidung vom 31.08.: Die Verschlüsselung bleibt drin, aber
+als das, was sie ist – **neu und im Alltag nicht erprobt**. Und **macOS
+wandert in die 1.1**.
+
+Das Muster dafür gibt es im Projekt längst: OAuth2 steht seit der 0.10
+im Release mit dem Satz, dass sich damit an einem echten Konto noch
+niemand angemeldet hat. Es blockiert nichts, weil dabeisteht, woran man
+ist.
+
+**Bei der Verschlüsselung wiegt das schwerer**, denn der Schaden ist ein
+anderer: Bei OAuth2 heißt »geht schief«, dass der Abruf nicht läuft –
+auffällig und reparierbar. Hier heißt es, dass das Archiv weg ist.
+Deshalb steht der Hinweis nicht im README, wo ihn niemand vor dem Klick
+liest, sondern an den vier Stellen, an denen man sich entscheidet:
+Assistent, Passwortdialog, `mailburg anlegen`, Handbuch.
+`krypto.hinweis_neu()` hält den Wortlaut an einer Stelle, ein Test wacht
+darüber, dass er überall ankommt.
+
+**Wer ihn streicht** – also sobald jemand damit im Alltag gearbeitet hat
+–, muss den Test in `tests/test_krypto.py` mitziehen. Ein Hinweis, der
+stehen bleibt, nachdem er nicht mehr stimmt, ist schlimmer als keiner.
 
 ### Die Archivverschlüsselung
 
