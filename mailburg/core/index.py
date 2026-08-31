@@ -420,16 +420,37 @@ class Index:
         "anhang": "m.has_attachments",
     }
 
+    @staticmethod
+    def _mit_sicht(where: str, params, sicht) -> tuple[str, list]:
+        """Hängt die Rechteprüfung an eine Bedingung an.
+
+        An *einer* Stelle, damit sie nirgends vergessen wird. Ohne
+        Sicht gilt »alles« – auf dem Arbeitsplatz gibt es keine
+        Benutzer, und wer am Rechner sitzt, hat das Archiv ohnehin.
+        """
+        from mailburg.core.sicht import Sicht
+
+        recht, werte = (sicht or Sicht.alles_sehen()).bedingung("m")
+        if recht == "1":
+            return where, list(params)
+        return f"({where}) AND {recht}", [*params, *werte]
+
     def search(self, expression: str, limit: int = 200, offset: int = 0,
-               sortierung: str = "datum", absteigend: bool = True) -> list[Hit]:
+               sortierung: str = "datum", absteigend: bool = True,
+               sicht=None) -> list[Hit]:
         """Führt eine vorbereitete Suchanfrage aus.
 
         Erwartet den fertigen SQL-Baustein aus
         :mod:`mailburg.search.query` – hier wird nicht mehr geparst.
+
+        ``sicht`` grenzt auf die Postfächer ein, die der Abfragende
+        sehen darf. Ohne Angabe gilt »alles«; siehe
+        :mod:`mailburg.core.sicht`.
         """
         from mailburg.search.query import build
 
         where, params = build(expression)
+        where, params = self._mit_sicht(where, params, sicht)
         feld = self.SORTIERFELDER.get(sortierung, self.SORTIERFELDER["datum"])
         richtung = "DESC" if absteigend else "ASC"
         # Das Datum als zweiter Schlüssel: Bei gleichem Absender oder
@@ -460,11 +481,17 @@ class Index:
             for row in rows
         ]
 
-    def count(self, expression: str = "") -> int:
-        """Zählt, wie viele Mails auf eine Anfrage passen."""
+    def count(self, expression: str = "", sicht=None) -> int:
+        """Zählt, wie viele Mails auf eine Anfrage passen.
+
+        **Mit derselben Einschränkung wie die Suche.** Eine Trefferzahl,
+        die mehr nennt, als die Liste zeigt, verrät genau das, was die
+        Rechte verbergen sollen.
+        """
         from mailburg.search.query import build
 
         where, params = build(expression)
+        where, params = self._mit_sicht(where, params, sicht)
         return self.db.execute(
             f"SELECT COUNT(*) FROM messages m WHERE {where}", params
         ).fetchone()[0]
@@ -473,8 +500,16 @@ class Index:
         """Alle Hashes im Index – für den Abgleich mit der Ablage."""
         return {r[0] for r in self.db.execute("SELECT hash FROM messages")}
 
-    def accounts(self) -> list[tuple[str, str, int]]:
-        """Konten und Ordner mit ihrer jeweiligen Anzahl – für den Ordnerbaum."""
+    def accounts(self, sicht=None) -> list[tuple[str, str, int]]:
+        """Konten und Ordner mit ihrer jeweiligen Anzahl – für den Ordnerbaum.
+
+        **Auch der Baum gehorcht den Rechten.** Sonst stünden dort die
+        Namen aller Postfächer im Haus – und die verraten schon für sich
+        genommen einiges, auch ohne dass eine einzige Mail lesbar wäre.
+        """
+        from mailburg.core.sicht import Sicht
+
+        blick = sicht or Sicht.alles_sehen()
         return [
             (r["account"], r["folder"], r["n"])
             for r in self.db.execute(
@@ -482,9 +517,10 @@ class Index:
                    FROM locations GROUP BY account, folder
                    ORDER BY account, folder"""
             )
+            if blick.darf_sehen(r["account"])
         ]
 
-    def account_totals(self) -> dict[str, int]:
+    def account_totals(self, sicht=None) -> dict[str, int]:
         """Je Konto, wie viele *Mails* dort liegen – nicht wie viele Fundorte.
 
         Der Unterschied ist bei Proton beträchtlich: Dort trägt jede Mail
@@ -492,12 +528,16 @@ class Index:
         weiterer Fundort. Wer die Fundorte addiert, kommt auf eine Zahl,
         die es nicht gibt – gemessen 2.877 statt der tatsächlichen 2.078.
         """
+        from mailburg.core.sicht import Sicht
+
+        blick = sicht or Sicht.alles_sehen()
         return {
             r["account"]: r["n"]
             for r in self.db.execute(
                 """SELECT account, COUNT(DISTINCT msg_id) AS n
                    FROM locations GROUP BY account"""
             )
+            if blick.darf_sehen(r["account"])
         }
 
     def ordner_umbenennen(self, account: str, alt: str, neu: str) -> int:
@@ -551,14 +591,44 @@ class Index:
             )
         }
 
-    def statistics(self) -> dict[str, int]:
-        """Kennzahlen für die Übersicht."""
-        one = lambda sql: self.db.execute(sql).fetchone()[0]  # noqa: E731
+    def statistics(self, sicht=None) -> dict[str, int]:
+        """Kennzahlen für die Übersicht.
+
+        **Auch hier gilt die Sicht.** »2.431 Mails im Archiv« ist für
+        jeden Benutzer eine andere Zahl; eine gemeinsame verriete den
+        Umfang dessen, was er nicht sehen darf.
+        """
+        from mailburg.core.sicht import Sicht
+
+        recht, werte = (sicht or Sicht.alles_sehen()).bedingung("m")
+        if recht == "1":
+            one = lambda sql: self.db.execute(sql).fetchone()[0]  # noqa: E731
+            return {
+                "mails": one("SELECT COUNT(*) FROM messages"),
+                "anhaenge": one("SELECT COUNT(*) FROM attachments"),
+                "fundorte": one("SELECT COUNT(*) FROM locations"),
+                "bytes": one("SELECT COALESCE(SUM(size), 0) FROM messages"),
+            }
+
+        def gezaehlt(sql: str) -> int:
+            return self.db.execute(sql, werte).fetchone()[0]
+
         return {
-            "mails": one("SELECT COUNT(*) FROM messages"),
-            "anhaenge": one("SELECT COUNT(*) FROM attachments"),
-            "fundorte": one("SELECT COUNT(*) FROM locations"),
-            "bytes": one("SELECT COALESCE(SUM(size), 0) FROM messages"),
+            "mails": gezaehlt(
+                f"SELECT COUNT(*) FROM messages m WHERE {recht}"),
+            "anhaenge": gezaehlt(
+                f"""SELECT COUNT(*) FROM attachments a
+                    JOIN messages m ON m.id = a.msg_id WHERE {recht}"""),
+            # Nur die Fundorte in erlaubten Postfächern: Die Zahl aller
+            # Fundorte einer sichtbaren Mail verriete, in wie vielen
+            # weiteren Postfächern sie noch liegt.
+            "fundorte": self.db.execute(
+                f"""SELECT COUNT(*) FROM locations l
+                    WHERE l.account IN ({','.join('?' for _ in werte)})""",
+                werte,
+            ).fetchone()[0],
+            "bytes": gezaehlt(
+                f"SELECT COALESCE(SUM(m.size), 0) FROM messages m WHERE {recht}"),
         }
 
     def optimize(self) -> None:
