@@ -4861,3 +4861,59 @@ class IndexNeuaufbauBeimStartTest(OberflaechenTest):
         ).read_text(encoding="utf-8")
 
         self.assertIn("fenster.baut_auf", quelle)
+
+
+class ZuletztBenutztTest(OberflaechenTest):
+    """Archive, die gerade nicht da sind.
+
+    Bei einem Archivprogramm ist das der Normalfall: Die Platte hängt
+    nicht immer am Rechner. Bis zum 2026-08-31 standen solche Einträge
+    im Menü wie jeder andere und meldeten beim Anklicken »In ... liegt
+    kein MailBurg-Archiv«.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.basis = pathlib.Path(self._tmp.name)
+
+        self.da = self.basis / "Vorhanden"
+        (self.da).mkdir()
+        (self.da / "archive.json").write_text(
+            '{"name": "Vorhanden", "uuid": "x"}', encoding="utf-8"
+        )
+        self.weg = self.basis / "Abgezogen"
+
+    def _menue(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMenu
+
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        fenster = Hauptfenster.__new__(Hauptfenster)
+        fenster.archiv = None
+        fenster.zuletzt_menue = QMenu()
+        with mock.patch(
+            "mailburg.core.einstellungen.zuletzt_benutzte",
+            return_value=[self.da, self.weg],
+        ):
+            Hauptfenster._zuletzt_fuellen(fenster)
+        return fenster.zuletzt_menue.actions()
+
+    def test_ein_erreichbares_archiv_ist_anklickbar(self):
+        eintraege = self._menue()
+
+        self.assertTrue(eintraege[0].isEnabled())
+        self.assertEqual(eintraege[0].text(), "Vorhanden")
+
+    def test_ein_verschwundenes_bleibt_stehen_und_sagt_es(self):
+        """Entfernen wäre falsch – die Platte kommt ja wieder."""
+        eintraege = self._menue()
+
+        self.assertEqual(len(eintraege), 2)
+        self.assertIn("nicht erreichbar", eintraege[1].text())
+        self.assertFalse(eintraege[1].isEnabled())
+        self.assertIn("Platte angeschlossen", eintraege[1].statusTip())

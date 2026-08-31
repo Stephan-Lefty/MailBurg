@@ -87,6 +87,18 @@ class Hauptfenster(QMainWindow):
         from PySide6.QtWidgets import QApplication
 
         self._grundgroesse = QApplication.font().pointSizeF()
+        # **Menüs haben ihre eigene Schriftgröße.** Qt führt neben der
+        # Anwendungsschrift eine je Widgetklasse, und der Stil setzt sie
+        # unabhängig: Unter Breeze steht die Anwendung auf 9 pt und ein
+        # Menü auf 14. Wer beide auf denselben Wert zöge, machte die
+        # Menüs beim Vergrößern erst einmal kleiner.
+        #
+        # Deshalb hier die Ausgangsgrößen merken und später *relativ*
+        # verschieben - jede Klasse um dieselbe Zahl Punkte.
+        self._grundgroessen = {
+            klasse: QApplication.font(klasse).pointSizeF()
+            for klasse in ("QMenu", "QMenuBar", "QToolTip")
+        }
         self.schriftstufe = 0
 
         self.setWindowTitle(APP_NAME)
@@ -554,11 +566,30 @@ class Hauptfenster(QMainWindow):
         for pfad in andere:
             # Der Name des Archivs, nicht der Pfad: "Privatarchiv Familie"
             # sagt mehr als /mnt/usb-Hersteller_Portable_XXXXXXXX-0:0-part2.
-            eintrag = self.zuletzt_menue.addAction(_archivname(pfad))
-            eintrag.setStatusTip(str(pfad))
-            eintrag.triggered.connect(
-                lambda _geklickt=False, p=pfad: self._wechseln(p)
+            name = _archivname(pfad)
+            da = (pfad / "archive.json").is_file()
+
+            # **Nicht erreichbar heißt nicht weg.** Der häufigste Grund
+            # ist eine abgezogene Platte – und für ein Archivprogramm ist
+            # das der Normalfall, nicht die Ausnahme. Ein Eintrag, der
+            # dann aus der Liste verschwände, sähe aus, als hätte
+            # MailBurg das Archiv vergessen.
+            #
+            # Also bleibt er stehen und sagt, was los ist. Am 2026-08-31
+            # aufgefallen: Zwei längst gelöschte Archive standen im Menü
+            # und meldeten beim Anklicken nur »liegt kein MailBurg-Archiv«.
+            eintrag = self.zuletzt_menue.addAction(
+                name if da else f"{name}  (nicht erreichbar)"
             )
+            eintrag.setStatusTip(
+                str(pfad) if da
+                else f"{pfad} – Platte angeschlossen? Ordner verschoben?"
+            )
+            eintrag.setEnabled(da)
+            if da:
+                eintrag.triggered.connect(
+                    lambda _geklickt=False, p=pfad: self._wechseln(p)
+                )
 
     def _wechseln(self, pfad) -> None:
         from mailburg.core.einstellungen import merken
@@ -749,6 +780,28 @@ class Hauptfenster(QMainWindow):
         # gesetzten: Sonst wächst die Schrift bei jedem Aufruf weiter,
         # auch wenn der Anwender zurückstellen wollte.
         schrift.setPointSizeF(max(6.0, self._grundgroesse + self.schriftstufe))
+
+        # **An der Anwendung, nicht am Fenster.** Bis zum 2026-08-31
+        # ging die Schrift ans Hauptfenster und an dessen Kinder – und
+        # damit nicht dorthin, wo man sie am ehesten braucht:
+        #
+        # Ein aufgeklapptes Menü ist in Qt kein Kind des Fensters,
+        # sondern ein eigenes Fenster. Dasselbe gilt für jeden Dialog,
+        # der später aufgeht, und für die Meldungsfenster. Stephan hat
+        # es so gemeldet: »Wenn ich die Schrift vergrößere, sieht es im
+        # Menü immer gleich aus.«
+        #
+        # ``QApplication.setFont`` erreicht alle drei – auch die
+        # Fenster, die es noch gar nicht gibt.
+        anwendung = QApplication.instance()
+        if anwendung is not None:
+            anwendung.setFont(schrift)
+            for klasse, ausgangswert in self._grundgroessen.items():
+                eigene = QApplication.font(klasse)
+                eigene.setPointSizeF(
+                    max(6.0, ausgangswert + self.schriftstufe)
+                )
+                anwendung.setFont(eigene, klasse)
         self.setFont(schrift)
         for teil in self.findChildren(QWidget):
             teil.setFont(schrift)

@@ -58,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
 
     anwendung.setStyleSheet(farben.bereichsrahmen())
     farben.platzhalter_aufhellen(anwendung)
+    farben.auswahlfelder_verbreitern(anwendung)
 
     symbol = _symbol()
     if symbol is not None:

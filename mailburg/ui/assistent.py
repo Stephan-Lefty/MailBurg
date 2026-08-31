@@ -786,9 +786,30 @@ class KontenSeite(QWizardPage):
         weiteres = QPushButton("Weiteres Postfach von Hand eintragen …")
         weiteres.clicked.connect(self._von_hand)
 
+        # **Die Erklärung rollt mit.** Sie stand fest über der Liste und
+        # bekam den Platz, den die Liste übrig ließ. Bei eingestellter
+        # Schriftgröße war das zu wenig: Bei 16 pt brach sie nach der
+        # Hälfte ab, bei 24 pt hätte sie mehr Höhe gebraucht als das
+        # ganze Fenster hat - da hilft keine Größenrichtlinie mehr,
+        # sondern nur Rollen.
+        #
+        # Ausgerechnet der Absatz, der erklärt, warum MailBurg die
+        # Passwörter nicht aus Thunderbird ausliest. Wer den nicht
+        # liest, hält das Nachfragen für eine Schikane.
+        oben = QWidget()
+        oben_aufbau = QVBoxLayout(oben)
+        oben_aufbau.setContentsMargins(0, 0, 0, 0)
+        oben_aufbau.addWidget(self.herkunft)
+        oben_aufbau.addWidget(rollbereich, 1)
+
+        alles = QScrollArea()
+        alles.setWidget(oben)
+        alles.setWidgetResizable(True)
+        alles.setFrameShape(QScrollArea.NoFrame)
+        alles.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
         aufbau = QVBoxLayout(self)
-        aufbau.addWidget(self.herkunft)
-        aufbau.addWidget(rollbereich, 1)
+        aufbau.addWidget(alles, 1)
         aufbau.addWidget(weiteres)
 
     def initializePage(self) -> None:
@@ -1397,7 +1418,18 @@ class AbschlussSeite(QWizardPage):
         self.gleich_abrufen = QCheckBox("Jetzt den ersten Abruf starten")
         self.gleich_abrufen.setChecked(True)
 
-        aufbau = QVBoxLayout(self)
+        # **Auch diese Seite rollt.** Willkommen und Archiv tun es seit
+        # jeher, die Abschlussseite nicht - sie war kurz genug. Bei
+        # eingestellter Schriftgröße ist sie es nicht mehr: Bei 16 pt
+        # brach der Satz über den Hintergrundabruf unten ab, und der
+        # Nachsatz »alles lässt sich später ändern« fehlte ganz.
+        #
+        # Ausgerechnet bei jemandem, der die Schrift vergrößert, weil er
+        # sonst schlecht liest. Am 2026-08-31 mit
+        # werkzeuge/lesbarkeit.py bei 11, 13 und 16 pt nachgemessen.
+        inhalt = QWidget()
+        aufbau = QVBoxLayout(inhalt)
+        aufbau.setContentsMargins(0, 0, 12, 0)
         # Der Hintergrundabruf wurde bisher als Terminalbefehl empfohlen -
         # mitten in einer grafischen Einrichtung, und noch dazu einer, der
         # das Quellverzeichnis voraussetzt. Wer MailBurg installiert hat,
@@ -1427,6 +1459,16 @@ class AbschlussSeite(QWizardPage):
         aufbau.addSpacing(12)
         aufbau.addWidget(nachsatz)
         aufbau.addStretch()
+
+        rollbar = QScrollArea()
+        rollbar.setWidget(inhalt)
+        rollbar.setWidgetResizable(True)
+        rollbar.setFrameShape(QScrollArea.NoFrame)
+        rollbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        aussen = QVBoxLayout(self)
+        aussen.setContentsMargins(0, 0, 0, 0)
+        aussen.addWidget(rollbar)
 
     def validatePage(self) -> bool:
         # Erst hier anlegen, nicht schon beim Anklicken: Wer den Assistenten

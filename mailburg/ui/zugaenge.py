@@ -161,7 +161,15 @@ class Zugangsdialog(QDialog):
         aussen.addLayout(mitte, 1)
         aussen.addWidget(knoepfe)
 
+        # **Nicht geraten, sondern gemessen.** 520 war zu wenig: Die
+        # Erklärung zu den beiden Rechten brach nach einer Zeile ab, und
+        # der Satz »Wer die Technik betreut, muss keine Geschäftspost
+        # lesen dürfen« war halb weg - ausgerechnet der, der den
+        # Unterschied erklärt. Am 2026-08-31 mit werkzeuge/lesbarkeit.py
+        # nachgemessen: gebraucht werden 675.
         self.resize(760, 520)
+        self.setMinimumHeight(self.sizeHint().height())
+        self.resize(760, max(520, self.sizeHint().height()))
         self._fuellen()
 
     # -- Daten ------------------------------------------------------------

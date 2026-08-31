@@ -103,7 +103,11 @@ class NeuesPasswortFragen(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Archiv verschlüsseln")
-        self.setMinimumWidth(500)
+        # **Breit genug für seine drei Absätze.** Bei 500 px brach der
+        # Hinweis zum Suchindex unten ab - ausgerechnet der Satz, der
+        # sagt, was die Verschlüsselung *nicht* schützt. Am 2026-08-31
+        # mit werkzeuge/lesbarkeit.py nachgemessen.
+        self.setMinimumWidth(600)
 
         aufbau = QVBoxLayout(self)
 
@@ -150,6 +154,9 @@ class NeuesPasswortFragen(QDialog):
         aufbau.addWidget(knoepfe)
 
         self.erstes.setFocus()
+        # Die Höhe aus dem Inhalt, nicht aus einer Zahl: Der Text hängt
+        # an der eingestellten Schriftgröße, und die kennt nur Qt.
+        self.adjustSize()
 
     def _pruefen(self) -> None:
         if not self.erstes.text():

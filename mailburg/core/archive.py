@@ -747,7 +747,12 @@ class Archive:
 
     # --------------------------------------------------------------- Prüfen
 
-    def seal(self, timestamp_token: str | None = None) -> dict[str, Any]:
+    def seal(
+        self,
+        timestamp_token: str | None = None,
+        *,
+        zeitstempeldienst: str = "",
+    ) -> dict[str, Any]:
         """Setzt ein Siegel über den bisherigen Stand.
 
         Das Siegel hält fest, wie viele Einträge das Journal zu diesem
@@ -759,13 +764,34 @@ class Archive:
         Kette beweist von sich aus nur die *Reihenfolge* der Einträge, nicht
         den Zeitpunkt – erst ein Stempel von dritter Seite belegt, dass der
         Stand zu einer bestimmten Zeit schon so vorlag.
+
+        ``zeitstempeldienst`` holt ihn stattdessen selbst, unter der
+        genannten Adresse. **Der Stand wird dafür vorher festgeschrieben:**
+        Gestempelt wird der Hash des letzten Eintrags *vor* dem Siegel, und
+        der steht schon fest, bevor der Dienst gefragt wird. Andersherum
+        ginge es auch gar nicht – der Siegeleintrag selbst enthält ja den
+        Stempel und änderte damit den Hash, den er stempeln soll.
         """
         self.journal.flush()
+
+        zeit = None
+        if zeitstempeldienst:
+            from mailburg.core import zeitstempel as zeitstempel_modul
+
+            stempel = zeitstempel_modul.holen(
+                zeitstempel_modul.digest_fuer(self.journal.last_hash),
+                zeitstempeldienst,
+            )
+            timestamp_token = stempel.token
+            zeit = stempel.zeit
+
         entry = self.journal.append(
             "seal",
             count=self.journal.count,
             covers=self.journal.last_hash,
             tsa=timestamp_token,
+            **({"tsa_zeit": zeit.isoformat()} if zeit else {}),
+            **({"tsa_dienst": zeitstempeldienst} if zeitstempeldienst else {}),
         )
         self.journal.flush()
         return entry
@@ -841,6 +867,18 @@ class Archive:
             elif op == "delete":
                 deleted.add(entry.get("hash", ""))
 
+        # **Das Ziel ohne die Grabsteine.** ``len(locations)`` zählt jede
+        # Mail mit, die je aufgenommen wurde – auch die gelöschten. Deren
+        # Dateien gibt es nicht mehr, sie werden übersprungen, und der
+        # Balken erreichte sein Ziel nie: Er blieb bei »16.387 von
+        # 16.519« stehen, als wären 132 Mails auf der Strecke geblieben.
+        #
+        # Genau so hat Stephan es am 2026-08-31 gesehen und gefragt, ob
+        # ihm etwas fehlt. Es fehlte nichts – die 132 hatte er selbst im
+        # August gelöscht. Aber eine Anzeige, die einen Datenverlust
+        # nahelegt, wo keiner ist, ist ein Fehler für sich.
+        zu_tun = sum(1 for digest in locations if digest not in deleted)
+
         count = 0
         for digest, entries in locations.items():
             if digest in deleted:
@@ -875,7 +913,7 @@ class Archive:
                 )
             count += 1
             if progress and count % 500 == 0:
-                progress(count, len(locations))
+                progress(count, zu_tun)
                 self.index.commit()
 
         self.index.commit()

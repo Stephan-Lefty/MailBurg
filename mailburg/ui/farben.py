@@ -16,6 +16,7 @@ im dunklen Thema also die am schlechtesten lesbare Zeile im Fenster.
 
 from __future__ import annotations
 
+from PySide6.QtCore import QEvent, QObject
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
@@ -160,3 +161,102 @@ def stil(gelungen: bool | None) -> str:
     if gelungen is None:
         return ""
     return f"color: {gut() if gelungen else schlecht()}"
+
+
+def auswahlfelder_verbreitern(anwendung) -> None:
+    """Sorgt dafür, dass in Auswahllisten alles zu lesen ist.
+
+    Qt macht eine ``QComboBox`` standardmäßig so breit, wie das Layout
+    ihr Platz gibt, und klappt die Liste in derselben Breite auf. Steht
+    dort »die letzten 2 Stände« neben einem Feld, das für »alle 15
+    Minuten« bemessen ist, wird der längere Eintrag abgeschnitten – und
+    zwar genau dann, wenn man ihn lesen will: beim Aufklappen.
+
+    Am 2026-08-31 von Stephan gemeldet, am Fenster »Was von selbst
+    laufen soll«. Betroffen waren alle vierzehn Auswahlfelder des
+    Programms; keines hatte eine eigene Einstellung dafür.
+
+    **Hier zentral und nicht vierzehnmal einzeln.** Sonst fehlt sie beim
+    fünfzehnten, das später dazukommt – und niemand merkt es, weil das
+    Feld ja aussieht wie immer, nur eben zu schmal.
+
+    ``AdjustToContents`` bemisst die Box nach ihrem längsten Eintrag.
+    Das macht einzelne Felder breiter als nötig; der Tausch lohnt sich:
+    Ein Feld, dessen Inhalt man nicht lesen kann, ist unbrauchbar,
+    eines, das zu viel Platz nimmt, nur unschön.
+    Seit dem 2026-08-31 richtet derselbe Filter auch Dialoge her, die
+    kleiner sind als ihr Inhalt: Dort brach Text unten ab, mitten im
+    Satz. Auch das war überall eine geratene Zahl - und eine geratene
+    Zahl sitzt falsch, sobald jemand die Schriftgröße ändert, und das
+    lässt sich in MailBurg einstellen.
+    """
+    from PySide6.QtWidgets import QComboBox
+
+    from PySide6.QtWidgets import QDialog, QLabel, QScrollArea
+
+    class _Anpasser(QObject):
+        def eventFilter(self, gegenstand, ereignis):
+            if ereignis.type() != QEvent.Show:
+                return False
+
+            # Beim Erzeugen greift es noch nicht - da hat die Box weder
+            # Eintraege noch ein Elternteil. Beim ersten Anzeigen schon.
+            if (
+                isinstance(gegenstand, QComboBox)
+                and gegenstand.sizeAdjustPolicy() != QComboBox.AdjustToContents
+            ):
+                gegenstand.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+                gegenstand.adjustSize()
+
+            elif isinstance(gegenstand, QLabel) and gegenstand.wordWrap():
+                self._umbruch_hoehe(gegenstand)
+
+            elif isinstance(gegenstand, QDialog):
+                self._dialog_weiten(gegenstand)
+            return False
+
+        @staticmethod
+        def _umbruch_hoehe(schild) -> None:
+            """Sagt dem Layout, dass die Höhe von der Breite abhängt.
+
+            **Der Qt-Fallstrick bei umbrechendem Text.** Ein ``QLabel``
+            mit ``wordWrap`` weiß selbst, wie hoch es bei einer
+            gegebenen Breite würde – über ``heightForWidth``. Das Layout
+            fragt aber nur danach, wenn die Größenrichtlinie es
+            ankündigt, und in der Vorgabe tut sie das nicht.
+
+            Die Folge: Steht daneben etwas, das den Platz beansprucht,
+            wird der Text zusammengedrückt und bricht unten ab. Bei
+            gewöhnlicher Schriftgröße fällt es kaum auf – bei 16 pt
+            fehlten auf der Postfachseite des Assistenten hundert Pixel,
+            also mehrere Zeilen.
+
+            Ausgerechnet bei jemandem, der die Schrift vergrößert hat,
+            weil er sonst schlecht liest.
+            """
+            richtlinie = schild.sizePolicy()
+            if richtlinie.hasHeightForWidth():
+                return
+            richtlinie.setHeightForWidth(True)
+            schild.setSizePolicy(richtlinie)
+
+        @staticmethod
+        def _dialog_weiten(dialog) -> None:
+            """Macht einen Dialog so groß, wie sein Inhalt es braucht.
+
+            **Ein Rollbereich bleibt unangetastet.** Der ist genau dafür
+            da, kleiner zu sein als sein Inhalt; ihn aufzublasen ergäbe
+            ein Fenster über den ganzen Bildschirm.
+            """
+            if dialog.findChildren(QScrollArea):
+                return
+            gebraucht = dialog.sizeHint()
+            dialog.resize(
+                max(dialog.width(), gebraucht.width()),
+                max(dialog.height(), gebraucht.height()),
+            )
+
+    # Am Anwendungsobjekt festhalten: Ein Filter, auf den niemand mehr
+    # zeigt, wird weggeraeumt - und dann sind die Felder wieder schmal.
+    anwendung._auswahlanpasser = _Anpasser(anwendung)
+    anwendung.installEventFilter(anwendung._auswahlanpasser)
