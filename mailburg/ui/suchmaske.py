@@ -33,12 +33,9 @@ from PySide6.QtWidgets import (
 )
 
 
-def quoten(wert: str) -> str:
-    """Setzt einen Wert in Anführungszeichen, wenn er Leerzeichen enthält."""
-    wert = wert.strip()
-    if not wert:
-        return ""
-    return f'"{wert}"' if " " in wert else wert
+#: Weitergereicht, weil andere Stellen der Oberfläche es benutzen.
+#: Zuhause ist es in :mod:`mailburg.search.maske`.
+from mailburg.search.maske import quoten  # noqa: E402, F401
 
 
 def _datumsmuster() -> str:
@@ -257,59 +254,57 @@ class Suchmaske(QDialog):
 
     # --------------------------------------------------------- Zusammenbauen
 
-    def ausdruck(self) -> str:
-        """Setzt aus den Feldern einen Suchausdruck zusammen."""
-        teile: list[str] = []
+    def werte(self) -> dict[str, str]:
+        """Was in den Feldern steht – als Wörterbuch.
 
-        if self.begriff.text().strip():
-            teile.append(quoten(self.begriff.text()))
-        for feld, name in (
-            (self.von, "von"), (self.an, "an"), (self.betreff, "betreff"),
-            (self.datei, "datei"),
-        ):
-            if feld.text().strip():
-                teile.append(f"{name}:{quoten(feld.text())}")
-
-        konto = self.konto.currentData()
-        if konto:
-            teile.append(f"konto:{quoten(konto)}")
+        Die Übersetzung in einen Suchausdruck macht
+        :mod:`mailburg.search.maske`, damit sie im Browser dieselbe ist.
+        Hier bleibt nur das Ablesen der Widgets.
+        """
         ordner = self.ordner.currentText().strip()
-        if ordner and not ordner.startswith("("):
-            teile.append(f"ordner:{quoten(ordner)}")
+        jahr_von, jahr_bis = self.jahr_von.value(), self.jahr_bis.value()
+        if jahr_von and jahr_bis and jahr_von != jahr_bis:
+            jahr = f"{min(jahr_von, jahr_bis)}-{max(jahr_von, jahr_bis)}"
+        else:
+            jahr = str(jahr_von or jahr_bis or "")
 
+        seit = bis = ""
         if self.zeitraum_an.isChecked():
             frueh, spaet = sorted(
                 (self.datum_von.date(), self.datum_bis.date())
             )
-            teile.append(f"seit:{frueh.toString('dd.MM.yyyy')}")
-            teile.append(f"bis:{spaet.toString('dd.MM.yyyy')}")
+            seit = frueh.toString("dd.MM.yyyy")
+            bis = spaet.toString("dd.MM.yyyy")
 
-        von, bis = self.jahr_von.value(), self.jahr_bis.value()
-        if von and bis and von != bis:
-            teile.append(f"jahr:{min(von, bis)}-{max(von, bis)}")
-        elif von or bis:
-            teile.append(f"jahr:{von or bis}")
+        groesse = self.groesse_wert.text().strip()
+        if groesse:
+            groesse = f"{self.groesse_art.currentData()}{groesse}"
 
-        if self.archiviert.text().strip():
-            teile.append(f"archiviert:{self.archiviert.text().strip()}")
-        if self.mit_anhang.isChecked():
-            teile.append("hat:anhang")
-        if self.typ.text().strip():
-            teile.append(f"typ:{self.typ.text().strip().lstrip('.')}")
+        return {
+            "begriff": self.begriff.text(),
+            "von": self.von.text(),
+            "an": self.an.text(),
+            "betreff": self.betreff.text(),
+            "datei": self.datei.text(),
+            "konto": self.konto.currentData() or "",
+            # Der Platzhalter »(alle Ordner)« ist keine Eingrenzung.
+            "ordner": "" if ordner.startswith("(") else ordner,
+            "jahr": jahr,
+            "seit": seit,
+            "bis": bis,
+            "archiviert": self.archiviert.text(),
+            "mit_anhang": "an" if self.mit_anhang.isChecked() else "",
+            "typ": self.typ.text(),
+            "groesse": groesse,
+            "wichtigkeit": self.wichtigkeit.currentData() or "",
+            "ohne": self.ohne.text(),
+        }
 
-        zeichen = self.groesse_art.currentData()
-        wert = self.groesse_wert.text().strip()
-        if wert:
-            teile.append(f"groesse:{zeichen}{wert}")
+    def ausdruck(self) -> str:
+        """Der Suchausdruck aus den Feldern."""
+        from mailburg.search.maske import ausdruck as bauen
 
-        wichtig = self.wichtigkeit.currentData()
-        if wichtig:
-            teile.append(f"wichtigkeit:{wichtig}")
-
-        for wort in self.ohne.text().split():
-            teile.append(f"-{wort}")
-
-        return " ".join(teile)
+        return bauen(self.werte())
 
     def _vorschau_erneuern(self) -> None:
         fertig = self.ausdruck()

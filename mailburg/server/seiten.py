@@ -58,6 +58,21 @@ _KOPF = """<!doctype html>
   dl.kopf dd {{ margin: 0; }}
   pre.text {{ white-space: pre-wrap; word-wrap: break-word;
               font-family: inherit; margin: 0; }}
+  .maske {{ display: grid; grid-template-columns: repeat(auto-fit,
+            minmax(16rem, 1fr)); gap: .9rem 1.5rem; margin: 1.5rem 0; }}
+  .feld {{ display: flex; flex-direction: column; }}
+  .feld.weit {{ grid-column: 1 / -1; }}
+  .feld label {{ color: var(--leise); font-size: .85rem; margin-bottom: .2rem; }}
+  .feld label.haken {{ color: inherit; font-size: 1rem; }}
+  .feld input, .feld select {{ padding: .45rem .55rem; font-size: 1rem;
+            border: 1px solid #97a1ad; border-radius: 4px;
+            background: transparent; color: inherit; }}
+  .feld input[type=checkbox] {{ width: auto; margin-right: .4rem; }}
+  .feld small {{ color: var(--leise); font-size: .78rem; margin-top: .15rem; }}
+  .ausdruck {{ border-left: 4px solid #97a1ad; padding: .4rem 0 .4rem .8rem; }}
+  .ausdruck span {{ color: var(--leise); font-size: .85rem; }}
+  .ausdruck code {{ font-size: 1rem; }}
+  .ausdruck.leise {{ color: var(--leise); }}
   .anmeldung {{ max-width: 22rem; margin: 4rem auto; }}
   .anmeldung label {{ display: block; margin: .8rem 0 .2rem; }}
   .anmeldung input {{ width: 100%; padding: .5rem; font-size: 1rem;
@@ -184,9 +199,88 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
          placeholder="Suchen … z. B. rechnung · von:müller · jahr:2025">
   <button type="submit">Suchen</button>
 </form>
-<p class="ergebnis">{html.escape(ergebnis)}</p>
+<p class="ergebnis">{html.escape(ergebnis)}
+   · <a href="/maske?begriff={html.escape(ausdruck)}">Ausführlich suchen</a></p>
 {tabelle}
 {blaettern}
+""", benutzer)
+
+
+def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
+              vorschau: str) -> str:
+    """Die ausführliche Suche – dieselben Felder wie im Fenster.
+
+    Die Felder stehen in :data:`mailburg.search.maske.FELDER`, damit
+    beide Masken dieselben zeigen. Und wie im Fenster steht unten der
+    Suchausdruck, den sie zusammensetzt: So lernt man die Suchsprache
+    nebenbei und kann den Ausdruck mitnehmen.
+    """
+    from mailburg.search.maske import FELDER
+
+    zeilen = []
+    for feld in FELDER:
+        wert = werte.get(feld.name, "")
+        hinweis = (
+            f'<small>{html.escape(feld.hinweis)}</small>'
+            if feld.hinweis else ""
+        )
+
+        if feld.art == "haken":
+            angehakt = " checked" if wert else ""
+            eingabe = (
+                f'<label class="haken"><input type="checkbox" '
+                f'name="{feld.name}"{angehakt}> '
+                f"{html.escape(feld.beschriftung)}</label>"
+            )
+            zeilen.append(f"<div class=\"feld weit\">{eingabe}{hinweis}</div>")
+            continue
+
+        if feld.art == "auswahl":
+            wahl = feld.auswahl
+            if feld.name == "konto":
+                wahl = (("", "alle"),) + tuple((k, k) for k in konten)
+            elif feld.name == "ordner":
+                wahl = (("", "alle"),) + tuple((o, o) for o in ordner)
+            stuecke = "".join(
+                f'<option value="{html.escape(w)}"'
+                f'{" selected" if w == wert else ""}>{html.escape(b)}</option>'
+                for w, b in wahl
+            )
+            eingabe = f'<select name="{feld.name}">{stuecke}</select>'
+        else:
+            eingabe = (
+                f'<input name="{feld.name}" value="{html.escape(wert)}"'
+                f'{" placeholder=\"TT.MM.JJJJ\"" if feld.art == "datum" else ""}>'
+            )
+
+        zeilen.append(
+            f'<div class="feld">'
+            f'<label for="{feld.name}">{html.escape(feld.beschriftung)}</label>'
+            f"{eingabe}{hinweis}</div>"
+        )
+
+    if vorschau:
+        gezeigt = (
+            f'<p class="ausdruck"><span>Suchausdruck:</span> '
+            f"<code>{html.escape(vorschau)}</code></p>"
+        )
+    else:
+        gezeigt = (
+            '<p class="ausdruck leise">Noch nichts eingegrenzt – '
+            "das fände alles.</p>"
+        )
+
+    return _rahmen("Ausführlich suchen – MailBurg", f"""
+<h1>Ausführlich suchen</h1>
+<form method="get" action="/maske">
+  <div class="maske">{"".join(zeilen)}</div>
+  {gezeigt}
+  <p>
+    <button type="submit" name="tun" value="zeigen">Ausdruck zeigen</button>
+    <button type="submit" name="tun" value="suchen">Suchen</button>
+    <a href="/">zur einfachen Suche</a>
+  </p>
+</form>
 """, benutzer)
 
 

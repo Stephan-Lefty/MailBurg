@@ -138,6 +138,47 @@ def routen(lage, sitzungen):
                 benutzer, ausdruck, treffer, gesamt, seite_nr, JE_SEITE
             ))
 
+    async def maske(anfrage):
+        """Die ausführliche Suche.
+
+        Zwei Knöpfe, ein Formular: »Ausdruck zeigen« bleibt hier und
+        zeigt, was zusammenkommt – wie die Vorschau im Fenster. »Suchen«
+        geht damit zur Trefferliste.
+        """
+        from mailburg.search.maske import FELDER, ausdruck as bauen
+
+        with _archiv(lage) as archiv:
+            benutzer = _angemeldet(anfrage, archiv)
+            if benutzer is None:
+                return _weiter_zur_anmeldung()
+
+            werte = {
+                feld.name: anfrage.query_params.get(feld.name, "")
+                for feld in FELDER
+            }
+            fertig = bauen(werte)
+
+            if anfrage.query_params.get("tun") == "suchen":
+                from urllib.parse import quote
+
+                return RedirectResponse(
+                    f"/?q={quote(fertig)}", status_code=303
+                )
+
+            # **Nur die Postfächer, die dieser Benutzer sehen darf.**
+            # Sonst stünden die Namen der übrigen in der Auswahlliste –
+            # und die verraten schon für sich genommen einiges.
+            blick = Sicht.fuer(benutzer)
+            konten, ordner = [], set()
+            for konto, ordnername, _ in archiv.index.accounts(sicht=blick):
+                if konto not in konten:
+                    konten.append(konto)
+                ordner.add(ordnername)
+
+            return HTMLResponse(seiten.suchmaske(
+                benutzer, werte, konten, sorted(ordner), fertig
+            ))
+
     def _sichtbarer_treffer(archiv, benutzer, kennung: str):
         """Eine Nachricht – aber nur, wenn dieser Benutzer sie sehen darf.
 
@@ -223,6 +264,7 @@ def routen(lage, sitzungen):
         Route("/anmelden", anmeldeseite),
         Route("/anmelden", anmelden, methods=["POST"]),
         Route("/abmelden", abmelden),
+        Route("/maske", maske),
         Route("/nachricht/{kennung}", nachricht),
         Route("/nachricht/{kennung}/datei", datei),
     ]

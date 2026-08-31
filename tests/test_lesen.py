@@ -59,7 +59,14 @@ class Kunde:
         from http.cookies import SimpleCookie
         from urllib.parse import urlsplit
 
+        from urllib.parse import quote
+
         teile = urlsplit(pfad)
+        # **Die Abfrage URL-kodieren.** Ein Browser tut das auch: Ein
+        # »ü« geht als %C3%BC über die Leitung, nicht als Rohbyte.
+        # Ohne das kam »müller« als »mÃ¼ller« an - ein Mangel dieses
+        # Testkunden, nicht des Servers.
+        abfrage = quote(teile.query, safe="=&+%")
         kopfzeilen = [(b"host", b"testserver")]
         if self.kekse:
             keks = "; ".join(f"{k}={v}" for k, v in self.kekse.items())
@@ -70,7 +77,7 @@ class Kunde:
         scope = {
             "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
             "method": art, "scheme": "http", "path": teile.path,
-            "raw_path": teile.path.encode(), "query_string": teile.query.encode(),
+            "raw_path": teile.path.encode(), "query_string": abfrage.encode(),
             "root_path": "", "headers": kopfzeilen,
             "client": ("127.0.0.1", 1234), "server": ("testserver", 80),
         }
@@ -356,6 +363,51 @@ class WebTest(unittest.TestCase):
                 self.assertNotIn("http://", seite.replace("http://www.w3.org", ""))
                 self.assertNotIn("https://", seite)
                 self.assertNotIn("<script", seite)
+
+    # -- Die ausführliche Suche -------------------------------------------
+
+    def test_die_maske_zeigt_alle_felder(self):
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/maske").text
+        from mailburg.search.maske import FELDER
+
+        for feld in FELDER:
+            with self.subTest(feld=feld.name):
+                self.assertIn(feld.beschriftung, seite)
+
+    def test_die_maske_zeigt_den_ausdruck_den_sie_baut(self):
+        """Wie im Fenster – so lernt man die Suchsprache nebenbei."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/maske?von=müller&jahr=2025&mit_anhang=on").text
+
+        self.assertIn("von:müller jahr:2025 hat:anhang", seite)
+
+    def test_suchen_fuehrt_zur_trefferliste(self):
+        anna = self._als("anna", "ein-anderes-langes")
+
+        antwort = anna.get("/maske?betreff=rechnung&tun=suchen")
+
+        self.assertEqual(antwort.status_code, 303)
+        self.assertIn("betreff", antwort.headers["location"])
+
+    def test_die_postfachauswahl_zeigt_nur_erlaubtes(self):
+        """Sonst stünden dort die Namen aller Postfächer im Haus."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/maske").text
+
+        self.assertIn("buchhaltung", seite)
+        self.assertNotIn("chefsache", seite)
+
+    def test_die_maske_braucht_eine_anmeldung(self):
+        kunde = Kunde(self.anwendung)
+
+        antwort = kunde.get("/maske")
+
+        self.assertEqual(antwort.status_code, 303)
+        self.assertEqual(antwort.headers["location"], "/anmelden")
 
     def test_der_zustand_liegt_nicht_mehr_auf_der_startseite(self):
         """Dort steht die Suche – der Zustand ist für Verwalter."""
