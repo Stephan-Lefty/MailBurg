@@ -7,6 +7,38 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.0.1] – 2026-08-31
+
+### Behoben
+
+- **Beim Start ging das Fenster zu, statt den Suchindex zu bauen.** Wer
+  ein Archiv aus einer älteren Fassung öffnete, bekam die Frage »Jetzt
+  aufbauen?« – und nach dem Klick auf *Ja* verschwand MailBurg
+  kommentarlos. Kein Aufbau, keine Meldung.
+
+  Zwei Ursachen. Während des Aufbaus ist absichtlich kein Archiv offen:
+  Das eigene Handle muss weg, weil der Aufbau selbst in den Index
+  schreibt. `ui/app.py` las das als »Archiv lässt sich nicht öffnen« und
+  beendete das Programm. Und der Arbeitsfaden startete aus dem
+  Konstruktor heraus, also bevor Qts Ereignisschleife lief – ein
+  QThread liefert seine Signale dann an niemanden.
+
+  Der zweite Punkt ist derselbe Fehler wie am 2026-08-28 beim ersten
+  Abruf, und die Begründung stand seitdem zwei Zeilen weiter in
+  derselben Datei.
+
+  **Betroffen war genau der Weg, den nach einer Aktualisierung jeder
+  geht.** Kein Test hatte ihn je genommen; geprüft war nur der Kern.
+  Jetzt halten ihn drei Tests fest, darunter einer, der die Bedingung in
+  `ui/app.py` selbst prüft – ein Test am Fenster allein hätte den Fehler
+  nicht gefunden, denn das Fenster verhielt sich richtig. Geschlossen
+  wurde es woanders.
+
+- **Ein gescheiterter Indexaufbau meldete »Abruf gescheitert«.** Er lief
+  in den Fehlerweg des Postabrufs: Der schaltete den Abrufknopf wieder
+  ein und nannte einen Vorgang, der gar nicht lief. Jetzt sagt die
+  Meldung, was ist – und dass die Mails davon unberührt sind.
+
 ## [1.0.0] – 2026-08-31
 
 **Die erste Fassung, die sich fertig nennt.** Nicht, weil nichts mehr
