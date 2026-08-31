@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QLayout,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -349,13 +350,39 @@ class Zeitplandialog(QDialog):
         trenner = QFrame()
         trenner.setFrameShape(QFrame.HLine)
 
+        # **Dieser Dialog rollt.** Er trägt vier längere Absätze, und
+        # was sie erklären, ist nicht schmückend: dass MailBurg für den
+        # Abruf nicht offen bleiben muss, dass die Passwörter am
+        # Schlüsselbund hängen und deshalb eine Anmeldung nötig ist,
+        # dass ein versäumter Abruf nachgeholt wird.
+        #
+        # Bei eingestellter Schriftgröße passte das nicht mehr hinein.
+        # Stephan hat es am 2026-08-31 zweimal gemeldet – beim zweiten
+        # Mal fehlten ganze Absätze. Eine Mindestgröße half nur, solange
+        # niemand das Fenster kleiner zieht; ein Rollbereich hilft
+        # immer.
+        #
+        # Die Knöpfe bleiben draußen: »Übernehmen« darf nie
+        # wegscrollen.
+        inhalt = QWidget()
+        innen = QVBoxLayout(inhalt)
+        innen.setContentsMargins(0, 0, 12, 0)
+        innen.addWidget(self.wahl)
+        innen.addWidget(trenner)
+        innen.addWidget(self.sicherung)
+        innen.addWidget(self.meldung)
+        innen.addStretch()
+
+        rollbar = QScrollArea()
+        rollbar.setWidget(inhalt)
+        rollbar.setWidgetResizable(True)
+        rollbar.setFrameShape(QScrollArea.NoFrame)
+        # Waagerecht rollen zu müssen ist immer ein Fehler im Aufbau.
+        rollbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
         aufbau = QVBoxLayout(self)
-        aufbau.addWidget(self.wahl)
-        aufbau.addWidget(trenner)
-        aufbau.addWidget(self.sicherung)
-        aufbau.addWidget(self.meldung)
+        aufbau.addWidget(rollbar, 1)
         aufbau.addWidget(knoepfe)
-        aufbau.setSizeConstraint(QLayout.SetMinimumSize)
 
     def _übernehmen(self) -> None:
         geklappt, text = self.wahl.anwenden()

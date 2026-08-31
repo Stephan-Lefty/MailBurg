@@ -4827,8 +4827,27 @@ class IndexNeuaufbauBeimStartTest(OberflaechenTest):
             QMessageBox, "question", staticmethod(lambda *a, **k: antwort)
         ):
             fenster = Hauptfenster(self.wurzel)
-        self.addCleanup(fenster.close)
+        self.addCleanup(self._stilllegen, fenster)
         return fenster
+
+    def _stilllegen(self, fenster) -> None:
+        """Räumt das Fenster ab, ohne den Aufbau loslaufen zu lassen.
+
+        **Der Aufbau wartet auf die Ereignisschleife.** Er hängt an
+        einem ``QTimer.singleShot(0, …)`` – genau richtig im Betrieb,
+        im Testlauf aber eine Falle: Der Timer feuert erst, wenn
+        irgendein *späterer* Test ``processEvents`` aufruft. Dann
+        startet der Aufbau auf einem Archiv, dessen Verzeichnis längst
+        weggeräumt ist, und der ganze Lauf stirbt an »Cannot operate on
+        a closed database« – in einem Test, der damit nichts zu tun hat.
+        """
+        fenster.baut_auf = False
+        laeufer = getattr(fenster, "aufbau_laeufer", None)
+        if laeufer is not None:
+            laeufer.warten(2000)
+            fenster.aufbau_laeufer = None
+        fenster.modell.suchindex = None
+        fenster.close()
 
     def test_bei_ja_wird_aufgebaut_statt_zu_beenden(self):
         from PySide6.QtWidgets import QMessageBox
@@ -4917,3 +4936,116 @@ class ZuletztBenutztTest(OberflaechenTest):
         self.assertIn("nicht erreichbar", eintraege[1].text())
         self.assertFalse(eintraege[1].isEnabled())
         self.assertIn("Platte angeschlossen", eintraege[1].statusTip())
+
+
+class TastenkuerzelTest(OberflaechenTest):
+    """Jedes Kürzel aus den Menüs einmal wirklich drücken.
+
+    **Ein Kürzel, das im Menü steht, muss auch etwas tun.** Bis zum
+    2026-08-31 tat Strg++ nichts: ``QKeySequence.ZoomIn`` ist unter
+    Linux bereits Strg++, und daneben stand dasselbe noch einmal von
+    Hand. Qt hält zwei gleiche Kürzel an einer Aktion für mehrdeutig und
+    löst dann *keines* aus.
+
+    Das Menü zeigte das Kürzel dabei brav an – und genau deshalb sucht
+    man den Fehler dort zuletzt. Gemeldet hat es Stephan mit »STRG ++
+    vergrößert nix«.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive, Mode
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        basis = pathlib.Path(self._tmp.name)
+
+        patcher = mock.patch.object(
+            paths, "data_dir", return_value=basis / "daten"
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        (basis / "daten").mkdir(parents=True, exist_ok=True)
+
+        Archive.create(basis / "A", mode=Mode.PRIVAT, name="P").close()
+
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        self.fenster = Hauptfenster(basis / "A")
+        self.addCleanup(self.fenster.close)
+        self.fenster.show()
+        self.app.processEvents()
+
+    def _schrift(self) -> float:
+        return QApplication.font().pointSizeF()
+
+    def test_kein_kuerzel_ist_doppelt_vergeben(self):
+        """Zwei gleiche Kürzel heben sich gegenseitig auf."""
+        from PySide6.QtGui import QAction
+
+        gesehen: dict[str, str] = {}
+        for aktion in self.fenster.findChildren(QAction):
+            for folge in aktion.shortcuts():
+                text = folge.toString()
+                if not text:
+                    continue
+                with self.subTest(kuerzel=text):
+                    self.assertNotIn(
+                        text, gesehen,
+                        f"»{text}« liegt auf »{aktion.text()}« und auf "
+                        f"»{gesehen.get(text)}« – Qt löst dann keines aus",
+                    )
+                gesehen[text] = aktion.text()
+
+    def test_strg_plus_vergroessert_wirklich(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+
+        vorher = self._schrift()
+        QTest.keyClick(self.fenster, Qt.Key_Plus, Qt.ControlModifier)
+        self.app.processEvents()
+
+        self.assertGreater(self._schrift(), vorher)
+
+    def test_strg_minus_verkleinert_wirklich(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+
+        vorher = self._schrift()
+        QTest.keyClick(self.fenster, Qt.Key_Minus, Qt.ControlModifier)
+        self.app.processEvents()
+
+        self.assertLess(self._schrift(), vorher)
+
+    def test_strg_null_setzt_zurueck(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+
+        ausgang = self._schrift()
+        for _ in range(3):
+            QTest.keyClick(self.fenster, Qt.Key_Plus, Qt.ControlModifier)
+        self.app.processEvents()
+        QTest.keyClick(self.fenster, Qt.Key_0, Qt.ControlModifier)
+        self.app.processEvents()
+
+        self.assertAlmostEqual(self._schrift(), ausgang, places=1)
+
+    def test_auch_strg_gleich_vergroessert(self):
+        """Auf vielen Belegungen ist das Pluszeichen nur mit Umschalt zu haben."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+
+        self.fenster._schrift_setzen(0)
+        vorher = self._schrift()
+        QTest.keyClick(self.fenster, Qt.Key_Equal, Qt.ControlModifier)
+        self.app.processEvents()
+
+        self.assertGreater(self._schrift(), vorher)
+
+    def tearDown(self) -> None:
+        # Die Schrift hängt an der Anwendung – ohne Zurücksetzen liefe
+        # der nächste Test mit der vergrößerten weiter.
+        self.fenster._schrift_setzen(0)

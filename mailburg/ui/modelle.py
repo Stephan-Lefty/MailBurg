@@ -63,7 +63,13 @@ class Trefferliste(QAbstractTableModel):
         self.ausdruck = ausdruck
         self.treffer = []
         self.gesamt = 0
-        if self.suchindex is not None:
+        # ``getattr``, weil hier in Tests auch andere Objekte stehen
+        # können. Ein geschlossener Index ist kein Fehler, sondern der
+        # Normalfall beim Schließen eines Fensters - Qt sortiert dabei
+        # noch einmal.
+        if self.suchindex is not None and not getattr(
+            self.suchindex, "geschlossen", False
+        ):
             self.gesamt = self.suchindex.count(ausdruck)
             self.treffer = self.suchindex.search(
                 ausdruck, limit=BLOCK,

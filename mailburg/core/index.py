@@ -733,6 +733,17 @@ class Index:
     def close(self) -> None:
         self.db.commit()
         self.db.close()
+        self.geschlossen = True
+
+    #: Ob dieser Index schon zugemacht wurde.
+    #:
+    #: **Warum das nach außen sichtbar ist.** Ein geschlossenes
+    #: ``sqlite3``-Objekt sieht von außen aus wie ein offenes; erst der
+    #: Zugriff wirft. Die Oberfläche hält das Modell und den Index
+    #: getrennt, und beim Schließen eines Fensters kommt Qt noch einmal
+    #: mit einem ``sort()`` – dann steht ein Traceback im Protokoll, wo
+    #: nichts mehr zu tun war.
+    geschlossen = False
 
     def __enter__(self) -> Index:
         return self

@@ -365,12 +365,28 @@ class Hauptfenster(QMainWindow):
 
         ansicht.addSeparator()
         groesser = QAction("Schrift größer", self)
-        groesser.setShortcuts([QKeySequence.ZoomIn, QKeySequence("Ctrl++")])
+        # **Keine Doppelung.** ``ZoomIn`` ist auf dieser Plattform
+        # bereits Strg++; wer es zusätzlich von Hand einträgt, gibt
+        # derselben Aktion dasselbe Kürzel zweimal. Qt hält das für
+        # mehrdeutig und führt dann *keines* von beiden aus – die
+        # Schrift ließ sich per Tastatur überhaupt nicht mehr ändern.
+        #
+        # Am 2026-08-31 von Stephan gemeldet: »STRG ++ vergrößert nix.«
+        # Der Menüeintrag zeigte das Kürzel brav an, und genau deshalb
+        # sucht man den Fehler zuletzt dort.
+        #
+        # Strg+= kommt dazu, weil das Pluszeichen auf vielen Belegungen
+        # nur mit Umschalt zu erreichen ist.
+        groesser.setShortcuts(_ohne_doppelte([
+            QKeySequence.ZoomIn, QKeySequence("Ctrl++"), QKeySequence("Ctrl+=")
+        ]))
         groesser.triggered.connect(lambda: self._schrift_aendern(+1))
         ansicht.addAction(groesser)
 
         kleiner = QAction("Schrift kleiner", self)
-        kleiner.setShortcuts([QKeySequence.ZoomOut, QKeySequence("Ctrl+-")])
+        kleiner.setShortcuts(_ohne_doppelte([
+            QKeySequence.ZoomOut, QKeySequence("Ctrl+-")
+        ]))
         kleiner.triggered.connect(lambda: self._schrift_aendern(-1))
         ansicht.addAction(kleiner)
 
@@ -1105,7 +1121,19 @@ class Hauptfenster(QMainWindow):
         # der ohne sie startet, liefert seine Signale an niemanden.
         # Derselbe Fehler wie beim ersten Abruf am 2026-08-28, an
         # derselben Stelle nachzulesen in ui/app.py.
-        QTimer.singleShot(0, self.aufbau_laeufer.starten)
+        QTimer.singleShot(0, self._aufbau_starten)
+
+    def _aufbau_starten(self) -> None:
+        """Startet den Aufbau – falls er dann noch gewollt ist.
+
+        **Zwischen dem Stellen des Zeitgebers und seinem Auslösen kann
+        das Fenster zugegangen sein.** Ein ``singleShot`` auf die
+        Startmethode des Läufers ließe ihn auch dann loslaufen: auf ein
+        Archiv, das niemand mehr offen hat. Im Testlauf hat genau das
+        einen späteren, unbeteiligten Test mitgerissen.
+        """
+        if self.baut_auf and self.aufbau_laeufer is not None:
+            self.aufbau_laeufer.starten()
 
     def _nach_neuaufbau(self, _anzahl=None) -> None:
         self.baut_auf = False
@@ -2024,6 +2052,31 @@ def _dateiname(betreff: str) -> str:
 # Die Leseroutine steht in core.archive - sie gehört zum Archivformat,
 # nicht zur Darstellung. Hier nur weitergereicht, damit die Aufrufer im
 # Modul nicht zwei Herkünfte kennen müssen.
+def _ohne_doppelte(kuerzel):
+    """Entfernt Kürzel, die schon in der Liste stehen.
+
+    **Zwei gleiche Kürzel an einer Aktion sind keines.** Qt meldet dann
+    ``AmbiguousShortcutOverload`` und löst nichts aus. Die Liste kommt
+    aber oft aus zwei Quellen – einem Standardwert der Plattform und
+    einer eigenen Ergänzung –, und ob die zusammenfallen, weiß man erst
+    zur Laufzeit: ``QKeySequence.ZoomIn`` ist unter Linux Strg++, unter
+    macOS aber nicht.
+
+    Deshalb hier aussortieren statt raten.
+    """
+    gesehen = []
+    for eines in kuerzel:
+        from PySide6.QtGui import QKeySequence
+
+        folge = QKeySequence(eines)
+        if folge.isEmpty():
+            continue
+        if any(folge == schon for schon in gesehen):
+            continue
+        gesehen.append(folge)
+    return gesehen
+
+
 from mailburg.core.archive import archivname as _archivname  # noqa: E402
 
 
