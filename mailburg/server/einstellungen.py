@@ -79,3 +79,29 @@ class Serverlage:
             adresse=os.environ.get(ADRESSE, "").strip() or STANDARD_ADRESSE,
             anschluss=anschluss,
         )
+
+
+def anschluss_frei(adresse: str, anschluss: int) -> bool:
+    """Ob auf diesem Port noch nichts lauscht.
+
+    **Warum MailBurg das selbst prüft.** uvicorn meldet sonst
+    ``[Errno 98] error while attempting to bind on address`` – eine
+    Zeile, die einem Menschen nicht sagt, was los ist und schon gar
+    nicht, was zu tun wäre. Am 2026-08-31 ist Stephan genau darüber
+    gestolpert: Zwei MailBurg-Server auf demselben Port, und die
+    Meldung nannte weder den einen noch den anderen.
+
+    Die Prüfung ist eine Auskunft, keine Reservierung: Zwischen ihr und
+    dem Start kann sich jemand dazwischenschieben. Dann greift immer
+    noch uvicorns Meldung – nur ist der häufige Fall dann schon
+    abgefangen.
+    """
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as buchse:
+        buchse.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            buchse.bind((adresse, anschluss))
+        except OSError:
+            return False
+    return True

@@ -2,7 +2,17 @@
 
 # Server Edition – Entwurf
 
-**Hiervon ist noch nichts gebaut.** Dieses Dokument hält fest, was ein
+**Zum Einrichten geht es hier entlang:**
+[Die Server Edition einrichten](server-einrichten.md). Dieses Dokument
+ist die Begründung dahinter, nicht die Anleitung.
+
+**Stand 2026-08-31: Vier der fünf Brocken sind gebaut** – Benutzer und
+Rechte, die Rechteprüfung in der Suche, die Passwörter ohne
+Schlüsselbund und der Dienst samt lesendem Zugriff im Browser. Offen
+bleiben die Archivverschlüsselung und der Windows-Dienst, der zwar
+geschrieben, aber nie gelaufen ist.
+
+Was ursprünglich hier stand: Dieses Dokument hält fest, was ein
 MailBurg-Server können muss, was dafür fehlt und in welcher Reihenfolge
 es entstehen sollte. Es ist die Grundlage für die Entscheidung, nicht
 ihr Ergebnis.

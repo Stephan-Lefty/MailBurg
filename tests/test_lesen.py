@@ -132,6 +132,26 @@ class Antwort:
         return json.loads(self.content)
 
 
+def _mail_mit_anhang(betreff: str, dateiname: str = "Rechnung.pdf") -> bytes:
+    grenze = "----probe"
+    return (
+        f"From: Wer Auch Immer <wer@example.org>\r\n"
+        f"To: martha@mailburg.example\r\n"
+        f"Subject: {betreff}\r\n"
+        f"Date: Mon, 12 May 2025 09:14:00 +0000\r\n"
+        f"Message-ID: <{abs(hash(betreff))}@example.org>\r\n"
+        f'Content-Type: multipart/mixed; boundary="{grenze}"\r\n\r\n'
+        f"--{grenze}\r\n"
+        f"Content-Type: text/plain; charset=utf-8\r\n\r\n"
+        f"Anbei die Unterlagen.\r\n\r\n"
+        f"--{grenze}\r\n"
+        f"Content-Type: application/pdf\r\n"
+        f'Content-Disposition: attachment; filename="{dateiname}"\r\n\r\n'
+        f"%PDF-1.4 Inhalt des Anhangs\r\n"
+        f"--{grenze}--\r\n"
+    ).encode()
+
+
 def _mail(betreff: str) -> bytes:
     return (
         f"From: Wer Auch Immer <wer@example.org>\r\n"
@@ -408,6 +428,118 @@ class WebTest(unittest.TestCase):
 
         self.assertEqual(antwort.status_code, 303)
         self.assertEqual(antwort.headers["location"], "/anmelden")
+
+    # -- Anhänge -----------------------------------------------------------
+
+    def _mit_anhang(self, dateiname: str = "Rechnung.pdf") -> str:
+        with Archive.open(self.wo) as archiv:
+            archiv.add(
+                _mail_mit_anhang("Mit Anhang", dateiname),
+                account="buchhaltung", folder="INBOX",
+            )
+        anna = self._als("anna", "ein-anderes-langes")
+        return anna, self._kennungen(anna, "hat:anhang")[0]
+
+    def test_der_anhang_steht_in_der_nachricht(self):
+        anna, kennung = self._mit_anhang()
+
+        seite = anna.get(f"/nachricht/{kennung}").text
+
+        self.assertIn("Rechnung.pdf", seite)
+        self.assertIn(f"/nachricht/{kennung}/anhang/0", seite)
+
+    def test_der_anhang_laesst_sich_einzeln_laden(self):
+        """Ohne den Umweg über die ganze .eml."""
+        anna, kennung = self._mit_anhang()
+
+        antwort = anna.get(f"/nachricht/{kennung}/anhang/0")
+
+        self.assertEqual(antwort.status_code, 200)
+        self.assertIn(b"Inhalt des Anhangs", antwort.content)
+
+    def test_ein_anhang_wird_nie_im_browser_angezeigt(self):
+        """Der wichtigste Punkt daran.
+
+        Ein Anhang ist eine fremde Datei. Stünde in der Mail
+        »text/html« und lieferte der Dienst sie so aus, liefe fremdes
+        JavaScript im Kontext dieses Servers – und käme an das
+        Sitzungscookie.
+        """
+        anna, kennung = self._mit_anhang()
+
+        antwort = anna.get(f"/nachricht/{kennung}/anhang/0")
+
+        self.assertEqual(
+            antwort.headers["content-type"], "application/octet-stream"
+        )
+        self.assertIn("attachment", antwort.headers["content-disposition"])
+        self.assertEqual(antwort.headers["x-content-type-options"], "nosniff")
+
+    def test_ein_gefaehrlicher_dateiname_wird_entschaerft(self):
+        """Er kommt von einem Fremden – Pfade und Zeilenumbrüche gehen nicht."""
+        anna, kennung = self._mit_anhang("../../etc/passwd")
+
+        zeile = anna.get(
+            f"/nachricht/{kennung}/anhang/0"
+        ).headers["content-disposition"]
+
+        self.assertNotIn("../", zeile)
+        self.assertNotIn("\n", zeile)
+
+    def test_eine_anhangsnummer_die_es_nicht_gibt(self):
+        anna, kennung = self._mit_anhang()
+
+        for nummer in ("99", "-1", "keine"):
+            with self.subTest(nummer=nummer):
+                self.assertEqual(
+                    anna.get(f"/nachricht/{kennung}/anhang/{nummer}").status_code,
+                    404,
+                )
+
+    def test_ein_fremder_anhang_bleibt_verschlossen(self):
+        chef = self._als("chef", "ein-langes-passwort")
+        with Archive.open(self.wo) as archiv:
+            archiv.add(
+                _mail_mit_anhang("Geheim", "Vertrag.pdf"),
+                account="chefsache", folder="INBOX",
+            )
+        fremd = self._kennungen(chef, "geheim")[0]
+
+        anna = self._als("anna", "ein-anderes-langes")
+
+        self.assertEqual(
+            anna.get(f"/nachricht/{fremd}/anhang/0").status_code, 404
+        )
+
+    # -- Die Postfachleiste ------------------------------------------------
+
+    def test_der_benutzer_sieht_worin_er_suchen_kann(self):
+        """Sonst sucht er ins Ungewisse: Gibt es die Mail nicht, oder
+        liegt sie in einem Postfach, das er nicht sieht?"""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/").text
+
+        self.assertIn("Sie können suchen in", seite)
+        self.assertIn("buchhaltung", seite)
+
+    def test_die_leiste_zeigt_keine_fremden_postfaecher(self):
+        anna = self._als("anna", "ein-anderes-langes")
+
+        self.assertNotIn("chefsache", anna.get("/").text)
+
+    def test_der_verwalter_sieht_beide(self):
+        chef = self._als("chef", "ein-langes-passwort")
+
+        seite = chef.get("/").text
+
+        self.assertIn("buchhaltung", seite)
+        self.assertIn("chefsache", seite)
+
+    def test_ein_klick_grenzt_ein(self):
+        chef = self._als("chef", "ein-langes-passwort")
+
+        self.assertIn("konto%3Abuchhaltung", chef.get("/").text)
 
     def test_der_zustand_liegt_nicht_mehr_auf_der_startseite(self):
         """Dort steht die Suche – der Zustand ist für Verwalter."""

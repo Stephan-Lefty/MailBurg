@@ -73,6 +73,21 @@ _KOPF = """<!doctype html>
   .ausdruck span {{ color: var(--leise); font-size: .85rem; }}
   .ausdruck code {{ font-size: 1rem; }}
   .ausdruck.leise {{ color: var(--leise); }}
+  .postfaecher {{ display: flex; flex-wrap: wrap; gap: .5rem;
+                  align-items: baseline; margin: .6rem 0 0; }}
+  .postfaecher .was {{ color: var(--leise); font-size: .85rem; }}
+  .postfaecher a {{ border: 1px solid #d6dde8; border-radius: 999px;
+                    padding: .15rem .7rem; font-size: .88rem;
+                    text-decoration: none; }}
+  .postfaecher a span {{ color: var(--leise); margin-left: .4rem; }}
+  .postfaecher a.gewaehlt {{ border-color: var(--marke); font-weight: 600; }}
+  .postfaecher a.alle {{ border-style: dashed; }}
+  .anhaenge {{ border: 1px solid #d6dde8; border-radius: 4px;
+               padding: .2rem 1rem 1rem; margin: 0 0 1.5rem; }}
+  .anhaenge h2 {{ font-size: .95rem; color: var(--leise); }}
+  .anhaenge ul {{ list-style: none; padding: 0; margin: 0; }}
+  .anhaenge li {{ padding: .25rem 0; }}
+  .anhaenge span {{ color: var(--leise); font-size: .85rem; }}
   .anmeldung {{ max-width: 22rem; margin: 4rem auto; }}
   .anmeldung label {{ display: block; margin: .8rem 0 .2rem; }}
   .anmeldung input {{ width: 100%; padding: .5rem; font-size: 1rem;
@@ -131,6 +146,62 @@ def anmeldung(fehler: str = "") -> str:
 """)
 
 
+def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
+    """Welche Postfächer der Angemeldete durchsuchen kann.
+
+    **Warum das sichtbar sein muss.** Wer nur einen Teil des Archivs
+    sehen darf, sucht sonst ins Ungewisse: Findet er nichts, weiß er
+    nicht, ob es die Mail nicht gibt oder ob sie in einem Postfach
+    liegt, das er nicht sieht. Die Leiste beantwortet das, bevor die
+    Frage aufkommt.
+
+    Jeder Eintrag grenzt die Suche mit einem Klick darauf ein – wie ein
+    Klick in den Postfachbaum des Fensters.
+    """
+    if not postfaecher:
+        return ""
+
+    from urllib.parse import quote
+
+    # Was von einer laufenden Suche übrig bleibt, wenn man die
+    # Eingrenzung auf ein Postfach herausnimmt.
+    ohne_konto = " ".join(
+        wort for wort in ausdruck.split() if not wort.startswith("konto:")
+    )
+    aktiv = ""
+    for wort in ausdruck.split():
+        if wort.startswith("konto:"):
+            aktiv = wort[len("konto:"):].strip('"')
+
+    stuecke = []
+    for name, anzahl in sorted(postfaecher.items()):
+        ziel = f"{ohne_konto} konto:{quoten_wenn_noetig(name)}".strip()
+        gewaehlt = ' class="gewaehlt"' if name == aktiv else ""
+        stuecke.append(
+            f'<a href="/?q={quote(ziel)}"{gewaehlt}>{html.escape(name)}'
+            f"<span>{anzahl}</span></a>"
+        )
+
+    alle = ""
+    if aktiv:
+        alle = (
+            f'<a href="/?q={quote(ohne_konto)}" class="alle">'
+            f"alle Postfächer</a>"
+        )
+
+    return (
+        f'<div class="postfaecher"><span class="was">Sie können suchen in:'
+        f"</span>{''.join(stuecke)}{alle}</div>"
+    )
+
+
+def quoten_wenn_noetig(wert: str) -> str:
+    """Wie in der Suchsprache – Leerzeichen brauchen Anführungszeichen."""
+    from mailburg.search.maske import quoten
+
+    return quoten(wert)
+
+
 def _zeile(treffer) -> str:
     from mailburg.core import sprache as s
 
@@ -151,8 +222,14 @@ def _zeile(treffer) -> str:
 
 
 def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
-                 seite_nr: int, je_seite: int) -> str:
-    """Die Suchseite mit ihrer Trefferliste."""
+                 seite_nr: int, je_seite: int, postfaecher=None) -> str:
+    """Die Suchseite mit ihrer Trefferliste.
+
+    ``postfaecher`` sind die, die dieser Benutzer sehen darf, mit ihrer
+    Anzahl. Sie stehen oben – das entspricht dem Postfachbaum links im
+    Fenster und beantwortet die Frage, die man sonst nicht beantworten
+    kann: *Worin suche ich hier eigentlich?*
+    """
     if treffer:
         zeilen = "".join(_zeile(t) for t in treffer)
         tabelle = (
@@ -199,6 +276,7 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
          placeholder="Suchen … z. B. rechnung · von:müller · jahr:2025">
   <button type="submit">Suchen</button>
 </form>
+{_postfachleiste(postfaecher or {}, ausdruck)}
 <p class="ergebnis">{html.escape(ergebnis)}
    · <a href="/maske?begriff={html.escape(ausdruck)}">Ausführlich suchen</a></p>
 {tabelle}
@@ -284,18 +362,35 @@ def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
 """, benutzer)
 
 
-def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str) -> str:
-    """Eine einzelne Nachricht."""
+def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
+              anhaenge=()) -> str:
+    """Eine einzelne Nachricht, mit ihren Anhängen zum Herunterladen."""
     zeilen = "".join(
         f"<dt>{html.escape(k)}</dt><dd>{html.escape(str(v))}</dd>"
         for k, v in kopf.items() if v
     )
+
+    if anhaenge:
+        stuecke = "".join(
+            f'<li><a href="/nachricht/{html.escape(kennung)}/anhang/{nummer}">'
+            f"{html.escape(stueck.filename or f'Anhang {nummer + 1}')}</a>"
+            f"<span> · {html.escape(sprache.groesse(stueck.size))}</span></li>"
+            for nummer, stueck in enumerate(anhaenge)
+        )
+        anhangsliste = (
+            f'<div class="anhaenge"><h2>'
+            f"{html.escape(sprache.anzahl(len(anhaenge), 'Anhang', 'Anhänge'))}"
+            f"</h2><ul>{stuecke}</ul></div>"
+        )
+    else:
+        anhangsliste = ""
     return _rahmen(f"{kopf.get('Betreff', 'Nachricht')} – MailBurg", f"""
 <p><a href="javascript:history.back()">← zurück</a></p>
 <h1>{html.escape(str(kopf.get("Betreff", "(ohne Betreff)")))}</h1>
 <dl class="kopf">{zeilen}</dl>
-<p><a href="/nachricht/{html.escape(kennung)}/datei">Als Datei
-   herunterladen (.eml)</a></p>
+{anhangsliste}
+<p><a href="/nachricht/{html.escape(kennung)}/datei">Die ganze Nachricht
+   als Datei (.eml)</a></p>
 <hr>
 <pre class="text">{html.escape(text)}</pre>
 """, benutzer)

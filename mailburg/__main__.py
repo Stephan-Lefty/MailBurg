@@ -1667,6 +1667,18 @@ def cmd_server(args: argparse.Namespace) -> int:
         )
         return 1
 
+    if not serverlage.anschluss_frei(lage.adresse, lage.anschluss):
+        print(
+            f"Auf {lage.adresse}:{lage.anschluss} lauscht schon etwas.\n\n"
+            f"Meistens ist es ein zweiter MailBurg-Server, der noch läuft – "
+            f"in einem anderen\nFenster oder als Dienst. Nachsehen mit:\n\n"
+            f"  ss -ltnp | grep :{lage.anschluss}\n\n"
+            f"Oder einen anderen Port nehmen:\n\n"
+            f"  {serverlage.ANSCHLUSS}={lage.anschluss + 1} mailburg server",
+            file=sys.stderr,
+        )
+        return 1
+
     print(f"MailBurg Server {__version__}")
     print(f"  Archiv:     {lage.archiv}")
     print(f"  Erreichbar: http://{lage.adresse}:{lage.anschluss}/")

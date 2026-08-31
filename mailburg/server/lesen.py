@@ -135,7 +135,8 @@ def routen(lage, sitzungen):
                 sicht=blick,
             )
             return HTMLResponse(seiten.trefferliste(
-                benutzer, ausdruck, treffer, gesamt, seite_nr, JE_SEITE
+                benutzer, ausdruck, treffer, gesamt, seite_nr, JE_SEITE,
+                postfaecher=archiv.index.account_totals(sicht=blick),
             ))
 
     async def maske(anfrage):
@@ -226,13 +227,62 @@ def routen(lage, sitzungen):
                 "Betreff": treffer.subject,
                 "Größe": sprache.groesse(treffer.size),
             }
-            if zerlegt.attachments:
-                kopf["Anhänge"] = ", ".join(
-                    a.filename for a in zerlegt.attachments if a.filename
-                )
-            return HTMLResponse(
-                seiten.nachricht(benutzer, kopf, zerlegt.body or "", kennung)
-            )
+            return HTMLResponse(seiten.nachricht(
+                benutzer, kopf, zerlegt.body or "", kennung,
+                anhaenge=zerlegt.attachments,
+            ))
+
+    async def anhang(anfrage):
+        """Einen Anhang herunterladen – ohne den Umweg über die .eml.
+
+        **Über die Nummer, nicht über den Dateinamen.** Ein Anhangsname
+        kommt von einem Fremden: Er kann Schrägstriche, Zeilenumbrüche
+        oder Kodierungen enthalten, die in einer Adresse nichts zu
+        suchen haben. Die Nummer ist die Stelle in der Mail und sonst
+        nichts.
+        """
+        kennung = anfrage.path_params["kennung"]
+        try:
+            nummer = int(anfrage.path_params["nummer"])
+        except ValueError:
+            return Response("Nicht gefunden", status_code=404)
+
+        with _archiv(lage) as archiv:
+            benutzer = _angemeldet(anfrage, archiv)
+            if benutzer is None:
+                return _weiter_zur_anmeldung()
+
+            treffer = _sichtbarer_treffer(archiv, benutzer, kennung)
+            if treffer is None:
+                return Response("Nicht gefunden", status_code=404)
+
+            from mailburg.extract.message import parse
+
+            rohdaten = archiv.store.get(treffer.hash, treffer.bucket)
+            # Erst hier mit Inhalten: Für die Anzeige der Liste genügen
+            # Name und Größe, und eine Mail mit einem 40-MB-Anhang soll
+            # nicht bei jedem Blick darauf im Speicher liegen.
+            zerlegt = parse(rohdaten, with_payloads=True)
+
+            if not 0 <= nummer < len(zerlegt.attachments):
+                return Response("Nicht gefunden", status_code=404)
+            stueck = zerlegt.attachments[nummer]
+
+        return Response(
+            stueck.payload,
+            # **Nie den Typ aus der Mail übernehmen.** Ein Anhang ist
+            # eine fremde Datei; stünde dort "text/html" und lieferte
+            # der Browser sie an, liefe fremdes JavaScript im Kontext
+            # dieses Dienstes - und käme an das Sitzungscookie.
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": _dateiname_kopfzeile(
+                    stueck.filename or f"anhang-{nummer + 1}"
+                ),
+                # Und der Browser soll auch nicht selbst raten.
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     async def datei(anfrage):
         kennung = anfrage.path_params["kennung"]
@@ -267,7 +317,34 @@ def routen(lage, sitzungen):
         Route("/maske", maske),
         Route("/nachricht/{kennung}", nachricht),
         Route("/nachricht/{kennung}/datei", datei),
+        Route("/nachricht/{kennung}/anhang/{nummer}", anhang),
     ]
 
 
 
+
+
+def _dateiname_kopfzeile(name: str) -> str:
+    """Eine ``Content-Disposition``-Zeile, die auch Umlaute überlebt.
+
+    Ein Anhangsname kommt von einem Fremden. In der Kopfzeile darf er
+    weder Anführungszeichen noch Zeilenumbrüche enthalten – letztere
+    hängten sonst eigene Kopfzeilen an die Antwort an.
+
+    Zweimal genannt, wie RFC 6266 es vorsieht: einmal auf ASCII
+    zurückgestutzt für alte Programme, einmal als ``filename*`` mit
+    UTF-8. Wer beides versteht, nimmt das zweite.
+    """
+    from urllib.parse import quote
+
+    sauber = "".join(
+        zeichen for zeichen in name
+        if zeichen.isprintable() and zeichen not in '"\\'
+    ).strip() or "anhang"
+    sauber = sauber.replace("/", "-").replace("\\", "-")[:120]
+
+    einfach = sauber.encode("ascii", "replace").decode("ascii")
+    return (
+        f'attachment; filename="{einfach}"; '
+        f"filename*=UTF-8''{quote(sauber, safe='')}"
+    )
