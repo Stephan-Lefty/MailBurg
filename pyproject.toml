@@ -19,11 +19,15 @@ authors = [{ name = "Stephan Rösner" }]
 keywords = ["email", "archive", "imap", "gobd", "dsgvo"]
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
     "Natural Language :: German",
-    "Operating System :: OS Independent",
+    # Nur, was tatsaechlich im Betrieb erprobt ist. "OS Independent"
+    # stand hier bis zur 1.0 und behauptete macOS mit; dort laufen zwar
+    # Tests und Einrichtung durch, benutzt hat es aber noch niemand.
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3.11",
     "Topic :: Communications :: Email",
     "Topic :: System :: Archiving",

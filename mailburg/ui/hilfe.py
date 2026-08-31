@@ -107,6 +107,10 @@ Journal</a>).</p>
 
 <h3>Verschlüsselte Archive</h3>
 
+<p><b>Neu in dieser Fassung und im Alltag noch nicht erprobt.</b> Legen
+Sie damit vorerst kein Archiv an, dessen Mails Sie nicht auch anderswo
+noch haben.</p>
+
 <p>Beim Anlegen können Sie ein Archiv <b>verschlüsseln</b>. Sinnvoll ist
 das, wenn es auf einer externen Platte liegt, in eine Cloud gesichert
 wird oder auf einem Server steht – überall dort, wo die Mails das Haus

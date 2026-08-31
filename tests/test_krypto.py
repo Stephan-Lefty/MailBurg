@@ -361,6 +361,34 @@ class EhrlichkeitTest(unittest.TestCase):
         # Und sagen, was man dagegen tun kann.
         self.assertIn("verschlüsselt die Platte", text)
 
+    def test_der_hinweis_auf_das_neue_steht_wo_man_sich_entscheidet(self):
+        """Nicht nur im README – dort liest ihn niemand vor dem Klick.
+
+        Zu streichen, sobald jemand mit der Verschlüsselung im Alltag
+        gearbeitet hat. Dann muss dieser Test mitgehen; ein Hinweis, der
+        stehen bleibt, nachdem er nicht mehr stimmt, ist schlimmer als
+        keiner.
+        """
+        from pathlib import Path
+
+        wurzel = Path(__file__).resolve().parent.parent
+
+        # Entweder wörtlich oder über ``hinweis_neu()`` – Hauptsache, er
+        # kommt an der Stelle an, an der geklickt wird.
+        for datei in (
+            "mailburg/ui/assistent.py",
+            "mailburg/ui/archivpasswort.py",
+            "mailburg/__main__.py",
+            "mailburg/ui/hilfe.py",
+            "docs/verschluesselung.md",
+        ):
+            quelle = (wurzel / datei).read_text(encoding="utf-8")
+            with self.subTest(datei=datei):
+                self.assertTrue(
+                    "noch nicht erprobt" in quelle or "hinweis_neu" in quelle,
+                    f"{datei} sagt nicht, dass die Verschlüsselung neu ist",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

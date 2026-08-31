@@ -268,7 +268,11 @@ def _assistent_bilder() -> None:
     with mock.patch.object(modul.KontenSeite, "_aus_thunderbird_laden", erfundene), \
          mock.patch.object(modul.orte, "vorschlagen", lambda: erfundene_orte):
         assistent = modul.Einrichtungsassistent()
-        assistent.resize(900, 720)
+        # **Hoch genug, dass die Archivseite ganz hineinpasst.** Sie ist
+        # die laengste, und seit die Verschluesselung dazukam, stand ihr
+        # unterster Teil unter der Kante - auf dem Bild war das Haekchen
+        # nicht zu sehen, das die Anleitung daneben erklaerte.
+        assistent.resize(900, 980)
         for nummer, kennung in enumerate(assistent.pageIds()):
             assistent.setStartId(kennung)
             assistent.restart()

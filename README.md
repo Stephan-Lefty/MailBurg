@@ -16,13 +16,16 @@ einer Stelle ab und macht sie durchsuchbar – Mailtexte, Kopfzeilen und den
 Inhalt der Anhänge. Wo dieser eine Ort liegt, entscheiden Sie: interne Platte,
 externe Platte, ein von Nextcloud synchronisierter Ordner.
 
-Entwickelt und im Alltag erprobt unter Linux. Unter **Windows** gibt es eine
-fertige `MailBurg.exe` – ohne Python, ohne Installation, mit eingebauter
-Texterkennung; Einrichtung, Abruf, Suche und der regelmäßige Abruf über die
-Aufgabenplanung sind dort durchgespielt. Unter **macOS** laufen bisher nur
-Tests und Einrichtung nachweislich durch, im täglichen Betrieb war MailBurg
-dort noch nicht – wer es dort einsetzt, sollte anfangs regelmäßig
-`mailburg pruefen` laufen lassen und das Postfach nicht zu früh aufräumen.
+**Linux und Windows.** Entwickelt und im Alltag erprobt unter Linux; unter
+Windows gibt es eine fertige `MailBurg.exe` – ohne Python, ohne Installation,
+mit eingebauter Texterkennung, und Einrichtung, Abruf, Suche sowie der
+regelmäßige Abruf über die Aufgabenplanung sind dort durchgespielt.
+
+**macOS ist noch nicht dran.** Tests und Einrichtung laufen dort nachweislich
+durch, benutzt hat MailBurg dort aber noch niemand. Für ein Archivprogramm ist
+das zu wenig, um es zu empfehlen: Was beim Aufnehmen schiefgeht, fällt erst
+Jahre später auf. macOS ist deshalb für die Fassung 1.1 vorgesehen, mit einem
+Gerät zum Prüfen.
 
 <p align="center">
   <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer, Mailprogramme und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile." width="960">
@@ -51,7 +54,7 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 0.12.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
+**Fassung 1.0.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
 Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
 Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
 Bestand von über 16.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
@@ -64,8 +67,9 @@ Verschlüsselte Archive gibt es seit dem 31.08.2026 – gebaut und getestet,
 aber im Alltag noch nicht erprobt. Siehe
 [docs/verschluesselung.md](docs/verschluesselung.md).
 
-Was noch fehlt: Outlook-`.pst`, Pakete für alle drei Systeme. Und der Betrieb unter macOS ist ungeprüft. Die vollständige
-Liste steht in [TODO.md](TODO.md).
+Was noch fehlt: Outlook-`.pst`, fertige Pakete (`.deb`, AppImage, `.dmg`),
+Zeitstempel nach RFC 3161 und der erprobte Betrieb unter macOS. Die
+vollständige Liste steht in [TODO.md](TODO.md).
 
 ## Wie es funktioniert
 

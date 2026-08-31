@@ -438,6 +438,24 @@ def _aus_notschluessel(eingabe: str) -> bytes:
 # ------------------------------------------------------------- Ehrlichkeit
 
 
+def hinweis_neu() -> str:
+    """Dass diese Fassung die erste mit Verschlüsselung ist.
+
+    **Steht dort, wo man sich entscheidet**, nicht nur im README. Wer
+    ein Archiv verschlüsselt anlegt, liest vorher keine Fassungsnotizen;
+    er klickt ein Häkchen. Ein Hinweis, der nicht an dieser Stelle
+    steht, ist keiner.
+
+    Zu streichen, sobald jemand damit im Alltag gearbeitet hat – die
+    Liste dafür steht in der TODO.
+    """
+    return (
+        "Neu in dieser Fassung und im Alltag noch nicht erprobt: Legen "
+        "Sie damit vorerst kein Archiv an, dessen Mails Sie nicht auch "
+        "anderswo noch haben."
+    )
+
+
 def hinweis_suchindex() -> str:
     """Was die Verschlüsselung *nicht* abdeckt – wörtlich, überall gleich.
 

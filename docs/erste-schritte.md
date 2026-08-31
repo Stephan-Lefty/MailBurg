@@ -124,7 +124,7 @@ Grundlage dafür, ob Sie dem Programm Ihre Post anvertrauen wollen.
 
 ## 3. Wo das Archiv liegen soll
 
-![Der Schritt »Das Archiv«: eine Auswahl für den Ort mit dem freien Platz dahinter, darunter der vollständige Pfad zum Ändern. Weiter unten die Wahl zwischen Privatarchiv und Geschäftsarchiv, jeweils mit Erklärung, und ein Feld für das Recht, nach dem die Fristen gelten.](bilder/einrichtung-2.png)
+![Der Schritt »Das Archiv«: eine Auswahl für den Ort mit dem freien Platz dahinter, darunter der vollständige Pfad zum Ändern. Weiter unten die Wahl zwischen Privatarchiv und Geschäftsarchiv, jeweils mit Erklärung, und ein Feld für das Recht, nach dem die Fristen gelten. Ganz unten ein Bereich »Schutz« mit dem nicht angekreuzten Häkchen »Das Archiv verschlüsseln (neu)«.](bilder/einrichtung-2.png)
 
 MailBurg schlägt Orte vor und zeigt, wie viel Platz dort frei ist. **Wählen
 Sie möglichst nicht die Platte, auf der Ihr Betriebssystem liegt** – geht die
@@ -145,6 +145,14 @@ Außerdem gelten die Aufbewahrungsfristen des gewählten Rechtsraums
 > Geschäftsarchiv, private ins Privatarchiv. Das ist keine Ordnungsliebe: Ein
 > Geschäftsarchiv bremst das Löschen jahrelang, während die DSGVO für
 > Gesundheitsdaten und Ähnliches das Gegenteil verlangt.
+
+Ganz unten steht **Schutz** mit dem Häkchen *Das Archiv verschlüsseln*. Lassen
+Sie es beim ersten Mal aus. Es lohnt sich, wenn das Archiv auf einer externen
+Platte liegt, in eine Cloud gesichert wird oder auf einem Server steht — dann
+lesen Sie vorher [Das Archiv verschlüsseln](verschluesselung.md). Zwei Dinge
+sollten Sie wissen, bevor Sie es setzen: Ohne Passwort oder Notschlüssel kommt
+niemand mehr an die Mails, und nachträglich verschlüsseln lässt sich ein Archiv
+nicht.
 
 ## 4. Postfächer
 

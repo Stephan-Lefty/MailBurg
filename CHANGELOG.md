@@ -7,7 +7,19 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.0.0] – 2026-08-31
+
+**Die erste Fassung, die sich fertig nennt.** Nicht, weil nichts mehr
+fehlte – die Liste in [TODO.md](TODO.md) ist lang genug –, sondern weil
+das, was da ist, im Alltag getragen hat: Ein Jahr Post durch die
+Werkstatt, zwei laufende Archive, über 16.000 Mails unter Linux und der
+durchgespielte Betrieb unter Windows.
+
+**Was ausdrücklich noch nicht erprobt ist**, steht dort, wo man sich
+dafür entscheidet, und nicht im Kleingedruckten: die Archivverschlüsselung
+(neu in dieser Fassung), OAuth2 an echten Konten, der Windows-Dienst und
+der Betrieb unter macOS. Für die drei Letzteren gilt dasselbe wie seit
+jeher – MailBurg behauptet nichts, was niemand nachgeprüft hat.
 
 ### Hinzugefügt
 

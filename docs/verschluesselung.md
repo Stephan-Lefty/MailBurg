@@ -10,6 +10,15 @@ auf einem Server –, ist es eines.
 
 Dagegen hilft die Verschlüsselung.
 
+> **Neu in Fassung 1.0 und im Alltag noch nicht erprobt.** Gebaut, getestet
+> und in der Werkstatt durchgespielt — aber noch niemand hat damit ein Jahr
+> lang gearbeitet. Legen Sie damit vorerst kein Archiv an, dessen Mails Sie
+> nicht auch anderswo noch haben.
+>
+> Das ist kein Formelsatz: Ein Fehler in einer Verschlüsselung fällt nicht
+> dadurch auf, dass etwas nicht funktioniert. Es funktioniert alles weiter,
+> und man merkt es erst, wenn man an die alten Mails will.
+
 > **Nachträglich geht es nicht.** Ein bestehendes Archiv lässt sich nicht
 > verschlüsseln. Wer umsteigen will, legt ein neues verschlüsseltes Archiv an
 > und spielt eine Sicherung des alten hinein — siehe [unten](#umsteigen).

@@ -126,6 +126,8 @@ def cmd_anlegen(args: argparse.Namespace) -> int:
     if getattr(args, "verschluesseln", False):
         from mailburg.core import krypto
 
+        print(krypto.hinweis_neu())
+        print()
         print(krypto.hinweis_suchindex())
         print()
         passwort = _archivpasswort_erfragen()

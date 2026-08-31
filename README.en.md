@@ -16,13 +16,16 @@ makes it searchable — message bodies, headers and the contents of attachments.
 Where that place is, is up to you: internal disk, external disk, a folder
 synchronised by Nextcloud.
 
-Developed and used daily on Linux. On **Windows** there is a ready-made
-`MailBurg.exe` — no Python, no installation, with text recognition built in;
-setup, retrieval, search and scheduled background retrieval have all been
-exercised there. On **macOS** only the test suite and the setup demonstrably
-pass; MailBurg has not seen daily use there — if you run it on macOS, use
-`mailburg pruefen` regularly at first and do not clear out your mailbox too
-soon.
+**Linux and Windows.** Developed and used daily on Linux; on Windows there is
+a ready-made `MailBurg.exe` — no Python, no installation, with text
+recognition built in, and setup, retrieval, search and scheduled background
+retrieval have all been exercised there.
+
+**macOS is not there yet.** The test suite and the setup demonstrably pass,
+but nobody has actually used MailBurg on macOS. For an archiving program that
+is too little to recommend it: what goes wrong during capture only surfaces
+years later. macOS is therefore planned for version 1.1, with a machine to
+verify it on.
 
 <p align="center">
   <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes, mail clients and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Access via the interface or the command line." width="960">
@@ -50,7 +53,7 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 0.12.0, in daily use.** Archive format, IMAP retrieval, search, the
+**Version 1.0.0, in daily use.** Archive format, IMAP retrieval, search, the
 graphical interface, text recognition for scanned PDFs, backups and scheduled
 retrieval are all in place and used every day — on Linux with a corpus of more
 than 16,000 messages, on Windows with the ready-made `MailBurg.exe`.
@@ -63,8 +66,9 @@ Encrypted archives have been available since 2026-08-31 — built and tested,
 but not yet exercised in daily use. See
 [docs/verschluesselung.md](docs/verschluesselung.md) (German).
 
-Still missing: Outlook `.pst`, packages for all three systems. And macOS
-remains unverified in practice. Full list in [TODO.en.md](TODO.en.md).
+Still missing: Outlook `.pst`, ready-made packages (`.deb`, AppImage, `.dmg`),
+RFC 3161 timestamps and verified operation on macOS. Full list in
+[TODO.en.md](TODO.en.md).
 
 ## How it works
 

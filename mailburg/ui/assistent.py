@@ -449,7 +449,7 @@ class ArchivSeite(QWizardPage):
         # jemanden, der beim Einrichten schnell weiterklickt und Jahre
         # später vor einem Passwort steht, das er nie bewusst vergeben
         # hat. Wer sie einschaltet, soll das gemeint haben.
-        self.verschluesseln = QCheckBox("Das Archiv verschlüsseln")
+        self.verschluesseln = QCheckBox("Das Archiv verschlüsseln (neu)")
         self.verschluesseln.setAccessibleName("Archiv verschlüsseln")
         verschluesselung_text = QLabel(
             "Sinnvoll, wenn das Archiv auf einer externen Platte liegt, in "
@@ -458,7 +458,10 @@ class ArchivSeite(QWizardPage):
             "zum Ausdrucken.\n\n"
             "Ohne eines von beidem kommt niemand mehr an die Mails, auch "
             "der Hersteller nicht. Und nachträglich lässt sich ein Archiv "
-            "nicht verschlüsseln."
+            "nicht verschlüsseln.\n\n"
+            "Neu in dieser Fassung und im Alltag noch nicht erprobt: Legen "
+            "Sie damit vorerst kein Archiv an, dessen Mails Sie nicht auch "
+            "anderswo noch haben."
         )
         verschluesselung_text.setWordWrap(True)
         verschluesselung_text.setIndent(24)

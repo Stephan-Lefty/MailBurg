@@ -117,6 +117,7 @@ class NeuesPasswortFragen(QDialog):
             "ist der Sinn der Sache.</p>"
             "<p>Gleich danach bekommen Sie einen <b>Notschlüssel</b>, "
             "der das Archiv ebenfalls öffnet. Drucken Sie ihn aus.</p>"
+            f"<p><b>{krypto.hinweis_neu()}</b></p>"
         )
         warnung.setTextFormat(Qt.RichText)
         warnung.setWordWrap(True)
