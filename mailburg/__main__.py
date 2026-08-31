@@ -1502,6 +1502,142 @@ def cmd_einstufen(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_zugaenge(args: argparse.Namespace) -> int:
+    """Zugänge zum Archiv – der Weg ohne Oberfläche.
+
+    **Auf einem Server gibt es keine.** Ohne diesen Befehl käme man dort
+    an sein eigenes Archiv nicht heran: Die Rechteverwaltung säße in
+    einem Fenster, das sich nicht öffnen lässt.
+    """
+    from mailburg.core.benutzer import Benutzer, BenutzerFehler
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+    schreibend = args.was != "liste"
+
+    with Archive.open(archiv_pfad, exclusive=schreibend) as archiv:
+        liste = archiv.benutzer
+
+        if args.was == "liste":
+            if not len(liste):
+                print("Es ist kein Zugang eingerichtet.")
+                print("Anlegen mit:  mailburg zugaenge ARCHIV hinzufuegen NAME")
+                return 0
+
+            print(f"{sprache.anzahl(len(liste), 'Zugang', 'Zugänge')}:\n")
+            for eintrag in liste:
+                zeile = f"  {eintrag.name}"
+                if eintrag.anzeigename:
+                    zeile += f" ({eintrag.anzeigename})"
+                if not eintrag.aktiv:
+                    zeile += "  – stillgelegt"
+                print(zeile)
+
+                rollen = []
+                if eintrag.verwalter:
+                    rollen.append("verwaltet Zugänge")
+                if eintrag.alle_postfaecher:
+                    rollen.append("sieht alle Postfächer")
+                elif eintrag.postfaecher:
+                    rollen.append(
+                        "sieht: " + ", ".join(sorted(eintrag.postfaecher))
+                    )
+                else:
+                    rollen.append("sieht nichts")
+                if not eintrag.pruefwert:
+                    rollen.append("KEIN PASSWORT")
+                print(f"      {' · '.join(rollen)}")
+            return 0
+
+        name = args.name
+
+        if args.was == "hinzufuegen":
+            try:
+                neu = Benutzer(name, anzeigename=args.anzeigename)
+                neu.passwort_setzen(_passwort_erfragen(neu.name))
+                if args.alle:
+                    neu.alle_postfaecher = True
+                if args.postfach:
+                    neu.postfaecher = list(args.postfach)
+                neu.verwalter = args.verwalter
+                liste.hinzufuegen(neu)
+                archiv.benutzer_setzen(liste)
+            except BenutzerFehler as fehler:
+                print(fehler, file=sys.stderr)
+                return 1
+
+            print(f"Zugang »{neu.name}« angelegt.")
+            if not (neu.alle_postfaecher or neu.postfaecher):
+                print(
+                    "Er sieht noch nichts. Postfächer zuordnen mit:\n"
+                    f"  mailburg zugaenge {args.archiv} rechte {neu.name} --alle"
+                )
+            return 0
+
+        eintrag = liste.finden(name)
+        if eintrag is None:
+            print(f"»{name}« gibt es nicht.", file=sys.stderr)
+            return 1
+
+        if args.was == "passwort":
+            try:
+                eintrag.passwort_setzen(_passwort_erfragen(eintrag.name))
+            except BenutzerFehler as fehler:
+                print(fehler, file=sys.stderr)
+                return 1
+            archiv.benutzer_setzen(liste)
+            print(f"Passwort für »{eintrag.name}« gesetzt.")
+            return 0
+
+        if args.was == "rechte":
+            if args.alle:
+                eintrag.alle_postfaecher = True
+            if args.nur:
+                eintrag.alle_postfaecher = False
+                eintrag.postfaecher = list(args.nur)
+            if args.verwalter:
+                eintrag.verwalter = True
+            if args.kein_verwalter:
+                eintrag.verwalter = False
+
+            try:
+                archiv.benutzer_setzen(liste)
+            except BenutzerFehler as fehler:
+                print(fehler, file=sys.stderr)
+                return 1
+
+            if eintrag.alle_postfaecher:
+                print(f"»{eintrag.name}« sieht alle Postfächer.")
+            elif eintrag.postfaecher:
+                print(f"»{eintrag.name}« sieht: {', '.join(eintrag.postfaecher)}")
+            else:
+                print(f"»{eintrag.name}« sieht nichts.")
+            return 0
+
+        # stilllegen / zulassen
+        eintrag.aktiv = args.was == "zulassen"
+        try:
+            archiv.benutzer_setzen(liste)
+        except BenutzerFehler as fehler:
+            print(fehler, file=sys.stderr)
+            return 1
+        print(
+            f"»{eintrag.name}« ist "
+            f"{'wieder zugelassen' if eintrag.aktiv else 'stillgelegt'}."
+        )
+        return 0
+
+
+def _passwort_erfragen(name: str) -> str:
+    """Fragt ein Passwort ab – nie als Argument.
+
+    Ein Passwort auf der Befehlszeile steht in der Prozessliste und in
+    der Verlaufsdatei der Shell.
+    """
+    import getpass
+
+    return getpass.getpass(f"Passwort für »{name}« (mind. 10 Zeichen): ")
+
+
 def cmd_server(args: argparse.Namespace) -> int:
     """Startet den Dienst der Server Edition."""
     from mailburg.server import einstellungen as serverlage
@@ -2347,6 +2483,61 @@ def build_parser() -> argparse.ArgumentParser:
         help="die Einstufung tatsächlich vornehmen",
     )
     p.set_defaults(func=cmd_einstufen)
+
+    p = subparsers.add_parser(
+        "zugaenge",
+        help="wer sich am Archiv anmelden darf (Server Edition)",
+        description=(
+            "Zugänge und ihre Rechte – derselbe Bestand wie in der "
+            "Oberfläche unter »Einstellungen → Zugänge verwalten«, nur "
+            "ohne Fenster. Auf einem Server gibt es keines.\n\n"
+            "Solange MailBurg nur auf einem Arbeitsplatz läuft, ändern "
+            "Zugänge nichts: Wer am Rechner sitzt, hat das Archiv ohnehin."
+        ),
+    )
+    p.add_argument("archiv")
+    unter = p.add_subparsers(dest="was", required=True)
+
+    u = unter.add_parser("liste", help="wer eingetragen ist")
+    u.set_defaults(func=cmd_zugaenge)
+
+    u = unter.add_parser("hinzufuegen", help="einen Zugang anlegen")
+    u.add_argument("name", help="Anmeldename, kleingeschrieben")
+    u.add_argument("--anzeigename", default="", help="Vor- und Nachname")
+    u.add_argument(
+        "--alle", action="store_true", help="darf alle Postfächer sehen")
+    u.add_argument(
+        "--postfach", action="append", default=[],
+        help="ein Postfach, das er sehen darf (mehrfach möglich)")
+    u.add_argument(
+        "--verwalter", action="store_true",
+        help="darf Zugänge anlegen und Rechte vergeben")
+    u.set_defaults(func=cmd_zugaenge)
+
+    u = unter.add_parser("rechte", help="Rechte eines Zugangs ändern")
+    u.add_argument("name")
+    u.add_argument("--alle", action="store_true", help="alle Postfächer")
+    u.add_argument(
+        "--nur", action="append", default=[],
+        help="nur diese Postfächer (mehrfach möglich)")
+    u.add_argument("--verwalter", action="store_true")
+    u.add_argument(
+        "--kein-verwalter", dest="kein_verwalter", action="store_true")
+    u.set_defaults(func=cmd_zugaenge)
+
+    u = unter.add_parser("passwort", help="ein neues Passwort setzen")
+    u.add_argument("name")
+    u.set_defaults(func=cmd_zugaenge)
+
+    u = unter.add_parser(
+        "stilllegen",
+        help="der Zugang meldet sich nicht mehr an, bleibt aber eingetragen")
+    u.add_argument("name")
+    u.set_defaults(func=cmd_zugaenge)
+
+    u = unter.add_parser("zulassen", help="einen stillgelegten wieder zulassen")
+    u.add_argument("name")
+    u.set_defaults(func=cmd_zugaenge)
 
     p = subparsers.add_parser(
         "server",
