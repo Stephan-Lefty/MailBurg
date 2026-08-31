@@ -242,6 +242,10 @@ class KeineLuecken(unittest.TestCase):
     #: braucht.
     MUESSEN_FILTERN = (
         "search", "count", "accounts", "account_totals", "statistics",
+        # Am 2026-08-31 dazugekommen, für den lesenden Zugriff im
+        # Browser – und prompt von diesem Test gemeldet, weil sie hier
+        # noch fehlte. Genau dafür ist er da.
+        "nachricht",
     )
 
     #: Und diese ausdrücklich nicht. Sie beantworten keine Frage eines

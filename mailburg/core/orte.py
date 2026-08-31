@@ -75,12 +75,9 @@ class Ort:
 
 
 def _lesbar(bytes_zahl: int) -> str:
-    wert = float(bytes_zahl)
-    for einheit in ("B", "KB", "MB", "GB", "TB"):
-        if wert < 1024 or einheit == "TB":
-            return f"{wert:.0f} {einheit}" if einheit in ("B", "KB") else f"{wert:.1f} {einheit}"
-        wert /= 1024
-    return f"{wert:.1f} TB"
+    from mailburg.core import sprache
+
+    return sprache.groesse(bytes_zahl)
 
 
 def _platz(pfad: Path) -> tuple[int, int]:

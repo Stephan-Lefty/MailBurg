@@ -481,6 +481,41 @@ class Index:
             for row in rows
         ]
 
+    def nachricht(self, digest: str, sicht=None) -> Hit | None:
+        """Eine einzelne Nachricht über ihren Hash – oder nichts.
+
+        **Mit derselben Rechteprüfung wie die Suche.** Ein eigener Weg
+        »hole Mail mit Hash X« ohne sie wäre genau die Stelle, an der
+        ein Leck entsteht: Wer eine Kennung errät, aus einer alten
+        Verknüpfung kennt oder in einer weitergeleiteten Adresse findet,
+        käme sonst an jede Mail im Archiv.
+
+        Gibt auch dann nichts zurück, wenn es die Mail gibt, der
+        Abfragende sie aber nicht sehen darf – die Unterscheidung
+        gehört nicht hierher, sondern verrät sie.
+        """
+        where, params = self._mit_sicht("m.hash = ?", [digest], sicht)
+        row = self.db.execute(
+            f"""SELECT m.hash, m.bucket, m.subject, m.from_addr, m.from_name,
+                       m.date, m.size, m.has_attachments, m.category
+                FROM messages m
+                WHERE {where} LIMIT 1""",
+            params,
+        ).fetchone()
+        if row is None:
+            return None
+        return Hit(
+            hash=row["hash"],
+            bucket=row["bucket"],
+            subject=row["subject"] or "(ohne Betreff)",
+            from_addr=row["from_addr"] or "",
+            from_name=row["from_name"] or "",
+            date=row["date"],
+            size=row["size"],
+            has_attachments=bool(row["has_attachments"]),
+            category=row["category"] or "unbestimmt",
+        )
+
     def count(self, expression: str = "", sicht=None) -> int:
         """Zählt, wie viele Mails auf eine Anfrage passen.
 

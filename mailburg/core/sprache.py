@@ -45,3 +45,45 @@ def postfaecher(zahl: int) -> str:
 
 def eintraege(zahl: int) -> str:
     return anzahl(zahl, "Eintrag", "Einträge")
+
+
+def groesse(bytes_zahl: int) -> str:
+    """»820 KB«, »6,8 MB« – Dateigrößen für Menschen.
+
+    Stand bis zum 2026-08-31 als ``_lesbar`` in ``core/orte.py``, wo es
+    für den freien Plattenplatz entstanden war. Die Weboberfläche
+    braucht dasselbe für die Größe einer Mail; zwei Fassungen derselben
+    Umrechnung wichen früher oder später um ein Komma voneinander ab.
+    """
+    wert = float(bytes_zahl)
+    for einheit in ("B", "KB", "MB", "GB", "TB"):
+        if wert < 1024 or einheit == "TB":
+            if einheit in ("B", "KB"):
+                return f"{wert:.0f} {einheit}"
+            return f"{wert:.1f} {einheit}".replace(".", ",")
+        wert /= 1024
+    return f"{wert:.1f} TB".replace(".", ",")
+
+
+def zeitpunkt(iso: str) -> str:
+    """»25.08.2026, 09:46« aus einem ISO-Zeitstempel.
+
+    **Fest deutsch, nicht nach Systemsprache.** Anders als
+    ``ui/datum.py``, das ``QLocale`` fragt – auf einem Server gibt es
+    keine sinnvolle Systemsprache, und der Dienst spricht ohnehin
+    deutsch wie der Rest des Programms.
+
+    Dass beide Wege nebeneinander bestehen, ist ein offener Punkt in der
+    TODO. Bis er entschieden ist, hat der Server die Fassung, die auf
+    einem Rechner ohne Spracheinstellung nicht in »25 08 2026«
+    umschlägt.
+    """
+    from datetime import datetime
+
+    if not iso:
+        return ""
+    try:
+        wann = datetime.fromisoformat(iso)
+    except ValueError:
+        return iso
+    return f"{wann:%d.%m.%Y, %H:%M}"

@@ -201,10 +201,22 @@ def anwendung(lage=None):
         """
         return JSONResponse({"lebt": True})
 
+    from mailburg.server.lesen import routen
+    from mailburg.server.sitzung import Sitzungen
+
+    # **Eine Sitzungsverwaltung je Anwendung.** Ihr Schlüssel entsteht
+    # beim Start und wird nicht aufbewahrt; ein Neustart meldet damit
+    # alle ab. Siehe mailburg/server/sitzung.py.
+    sitzungen = Sitzungen()
+
     return Starlette(routes=[
-        Route("/", status),
+        # Der Zustand liegt unter /zustand, nicht mehr unter /: Dort
+        # steht jetzt die Suche, und die ist das, was jemand sehen will,
+        # der die Adresse aufruft.
+        Route("/zustand", status),
         Route("/zustand.json", zustand_json),
         Route("/lebt", lebt),
+        *routen(wo, sitzungen),
     ])
 
 
