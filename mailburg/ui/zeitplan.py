@@ -333,7 +333,9 @@ class Zeitplandialog(QDialog):
     def __init__(self, eltern=None, archiv=None) -> None:
         super().__init__(eltern)
         self.setWindowTitle("Was von selbst laufen soll")
-        self.setMinimumWidth(620)
+        # Keine feste Mindestbreite mehr - sie ergibt sich unten aus dem
+        # Inhalt. Eine Zahl, die für 9 pt passt, ist bei 14 pt zu klein.
+        self.setMinimumWidth(480)
 
         self.wahl = Zeitplanwahl(archiv=archiv)
         self.sicherung = Sicherungswahl(archiv=archiv)
@@ -378,8 +380,13 @@ class Zeitplandialog(QDialog):
         rollbar.setWidget(inhalt)
         rollbar.setWidgetResizable(True)
         rollbar.setFrameShape(QScrollArea.NoFrame)
-        # Waagerecht rollen zu müssen ist immer ein Fehler im Aufbau.
-        rollbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # **Waagerecht nur im Notfall.** Rollen zu müssen ist ein
+        # Fehler im Aufbau – Text am rechten Rand abzuschneiden ist
+        # aber schlimmer. Mit ``AsNeeded`` erscheint der Balken nur,
+        # wenn die Breite trotz allem nicht reicht: bei sehr großer
+        # Schrift auf einem schmalen Bildschirm. Dann sieht man, dass
+        # rechts noch etwas steht, statt es zu verlieren.
+        rollbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         # **Der Rollbereich ist das Sicherheitsnetz, nicht der Normalfall.**
         # Ohne die nächsten Zeilen meldet er »ich komme mit jeder Größe
@@ -400,13 +407,22 @@ class Zeitplandialog(QDialog):
         # und nicht bei einem gemütlichen Bruchteil davon. Gerollt wird
         # nur, wenn es physisch nicht anders geht - bei sehr großer
         # Schrift auf einem kleinen Bildschirm.
-        gebraucht = inhalt.sizeHint().height()
+        # **Beide Richtungen, nicht nur die Höhe.** Waagerecht wird
+        # nicht gerollt – das ist immer ein Fehler im Aufbau –, also
+        # muss die Breite reichen. Tat sie nicht: 620 war wieder eine
+        # geratene Zahl, und bei fünffach vergrößerter Schrift brauchte
+        # der Inhalt 645. Abgeschnitten wurde rechts, wo die Sätze
+        # enden.
+        vorlage = inhalt.sizeHint()
+        hoch, breit = vorlage.height(), vorlage.width()
         bildschirm = self.screen() or QApplication.primaryScreen()
         if bildschirm is not None:
-            # Was die Knöpfe und der Fensterrahmen brauchen, geht ab.
-            platz = bildschirm.availableGeometry().height() - 120
-            gebraucht = min(gebraucht, max(240, platz))
-        rollbar.setMinimumHeight(gebraucht)
+            frei = bildschirm.availableGeometry()
+            # Was Knöpfe, Rahmen und Rollbalken brauchen, geht ab.
+            hoch = min(hoch, max(240, frei.height() - 120))
+            breit = min(breit, max(360, frei.width() - 80))
+        rollbar.setMinimumHeight(hoch)
+        rollbar.setMinimumWidth(breit)
 
         aufbau = QVBoxLayout(self)
         aufbau.addWidget(rollbar, 1)

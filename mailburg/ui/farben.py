@@ -286,10 +286,18 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             if aufbau is not None:
                 aufbau.setSizeConstraint(QLayout.SetMinimumSize)
 
+            # **Auch die Mindestgröße zählt.** ``sizeHint`` ist der
+            # Wunsch, ``minimumSizeHint`` die Untergrenze - und die
+            # steigt, wenn ein Bauteil im Inneren eine Mindestbreite
+            # verlangt. Ohne das blieb ein Dialog schmal, obwohl sein
+            # Rollbereich ausdrücklich mehr angefordert hatte: Der
+            # Zeitplan öffnete bei großer Schrift 533 px breit, während
+            # der Inhalt 645 brauchte, und rechts fehlte das Satzende.
             gebraucht = dialog.sizeHint()
+            untergrenze = dialog.minimumSizeHint()
             dialog.resize(
-                max(dialog.width(), gebraucht.width()),
-                max(dialog.height(), gebraucht.height()),
+                max(dialog.width(), gebraucht.width(), untergrenze.width()),
+                max(dialog.height(), gebraucht.height(), untergrenze.height()),
             )
 
     # Am Anwendungsobjekt festhalten: Ein Filter, auf den niemand mehr
