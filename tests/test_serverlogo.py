@@ -203,6 +203,37 @@ class ErzeugtTest(unittest.TestCase):
         # wo GitHub die Stilangaben entfernt.
         self.assertIn(f'fill="{farben.SERVER_ROT_HELL}"', dunkel)
 
+    def test_die_bilder_tragen_keinen_zeitstempel(self):
+        """Sonst ist »aus dem Skript erzeugt« nicht nachprüfbar.
+
+        ImageMagick legt von sich aus einen ``tIME``-Chunk und drei
+        ``tEXt``-Chunks mit der Uhrzeit an. Damit unterscheidet sich jede
+        Datei bei jedem Lauf, obwohl kein Pixel anders ist – fünfzehn
+        geänderte Dateien im Diff, die nichts bedeuten, und keine
+        Möglichkeit zu zeigen, dass zweimal dasselbe herauskommt.
+
+        Am 2026-08-31 aufgefallen, als ein Lauf ohne jede Änderung am
+        Skript fünfzehn Dateien anfasste.
+        """
+        import struct
+
+        for datei in sorted(ZIEL.glob("*.png")):
+            rohdaten = datei.read_bytes()
+            stelle, gefunden = 8, []
+            while stelle < len(rohdaten):
+                laenge = struct.unpack(">I", rohdaten[stelle:stelle + 4])[0]
+                art = rohdaten[stelle + 4:stelle + 8].decode("latin1")
+                if art in ("tIME", "tEXt", "zTXt", "iTXt"):
+                    gefunden.append(art)
+                stelle += 12 + laenge
+
+            with self.subTest(datei=datei.name):
+                self.assertEqual(
+                    gefunden, [],
+                    f"{datei.name} trägt {gefunden} – der Lauf ist nicht "
+                    f"wiederholbar",
+                )
+
     def test_der_verlauf_hat_eine_eigene_kennung(self):
         """Sonst greift auf einer Seite mit beiden Icons das zweite ins erste."""
         inhalt = (ZIEL / "icon.svg").read_text(encoding="utf-8")

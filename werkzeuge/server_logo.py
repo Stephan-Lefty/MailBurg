@@ -149,7 +149,16 @@ def _rendern(svg: Path, png: Path, breite: int) -> None:
          # **Acht Bit, ausdrücklich.** ImageMagick schreibt sonst 16 Bit,
          # und daran ist am 2026-08-30 schon einmal ein Startbild
          # gescheitert - Tk konnte es nicht lesen und zeigte nichts an.
-         "-depth", "8", str(png)],
+         "-depth", "8",
+         # **Ohne Zeitstempel.** ImageMagick legt sonst einen tIME-Chunk
+         # und drei tEXt-Chunks mit der Uhrzeit an. Dann unterscheidet
+         # sich jede Datei bei jedem Lauf, obwohl kein Pixel anders ist -
+         # fünfzehn geänderte Dateien im Diff, die nichts bedeuten. Und
+         # die Zusage, dass sich die Bilder aus dem Skript ergeben, wäre
+         # nicht nachprüfbar: Man könnte nie zeigen, dass zweimal
+         # dasselbe herauskommt.
+         "-define", "png:exclude-chunk=tIME,date,tEXt",
+         str(png)],
         check=True, capture_output=True,
     )
 
