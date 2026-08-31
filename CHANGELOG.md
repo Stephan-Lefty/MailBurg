@@ -7,6 +7,88 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **Die Server Edition.** Ein Archiv, auf das mehrere Menschen aus dem
+  Firmennetz und über das Internet zugreifen — im Browser, lesend. Bis zu
+  50 Zugänge, bis zu 60 Postfächer.
+
+  **Die Zugänge liegen im Archiv, nicht neben dem Dienst.** Wer das Archiv
+  sichert, sichert die Rechte mit; wer es auf einen anderen Server umzieht,
+  nimmt sie mit. Andersherum wäre nach jedem Umzug offen, wer was sehen
+  darf — und im Zweifel sieht dann jeder alles.
+
+  **Die Rechteprüfung steht in der Abfrage, nicht dahinter.** Jede Suche
+  bekommt eine SQL-Bedingung mitgegeben, die auf die erlaubten Postfächer
+  einschränkt. Nachträglich filtern wäre der bequemere Weg und der falsche:
+  Trefferzahlen, Statistiken und Postfachlisten entstünden dann aus dem
+  ganzen Archiv, und schon die Zahl »191 Treffer« verriete, dass es Post
+  gibt, die man nicht sehen darf. Ein Test wacht darüber, dass keine neue
+  lesende Methode ohne Sicht auskommt.
+
+  Dazu: Zugänge auf der Kommandozeile und in einem eigenen Fenster,
+  Passwörter ohne Schlüsselbund (verschlüsselter Tresor, Hauptschlüssel per
+  `LoadCredential=` oder Umgebung), systemd-Dienst, Windows-Dienst
+  (geschrieben, noch nicht gelaufen), Anmeldung mit Sperre nach zu vielen
+  Fehlversuchen, dieselbe ausführliche Suchmaske wie im Fenster, Anhänge
+  einzeln herunterladbar, und eine Leiste, die zeigt, über welche
+  Postfächer man überhaupt suchen kann.
+
+  Alles davon steht in `docs/server.md` und `docs/server-einrichten.md`,
+  samt der Frage, wie man von außerhalb herankommt — mit Vor- und
+  Nachteilen der Wege, nicht nur mit einer Empfehlung.
+
+- **Der Gesprächsverlauf.** Ging eine Sache mehrmals hin und her, zeigt
+  MailBurg jetzt den ganzen Austausch: in der Vorschau als Zeile
+  (*Gespräch: 7 Nachrichten – erste vom …, letzte vom …*), im Browser als
+  anklickbare Liste unter der Nachricht.
+
+  **Zusammengehalten über die Kopfzeilen, nicht über den Betreff.** Jede
+  Antwort trägt in `References` die Kennungen ihrer Vorgänger; die erste
+  davon ist die Wurzel des Gesprächs, und alles mit derselben Wurzel gehört
+  zusammen. Der Betreff taugt dafür nicht — er wechselt im Verlauf (»Re:«,
+  »AW:«, »Fwd:«), und zwei Mails mit »Rechnung« im Betreff haben meistens
+  nichts miteinander zu tun. Am Testarchiv belegt: Von vier Mails mit dem
+  Betreff »Angebot« sind drei verkettet; der Verlauf findet genau diese
+  drei und lässt die vierte in Ruhe.
+
+  Die Kennungen stehen mal mit spitzen Klammern in der Mail und mal ohne.
+  Wer sie so übernimmt, wie sie kommen, baut Verläufe, die nie
+  zusammenfinden — sie werden deshalb einheitlich abgelegt.
+
+  **Ein Verlauf ist nie garantiert vollständig.** Was nie ins Archiv kam,
+  fehlt auch hier, und wer über den Server nur einen Teil der Postfächer
+  sehen darf, sieht auch nur die Teile daraus. Beides steht dabei, im
+  Browser wie im Handbuch: Aus »da steht nichts« darf niemand auf »da war
+  nichts« schließen.
+
+  **Bestehende Archive brauchen einen `mailburg neuaufbau ARCHIV` — und
+  öffnen sich vorher nicht.** Die Angaben stehen in jeder Mail, wurden bis
+  0.12 aber nicht in den Suchindex übernommen.
+
+  Die Spalte einfach leer nachzurüsten wäre der bequeme Weg gewesen und der
+  gefährlichere: MailBurg zeigte dann Verläufe an, die nur aus den seither
+  archivierten Mails bestehen — vollständig aussehend, tatsächlich halb.
+  Lieber einmal deutlich im Weg stehen als dauerhaft still danebenliegen.
+
+  Verloren ist nichts. Die Mails liegen bytegenau samt allen Kopfzeilen im
+  Archiv; der Index ergibt sich daraus und sonst nirgendwoher. Die Meldung
+  sagt das und nennt den Befehl, das Fenster bietet den Neuaufbau gleich an,
+  und der Befehl selbst kommt auch dann noch an das Archiv heran, wenn sein
+  Index veraltet ist — sonst verwiese die Meldung auf einen Weg, der am
+  selben Fehler scheitert.
+
+### Geändert
+
+- **Ein Datum sieht überall gleich aus: deutsch.** Bisher kam das Format
+  aus den Systemeinstellungen, während das übrige Programm fest deutsch
+  spricht — heraus kam »Weiter« neben »8/24/2026«, auf einem Bauserver ohne
+  Spracheinstellung »24 08 2026«. Die Umrechnung liegt jetzt an einer
+  einzigen Stelle (`core/sprache.py`), die Fenster und Browser gemeinsam
+  benutzen.
+
 ## [0.12.0] – 2026-08-31
 
 ### Hinzugefügt

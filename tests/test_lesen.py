@@ -541,6 +541,79 @@ class WebTest(unittest.TestCase):
 
         self.assertIn("konto%3Abuchhaltung", chef.get("/").text)
 
+    # -- Der Gesprächsverlauf ----------------------------------------------
+
+    def _gespraech(self):
+        """Drei zusammenhängende Mails und eine mit gleichem Betreff."""
+        def bauen(mid, betreff, refs="", tag="01"):
+            kopf = (
+                f"From: Anna <anna@example.org>\r\n"
+                f"To: b@example.org\r\nSubject: {betreff}\r\n"
+                f"Date: Mon, {tag} May 2025 09:14:00 +0000\r\n"
+                f"Message-ID: <{mid}>\r\n"
+            )
+            if refs:
+                kopf += f"References: {refs}\r\n"
+            return (kopf + "\r\nText\r\n").encode()
+
+        with Archive.open(self.wo) as archiv:
+            archiv.add(bauen("eins@example.org", "Angebot", tag="01"),
+                       account="buchhaltung", folder="INBOX")
+            archiv.add(bauen("zwei@example.org", "Re: Angebot", "<eins@example.org>",
+                             tag="02"), account="buchhaltung", folder="INBOX")
+            archiv.add(bauen("drei@example.org", "AW: Re: Angebot",
+                             "<eins@example.org> <zwei@example.org>", tag="03"),
+                       account="buchhaltung", folder="INBOX")
+            # Gleicher Betreff, aber kein Zusammenhang.
+            archiv.add(bauen("vier@example.org", "Angebot", tag="04"),
+                       account="buchhaltung", folder="INBOX")
+
+        return self._als("anna", "ein-anderes-langes")
+
+    def test_der_verlauf_steht_in_der_nachricht(self):
+        anna = self._gespraech()
+        mitte = self._kennungen(anna, "betreff:%22Re:%20Angebot%22")
+
+        seite = anna.get(f"/nachricht/{mitte[0]}").text
+
+        self.assertIn("Teil eines Gesprächs", seite)
+        self.assertIn("3 Nachrichten", seite)
+
+    def test_gleicher_betreff_ist_kein_gespraech(self):
+        """Der Unterschied zu einer Regel auf den Betreff.
+
+        Vier Mails tragen »Angebot« im Betreff, aber nur drei gehören
+        zusammen – erkennbar an ``References``, nicht am Wortlaut.
+        """
+        anna = self._gespraech()
+        alle = self._kennungen(anna, "betreff:angebot")
+        self.assertEqual(len(alle), 4, "Testdaten stimmen nicht")
+
+        einzeln = 0
+        for kennung in alle:
+            if "Teil eines Gesprächs" not in anna.get(f"/nachricht/{kennung}").text:
+                einzeln += 1
+
+        self.assertEqual(einzeln, 1)
+
+    def test_eine_einzelne_mail_bekommt_keinen_verlauf(self):
+        """Ein Kasten »Gespräch mit 1 Nachricht« wäre nur Lärm."""
+        anna = self._als("anna", "ein-anderes-langes")
+        eigen = self._kennungen(anna)
+
+        self.assertNotIn(
+            "Teil eines Gesprächs", anna.get(f"/nachricht/{eigen[0]}").text
+        )
+
+    def test_der_verlauf_sagt_dass_er_lueckenhaft_sein_kann(self):
+        """Sonst schließt jemand aus »da steht nichts« auf »da war nichts«."""
+        anna = self._gespraech()
+        mitte = self._kennungen(anna, "betreff:%22Re:%20Angebot%22")
+
+        seite = anna.get(f"/nachricht/{mitte[0]}").text
+
+        self.assertIn("fehlt hier", seite)
+
     def test_der_zustand_liegt_nicht_mehr_auf_der_startseite(self):
         """Dort steht die Suche – der Zustand ist für Verwalter."""
         kunde = Kunde(self.anwendung)

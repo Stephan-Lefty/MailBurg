@@ -121,6 +121,11 @@ Auch die Schreibweise darf abweichen: `von:muller` und `von:mueller` finden
 beide „Müller", `bahnhofstrasse` findet „Bahnhofstraße". Groß- und
 Kleinschreibung spielt nirgends eine Rolle.
 
+Ging eine Sache mehrmals hin und her, zeigt MailBurg zu jeder Nachricht den
+**ganzen Gesprächsverlauf** – zusammengehalten über die Kopfzeilen, die jedes
+Mailprogramm mitführt, nicht über den Betreff. Der wechselt unterwegs, und
+zwei Mails mit „Rechnung" im Betreff haben meistens nichts miteinander zu tun.
+
 ## Loslegen
 
 Voraussetzung ist Python 3.11 oder neuer. Weitere Pakete braucht der Kern nicht.

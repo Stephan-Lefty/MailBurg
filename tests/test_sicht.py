@@ -234,6 +234,81 @@ class MehrfachTest(unittest.TestCase):
         self.assertEqual(zahlen["fundorte"], 1)
 
 
+class VerlaufTest(unittest.TestCase):
+    """Ein Gespräch kann über mehrere Postfächer laufen."""
+
+    def setUp(self):
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.archiv = Archive.create(
+            Path(self.ordner.name) / "Archiv", name="P", mode=Mode.GESCHAEFTLICH
+        )
+        self.addCleanup(self.archiv.close)
+
+        def bauen(mid, betreff, refs="", tag="01"):
+            kopf = (
+                f"From: a@example.org\r\nTo: b@example.org\r\n"
+                f"Subject: {betreff}\r\n"
+                f"Date: Mon, {tag} May 2025 09:14:00 +0000\r\n"
+                f"Message-ID: <{mid}>\r\n"
+            )
+            if refs:
+                kopf += f"References: {refs}\r\n"
+            return (kopf + "\r\nText\r\n").encode()
+
+        self.eins = self.archiv.add(
+            bauen("eins@example.org", "Angebot", tag="01"),
+            account="buchhaltung", folder="INBOX")
+        self.zwei = self.archiv.add(
+            bauen("zwei@example.org", "Re: Angebot", "<eins@example.org>", tag="02"),
+            account="chefsache", folder="INBOX")
+        self.drei = self.archiv.add(
+            bauen("drei@example.org", "AW: Angebot", "<eins@example.org> <zwei@example.org>",
+                  tag="03"),
+            account="buchhaltung", folder="INBOX")
+
+        self.nur_buchhaltung = Sicht(
+            alles=False, konten=frozenset({"buchhaltung"}))
+
+    def _hash(self, ergebnis) -> str:
+        return getattr(ergebnis, "digest", None) or ergebnis.hash
+
+    def test_ohne_sicht_ist_das_ganze_gespraech_da(self):
+        alle = self.archiv.index.verlauf(self._hash(self.eins))
+
+        self.assertEqual(len(alle), 3)
+
+    def test_mit_sicht_nur_die_eigenen_teile(self):
+        """Keine Lücke, sondern der Sinn der Sache."""
+        teile = self.archiv.index.verlauf(
+            self._hash(self.eins), sicht=self.nur_buchhaltung)
+
+        self.assertEqual([t.subject for t in teile], ["Angebot", "AW: Angebot"])
+
+    def test_die_fremde_mail_verraet_sich_auch_nicht_im_verlauf(self):
+        teile = self.archiv.index.verlauf(
+            self._hash(self.eins), sicht=self.nur_buchhaltung)
+
+        self.assertNotIn("Re: Angebot", [t.subject for t in teile])
+
+    def test_aeltester_zuerst(self):
+        """Ein Gespräch liest man von vorn."""
+        alle = self.archiv.index.verlauf(self._hash(self.drei))
+
+        self.assertEqual(
+            [t.date[:10] for t in alle],
+            ["2025-05-01", "2025-05-02", "2025-05-03"],
+        )
+
+    def test_eine_mail_ohne_kennung_gehoert_zu_keinem_gespraech(self):
+        """Sonst kämen alle kennungslosen Mails zusammen."""
+        ohne = self.archiv.add(
+            b"From: a@example.org\r\nSubject: Ohne Kennung\r\n\r\nText\r\n",
+            account="buchhaltung", folder="INBOX")
+
+        self.assertEqual(self.archiv.index.verlauf(self._hash(ohne)), [])
+
+
 class KeineLuecken(unittest.TestCase):
     """Was leicht vergessen wird, wenn später etwas dazukommt."""
 
@@ -246,6 +321,10 @@ class KeineLuecken(unittest.TestCase):
         # Browser – und prompt von diesem Test gemeldet, weil sie hier
         # noch fehlte. Genau dafür ist er da.
         "nachricht",
+        # Und am selben Tag noch einmal, für den Gesprächsverlauf. Ein
+        # Gespräch kann über mehrere Postfächer laufen; wer nur eines
+        # sehen darf, bekommt auch nur die Teile daraus.
+        "verlauf",
     )
 
     #: Und diese ausdrücklich nicht. Sie beantworten keine Frage eines

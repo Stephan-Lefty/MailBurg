@@ -230,6 +230,10 @@ def routen(lage, sitzungen):
             return HTMLResponse(seiten.nachricht(
                 benutzer, kopf, zerlegt.body or "", kennung,
                 anhaenge=zerlegt.attachments,
+                # Mit derselben Sicht: Ein Gespräch kann über mehrere
+                # Postfächer laufen, und wer nur eines sehen darf,
+                # bekommt auch nur die Teile daraus.
+                verlauf=archiv.index.verlauf(kennung, sicht=Sicht.fuer(benutzer)),
             ))
 
     async def anhang(anfrage):

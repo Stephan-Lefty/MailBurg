@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from mailburg.core import sprache
 from mailburg.ui import datum
 from mailburg.ui.modelle import menschenlesbar
 
@@ -201,6 +202,23 @@ class Mailvorschau(QWidget):
             zeilen.append(f"<b>Datum:</b> {datum.tag_und_zeit(zerlegt.date)}")
         if getattr(zerlegt, "wichtigkeit", "normal") != "normal":
             zeilen.append(f"<b>Wichtigkeit:</b> {zerlegt.wichtigkeit}")
+
+        # **Der Gesprächsverlauf.** Zusammengehalten über References,
+        # nicht über den Betreff - zwei Mails mit »Rechnung« haben oft
+        # nichts miteinander zu tun. Nur die Zahl: Die Liste hätte in
+        # der Vorschau keinen Platz, und ein Doppelklick öffnet die
+        # Nachricht ohnehin in einem eigenen Fenster.
+        try:
+            verlauf = archiv.index.verlauf(treffer.hash)
+        except Exception:  # noqa: BLE001 - ein alter Index kennt es nicht
+            verlauf = []
+        if len(verlauf) > 1:
+            zeilen.append(
+                f"<b>Gespräch:</b> {sprache.anzahl(len(verlauf), 'Nachricht', 'Nachrichten')} "
+                f"– erste vom {datum.tag(verlauf[0].date)}, "
+                f"letzte vom {datum.tag(verlauf[-1].date)}"
+            )
+
         self._kopf_setzen("<br>".join(zeilen))
 
         self.text.setPlainText(zerlegt.body or "(kein Text)")

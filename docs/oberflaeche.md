@@ -44,6 +44,30 @@ Fenster – die Vorschau unten ist zum Überfliegen da, nicht zum Lesen. Mehrere
 Fenster gleichzeitig sind möglich, etwa um zwei Rechnungen zu vergleichen.
 Strg+W oder Esc schließt sie.
 
+### Der Gesprächsverlauf
+
+Gehört eine Mail zu einem Austausch, der hin und her ging, sagt die Vorschau
+es: *Gespräch: 7 Nachrichten – erste vom 12.03.2025, letzte vom 04.04.2025.*
+
+**Zusammengehalten über die Kopfzeilen, nicht über den Betreff.** Jede Mail
+trägt in `References` die Kennungen ihrer Vorgänger; so sieht es der Standard
+für E-Mail vor. Der Betreff taugt dafür nicht: Er wechselt im Verlauf, und
+zwei Mails mit »Rechnung« im Betreff haben meistens nichts miteinander zu tun.
+
+**Vollständig ist ein Verlauf nie garantiert.** Was nie ins Archiv kam, fehlt
+auch hier — und wer über den Server nur einen Teil der Postfächer sehen darf,
+sieht auch nur die Teile des Gesprächs daraus.
+
+> **Für bestehende Archive:** Diese Angaben stehen in den Mails, wurden aber
+> bis Fassung 0.12 nicht in den Suchindex übernommen. Ein Archiv aus der Zeit
+> davor **öffnet sich deshalb erst nach einem Neuaufbau des Suchindex.**
+> MailBurg bietet ihn beim Öffnen an; auf der Kommandozeile ist es
+> `mailburg neuaufbau ARCHIV`.
+>
+> Verloren ist dabei nichts. Die Mails liegen bytegenau im Archiv, samt aller
+> Kopfzeilen; der Index ergibt sich daraus und sonst nirgendwoher. Rechnen Sie
+> mit etwa vier Minuten je zehntausend Nachrichten.
+
 ### Eine Nachricht zurückholen
 
 ![Der Dialog zum Zurückholen einer Nachricht ins Postfach. Er erklärt, dass die Mail vollständig und mit ihrem ursprünglichen Datum in den Posteingang kommt und dass es nicht dasselbe Postfach sein muss. Darunter die Wahl des Zielpostfachs und ein Häkchen »Als ungelesen markieren«.](bilder/wiederherstellen.png)

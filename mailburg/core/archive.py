@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from mailburg import FORMAT_VERSION, __version__
+from mailburg.core import index as index_modul
 from mailburg.core import paths
 from mailburg.core.index import Index
 from mailburg.core.journal import Journal
@@ -233,7 +234,14 @@ def archivnamen() -> dict[str, str]:
 class Archive:
     """Ein geöffnetes Archiv."""
 
-    def __init__(self, root: Path, meta: dict[str, Any], *, exclusive: bool = True) -> None:
+    def __init__(
+        self,
+        root: Path,
+        meta: dict[str, Any],
+        *,
+        exclusive: bool = True,
+        index_verwerfen: bool = False,
+    ) -> None:
         self.root = root
         self.meta = meta
         self._lock_held = False
@@ -243,7 +251,21 @@ class Archive:
 
         self.store = Store(root / "mail")
         self.journal = Journal(root / "meta")
-        self.index = Index(paths.index_path(self.uuid))
+        index_datei = paths.index_path(self.uuid)
+        if index_verwerfen:
+            index_modul.verwerfen(index_datei)
+        try:
+            self.index = Index(index_datei)
+        except Exception:
+            # **Die Sperre darf nicht liegenbleiben.** Sie ist oben schon
+            # gesetzt, ``close()`` ruft hier aber niemand mehr - ein
+            # ``__init__``, das fliegt, hinterlässt kein Objekt. Aus
+            # »der Index ist veraltet« würde sonst obendrein »das Archiv
+            # ist gesperrt«, und der Anwender hätte zwei Probleme statt
+            # einem, das zweite ohne erkennbaren Grund.
+            self.journal.close()
+            self._release_lock()
+            raise
 
     # ------------------------------------------------------------- Anlegen
 
@@ -296,8 +318,21 @@ class Archive:
         return archive
 
     @classmethod
-    def open(cls, root: Path, *, exclusive: bool = True) -> Archive:
-        """Öffnet ein vorhandenes Archiv."""
+    def open(
+        cls,
+        root: Path,
+        *,
+        exclusive: bool = True,
+        index_verwerfen: bool = False,
+    ) -> Archive:
+        """Öffnet ein vorhandenes Archiv.
+
+        ``index_verwerfen`` wirft den Suchindex vor dem Öffnen weg. Das
+        braucht, wer ihn ohnehin neu bauen will: Ein Index aus einer
+        älteren Programmfassung lässt sich nicht öffnen (siehe
+        :class:`~mailburg.core.index.IndexOutdated`), und der Befehl, der
+        das Problem behebt, käme sonst selbst nicht an das Archiv heran.
+        """
         root = Path(root).expanduser().resolve()
         marker = root / ARCHIVE_FILE
         if not marker.exists():
@@ -315,7 +350,7 @@ class Archive:
                 f"(Format {version}, dieses Programm kann {FORMAT_VERSION}). "
                 f"Bitte MailBurg aktualisieren."
             )
-        return cls(root, meta, exclusive=exclusive)
+        return cls(root, meta, exclusive=exclusive, index_verwerfen=index_verwerfen)
 
     # -------------------------------------------------------------- Sperren
 
@@ -716,9 +751,7 @@ class Archive:
 
         self.index.close()
         index_file = paths.index_path(self.uuid)
-        index_file.unlink(missing_ok=True)
-        for extra in ("-wal", "-shm"):
-            index_file.with_name(index_file.name + extra).unlink(missing_ok=True)
+        index_modul.verwerfen(index_file)
         self.index = Index(index_file)
 
         # Fundorte stehen im Journal, nicht in der Mail. Wir sammeln sie

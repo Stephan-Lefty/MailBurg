@@ -223,6 +223,21 @@ oder <i>MailBurg hat nichts gefunden</i>.</p>
 Suchmaske, die den Ausdruck zusammensetzt und dabei zeigt, wie er
 lautet.</p>
 
+<h3>Der Gesprächsverlauf</h3>
+
+<p>Ging eine Sache mehrmals hin und her, steht in der Vorschau, aus wie
+vielen Nachrichten der Austausch besteht und wann die erste und die
+letzte kam.</p>
+
+<p>Zusammengehalten wird er über Kopfzeilen, die jedes Mailprogramm
+mitführt – nicht über den Betreff. Der wechselt unterwegs (»Re:«,
+»AW:«, »Fwd:«), und zwei Mails mit »Rechnung« im Betreff haben
+meistens nichts miteinander zu tun.</p>
+
+<p><b>Vollständig ist ein Verlauf nie garantiert.</b> Was nie ins
+Archiv kam, fehlt auch hier. Schließen Sie aus »da steht nichts« also
+nicht auf »da war nichts«.</p>
+
 {menue}
 
 <h3>Die Suchsprache</h3>

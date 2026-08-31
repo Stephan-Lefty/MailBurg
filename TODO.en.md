@@ -184,6 +184,37 @@ they sit here and not in the running list.
 
 ### 2026-08-31
 
+- [x] **Conversation threads.** (2026-08-31) When a matter went back and
+  forth, MailBurg now shows the whole exchange: in the preview as a line
+  (*Gespräch: 7 Nachrichten – erste vom …, letzte vom …*), in the browser
+  as a clickable list below the message.
+
+  **Held together by the headers, not by the subject.** Every reply carries
+  the identifiers of its predecessors in `References`; the first of them is
+  the root of the thread, and everything sharing that root belongs
+  together. Subjects change along the way ("Re:", "AW:", "Fwd:"), and two
+  messages with "Rechnung" in the subject usually have nothing to do with
+  each other. Demonstrated on the test archive: of four messages titled
+  "Angebot", three are chained — the thread finds exactly those three and
+  leaves the fourth alone.
+
+  Those identifiers appear sometimes with angle brackets and sometimes
+  without. Take them as they come and you build threads that never meet;
+  they are therefore stored in one consistent form.
+
+  A thread passes through the same permission check as search — the test in
+  `tests/test_sicht.py` insists on it. And it is never guaranteed complete:
+  what never reached the archive is missing here too. That caveat is on the
+  page, not just in the manual.
+
+  **Existing archives need a `mailburg neuaufbau ARCHIVE`.** The
+  information sits in every message but was not carried into the search
+  index before 0.12 (`SCHEMA_VERSION` 1 → 2); an older archive will not
+  open until then. Backfilling the column empty would have been easier
+  and worse — threads would look complete while being half. Nothing is
+  lost, and the command the message points to reaches an archive whose
+  index is outdated.
+
 - [x] **Dates now follow the rest: German.** (2026-08-31) `ui/datum.py`
   asked `QLocale` and thus the system setting, while `ui/app.py` pins Qt's
   own labels to German **deliberately**. The result was "Weiter" beside

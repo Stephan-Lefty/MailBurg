@@ -114,6 +114,11 @@ special case but the norm — we run words together. Hence a second index over
 character trigrams alongside the word index. And `von:muller` finds "Müller"
 too, for when the umlaut is hard to type.
 
+When a matter went back and forth, MailBurg shows the **whole conversation**
+for any message in it — held together by the headers every mail client carries,
+not by the subject. Subjects change along the way, and two messages with
+"Invoice" in the subject usually have nothing to do with each other.
+
 ## Getting started
 
 Requires Python 3.11 or newer. The core needs no further packages.

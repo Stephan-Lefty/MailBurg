@@ -47,6 +47,7 @@ BAUMANTEIL = 0.20
 TREFFERANTEIL = 0.42
 from mailburg.core.accounts import Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked
+from mailburg.core.index import IndexOutdated
 from mailburg.search.query import QueryError
 from mailburg.ui import datum, farben
 from mailburg.ui import farben
@@ -450,6 +451,9 @@ class Hauptfenster(QMainWindow):
             # Nur lesend: Ein laufender Abruf im Hintergrund soll das
             # Fenster nicht aussperren, und umgekehrt.
             self.archiv = Archive.open(Path(pfad), exclusive=False)
+        except IndexOutdated:
+            self._index_veraltet(Path(pfad))
+            return
         except (ArchiveError, ArchiveLocked, OSError) as exc:
             QMessageBox.critical(self, "Archiv lässt sich nicht öffnen", str(exc))
             return
@@ -856,8 +860,40 @@ class Hauptfenster(QMainWindow):
         if antwort == QMessageBox.Yes:
             self._neuaufbau()
 
-    def _neuaufbau(self) -> None:
-        """Baut den Suchindex neu – mit Fortschritt, denn es dauert."""
+    def _index_veraltet(self, pfad: Path) -> None:
+        """Der Index stammt aus einer älteren Fassung – anbieten, ihn zu bauen.
+
+        Das Archiv ließ sich gar nicht erst öffnen; ``self.archiv`` ist
+        hier also ``None``. Eine reine Fehlermeldung wäre an dieser
+        Stelle das Schlimmste: Wer nach einer Aktualisierung sein Archiv
+        nicht mehr aufbekommt, rechnet mit dem Verlust von zwanzig
+        Jahren Post. Es geht aber nur das Verzeichnis neu.
+        """
+        antwort = QMessageBox.question(
+            self,
+            "Der Suchindex gehört zu einer älteren Fassung",
+            "<p><b>Ihre Mails sind unversehrt.</b> Nur das Verzeichnis "
+            "dazu passt nicht mehr zu dieser Programmfassung.</p>"
+            "<p>Diese Fassung merkt sich zu jeder Nachricht, zu welchem "
+            "Gespräch sie gehört. Das steht in jeder Mail, wurde bisher "
+            "aber nicht mitgeführt – der Index muss dafür einmal neu "
+            "gebaut werden.</p>"
+            "<p>Das dauert; gerechnet mit etwa vier Minuten je "
+            "zehntausend Nachrichten. Solange läuft das Archiv nicht.</p>"
+            "<p>Jetzt aufbauen?</p>",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if antwort == QMessageBox.Yes:
+            self._neuaufbau(pfad)
+
+    def _neuaufbau(self, pfad: Path | None = None) -> None:
+        """Baut den Suchindex neu – mit Fortschritt, denn es dauert.
+
+        Ohne ``pfad`` wird das geöffnete Archiv genommen. Mit einem
+        kommt der Aufruf von :meth:`_index_veraltet`, wo gar nichts
+        offen ist – der alte Index verhinderte ja das Öffnen.
+        """
         from mailburg.ui.arbeit import Auftrag, Läufer
 
         class Aufbau(Auftrag):
@@ -868,16 +904,24 @@ class Hauptfenster(QMainWindow):
             def ausfuehren(self):
                 from mailburg.core.archive import Archive
 
-                with Archive.open(self.pfad) as archiv:
+                # ``index_verwerfen``, weil der vorhandene Index aus
+                # einer älteren Fassung stammen kann und sich dann nicht
+                # öffnen lässt. Für den Neuaufbau ist er ohnehin
+                # wertlos - die nächste Zeile schreibt ihn komplett neu.
+                with Archive.open(self.pfad, index_verwerfen=True) as archiv:
                     return archiv.rebuild_index(progress=self._melden)
 
             def _melden(self, erledigt, gesamt):
                 self.fortschritt.emit(erledigt, gesamt)
 
-        pfad = self.archiv.root
-        # Das eigene Handle muss weg: Der Aufbau schreibt in den Index.
-        self.archiv.close()
-        self.archiv = None
+        if not isinstance(pfad, Path):
+            # Kommt der Aufruf von einem Menüpunkt, steht hier Qts
+            # »checked«-Kennzeichen statt eines Pfads.
+            pfad = self.archiv.root
+        # Ein eigenes Handle muss weg: Der Aufbau schreibt in den Index.
+        if self.archiv is not None:
+            self.archiv.close()
+            self.archiv = None
         self.modell.suchindex = None
 
         self.stand.setText("Baue den Suchindex neu …")

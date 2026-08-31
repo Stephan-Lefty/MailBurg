@@ -182,6 +182,43 @@ class ParsedMessage:
 
     date: datetime | None = None
     message_id: str = ""
+
+    in_reply_to: str = ""
+    """Die Kennung der Mail, auf die diese hier antwortet."""
+
+    references: list[str] = field(default_factory=list)
+    """Die Kennungen aller Vorgänger, älteste zuerst.
+
+    So sieht RFC 5322 den Gesprächsverlauf vor – nicht über den
+    Betreff. Der lässt sich ändern, und »Re: Re: AW: Rechnung« ist
+    keine verlässliche Zusammengehörigkeit. Diese Kette dagegen wird von
+    jedem Mailprogramm mitgeführt.
+    """
+
+    @property
+    def gespraech(self) -> str:
+        """Die Kennung des Gesprächs, zu dem diese Mail gehört.
+
+        Das ist die **erste** Kennung der Kette: die Mail, mit der alles
+        anfing. Fehlt die Kette, ist es die Mail, auf die geantwortet
+        wird; fehlt auch die, beginnt diese Mail selbst ein Gespräch.
+
+        **Warum die erste und nicht die letzte.** Nur so landen alle
+        Nachrichten eines Verlaufs unter derselben Kennung, egal an
+        welcher Stelle sie hängen. Nähme man den unmittelbaren
+        Vorgänger, zerfiele ein langer Verlauf in Paare.
+        """
+        if self.references:
+            return self.references[0]
+        if self.in_reply_to:
+            return self.in_reply_to
+        # **Ohne die spitzen Klammern.** ``message_id`` bewahrt sie, wie
+        # sie in der Kopfzeile steht; ``references`` und ``in_reply_to``
+        # sind schon entklammert. Verglichen man beides ungleich, fänden
+        # die Wurzel eines Gesprächs und ihre Antworten nie zusammen –
+        # ein Fehler, der nichts kaputtmacht und einfach nur nie
+        # funktioniert.
+        return self.message_id.strip().lstrip("<").rstrip(">")
     wichtigkeit: str = "normal"
     """``hoch``, ``normal`` oder ``niedrig``.
 
@@ -400,6 +437,8 @@ def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
     result = ParsedMessage(
         subject=_header(message, "Subject"),
         message_id=_header(message, "Message-ID"),
+        in_reply_to=_erste_kennung(_header(message, "In-Reply-To")),
+        references=_kennungen(_header(message, "References")),
         to_addrs=_addresses(message, "To"),
         cc_addrs=_addresses(message, "Cc"),
         bcc_addrs=_addresses(message, "Bcc"),
@@ -473,6 +512,29 @@ def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
 
     result.body = text[:MAX_BODY_CHARS]
     return result
+
+
+def _kennungen(roh: str) -> list[str]:
+    """Zerlegt eine Kopfzeile voller Message-IDs in einzelne.
+
+    ``References`` steht in RFC 5322 als Folge von ``<…>``-Klammern,
+    getrennt durch Leerzeichen oder Zeilenumbrüche. Was nicht in
+    Klammern steht, wird übergangen: Manche Programme schreiben dort
+    Kommentare hinein, und die sind keine Kennung.
+    """
+    import re as _re
+
+    return _re.findall(r"<([^<>\s]+)>", roh or "")
+
+
+def _erste_kennung(roh: str) -> str:
+    """Die erste Message-ID aus einer Kopfzeile – oder nichts.
+
+    ``In-Reply-To`` soll laut Standard genau eine enthalten. Manche
+    Programme schreiben mehrere; dann gilt die erste.
+    """
+    gefunden = _kennungen(roh)
+    return gefunden[0] if gefunden else ""
 
 
 def _header_value_or(value: object) -> str:

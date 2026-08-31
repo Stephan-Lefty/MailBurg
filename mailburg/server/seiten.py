@@ -82,6 +82,18 @@ _KOPF = """<!doctype html>
   .postfaecher a span {{ color: var(--leise); margin-left: .4rem; }}
   .postfaecher a.gewaehlt {{ border-color: var(--marke); font-weight: 600; }}
   .postfaecher a.alle {{ border-style: dashed; }}
+  .verlauf {{ border: 1px solid #d6dde8; border-radius: 4px;
+              padding: .2rem 1rem 1rem; margin: 0 0 1.5rem; }}
+  .verlauf h2 {{ font-size: .95rem; color: var(--leise); }}
+  .verlauf ol {{ list-style: none; padding: 0; margin: 0; }}
+  .verlauf li {{ padding: .25rem 0; border-left: 2px solid #d6dde8;
+                 padding-left: .8rem; }}
+  .verlauf li.hier {{ border-left-color: var(--marke); }}
+  .verlauf li span {{ color: var(--leise); font-size: .85rem;
+                      margin-right: .5rem; }}
+  .verlauf em {{ color: var(--leise); font-style: normal; font-size: .85rem; }}
+  .verlauf .hinweis {{ color: var(--leise); font-size: .8rem;
+                       margin: .8rem 0 0; }}
   .anhaenge {{ border: 1px solid #d6dde8; border-radius: 4px;
                padding: .2rem 1rem 1rem; margin: 0 0 1.5rem; }}
   .anhaenge h2 {{ font-size: .95rem; color: var(--leise); }}
@@ -363,7 +375,7 @@ def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
 
 
 def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
-              anhaenge=()) -> str:
+              anhaenge=(), verlauf=()) -> str:
     """Eine einzelne Nachricht, mit ihren Anhängen zum Herunterladen."""
     zeilen = "".join(
         f"<dt>{html.escape(k)}</dt><dd>{html.escape(str(v))}</dd>"
@@ -384,16 +396,64 @@ def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
         )
     else:
         anhangsliste = ""
+
+    gespraech = _verlauf(verlauf, kennung)
     return _rahmen(f"{kopf.get('Betreff', 'Nachricht')} – MailBurg", f"""
 <p><a href="javascript:history.back()">← zurück</a></p>
 <h1>{html.escape(str(kopf.get("Betreff", "(ohne Betreff)")))}</h1>
 <dl class="kopf">{zeilen}</dl>
+{gespraech}
 {anhangsliste}
 <p><a href="/nachricht/{html.escape(kennung)}/datei">Die ganze Nachricht
    als Datei (.eml)</a></p>
 <hr>
 <pre class="text">{html.escape(text)}</pre>
 """, benutzer)
+
+
+def _verlauf(nachrichten, hier: str) -> str:
+    """Der Gesprächsverlauf, in dem diese Nachricht steht.
+
+    **Zusammengehalten über die Kopfzeilen, nicht über den Betreff.**
+    Jede Mail trägt in ``References`` die Kennungen ihrer Vorgänger; so
+    sieht RFC 5322 das vor. Zwei Mails mit dem Betreff »Rechnung« haben
+    dagegen oft nichts miteinander zu tun, und »Re: Re: AW:« wechselt im
+    Verlauf ohnehin.
+
+    **Der Hinweis auf die Unvollständigkeit gehört dazu.** Was nie ins
+    Archiv kam, fehlt auch hier – und wer nur einen Teil der Postfächer
+    sehen darf, sieht auch nur die Teile des Gesprächs daraus. Ohne den
+    Satz schließt jemand aus »da steht nichts« auf »da war nichts«.
+    """
+    if len(nachrichten) < 2:
+        return ""
+
+    zeilen = []
+    for stueck in nachrichten:
+        tag = sprache.zeitpunkt(stueck.date or "").split(",")[0]
+        wer = stueck.from_name or stueck.from_addr or ""
+        if stueck.hash == hier:
+            zeilen.append(
+                f'<li class="hier"><span>{html.escape(tag)}</span> '
+                f"{html.escape(wer)} · {html.escape(stueck.subject)}"
+                f" <em>– diese Nachricht</em></li>"
+            )
+        else:
+            zeilen.append(
+                f'<li><span>{html.escape(tag)}</span> '
+                f'<a href="/nachricht/{html.escape(stueck.hash)}">'
+                f"{html.escape(wer)} · {html.escape(stueck.subject)}</a></li>"
+            )
+
+    return (
+        f'<div class="verlauf"><h2>'
+        f"Teil eines Gesprächs mit "
+        f"{html.escape(sprache.anzahl(len(nachrichten), 'Nachricht', 'Nachrichten'))}"
+        f'</h2><ol>{"".join(zeilen)}</ol>'
+        f'<p class="hinweis">Zusammengestellt aus den Kopfzeilen der '
+        f"Nachrichten, nicht aus dem Betreff. Was nicht im Archiv liegt "
+        f"oder nicht zu Ihren Postfächern gehört, fehlt hier.</p></div>"
+    )
 
 
 def fehlerseite(titel: str, text: str, benutzer=None) -> str:

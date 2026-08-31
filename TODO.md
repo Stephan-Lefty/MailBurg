@@ -201,6 +201,34 @@ Prüfung steht es hier und nicht in der laufenden Liste.
 
 ### Am 2026-08-31
 
+- [x] **Der Gesprächsverlauf.** (2026-08-31) Ging eine Sache mehrmals hin
+  und her, zeigt MailBurg jetzt den ganzen Austausch: in der Vorschau als
+  Zeile (*Gespräch: 7 Nachrichten – erste vom …, letzte vom …*), im
+  Browser als anklickbare Liste unter der Nachricht.
+
+  **Über die Kopfzeilen, nicht über den Betreff.** Jede Antwort trägt in
+  `References` die Kennungen ihrer Vorgänger; die erste davon ist die
+  Wurzel, und alles mit derselben Wurzel gehört zusammen. Der Betreff
+  wechselt im Verlauf (»Re:«, »AW:«, »Fwd:«), und zwei Mails mit
+  »Rechnung« im Betreff haben meistens nichts miteinander zu tun. Am
+  Testarchiv belegt: Von vier Mails mit dem Betreff »Angebot« sind drei
+  verkettet – der Verlauf findet genau diese drei.
+
+  Die Kennungen stehen mal mit spitzen Klammern in der Mail und mal ohne.
+  Wer sie übernimmt, wie sie kommen, baut Verläufe, die nie
+  zusammenfinden; sie werden deshalb einheitlich abgelegt.
+
+  Der Verlauf geht durch dieselbe Rechteprüfung wie die Suche – der Test
+  in `tests/test_sicht.py` besteht darauf.
+
+  **Bestehende Archive brauchen einen `mailburg neuaufbau ARCHIV`.** Die
+  Angaben stehen in jeder Mail, wurden bis 0.12 aber nicht in den
+  Suchindex übernommen (`SCHEMA_VERSION` 1 → 2); ein älteres Archiv
+  öffnet sich erst danach. Die Spalte leer nachzurüsten wäre bequemer
+  und gefährlicher gewesen – dann sähen Verläufe vollständig aus und
+  wären halb. Verloren ist nichts, und der Befehl aus der Meldung kommt
+  auch an ein Archiv mit veraltetem Index heran.
+
 - [x] **Das Datum folgt jetzt auch dem Rest: Deutsch.** (2026-08-31)
   `ui/datum.py` fragte `QLocale` und damit die Systemeinstellung,
   während `ui/app.py` Qts eigene Beschriftungen **fest** auf Deutsch

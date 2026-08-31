@@ -34,7 +34,10 @@ from pathlib import Path
 
 #: Schemafassung. Steigt sie, wird der Index verworfen und neu gebaut –
 #: was gefahrlos ist, weil er sich vollständig aus dem Archiv ergibt.
-SCHEMA_VERSION = 1
+#: Fassung 2 seit dem 2026-08-31: die Spalte ``gespraech`` für
+#: Verläufe. Ein älterer Index verlangt einen Neuaufbau – die
+#: Kopfzeilen stehen in den archivierten Mails, verloren ist nichts.
+SCHEMA_VERSION = 2
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS messages (
@@ -50,6 +53,11 @@ CREATE TABLE IF NOT EXISTS messages (
     has_attachments INTEGER NOT NULL DEFAULT 0,
     category        TEXT    NOT NULL DEFAULT 'unbestimmt',
     message_id      TEXT,
+    -- Zu welchem Gespräch diese Mail gehört: die Kennung der Mail, mit
+    -- der es anfing. Kommt aus References beziehungsweise In-Reply-To,
+    -- nicht aus dem Betreff - der lässt sich ändern, und "Re: Re: AW:"
+    -- ist keine verlässliche Zusammengehörigkeit.
+    gespraech       TEXT,
     -- Wann die Mail ins Archiv kam, nicht wann sie geschrieben wurde.
     -- "Was ist diese Woche hereingekommen?" ist die Frage nach jedem
     -- Abruf - und für eine Verfahrensdokumentation gehört sie
@@ -63,6 +71,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_date  ON messages(date);
 CREATE INDEX IF NOT EXISTS idx_messages_year  ON messages(year);
 CREATE INDEX IF NOT EXISTS idx_messages_from  ON messages(from_addr);
 CREATE INDEX IF NOT EXISTS idx_messages_msgid ON messages(message_id);
+CREATE INDEX IF NOT EXISTS idx_messages_gespraech ON messages(gespraech);
 CREATE INDEX IF NOT EXISTS idx_messages_arch  ON messages(archiviert);
 
 -- Empfänger einzeln, nach Art getrennt. Der Volltextindex wirft An und
@@ -196,11 +205,7 @@ class Index:
     def _ensure_schema(self) -> None:
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
         if version and version != SCHEMA_VERSION:
-            raise IndexOutdated(
-                f"Der Suchindex stammt aus Fassung {version}, gebraucht wird "
-                f"{SCHEMA_VERSION}. Er muss neu aufgebaut werden – die Mails "
-                f"sind davon nicht betroffen."
-            )
+            raise IndexOutdated(version, SCHEMA_VERSION)
         # Erst nachrüsten, dann das Schema anwenden: Zum Schema gehören auch
         # Indizes über die neuen Spalten, und die ließen sich sonst nicht
         # anlegen. Bei einer noch leeren Datenbank tut das Nachrüsten
@@ -285,8 +290,9 @@ class Index:
         cursor = self.db.execute(
             """INSERT INTO messages
                (hash, bucket, date, year, from_addr, from_name, subject,
-                size, has_attachments, message_id, archiviert, wichtigkeit)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                size, has_attachments, message_id, gespraech, archiviert,
+                wichtigkeit)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 digest,
                 bucket,
@@ -298,6 +304,7 @@ class Index:
                 size,
                 int(parsed.has_attachments),
                 parsed.message_id,
+                parsed.gespraech,
                 # Ohne Angabe der Zeitpunkt jetzt. Beim Neuaufbau reicht der
                 # Aufrufer den Zeitpunkt aus dem Journal nach - sonst stünde
                 # dort der Tag des Neuaufbaus, und die Auskunft "wann kam
@@ -516,6 +523,56 @@ class Index:
             category=row["category"] or "unbestimmt",
         )
 
+    def verlauf(self, digest: str, sicht=None) -> list[Hit]:
+        """Alle Nachrichten desselben Gesprächs, älteste zuerst.
+
+        Zusammengehalten über ``References`` beziehungsweise
+        ``In-Reply-To``, wie RFC 5322 es vorsieht – nicht über den
+        Betreff. Der lässt sich ändern, und zwei Mails mit dem Betreff
+        »Rechnung« haben oft nichts miteinander zu tun.
+
+        **Mit derselben Rechteprüfung wie überall.** Ein Gespräch kann
+        über mehrere Postfächer laufen; wer nur eines sehen darf, bekommt
+        auch nur die Teile daraus. Das ist keine Lücke, sondern der Sinn
+        der Sache – aber es heißt auch, dass ein angezeigter Verlauf nie
+        die Gewähr trägt, vollständig zu sein.
+
+        Eine Mail ohne Kennung gehört zu keinem Gespräch; dann kommt
+        eine leere Liste zurück statt aller kennungslosen Mails.
+        """
+        zeile = self.db.execute(
+            "SELECT gespraech FROM messages WHERE hash = ?", (digest,)
+        ).fetchone()
+        if zeile is None or not zeile["gespraech"]:
+            return []
+
+        where, params = self._mit_sicht(
+            "m.gespraech = ?", [zeile["gespraech"]], sicht
+        )
+        rows = self.db.execute(
+            f"""SELECT m.hash, m.bucket, m.subject, m.from_addr, m.from_name,
+                       m.date, m.size, m.has_attachments, m.category
+                FROM messages m
+                WHERE {where}
+                ORDER BY m.date ASC""",
+            params,
+        ).fetchall()
+
+        return [
+            Hit(
+                hash=row["hash"],
+                bucket=row["bucket"],
+                subject=row["subject"] or "(ohne Betreff)",
+                from_addr=row["from_addr"] or "",
+                from_name=row["from_name"] or "",
+                date=row["date"],
+                size=row["size"],
+                has_attachments=bool(row["has_attachments"]),
+                category=row["category"] or "unbestimmt",
+            )
+            for row in rows
+        ]
+
     def count(self, expression: str = "", sicht=None) -> int:
         """Zählt, wie viele Mails auf eine Anfrage passen.
 
@@ -685,4 +742,31 @@ class Index:
 
 
 class IndexOutdated(RuntimeError):
-    """Der vorhandene Index passt nicht zur Programmfassung."""
+    """Der vorhandene Index passt nicht zur Programmfassung.
+
+    Trägt die Fassungsnummern mit, damit ein Aufrufer entscheiden kann,
+    statt nur eine Zeichenkette weiterzureichen.
+    """
+
+    def __init__(self, vorhanden: int, gebraucht: int) -> None:
+        self.vorhanden = vorhanden
+        self.gebraucht = gebraucht
+        super().__init__(
+            f"Der Suchindex stammt aus Fassung {vorhanden}, gebraucht wird "
+            f"{gebraucht}. Er muss neu aufgebaut werden – die Mails sind "
+            f"davon nicht betroffen.\n"
+            f"    mailburg neuaufbau ARCHIVVERZEICHNIS"
+        )
+
+
+def verwerfen(pfad: Path) -> None:
+    """Löscht eine Indexdatei samt ihrer Begleitdateien.
+
+    WAL und SHM gehören dazu. Bleibt eines von beiden liegen, öffnet
+    SQLite die neue, leere Datei und spielt den alten Schreibvorrat
+    darüber – heraus käme ein Index, der halb aus der alten Fassung
+    stammt. Genau davor sollte das Löschen ja schützen.
+    """
+    pfad.unlink(missing_ok=True)
+    for anhang in ("-wal", "-shm"):
+        pfad.with_name(pfad.name + anhang).unlink(missing_ok=True)

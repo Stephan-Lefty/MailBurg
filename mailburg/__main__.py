@@ -20,6 +20,7 @@ from mailburg.core import accounts, sprache
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
 from mailburg.core.importer import importieren
+from mailburg.core.index import IndexOutdated
 from mailburg.core.retention import Jurisdiction, describe
 from mailburg.core.sync import Abrufzustand
 from mailburg.extract import pdf
@@ -1130,7 +1131,12 @@ def cmd_pruefen(args: argparse.Namespace) -> int:
 
 def cmd_neuaufbau(args: argparse.Namespace) -> int:
     """Baut den Suchindex neu."""
-    with Archive.open(Path(args.archiv)) as archive:
+    # **Den alten Index gleich beim Öffnen wegwerfen.** Stammt er aus
+    # einer älteren Programmfassung, ließe er sich nicht öffnen - und
+    # ausgerechnet der Befehl, auf den die Meldung verweist, käme nicht
+    # an das Archiv heran. Verloren geht nichts: Die Zeilen darunter
+    # bauen ihn ohnehin von Grund auf neu.
+    with Archive.open(Path(args.archiv), index_verwerfen=True) as archive:
         print("Baue den Suchindex neu. Das Archiv selbst wird dabei nur gelesen.")
         started = time.monotonic()
 
@@ -2681,6 +2687,13 @@ def main(argv: list[str] | None = None) -> int:
     except ArchiveLocked as exc:
         print(f"Archiv gesperrt:\n{exc}", file=sys.stderr)
         return 3
+    except IndexOutdated as exc:
+        # Ein Traceback wäre hier besonders unangebracht: Wer nach einer
+        # Aktualisierung sein Archiv nicht mehr öffnen kann, denkt an
+        # Datenverlust. Es geht aber nur das Verzeichnis neu, nicht die
+        # Post - und der Weg dorthin steht in der Meldung.
+        print(f"Fehler: {exc}", file=sys.stderr)
+        return 2
     except ArchiveError as exc:
         print(f"Fehler: {exc}", file=sys.stderr)
         return 2

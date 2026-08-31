@@ -3,6 +3,55 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-08-31, Montag)
+
+**0.12.0 ist veröffentlicht**, danach ging der ganze Tag in die **Server
+Edition** – und zum Schluss in den **Gesprächsverlauf**. 1346 Tests.
+
+**Die Server Edition steht** (`mailburg/server/`), bis auf die
+Archivverschlüsselung: Zugänge im Archiv (`core/benutzer.py`), die
+Rechteprüfung (`core/sicht.py`), Tresor ohne Schlüsselbund
+(`core/tresor.py`), Dienst, Weboberfläche mit Anmeldung, Suche, Lesen,
+Anhängen und Suchmaske. Anleitungen: [docs/server.md](docs/server.md)
+und [docs/server-einrichten.md](docs/server-einrichten.md).
+
+**Die eine Regel, die dort nicht aufgeweicht werden darf:** Die
+Rechteprüfung steht *in* der Abfrage, nicht dahinter. Nachträglich zu
+filtern wäre bequemer und falsch – schon die Trefferzahl »191« verriete,
+dass es Post gibt, die man nicht sehen darf. Ein Wächtertest
+(`tests/test_sicht.py`) schlägt an, wenn eine neue lesende Methode ohne
+`sicht=` auskommt; er hat an diesem Tag zweimal zu Recht zugeschlagen.
+
+**Der Gesprächsverlauf** hängt an `References`/`In-Reply-To`, nie am
+Betreff. Die Kennungen stehen mal mit spitzen Klammern in der Mail und
+mal ohne – wer sie übernimmt, wie sie kommen, baut Verläufe, die nie
+zusammenfinden. Sie werden deshalb entklammert abgelegt
+(`extract/message.py`, Property `gespraech`).
+
+**Der Preis dafür, und der wichtigste Satz hier:** `SCHEMA_VERSION` ging
+von 1 auf 2. **Ein Archiv aus 0.12 lässt sich nicht mehr öffnen, bis
+`mailburg neuaufbau` gelaufen ist.** Das ist Absicht – die Spalte leer
+nachzurüsten hätte Verläufe erzeugt, die vollständig aussehen und halb
+sind. Wer eine Schemaänderung macht, muss dann aber auch alles
+mitziehen, was daran hängt; drei Dinge fielen erst beim Nachfassen auf:
+
+- Der Fehler wurde **nirgends gefangen** – die Kommandozeile warf einen
+  Traceback, und wer nach einer Aktualisierung sein Archiv nicht mehr
+  aufbekommt, denkt an Datenverlust, nicht an einen Index.
+- **Die Sperrdatei blieb liegen.** `_acquire_lock()` läuft vor dem
+  Öffnen des Index; fliegt der Konstruktor danach, ruft niemand mehr
+  `close()`. Aus einem Problem wurden zwei, das zweite ohne Grund.
+- **`mailburg neuaufbau` wäre selbst gescheitert** – der Weg aus der
+  Meldung lief in denselben Fehler. Dafür gibt es jetzt
+  `Archive.open(..., index_verwerfen=True)`.
+
+Alle drei stehen in `tests/test_index_fassung.py`.
+
+**Was noch offen ist:** die Archivverschlüsselung (der letzte Brocken der
+Server Edition) und die Frage nach dem Betreffmuster als Regelfeld.
+Windows Server und die 700.000 Mails sind auf **Mitte Oktober 2026**
+vertagt – Stephan kann das vorher nicht prüfen.
+
 ## Hier war Schluss (Stand 2026-08-30, Sonntag)
 
 **0.11.0 ist veröffentlicht**, mit `MailBurg.exe` am Release. Der Tag
@@ -315,14 +364,21 @@ mailburg/
 │   ├── sync.py        UIDVALIDITY und vorgemerkte Nachzügler je Ordner
 │   ├── retention.py   Aufbewahrungsfristen DE/AT/CH, rein rechnend
 │   ├── compress.py    Zstandard mit Rückfall auf LZMA
+│   ├── benutzer.py    Zugänge und Rechte – liegen im Archiv, nicht beim Dienst
+│   ├── sicht.py       woraus die Rechteprüfung in jeder Abfrage entsteht
+│   ├── tresor.py      Passwörter ohne Schlüsselbund, für den Server
+│   ├── sprache.py     Zahlen und Datumsangaben für Menschen – deutsch, fest
 │   └── paths.py       Verzeichnisse je Betriebssystem
 ├── extract/message.py Mails zerlegen; pdf.py, office.py, text.py für Anhänge
-├── search/query.py    Suchausdruck -> SQL
+├── search/           query.py (Suchausdruck -> SQL), maske.py (Felder ->
+│                      Suchausdruck, gemeinsam für Fenster und Browser)
+├── server/            dienst.py, lesen.py, seiten.py, sitzung.py,
+│                      einstellungen.py, windows_dienst.py
 ├── sources/           base.py (Schnittstelle), local.py (Thunderbird/Maildir/MBOX),
 │                      imap.py (Postfächer)
 ├── ui/                die Oberfläche: hauptfenster, assistent, konten,
 │                      suchmaske, vorschau, hilfe, zeitplan, sichern,
-│                      einstufen, fristen, auskunft, anmelden
+│                      einstufen, fristen, auskunft, anmelden, zugaenge
 └── __main__.py        Kommandozeile
 
 install.sh / install.ps1   Einrichtung; laufen in der CI wirklich durch
@@ -352,6 +408,27 @@ Archivkennung – nicht nach dem Pfad, damit er eine umgehängte externe Platte
 **Reihenfolge beim Aufnehmen:** erst `store.put()`, dann Journal, dann Index.
 Andersherum entstünde bei einem Absturz ein Eintrag ohne Inhalt – und der sieht
 aus wie eine Manipulation.
+
+**Wer `SCHEMA_VERSION` erhöht, sperrt bestehende Archive aus.** Das ist
+richtig so, sobald eine neue Spalte für alte Mails leer bliebe: Ein still
+halb gefüllter Index sieht vollständig aus und ist es nicht. Aber dann
+gehören drei Dinge dazu, und alle drei fehlten beim ersten Anlauf
+(2026-08-31, Fassung 2 für den Gesprächsverlauf):
+
+1. **Den Fehler fangen.** `IndexOutdated` ist ein `RuntimeError` und lief
+   ungebremst durch bis zum Traceback. Wer nach einer Aktualisierung sein
+   Archiv nicht mehr aufbekommt, denkt an den Verlust von zwanzig Jahren
+   Post, nicht an ein Verzeichnis, das sich in Minuten neu baut.
+2. **Die Sperre freigeben.** `_acquire_lock()` läuft vor dem Öffnen des
+   Index; fliegt `Archive.__init__` danach, ruft niemand mehr `close()` –
+   es gibt ja kein Objekt. Ohne Aufräumen hätte man zwei Probleme statt
+   einem, und das zweite ohne erkennbaren Grund.
+3. **Den Ausweg gangbar halten.** `mailburg neuaufbau` öffnet dasselbe
+   Archiv und wäre am selben Fehler gescheitert – die Meldung hätte auf
+   einen Weg verwiesen, den es nicht gibt. Dafür ist
+   `Archive.open(..., index_verwerfen=True)` da.
+
+Steht alles in `tests/test_index_fassung.py`.
 
 **Die CI läuft je Push nur auf Linux.** Seit dem 26.08.2026 ist das
 Repository öffentlich, Actions-Minuten kosten dort nichts mehr. Die Regel
