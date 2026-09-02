@@ -8,6 +8,85 @@ wurde.
 
 ## Offen
 
+### Aus dem ersten Nutzer-Feedback (Linux-Guides-Forum, 2026-09-01)
+
+Der erste Rückmelder von außerhalb. Vier Punkte, drei davon sofort
+behoben – der vierte ist Geschmack und braucht eine Entscheidung.
+
+- [ ] **Der Oberfläche fehlt Struktur.** Wörtlich: »Für meinen Geschmack
+  fehlen da ein paar Rahmen oder farbliche Abhebungen.«
+
+  Das trifft einen wunden Punkt. Die drei Bereiche des Hauptfensters –
+  Postfachbaum, Trefferliste, Vorschau – grenzen sich nur durch die
+  Trennlinien des Splitters ab, und die sind im hellen Thema kaum zu
+  sehen. `farben.bereichsrahmen()` setzt zwar Kanten, aber offenbar zu
+  zurückhaltend.
+
+  **Die Schwierigkeit dabei:** Die Farben müssen aus der Systempalette
+  kommen, sonst sitzen sie im dunklen Thema oder bei einem
+  Hochkontrast-Thema falsch. Feste Farbwerte scheiden aus. Zu prüfen
+  wäre, ob kräftigere Kanten und eine leichte Hintergrundabstufung
+  zwischen den Bereichen genügen – und ob das im dunklen Thema noch
+  trägt.
+
+  Vorher mit Stephan abstimmen: Die Farbpalette gilt bei ihm
+  projektübergreifend, ein Alleingang hier zöge Kreise.
+
+- [x] **Die DBus-Meldung beim ersten Start.** (2026-09-01)
+  `qt.qpa.services: Failed to register with host portal` –
+  `setDesktopFileName` ist statisch und stand nach der Erzeugung der
+  `QApplication`. Der zweite Registrierungsversuch scheiterte, weil die
+  Verbindung schon eine Kennung hatte. Jetzt steht sie davor.
+
+  Harmlos war die Meldung immer; sie stand aber als Erstes im Terminal,
+  wenn jemand MailBurg zum ersten Mal startet.
+
+- [x] **Der Knopf zur Ordnerwahl war zu übersehen.** (2026-09-01)
+  Heißt jetzt »Ordner auswählen …«, hat ein Ordnersymbol und ist der
+  Vorgabeknopf der Seite. Wo das Archiv liegt, ist die wichtigste
+  Entscheidung des Assistenten – wer den Knopf nicht findet, nimmt den
+  Vorschlag, statt zu wählen.
+
+- [x] **Die Passwortfelder gingen unter.** (2026-09-01) Sie standen weit
+  rechts vom Kontonamen, weil sich die Namensspalte dehnte. Jetzt stehen
+  sie daneben, mit der Beschriftung »Passwort:« davor.
+
+- [ ] **Gmail-Abruf schlug fehl.** Der Rückmelder schaut selbst nach
+  (»das schau ich mir später mal an«), aber es lohnt sich, die Ursache
+  zu erfahren: Gmail ist in der Liste unter »Noch nicht getestet« der
+  wichtigste offene Punkt, und OAuth2 ist an einem echten Konto nie
+  gelaufen. Nachfragen, sobald er sich meldet.
+
+### Angefragt
+
+- [ ] **JMAP als Abrufweg** ([RFC 8620/8621](https://jmap.io/), von
+  einem Anwender gewünscht). Der Nachfolger von IMAP: JSON über HTTPS
+  statt eines eigenen Protokolls, mit Stapelabfragen und
+  Änderungsverfolgung.
+
+  **Was dafür spricht.** Für ein Archiv ist der interessanteste Teil
+  `Email/changes`: Der Server sagt, was sich seit einem Stichpunkt
+  geändert hat. Das ist genau die Frage, die MailBurg bei jedem Abruf
+  stellt – und die es heute mit `UID n:*` und Nachfiltern beantworten
+  muss. Dazu Stapelabfragen: eine Anfrage statt eines Dialogs pro
+  Ordner.
+
+  **Was dagegen spricht.** Kaum ein Anbieter kann es. Fastmail ja,
+  Stalwart und Cyrus ja; Gmail, Outlook, GMX, Web.de, Proton: nein.
+  Für Stephans acht Postfächer brächte es heute nichts.
+
+  **Der Zuschnitt wäre eine weitere Quelle** neben `sources/imap.py`,
+  nicht ein Ersatz. Die Schnittstelle in `sources/base.py` ist dafür
+  da; sie liefert Rohnachrichten und Fundorte, und woher die kommen,
+  ist dem Archiv gleichgültig. Aufwand grob: die Anmeldung samt
+  Sitzungsobjekt, `Email/query` und `Email/get` für den Erstabruf,
+  `Email/changes` für alles danach.
+
+  **Zu klären, bevor es losgeht:** Ob es einen Anbieter gibt, bei dem
+  sich das erproben lässt. Ein zweiter Abrufweg, der nur gegen einen
+  nachgebauten Server geprüft ist, wäre dieselbe halbe Sache wie OAuth2
+  – siehe dort.
+
 ### Beim nächsten Mal zuerst
 
 - [ ] **Die Fenstergrößen am echten Bildschirm nachsehen.** Am
@@ -45,12 +124,6 @@ wurde.
   von dort kommt statt aus `tesseract`. Aber es ist ein zweiter
   Schritt, den niemand erwartet – und ein Kommentar, der etwas
   verspricht, was der Code nicht tut.
-
-- [ ] **Das Release 1.0.1 veröffentlichen.** Fassung, CHANGELOG und
-  READMEs sind committet, der Tag `v1.0.1` steht auf GitHub. Nur das
-  Veröffentlichen fehlt – dabei baut der Workflow die `MailBurg.exe`
-  von selbst. Die vorbereiteten Notizen liegen im Sitzungsordner unter
-  `scratchpad/release-1.0.1.md`.
 
 ### Für die 1.1
 

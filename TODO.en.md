@@ -7,6 +7,52 @@ down, with the date they were completed.
 
 ## Open
 
+### From the first user feedback (2026-09-01)
+
+The first report from outside. Four points, three fixed straight away.
+
+- [ ] **The interface lacks structure.** Verbatim: "for my taste a few
+  frames or colour separations are missing". The three areas of the main
+  window are separated only by splitter handles, barely visible in the
+  light theme.
+
+  **The difficulty:** colours must come from the system palette, or they
+  sit wrong in dark and high-contrast themes. Fixed colour values are
+  out.
+
+- [x] **The DBus message on first start.** (2026-09-01)
+  `setDesktopFileName` is static and stood after the `QApplication` was
+  created; the second registration attempt failed. It now comes first.
+
+- [x] **The folder-picker button was easy to miss.** (2026-09-01) Now
+  reads "Ordner auswählen …", carries a folder icon and is the page's
+  default button.
+
+- [x] **The password fields got lost.** (2026-09-01) They sat far right
+  of the account name; now they stand next to it, labelled.
+
+- [ ] **Gmail retrieval failed** for the reporter. Worth following up:
+  Gmail is the most significant entry under "not yet tested".
+
+### Requested
+
+- [ ] **JMAP as a retrieval path** ([RFC 8620/8621](https://jmap.io/),
+  requested by a user). The successor to IMAP: JSON over HTTPS, batched
+  requests, change tracking.
+
+  **For:** `Email/changes` answers exactly the question MailBurg asks on
+  every run — what changed since this point? Today that takes `UID n:*`
+  plus filtering afterwards.
+
+  **Against:** hardly any provider supports it. Fastmail, Stalwart and
+  Cyrus do; Gmail, Outlook, GMX, Web.de and Proton do not.
+
+  It would be another source alongside `sources/imap.py`, not a
+  replacement — `sources/base.py` exists for exactly that. To settle
+  first: whether there is a provider to verify it against. A second
+  retrieval path tested only against a mock would be the same half-job
+  as OAuth2.
+
 ### Next session, first
 
 - [ ] **Check window sizes on a real screen.** On 2026-08-31 Stephan
@@ -28,10 +74,6 @@ down, with the date they were completed.
   docstring of `erkennung.vorrat_aufbauen` claims the rebuild finds it
   again via the older key — the code does no such thing. After a rebuild
   you have to run `mailburg texterkennung` as a second step.
-
-- [ ] **Publish release 1.0.1.** Version, changelog and READMEs are
-  committed and the `v1.0.1` tag is on GitHub. Only publishing is left —
-  that also triggers the `MailBurg.exe` build.
 
 ### For 1.1
 

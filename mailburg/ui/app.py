@@ -35,6 +35,24 @@ def main(argv: list[str] | None = None) -> int:
 
     _fehler_zeigen_statt_sterben()
 
+    # **Die Kennung vor der Anwendung setzen, nicht danach.**
+    # ``setDesktopFileName`` ist eine statische Methode; Qt meldet die
+    # Anwendung damit beim Portal des Systems an. Ruft man sie erst
+    # danach auf, ist die DBus-Verbindung längst registriert, und der
+    # zweite Versuch scheitert:
+    #
+    #     qt.qpa.services: Failed to register with host portal
+    #     QDBusError("org.freedesktop.portal.Error.Failed",
+    #     "Could not register app ID: Connection already associated
+    #     with an application ID")
+    #
+    # Die Meldung ist harmlos – sie steht aber als Erstes im Terminal,
+    # wenn jemand MailBurg zum ersten Mal startet, und wer ein
+    # Archivprogramm ausprobiert, liest so etwas als schlechtes
+    # Vorzeichen. Von einem Anwender aus dem Linux-Guides-Forum
+    # gemeldet.
+    QApplication.setDesktopFileName("de.stephanlefty.MailBurg")
+
     anwendung = QApplication(argv)
     # Muss am Objekt hängen bleiben: Ein Übersetzer, auf den niemand mehr
     # zeigt, wird weggeräumt – und die Knöpfe stehen wieder auf Englisch.
@@ -45,7 +63,6 @@ def main(argv: list[str] | None = None) -> int:
     # Windows-Fassung aufgefallen, wo es besonders auffiel.
     anwendung.setApplicationName(APP_NAME)
     anwendung.setApplicationVersion(__version__)
-    anwendung.setDesktopFileName("de.stephanlefty.MailBurg")
 
     # **Kanten für alle Fenster, nicht nur fürs Hauptfenster.** Zwischen
     # Fensterhintergrund und Inhaltsbereich liegt ein Kontrastverhältnis

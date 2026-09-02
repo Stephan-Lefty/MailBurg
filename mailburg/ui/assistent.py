@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QStyle,
     QRadioButton,
     QScrollArea,
     QSpinBox,
@@ -338,7 +339,24 @@ class ArchivSeite(QWizardPage):
         # Damit Vorlesehilfen etwas anzusagen haben.
         self.pfad.setAccessibleName("Ort des Archivs")
 
-        blaettern = QPushButton("Auswählen …")
+        # **Er sah aus wie ein Beiwerk und ist der Hauptweg.** Ein
+        # Anwender aus dem Linux-Guides-Forum hat ihn beim ersten
+        # Einrichten fast übersehen. Das ist gravierender, als es klingt:
+        # Wo das Archiv liegt, ist die wichtigste Entscheidung des ganzen
+        # Assistenten – und wer den Knopf nicht findet, nimmt den
+        # Vorschlag, statt zu wählen.
+        #
+        # Ein Symbol und ein deutlicherer Text kosten nichts. Als
+        # Vorgabeknopf der Seite wird er außerdem hervorgehoben
+        # dargestellt.
+        blaettern = QPushButton("Ordner auswählen …")
+        blaettern.setIcon(
+            self.style().standardIcon(QStyle.SP_DirOpenIcon)
+        )
+        blaettern.setDefault(True)
+        blaettern.setToolTip(
+            "Einen anderen Ordner für das Archiv wählen"
+        )
         blaettern.clicked.connect(self._waehlen)
 
         zeile = QHBoxLayout()
@@ -711,9 +729,13 @@ class KontoZeile(QWidget):
         # Hälfte außerhalb, und man rollt waagerecht.
         self.beschreibung.setIndent(22)
 
+        # **Deutlich als Eingabefeld erkennbar.** Auch das kam aus dem
+        # Forum: Zwischen Ankreuzfeld und Zustandstext ging es unter.
+        # Wer es nicht als Feld erkennt, klickt weiter – und steht dann
+        # vor einem Abruf, der ohne Passwort nichts holt.
         self.passwort = QLineEdit()
         self.passwort.setEchoMode(QLineEdit.Password)
-        self.passwort.setPlaceholderText("Passwort")
+        self.passwort.setPlaceholderText("Passwort eingeben")
         self.passwort.setAccessibleName(f"Passwort für {konto.name}")
         self.passwort.setMinimumWidth(190)
         sichtbarkeit_anbieten(self.passwort)
@@ -722,13 +744,22 @@ class KontoZeile(QWidget):
         self.zustand.setWordWrap(True)
         self.zustand.setMinimumWidth(150)
 
+        # **Eine Beschriftung vor dem Feld.** Ohne sie stand dort ein
+        # leeres Kästchen weit rechts vom Kontonamen – ein Anwender aus
+        # dem Linux-Guides-Forum hat gemeldet, dass die Passwortfelder
+        # untergehen. Wer sie nicht als Eingabe erkennt, klickt weiter
+        # und steht danach vor einem Abruf, der nichts holt.
+        self.beschriftung = QLabel("Passwort:")
+        self.beschriftung.setBuddy(self.passwort)
+
         # Zwei Zeilen je Postfach: oben Name, Passwort und Zustand,
         # darunter eingerückt, worum es sich handelt.
         oben = zeile * 2
         gitter.addWidget(self.ankreuz, oben, 0)
-        gitter.addWidget(self.passwort, oben, 1)
-        gitter.addWidget(self.zustand, oben, 2)
-        gitter.addWidget(self.beschreibung, oben + 1, 0, 1, 3)
+        gitter.addWidget(self.beschriftung, oben, 1)
+        gitter.addWidget(self.passwort, oben, 2)
+        gitter.addWidget(self.zustand, oben, 3)
+        gitter.addWidget(self.beschreibung, oben + 1, 0, 1, 4)
 
         # **Der freie Platz gehört ganz nach unten.** Ohne diese Zeile
         # verteilt QGridLayout ihn gleichmäßig auf alle Zeilen - bei
@@ -769,9 +800,15 @@ class KontenSeite(QWizardPage):
         self.herkunft.setWordWrap(True)
 
         self.gitter = QGridLayout()
-        self.gitter.setColumnStretch(0, 1)   # Name darf wachsen
-        self.gitter.setColumnStretch(1, 0)   # Passwortfeld bleibt, wie es ist
-        self.gitter.setColumnStretch(2, 0)   # Zustand ebenso
+        # **Der freie Platz gehört nach rechts, nicht in die Mitte.**
+        # Vorher dehnte sich die Namensspalte, und zwischen Postfach und
+        # Passwortfeld klaffte eine Lücke über den halben Dialog – die
+        # beiden gehören aber zusammen. Jetzt stehen sie nebeneinander,
+        # und der Platz sammelt sich hinter der Zustandsspalte.
+        self.gitter.setColumnStretch(0, 0)   # Name
+        self.gitter.setColumnStretch(1, 0)   # »Passwort:«
+        self.gitter.setColumnStretch(2, 0)   # das Feld
+        self.gitter.setColumnStretch(3, 1)   # Zustand nimmt den Rest
         self.gitter.setVerticalSpacing(2)
 
         inhalt = QWidget()
