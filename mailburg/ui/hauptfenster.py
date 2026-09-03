@@ -206,8 +206,21 @@ class Hauptfenster(QMainWindow):
         meldungszeile.addWidget(self.suchmeldung, 1)
         meldungszeile.addWidget(self.ocr_hinweis)
 
-        aufbau.addWidget(self.suchfeld)
-        aufbau.addLayout(meldungszeile)
+        # **Suchfeld und Trefferzeile sind ein Bereich, nicht zwei.**
+        # Sie gehören zusammen: oben die Frage, darunter die Antwort.
+        # Bisher standen beide auf derselben Fläche wie der Inhalt
+        # darunter, und der Blick fand keinen Anfang.
+        #
+        # Der Name hängt an der Regel in ``farben.bereichsrahmen()``.
+        self.suchbereich = QWidget()
+        self.suchbereich.setObjectName("suchbereich")
+        suchaufbau = QVBoxLayout(self.suchbereich)
+        suchaufbau.setContentsMargins(6, 6, 6, 2)
+        suchaufbau.setSpacing(2)
+        suchaufbau.addWidget(self.suchfeld)
+        suchaufbau.addLayout(meldungszeile)
+
+        aufbau.addWidget(self.suchbereich)
         aufbau.addWidget(teiler, 1)
         self.setCentralWidget(mitte)
 

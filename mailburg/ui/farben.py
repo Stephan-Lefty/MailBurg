@@ -132,7 +132,22 @@ def bereichsrahmen() -> str:
         # selbst vorsieht - im hellen 1,15, im dunklen entsprechend.
         # Allein wäre das zu wenig, deshalb die Kante darunter.
         f"QLabel#mailkopf {{ background: {_rolle(QPalette.Window)}; "
-        f"border-bottom: 1px solid {strich}; }}"
+        f"border-bottom: 1px solid {strich}; }}\n"
+        # **Der Suchbereich oben.** Suchfeld und Trefferzeile gehören
+        # zusammen - oben die Frage, darunter die Antwort - und beide
+        # standen auf derselben Fläche wie der Inhalt darunter. Eine
+        # Kante darunter gibt dem Blick einen Anfang.
+        f"QWidget#suchbereich {{ background: {_rolle(QPalette.Window)}; "
+        f"border-bottom: 1px solid {strich}; }}\n"
+        # **Die Statuszeile unten.** Sie trägt die eine Angabe, die
+        # immer stimmen muss: wie viele Mails im Archiv liegen und wann
+        # zuletzt abgerufen wurde. Ohne obere Kante schwamm sie am
+        # unteren Rand, als gehörte sie zum Inhalt.
+        f"QStatusBar {{ border-top: 1px solid {strich}; }}\n"
+        # Qt zeichnet sonst je Element noch einen eigenen Rahmen - drei
+        # Kästchen in einer Zeile, die eine durchgehende Leiste sein
+        # soll.
+        f"QStatusBar::item {{ border: none; }}"
     )
 
 
