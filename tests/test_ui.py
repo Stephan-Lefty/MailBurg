@@ -5499,3 +5499,152 @@ class BaumWaechstMitTest(OberflaechenTest):
         ]
         self.assertIn("Firma", beschriftungen)
         self.assertFalse(self.fenster.mitwachsen.isActive())
+
+
+class EinlesedialogTest(OberflaechenTest):
+    """Lokale Mailordner einlesen – der Weg aus dem Fenster.
+
+    **Ein Anwender hat sich am 2026-09-03 gewünscht, was es längst
+    gab.** Maildir, MBOX und Thunderbird-Profile konnte MailBurg von
+    Anfang an; erreichbar war das aber nur über ``mailburg importieren``
+    im Terminal. Im Post-Menü standen an der Stelle zwei Trennlinien
+    hintereinander – die Lücke, in der der Punkt fehlte.
+
+    Die Lehre: Eine Funktion, die niemand findet, gibt es für den
+    Anwender nicht.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.basis = pathlib.Path(self._tmp.name)
+
+        for name in ("data_dir", "config_dir"):
+            patcher = mock.patch.object(
+                paths, name, return_value=self.basis / name
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
+            (self.basis / name).mkdir(parents=True, exist_ok=True)
+
+        self.wurzel = self.basis / "Archiv"
+        Archive.create(self.wurzel, name="P").close()
+        self.archiv = Archive.open(self.wurzel, exclusive=False)
+        self.addCleanup(self.archiv.close)
+
+    def _dialog(self):
+        from mailburg.ui.einlesen import Einlesedialog
+
+        dialog = Einlesedialog(self.archiv)
+        self.addCleanup(dialog.close)
+        return dialog
+
+    def _maildir(self, name: str, betreffs: int = 1) -> pathlib.Path:
+        ort = self.basis / "Quelle" / name
+        for teil in ("cur", "new", "tmp"):
+            (ort / teil).mkdir(parents=True)
+        for i in range(betreffs):
+            (ort / "cur" / f"17000000{i}.0.rechner:2,S").write_bytes(
+                f"From: a@example.org\r\nTo: b@example.org\r\n"
+                f"Subject: Nummer {i}\r\n"
+                f"Date: Wed, 3 Sep 2026 09:00:00 +0200\r\n\r\nText\r\n".encode()
+            )
+        return ort
+
+    def test_der_menuepunkt_gibt_es_ueberhaupt(self):
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        fenster = Hauptfenster(self.wurzel)
+        self.addCleanup(fenster.close)
+
+        punkte = [
+            aktion.text()
+            for menue in fenster.menuBar().findChildren(type(fenster.menuBar()))
+            for aktion in menue.actions()
+        ]
+        punkte += [a.text() for a in fenster.menuBar().actions()]
+        for menue in fenster.menuBar().actions():
+            if menue.menu():
+                punkte += [a.text() for a in menue.menu().actions()]
+
+        self.assertIn("Lokale Mailordner einlesen …", punkte)
+
+    def test_ohne_ordner_laesst_sich_nichts_starten(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        dialog = self._dialog()
+        dialog.pfad.setText("")
+
+        self.assertFalse(
+            dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled()
+        )
+
+    def test_ein_erkanntes_maildir_nennt_seine_ordner(self):
+        # Wer "Maildir" nicht kennt, kann einem Pfadfeld nicht ansehen,
+        # ob er das Richtige gewählt hat.
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        self._maildir(".Inbox", 2)
+        self._maildir(".Gesendet", 1)
+
+        dialog = self._dialog()
+        dialog.pfad.setText(str(self.basis / "Quelle"))
+
+        self.assertTrue(dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
+        self.assertIn("Inbox", dialog.befund.text())
+        self.assertIn("Gesendet", dialog.befund.text())
+
+    def test_ein_unbrauchbarer_ordner_erklaert_sich(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        leer = self.basis / "Leer"
+        leer.mkdir()
+
+        dialog = self._dialog()
+        dialog.pfad.setText(str(leer))
+
+        self.assertFalse(dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
+        # Und die Meldung nennt, was erwartet wird - nicht nur "geht nicht".
+        self.assertIn("Maildir", dialog.befund.text())
+
+    def test_ein_pfad_der_nicht_existiert_sagt_das(self):
+        dialog = self._dialog()
+        dialog.pfad.setText(str(self.basis / "gibtesnicht"))
+
+        self.assertIn("gibt es nicht", dialog.befund.text())
+
+    def test_der_kontoname_faellt_auf_den_ordnernamen_zurueck(self):
+        # Sonst müsste man ihn eintippen, obwohl der Ordner schon einen
+        # brauchbaren Namen trägt.
+        from mailburg.ui.arbeit import Einleselauf
+
+        self._maildir(".Inbox", 1)
+        quelle = self.basis / "Quelle"
+
+        lauf = Einleselauf(self.wurzel, quelle, quelle.name)
+        stat = lauf.ausfuehren()
+
+        self.assertEqual(stat.neu, 1)
+        konten = {z[0] for z in self.archiv.index.accounts()}
+        self.assertIn("Quelle", konten)
+
+    def test_ein_abbruch_laesst_das_bisherige_im_archiv(self):
+        # Ein Thunderbird-Profil kann Jahrzehnte enthalten; wer den Lauf
+        # versehentlich startet, muss ihn beenden können - und darf
+        # dabei nicht verlieren, was schon aufgenommen wurde.
+        from mailburg.ui.arbeit import Einleselauf
+
+        self._maildir(".Inbox", 5)
+        lauf = Einleselauf(self.wurzel, self.basis / "Quelle", "Teil")
+        lauf.abbrechen()
+        stat = lauf.ausfuehren()
+
+        self.assertEqual(stat.gelesen, 0)
+        # Und das Archiv ist heil geblieben.
+        self.assertEqual(self.archiv.index.count(), 0)

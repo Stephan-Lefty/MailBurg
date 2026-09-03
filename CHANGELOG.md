@@ -7,6 +7,72 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **Lokale Mailordner lassen sich jetzt aus dem Fenster einlesen**
+  (*Post → Lokale Mailordner einlesen …*). Thunderbird-Profile, Maildir,
+  MBOX und Verzeichnisse voller `.eml` konnte MailBurg von Anfang an –
+  aber nur über `mailburg importieren` im Terminal.
+
+  Ein Anwender hat sich am 01.09. genau das gewünscht, was längst da
+  war. **Das ist ein Befund über die Oberfläche, nicht über den
+  Funktionsumfang:** Eine Funktion, die niemand findet, gibt es für den
+  Anwender nicht. Im Post-Menü standen an der Stelle zwei Trennlinien
+  hintereinander – die Lücke, in der der Punkt fehlte.
+
+  Der Dialog schlägt vor, was er auf dem Rechner findet, und zeigt vor
+  dem Start, was er im gewählten Ordner erkannt hat, mitsamt den
+  Ordnernamen. Wer »Maildir« nicht kennt, kann einem Pfadfeld sonst
+  nicht ansehen, ob er das Richtige gewählt hat.
+
+- **Evolutions lokale Ordner werden erkannt.** Sie liegen nach
+  Maildir++ unter `~/.local/share/evolution/mail/local`: Die Wurzel
+  enthält kein `cur/`, sondern Unterverzeichnisse `.Inbox`, `.Sent`.
+  Wer sie auswählte, bekam die Meldung, das sei kein Maildir – obwohl
+  genau das darin lag. Der führende Punkt fällt weg, die weiteren
+  werden zu Unterordnern: `.Projekte.2025` wird zu `Projekte/2025`.
+
+### Behoben
+
+- **Beim Einlesen eines Maildirs ging der Lesezustand verloren.** Ein
+  Fehler, der seit der ersten Fassung darin steckte: Maildir kodiert
+  den Zustand im Dateinamen hinter `:2,` – Pythons `mailbox.Maildir`
+  schneidet diesen Teil bei `keys()` aber ab. Zerlegt wurde trotzdem
+  der Schlüssel, und das ergab **immer** einen leeren Zustand. Jede
+  eingelesene Mail landete als ungelesen im Archiv, auch die vor Jahren
+  beantwortete.
+
+  Gefunden nur, weil für Evolution ein Test geschrieben wurde, der den
+  Zustand mitprüft.
+
+- **Der Postfachbaum wächst während des Abrufs mit.** Er wurde bisher
+  erst aufgebaut, wenn der Abruf fertig war. Bei 6.000 Mails hieß das:
+  minutenlang ein leerer Baum und »0 Mails im Archiv · noch nicht
+  abgerufen«, während unten links »2800 geholt, 2791 neu« stand – zwei
+  Anzeigen im selben Fenster, die einander widersprachen.
+
+  Der Rückmelder dazu: »Während des Abrufs war ich mir nicht sicher, ob
+  das Tool wirklich etwas Sinnvolles macht.« Dabei sagt der Kommentar in
+  `core/index.py` seit jeher, wofür der WAL-Modus da ist.
+
+- **Geöffnete Anhänge landeten in `/tmp` und blieben dort liegen.** Für
+  die vollständige Mail daneben war seit jeher begründet, warum sie dort
+  nicht hingehört – auf einem Mehrbenutzersystem darf dort jeder
+  mitlesen. Für den PDF-Anhang derselben Mail galt dieselbe Begründung,
+  nur wandte sie niemand an. Ein Anhang aus einem Geschäftsarchiv ist
+  eine Rechnung, ein Vertrag, ein Arztbericht.
+
+  Sie liegen jetzt im geschützten Cache-Ordner mit `0600` und
+  verschwinden nach vier Stunden, spätestens beim Beenden.
+
+- **Ließ sich ein Anhang nicht öffnen, passierte stillschweigend
+  nichts.** Der Rückgabewert von `openUrl()` wurde nie angesehen. Ein
+  Anwender klickte in einem Container ohne PDF-Betrachter auf ein PDF
+  und bekam einen Browser mit einer fremden Seite; dass MailBurg dazu
+  schwieg, machte aus einer erklärbaren Lage ein Rätsel.
+
 ## [1.1.0] – 2026-09-03
 
 ### Hinzugefügt

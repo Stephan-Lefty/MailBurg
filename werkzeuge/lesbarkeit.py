@@ -211,6 +211,12 @@ def _dialoge(anwendung, archiv) -> list[str]:
     befunde += _befunde(fenster, "Sichern")
     fenster.close()
 
+    from mailburg.ui.einlesen import Einlesedialog
+
+    fenster = _zeigen(Einlesedialog(archiv), anwendung)
+    befunde += _befunde(fenster, "Lokale Mailordner einlesen")
+    fenster.close()
+
     from mailburg.ui.zugaenge import Zugangsdialog
 
     fenster = _zeigen(Zugangsdialog(archiv=archiv), anwendung)

@@ -28,6 +28,38 @@ _NOT_MAIL = {".msf", ".dat", ".json", ".sqlite", ".log", ".bak", ".tmp"}
 _SKIP_NAMES = {"msgFilterRules.dat", "filterlog.html", "Trash", "Junk"}
 
 
+def _maildir_zustand(box: mailbox.Maildir) -> dict[str, str]:
+    """Liest je Nachricht den Zustand aus den Dateinamen.
+
+    **Warum das nicht aus dem Schlüssel geht.** Maildir kodiert den
+    Zustand im Dateinamen hinter ``:2,`` – ``S`` für gelesen, ``R`` für
+    beantwortet, ``F`` für markiert. Pythons ``mailbox.Maildir`` schneidet
+    diesen Teil aber ab: ``keys()`` liefert ``170000000.0.rechner``, nicht
+    ``170000000.0.rechner:2,SR``.
+
+    Bis zum 2026-09-03 wurde der Schlüssel trotzdem an ``:2,`` zerlegt.
+    Das ergab **immer** einen leeren Zustand: Jede aus einem Maildir
+    eingelesene Mail landete als ungelesen im Archiv, auch wenn sie vor
+    Jahren beantwortet wurde. Aufgefallen ist es erst, als für Evolution
+    ein Test geschrieben wurde, der den Zustand prüft.
+
+    Einmal je Ordner statt einmal je Mail – ein ``glob`` pro Nachricht
+    wäre bei zehntausend Mails spürbar.
+    """
+    tabelle: dict[str, str] = {}
+    wurzel = Path(box._path)  # noqa: SLF001 – mailbox bietet dafür nichts
+    for unter in ("cur", "new"):
+        try:
+            dateien = (wurzel / unter).iterdir()
+        except OSError:
+            continue
+        for datei in dateien:
+            name, trenner, info = datei.name.partition(":2,")
+            if trenner:
+                tabelle[name] = info
+    return tabelle
+
+
 class MaildirSource(Source):
     """Ein Maildir-Verzeichnis, gegebenenfalls mit Unterordnern."""
 
@@ -50,25 +82,116 @@ class MaildirSource(Source):
                 continue
 
     def _walk(self, box: mailbox.Maildir, folder: str) -> Iterator[RawMessage]:
+        zustand = _maildir_zustand(box)
         for key in box.keys():
             try:
                 raw = box.get_bytes(key)
             except (mailbox.Error, OSError, KeyError):
                 continue
             if raw:
-                yield RawMessage(raw=raw, folder=folder, flags=self._flags(key))
+                yield RawMessage(
+                    raw=raw, folder=folder, flags=zustand.get(key, "")
+                )
 
-    @staticmethod
-    def _flags(key: str) -> str:
-        """Maildir kodiert den Zustand in den Dateinamen, hinter ``:2,``."""
-        _, _, info = key.partition(":2,")
-        return info
 
     def describe(self) -> str:
         return f"Maildir {self.path}"
 
     def close(self) -> None:
         self._box.close()
+
+
+class MaildirSammlungSource(Source):
+    """Ein Verzeichnis *voller* Maildirs – ohne eigenes ``cur/``.
+
+    **Der Anlass ist Evolution.** Es legt seine lokalen Ordner unter
+    ``~/.local/share/evolution/mail/local/`` ab, und zwar nach
+    Maildir++: Die Wurzel selbst enthält kein ``cur/``, sondern
+    Unterverzeichnisse ``.Inbox``, ``.Sent``, ``.Archiv``. Wer diesen
+    Ordner auswählte, bekam bis zum 2026-09-03 die Meldung, er sei
+    »weder Thunderbird-Profil noch Maildir« – obwohl genau das darin
+    lag.
+
+    Dieselbe Form entsteht auch, wenn jemand mehrere Maildirs
+    nebeneinander sichert. Beide Fälle deckt diese Klasse ab.
+
+    **Der Punkt vorne fällt weg, der Rest wird zum Pfad.** Maildir++
+    verschachtelt über Punkte: ``.Projekte.2025`` ist der Ordner
+    ``2025`` unter ``Projekte``. Ohne diese Umschreibung stünde im
+    Archiv ein Ordner namens ».Projekte.2025«, den niemand wiedererkennt.
+    """
+
+    def __init__(self, path: Path, account: str = "") -> None:
+        self.path = Path(path).expanduser().resolve()
+        self.account = account or self.path.name
+        self._ordner = self._finden(self.path)
+        if not self._ordner:
+            raise ValueError(
+                f"{self.path} enthält kein einziges Maildir-Verzeichnis."
+            )
+        self._offen: list[mailbox.Maildir] = []
+
+    @staticmethod
+    def _finden(wurzel: Path) -> dict[str, Path]:
+        """Sucht die Maildirs unterhalb der Wurzel, eine Ebene tief."""
+        gefunden: dict[str, Path] = {}
+        try:
+            kinder = sorted(wurzel.iterdir())
+        except OSError:
+            return gefunden
+        for kind in kinder:
+            if not kind.is_dir() or not (kind / "cur").is_dir():
+                continue
+            gefunden[_maildir_name(kind.name)] = kind
+        return gefunden
+
+    @staticmethod
+    def enthaelt_maildirs(pfad: Path) -> bool:
+        return bool(MaildirSammlungSource._finden(pfad))
+
+    def folders(self) -> list[str]:
+        return sorted(self._ordner)
+
+    def iter_messages(self) -> Iterator[RawMessage]:
+        for name, ort in sorted(self._ordner.items()):
+            try:
+                box = mailbox.Maildir(str(ort), factory=None, create=False)
+            except (mailbox.Error, OSError):
+                continue
+            self._offen.append(box)
+            zustand = _maildir_zustand(box)
+            for key in box.keys():
+                try:
+                    raw = box.get_bytes(key)
+                except (mailbox.Error, OSError, KeyError):
+                    continue
+                if raw:
+                    yield RawMessage(
+                        raw=raw, folder=name, flags=zustand.get(key, "")
+                    )
+
+    def describe(self) -> str:
+        return f"{len(self._ordner)} Maildir-Ordner unter {self.path}"
+
+    def close(self) -> None:
+        for box in self._offen:
+            try:
+                box.close()
+            except Exception:  # noqa: BLE001 – Schließen darf nichts abbrechen
+                continue
+        self._offen.clear()
+
+
+def _maildir_name(roh: str) -> str:
+    """Macht aus einem Maildir++-Verzeichnisnamen einen Ordnernamen.
+
+    ``.Inbox`` wird zu ``Inbox``, ``.Projekte.2025`` zu
+    ``Projekte/2025``. Ein Name ohne führenden Punkt bleibt, wie er ist –
+    so sehen nebeneinander gesicherte Maildirs aus.
+    """
+    if not roh.startswith("."):
+        return roh
+    return roh[1:].replace(".", "/") or "INBOX"
 
 
 class MboxSource(Source):
@@ -355,6 +478,10 @@ def open_path(path: Path, account: str = "") -> Source:
         if ThunderbirdSource._enthaelt_ordnerdateien(path):
             # Ein Verzeichnis voller Ordnerdateien, etwa "Local Folders".
             return ThunderbirdSource(path, account)
+        if MaildirSammlungSource.enthaelt_maildirs(path):
+            # Evolution und jede andere Maildir++-Ablage: Die Wurzel hat
+            # kein cur/, die Ordner darunter schon.
+            return MaildirSammlungSource(path, account)
         if EmlOrdnerSource._enthaelt_eml(path):
             # Zuletzt geprüft, weil am unspezifischsten: Eine einzelne
             # .eml kann auch in einem Thunderbird-Profil liegen.
@@ -363,8 +490,10 @@ def open_path(path: Path, account: str = "") -> Source:
             f"{path} ist weder Thunderbird-Profil noch Maildir noch ein "
             f"Verzeichnis mit Ordnerdateien oder .eml-Dateien. Erwartet "
             f"wird ein Verzeichnis mit Mail/ bzw. ImapMail/, eines mit "
-            f"cur/, eines mit Thunderbirds Ordnerdateien oder eines, in "
-            f"dem einzelne Mails als .eml liegen."
+            f"cur/, eine Sammlung von Maildir-Ordnern (wie bei Evolution "
+            f"unter ~/.local/share/evolution/mail/local), eines mit "
+            f"Thunderbirds Ordnerdateien oder eines, in dem einzelne "
+            f"Mails als .eml liegen."
         )
 
     return MboxSource(path, account)

@@ -344,6 +344,21 @@ class Hauptfenster(QMainWindow):
         post.addAction(self.abrufen_aktion)
 
         post.addSeparator()
+        # **Gleich unter »Jetzt abrufen«, nicht weiter unten.** Beides
+        # bringt Post ins Archiv; der eine Weg über den Server, der
+        # andere von der Platte. Bis zum 2026-09-03 gab es diesen Punkt
+        # gar nicht – die Quellen konnte MailBurg von Anfang an, aber nur
+        # über die Kommandozeile. Ein Anwender hat sich gewünscht, was
+        # längst da war: Er hat es nicht gefunden.
+        self.einlesen_aktion = QAction("Lokale Mailordner einlesen …", self)
+        self.einlesen_aktion.setStatusTip(
+            "Post aus Dateien auf dieser Platte übernehmen – "
+            "Thunderbird-Profile, Maildir-Ordner (auch von Evolution), "
+            "MBOX-Dateien."
+        )
+        self.einlesen_aktion.triggered.connect(self._einlesen)
+        post.addAction(self.einlesen_aktion)
+
         post.addSeparator()
         # Mit der Zahl im Text: Ein eingescanntes PDF meldet sich nicht
         # von selbst. Wer nicht weiß, dass ein Teil seines Archivs
@@ -2009,6 +2024,27 @@ class Hauptfenster(QMainWindow):
             f"{len(offen)} {wort} als »{stufe.value}« eingestuft – "
             f"im Journal vermerkt."
         )
+        self._suchen()
+
+    def _einlesen(self) -> None:
+        """Liest lokale Mailordner ein – Thunderbird, Maildir, MBOX.
+
+        Der Dialog öffnet das Archiv selbst schreibend; unser Handle
+        hält es nur lesend. Deshalb wird danach neu aufgebaut, statt
+        darauf zu hoffen, dass die Anzeige von allein stimmt.
+        """
+        from mailburg.ui.einlesen import Einlesedialog
+
+        if self.archiv is None:
+            return
+        uebergehen = self._sperre_klaeren(self.archiv.root)
+        if uebergehen is None:
+            return
+
+        dialog = Einlesedialog(self.archiv, self)
+        dialog.exec()
+        self._baum_fuellen(auswahl_halten=True)
+        self._bestand_zeigen()
         self._suchen()
 
     def _texterkennung(self) -> None:

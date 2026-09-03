@@ -14,6 +14,8 @@ auslesen – verteilt ``core/importer.py`` ohnehin auf eigene Prozesse.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 
 
@@ -320,3 +322,56 @@ class Abruflauf(Auftrag):
             self.meldung.emit(
                 f"{stat.gelesen} eingescannte PDF durchsuchbar gemacht"
             )
+
+
+class Einleselauf(Auftrag):
+    """Liest lokale Mailordner ins Archiv – Maildir, MBOX, Thunderbird.
+
+    **Warum es das im Fenster bisher nicht gab.** Die Quellen konnte
+    MailBurg von Anfang an; erreichbar waren sie nur über
+    ``mailburg importieren`` im Terminal. Ein Anwender hat sich am
+    2026-09-03 genau das gewünscht, was schon da war – er hat es nur
+    nicht gefunden. Eine Funktion, die niemand findet, gibt es für den
+    Anwender nicht.
+    """
+
+    def __init__(self, archiv_pfad, quellpfad, konto: str, *,
+                 mit_anhangstext: bool = True) -> None:
+        super().__init__()
+        self.archiv_pfad = archiv_pfad
+        self.quellpfad = quellpfad
+        self.konto = konto
+        self.mit_anhangstext = mit_anhangstext
+
+    def ausfuehren(self):
+        from mailburg.core.archive import Archive
+        from mailburg.core.importer import importieren
+        from mailburg.sources import local
+
+        quelle = local.open_path(Path(self.quellpfad), self.konto)
+        self.meldung.emit(f"Lese {quelle.describe()} …")
+
+        try:
+            with Archive.open(self.archiv_pfad) as archiv:
+                def melden(stat) -> None:
+                    self.meldung.emit(
+                        f"{self.konto}: {stat.gelesen} gelesen, {stat.neu} neu"
+                    )
+                    self.fortschritt.emit(stat.gelesen, 0)
+
+                stat = importieren(
+                    archiv,
+                    quelle,
+                    mit_anhangstext=self.mit_anhangstext,
+                    fortschritt=melden,
+                    # **Abbruch ist hier wichtiger als beim Abruf.** Ein
+                    # Thunderbird-Profil kann Jahrzehnte enthalten; wer
+                    # das versehentlich startet, muss es beenden können.
+                    weiter=lambda: not self.abgebrochen,
+                )
+                if stat.neu:
+                    self.meldung.emit("Verdichte den Suchindex …")
+                    archiv.index.optimize()
+                return stat
+        finally:
+            quelle.close()

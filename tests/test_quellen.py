@@ -190,3 +190,177 @@ class EmlxTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EvolutionMaildirTest(unittest.TestCase):
+    """Eine Sammlung von Maildir-Ordnern ohne eigenes ``cur/``.
+
+    **Der Anlass, gemeldet am 2026-09-03.** Ein Anwender ist unter
+    GNOME von Thunderbird auf Evolution umgestiegen und wünschte sich,
+    »dass MailBurg auch Mails aus lokalen Ordnern im MBox- oder
+    Maildir-Format auslesen und archivieren könnte«.
+
+    Beides konnte MailBurg längst – nur nicht in *dieser* Form. Evolution
+    legt seine lokalen Ordner nach Maildir++ ab: Die Wurzel enthält kein
+    ``cur/``, sondern Unterverzeichnisse ``.Inbox``, ``.Sent``. Wer sie
+    auswählte, bekam die Meldung, das sei kein Maildir.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name) / "local"
+        self.wo.mkdir()
+
+    def _maildir(self, name: str, *betreffs: str) -> Path:
+        ort = self.wo / name
+        for teil in ("cur", "new", "tmp"):
+            (ort / teil).mkdir(parents=True)
+        for nummer, betreff in enumerate(betreffs):
+            # Der Doppelpunkt-Teil ist Maildirs Zustandskodierung.
+            (ort / "cur" / f"170000000.{nummer}.rechner:2,S").write_bytes(
+                mail(betreff)
+            )
+        return ort
+
+    def test_evolutions_ordner_werden_erkannt(self):
+        self._maildir(".Inbox", "Eins")
+        self._maildir(".Sent", "Zwei")
+
+        quelle = open_path(self.wo, "Evolution")
+        self.addCleanup(quelle.close)
+
+        self.assertEqual(sorted(quelle.folders()), ["Inbox", "Sent"])
+
+    def test_der_punkt_faellt_weg(self):
+        # Sonst stünde im Archiv ein Ordner namens ".Inbox", den
+        # niemand wiedererkennt.
+        self._maildir(".Inbox", "Eins")
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+
+        self.assertIn("Inbox", quelle.folders())
+        self.assertNotIn(".Inbox", quelle.folders())
+
+    def test_maildir_plus_plus_verschachtelt_ueber_punkte(self):
+        # ".Projekte.2025" ist der Ordner "2025" unter "Projekte".
+        self._maildir(".Projekte.2025", "Eins")
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+
+        self.assertEqual(quelle.folders(), ["Projekte/2025"])
+
+    def test_die_mails_kommen_mit_ordner_und_zustand(self):
+        self._maildir(".Inbox", "Eins", "Zwei")
+        self._maildir(".Sent", "Drei")
+
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+        nachrichten = list(quelle.iter_messages())
+
+        self.assertEqual(len(nachrichten), 3)
+        self.assertEqual(
+            sorted({n.folder for n in nachrichten}), ["Inbox", "Sent"]
+        )
+        self.assertIn("S", nachrichten[0].flags)
+
+    def test_die_bytes_bleiben_unangetastet(self):
+        # Der Inhaltshash hängt daran, und mit ihm die DKIM-Signatur.
+        self._maildir(".Inbox", "Rechnung")
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+
+        [nachricht] = list(quelle.iter_messages())
+        self.assertEqual(nachricht.raw, mail("Rechnung"))
+
+    def test_nebeneinander_gesicherte_maildirs_ohne_punkt(self):
+        # Dieselbe Form entsteht, wenn jemand mehrere Maildirs sichert.
+        self._maildir("Firma", "Eins")
+        self._maildir("Privat", "Zwei")
+
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+
+        self.assertEqual(sorted(quelle.folders()), ["Firma", "Privat"])
+
+    def test_ein_echtes_maildir_geht_weiterhin_den_alten_weg(self):
+        # Die Wurzel selbst hat cur/ - dann ist es ein einzelnes
+        # Maildir, keine Sammlung.
+        for teil in ("cur", "new", "tmp"):
+            (self.wo / teil).mkdir()
+        (self.wo / "cur" / "170000000.0.rechner:2,S").write_bytes(mail("Eins"))
+
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+
+        self.assertIn("INBOX", quelle.folders())
+
+    def test_ein_leeres_verzeichnis_bleibt_ein_fehler(self):
+        (self.wo / "nur-ein-ordner").mkdir()
+
+        with self.assertRaises(ValueError) as fall:
+            open_path(self.wo)
+
+        # Und die Meldung nennt den Weg, der zum Ziel führt.
+        self.assertIn("Evolution", str(fall.exception))
+
+
+class MaildirZustandTest(unittest.TestCase):
+    """Der Lesezustand beim Einlesen eines gewöhnlichen Maildirs.
+
+    **Ein Fehler, der seit jeher drinsteckte.** Maildir kodiert den
+    Zustand im Dateinamen hinter ``:2,``. Der Code zerlegte dafür den
+    Schlüssel von ``mailbox.Maildir`` – der diesen Teil aber gar nicht
+    enthält, weil Python ihn abschneidet. Das Ergebnis war *immer* ein
+    leerer Zustand: Jede eingelesene Mail landete als ungelesen im
+    Archiv, auch die vor Jahren beantwortete.
+
+    Gefunden am 2026-09-03, und zwar nur, weil für Evolution ein Test
+    geschrieben wurde, der den Zustand mitprüft.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name) / "Maildir"
+        for teil in ("cur", "new", "tmp"):
+            (self.wo / teil).mkdir(parents=True)
+
+    def _mail(self, name: str, inhalt: bytes) -> None:
+        unter = "new" if ":2," not in name else "cur"
+        (self.wo / unter / name).write_bytes(inhalt)
+
+    def test_gelesen_und_beantwortet_kommen_an(self):
+        self._mail("170000000.1.rechner:2,SR", mail("Beantwortet"))
+
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+        [nachricht] = list(quelle.iter_messages())
+
+        self.assertIn("S", nachricht.flags)
+        self.assertIn("R", nachricht.flags)
+
+    def test_eine_neue_mail_traegt_keinen_zustand(self):
+        # In new/ liegt, was noch niemand gesehen hat - dort gibt es
+        # keinen ":2,"-Teil, und das ist richtig so.
+        self._mail("170000000.2.rechner", mail("Neu"))
+
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+        [nachricht] = list(quelle.iter_messages())
+
+        self.assertEqual(nachricht.flags, "")
+
+    def test_zwei_mails_bekommen_nicht_denselben_zustand(self):
+        self._mail("170000000.3.rechner:2,S", mail("Gelesen"))
+        self._mail("170000000.4.rechner:2,", mail("Ungelesen"))
+
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+        nach_betreff = {
+            n.raw.split(b"Subject: ")[1].split(b"\r\n")[0].decode(): n.flags
+            for n in quelle.iter_messages()
+        }
+
+        self.assertEqual(nach_betreff["Gelesen"], "S")
+        self.assertEqual(nach_betreff["Ungelesen"], "")

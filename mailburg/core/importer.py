@@ -142,6 +142,7 @@ def importieren(
     prozesse: int | None = None,
     fortschritt=None,
     auf_fehler=None,
+    weiter=None,
 ) -> Statistik:
     """Liest eine Quelle vollständig ins Archiv.
 
@@ -155,6 +156,14 @@ def importieren(
     Mail beim nächsten Lauf noch einmal anfordern. Ohne sie zöge der
     Höchststand an ihr vorbei, und sie fehlte für immer im Archiv – ohne
     dass es je jemand bemerkte.
+
+    ``weiter`` wird vor jeder Nachricht gefragt; sagt es Nein, endet der
+    Lauf geordnet – mit geschriebenem Journal und verdichtetem Index.
+    **Das ist kein Fehlerweg, sondern ein gültiges Ergebnis:** Was bis
+    dahin aufgenommen wurde, liegt vollständig im Archiv, und der nächste
+    Lauf setzt dort an. Gebraucht wird es beim Einlesen lokaler Ordner –
+    ein Thunderbird-Profil kann Jahrzehnte enthalten, und wer es
+    versehentlich startet, muss es beenden können.
     """
     stat = Statistik()
     kerne = prozesse if prozesse is not None else min(os.cpu_count() or 2, 8)
@@ -190,6 +199,8 @@ def importieren(
     # tun, und das ist billig.
     if not mit_anhangstext or kerne < 2:
         for nachricht in quelle.iter_messages():
+            if weiter is not None and not weiter():
+                break
             stat.gelesen += 1
             try:
                 zerlegt, anhangstext, zaehlung = _verarbeiten(nachricht.raw, mit_anhangstext)
@@ -222,6 +233,8 @@ def importieren(
 
     with ProcessPoolExecutor(max_workers=kerne) as pool:
         for nachricht in quelle.iter_messages():
+            if weiter is not None and not weiter():
+                break
             stat.gelesen += 1
 
             if nachricht.size < SCHWELLE_PARALLEL:

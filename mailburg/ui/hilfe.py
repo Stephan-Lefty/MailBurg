@@ -260,6 +260,38 @@ zuletzt abgerufen wurde. Vermerkt wird dabei nur ein Lauf, der
 durchgelaufen ist – ein abgebrochener oder gescheiterter Abruf weist Ihr
 Archiv nicht als aktuell aus.</p>
 
+<p>Während ein Abruf läuft, wächst der Postfachbaum links mit: Sie sehen
+schon, was da ist, bevor der Lauf zu Ende ist.</p>
+
+<h3 id="einlesen">Post von der eigenen Platte</h3>
+
+<p>Nicht alles kommt vom Server. Wer jahrelang mit Thunderbird,
+Evolution oder KMail gearbeitet hat, hat Mails in <b>lokalen
+Ordnern</b> – die liegen nur auf der Platte und in keinem Postfach mehr.
+Dasselbe gilt für Post aus einem Konto, das längst gekündigt ist.</p>
+
+<p><i>Post → Lokale Mailordner einlesen …</i> holt sie ins Archiv.
+Erkannt werden:</p>
+
+<ul>
+<li><b>Thunderbird-Profile</b> mit allen Konten und Unterordnern –
+    üblicherweise unter <tt>~/.thunderbird</tt>.</li>
+<li><b>Maildir-Verzeichnisse.</b> So legt Evolution seine lokalen Ordner
+    ab, unter <tt>~/.local/share/evolution/mail/local</tt>. Auch eine
+    Sammlung mehrerer Maildirs nebeneinander wird erkannt.</li>
+<li><b>MBOX-Dateien</b> – eine Datei, die einen ganzen Ordner enthält.</li>
+<li><b>Verzeichnisse voller <tt>.eml</tt>-Dateien.</b> Das ist meist das
+    Ergebnis, wenn ein anderes Archivprogramm seine Post herausrückt.</li>
+</ul>
+
+<p>Der Dialog schlägt vor, was er auf Ihrem Rechner findet, und zeigt
+unter dem Pfad, was er dort erkannt hat – mitsamt den Ordnernamen. So
+sehen Sie vor dem Start, ob Sie das Richtige gewählt haben.</p>
+
+<p><b>Gelesen wird nur.</b> An Ihren Dateien ändert MailBurg nichts, und
+zweimal einlesen erzeugt keine zweite Kopie: Der Name jeder Mail im
+Archiv ist der Hash ihres Inhalts.</p>
+
 {menue}
 """
 
@@ -759,6 +791,15 @@ def kapitel() -> list[Kapitel]:
             _menue("Post → Jetzt abrufen (F5)",
                    "Holt sofort, was neu ist. Am Ende steht, ob alle "
                    "Postfächer erreichbar waren.")
+            + _menue("Post → Lokale Mailordner einlesen …",
+                     "Übernimmt Post aus Dateien auf Ihrer Platte statt "
+                     "vom Server: Thunderbird-Profile mit allen Konten "
+                     "und Unterordnern, Maildir-Verzeichnisse – so legt "
+                     "Evolution seine lokalen Ordner ab –, einzelne "
+                     "MBOX-Dateien und Verzeichnisse voller "
+                     "»eml«-Dateien. Der Weg zu Postfächern, die es "
+                     "online längst nicht mehr gibt. Gelesen wird nur; "
+                     "an Ihren Dateien ändert MailBurg nichts.")
             + _menue("Einstellungen → Was von selbst laufen soll "
                      "(Automatisierung) …",
                      "Richtet den regelmäßigen Abruf ein – alle 15 Minuten "
