@@ -3,6 +3,75 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-03, Donnerstag abends)
+
+**1.2.0 ist getaggt.** Sie besteht fast vollständig aus einer einzigen
+Rückmeldung – Fedora Silverblue, MailBurg in einer Toolbox, Umsteiger
+von Thunderbird auf Evolution.
+
+### Die Lehre dieses Tages
+
+**Zwei Anwender an zwei Tagen haben mehr gefunden als alles Geplante.**
+Und dreimal war der Befund derselbe: Ein Kommentar im Code versprach
+etwas, das der Code nicht tat.
+
+- `core/index.py` erklärt seit jeher, dass WAL dafür da ist, »während im
+  Hintergrund archiviert wird« zu lesen. Abgeholt hat es niemand – der
+  Postfachbaum blieb den ganzen Abruf über leer.
+- `paths.geoeffnet_dir()` begründet sorgfältig, warum eine Mail nicht in
+  `/tmp` gehört. Der PDF-Anhang derselben Mail ging trotzdem dorthin.
+- `erkennung.py` nannte den Schlüssel für den erkannten PDF-Text; der
+  Neuaufbau holte ihn nie.
+
+**Wer einen Kommentar schreibt, der eine Zusage macht, schuldet einen
+Test dazu.** Sonst ist er eine Behauptung, die mit den Jahren falsch
+wird, ohne dass es auffällt.
+
+### Was in der 1.2.0 steckt
+
+**Der Postfachbaum wächst während des Abrufs mit** (`MITWACHSEN`,
+3 Sekunden, `_baum_fuellen(auswahl_halten=True)`). Vorher stand
+minutenlang »0 Mails im Archiv · noch nicht abgerufen« neben »2800
+geholt« – zwei Anzeigen im selben Fenster, die einander widersprachen.
+
+**Anhänge liegen nicht mehr in `/tmp`** (`rueckgabe.anhang_oeffnen`),
+sondern im Cache-Ordner mit `0600`, und werden aufgeräumt. Beim
+Aufräumen erkennt MailBurg seine eigenen Dateien an den acht
+Zufallsziffern im Namen – ein bestehender Test hielt dagegen, als ich
+einfach alles löschen wollte.
+
+**Lokale Mailordner einlesen gibt es jetzt im Fenster**
+(`ui/einlesen.py`). Die Quellen konnte MailBurg von Anfang an, nur über
+die Kommandozeile. **Der Wunsch nach etwas Vorhandenem ist ein Befund
+über die Oberfläche, nicht über den Funktionsumfang.**
+
+**Strg+F in der geöffneten Nachricht** (`ui/suchleiste.py`). Beim Bauen
+stand dort zuerst `[QKeySequence.Find, QKeySequence("Strg+F")]` –
+dieselbe Folge zweimal, also mehrdeutig, also wirkungslos: **genau der
+Fehler vom 31.08. bei Strg++**, vier Tage später wiederholt. Und »Strg«
+kennt Qt nicht, es heißt »Ctrl«; eine so geschriebene Folge ist leer und
+tut nichts, ohne dass Qt meckert. Dafür gibt es jetzt einen
+Wächtertest, der die Aktionen des **echten** Fensters durchgeht.
+
+**Evolution** – lokale Ordner (Maildir++, Wurzel ohne `cur/`) und Konten
+(`.source`-Dateien, GKeyFile). Zwei Fallstricke: `configparser` macht
+Schlüssel klein, Evolution schreibt sie groß (`optionxform = str`); und
+im selben Verzeichnis liegen Adressbücher und Kalender.
+
+**Und ein Fehler, der seit der ersten Fassung drinsteckte:** Beim
+Einlesen eines Maildirs ging der Lesezustand verloren. Maildir kodiert
+ihn hinter `:2,`, Pythons `mailbox.Maildir` schneidet das bei `keys()`
+ab – zerlegt wurde trotzdem der Schlüssel, was **immer** leer ergab.
+Jede eingelesene Mail landete als ungelesen im Archiv. Gefunden nur,
+weil ich für Evolution einen Test schrieb, der den Zustand mitprüft.
+
+### Zwei Stellen, die jetzt allein entscheiden
+
+`sources.quelle_fuer()` (IMAP oder JMAP) und `uebernahme.alle_quellen()`
+(Thunderbird oder Evolution). Beide aus demselben Grund: Vorher nannte
+jeder Aufrufer das eine Programm beim Namen, und das nächste hätte man
+drei- oder fünfmal ergänzen und beim letzten vergessen.
+
 ## Hier war Schluss (Stand 2026-09-03, Donnerstag)
 
 **1.1.0 ist getaggt und veröffentlicht.** Sie bringt JMAP, die Struktur

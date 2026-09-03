@@ -7,6 +7,29 @@ down, with the date they were completed.
 
 ## Open
 
+### From the second user feedback (2026-09-03)
+
+Fedora Silverblue, MailBurg in a toolbox, a user who moved from
+Thunderbird to Evolution. Five points, four of them done in 1.2.0.
+
+- [ ] **The PDF viewer could be configurable.** A PDF attachment opened
+  his browser at `localhost:8000` — an address already taken by his
+  Paperless-ngx.
+
+  **The cause turned out to be a different one.** He runs in a toolbox:
+  the file sat in the container's `/tmp`, Firefox runs outside and could
+  not see it, so it showed the last session. Since 1.2.0 attachments live
+  in the protected cache directory, and a failed open is reported with
+  the path and a pointer to "save as file".
+
+  **Ask before building.** A separate setting for the viewer is one that
+  nobody on an ordinary system needs. Whether it is still required after
+  1.2.0, only he can say.
+
+- [ ] **He skipped Gmail over OAuth2** — "because of the known OAuth
+  problems". That makes him the second reporter for whom Gmail stays
+  open.
+
 ### From the first user feedback (2026-09-01)
 
 The first report from outside. Four points, three fixed straight away.

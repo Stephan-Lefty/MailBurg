@@ -8,6 +8,32 @@ wurde.
 
 ## Offen
 
+### Aus dem zweiten Nutzer-Feedback (2026-09-03)
+
+Fedora Silverblue, MailBurg in einer Toolbox, Umsteiger von Thunderbird
+auf Evolution. Fünf Punkte, vier davon in der 1.2.0 erledigt.
+
+- [ ] **Der PDF-Betrachter ließe sich einstellen.** Beim Rückmelder
+  öffnete ein PDF-Anhang den Browser mit `localhost:8000` – einer
+  Adresse, die bei ihm Paperless-ngx belegt. Sein Vorschlag: »Wenn
+  MailBurg nicht selber PDF-Dokumente darstellen kann, dann sollte der
+  PDF-Viewer konfigurierbar sein.«
+
+  **Die Ursache ist aber eine andere, und das ändert die Frage.** Er
+  läuft in einer Toolbox: Die Datei lag im `/tmp` des Containers,
+  Firefox läuft außerhalb und sieht sie nicht – also zeigte es die
+  letzte Sitzung. Seit der 1.2.0 liegen Anhänge im geschützten
+  Cache-Ordner, und wenn das Öffnen scheitert, sagt MailBurg das mitsamt
+  Pfad und dem Hinweis auf »Als Datei speichern«.
+
+  **Erst nachfragen, dann bauen.** Ein eigenes Feld für den Betrachter
+  wäre eine Einstellung, die auf jedem gewöhnlichen System niemand
+  braucht. Ob es nach der 1.2.0 noch nötig ist, weiß nur er.
+
+- [ ] **Gmail über OAuth2 hat er übersprungen** – »wegen der bekannten
+  OAuth-Probleme«. Damit ist es der zweite Rückmelder, bei dem Gmail
+  offen bleibt. Siehe den Punkt weiter unten.
+
 ### Aus dem ersten Nutzer-Feedback (Linux-Guides-Forum, 2026-09-01)
 
 Der erste Rückmelder von außerhalb. Vier Punkte, drei davon sofort
