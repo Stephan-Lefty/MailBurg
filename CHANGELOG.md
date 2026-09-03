@@ -27,6 +27,24 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Ordnernamen. Wer »Maildir« nicht kennt, kann einem Pfadfeld sonst
   nicht ansehen, ob er das Richtige gewählt hat.
 
+- **In einer geöffneten Nachricht lässt sich suchen** (*Strg+F*).
+  Ebenfalls von einem Anwender gewünscht: »Leider wird innerhalb des
+  Fensters keine Suchfunktion angeboten, so dass die Suche innerhalb
+  einer einzelnen langen Mail nach einem Stichwort innerhalb des Tools
+  nicht möglich ist.«
+
+  Ein blinder Fleck: MailBurg sucht sehr gut *über* Mails – Volltext,
+  zwei Indizes, Anhänge bis in eingescannte PDF hinein – und hörte in
+  der einzelnen Mail auf. Wer einen Newsletter mit zweihundert Zeilen
+  öffnet, weil die Volltextsuche ihn gefunden hat, stand dann davor.
+
+  Während des Tippens springt MailBurg zur ersten Stelle und nennt die
+  Zahl der Treffer; `F3` und `Umschalt+F3` gehen weiter und zurück, am
+  Ende beginnt es von vorn. Groß- und Kleinschreibung zählt zunächst
+  nicht. **Bewusst keine zweite Suchsprache** – kein `von:`, kein
+  `jahr:`. Wer eine Stelle in einem Text sucht, erwartet Strg+F und
+  nichts weiter.
+
 - **Evolutions lokale Ordner werden erkannt.** Sie liegen nach
   Maildir++ unter `~/.local/share/evolution/mail/local`: Die Wurzel
   enthält kein `cur/`, sondern Unterverzeichnisse `.Inbox`, `.Sent`.

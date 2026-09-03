@@ -400,6 +400,25 @@ Fenster – die Vorschau unten ist zum Überfliegen da, nicht zum Lesen.
 Mehrere Fenster gleichzeitig sind möglich, etwa um zwei Rechnungen zu
 vergleichen; Strg+W oder Esc schließt sie wieder.</p>
 
+<p><b>In der Nachricht suchen: Strg+F.</b> Unten geht eine Leiste auf,
+und während Sie tippen, springt MailBurg zur ersten passenden Stelle.
+Daneben steht, wie viele es insgesamt sind. <i>F3</i> geht zum nächsten
+Treffer, <i>Umschalt+F3</i> zurück; am Ende beginnt die Suche wieder
+von vorn.</p>
+
+<p>Groß- und Kleinschreibung spielt dabei zunächst keine Rolle – wer
+eine Stelle sucht, weiß meist nicht mehr, wie sie geschrieben war. Ein
+Häkchen in der Leiste ändert das.</p>
+
+<p>Haben Sie vorher ein Wort markiert, steht es schon im Suchfeld.
+<i>Esc</i> schließt erst die Leiste und erst danach das Fenster – sonst
+wäre die Nachricht mit einem Tastendruck weg, obwohl man nur die Suche
+loswerden wollte.</p>
+
+<p><b>Das ist eine gewöhnliche Textsuche</b>, keine zweite Suchsprache:
+Hier gibt es kein <tt>von:</tt> und kein <tt>jahr:</tt>. Wer nach
+solchen Feldern sucht, tut das im Hauptfenster.</p>
+
 <p>Ein Klick mit der <b>rechten Maustaste</b> auf eine Nachricht führt
 weiter:</p>
 

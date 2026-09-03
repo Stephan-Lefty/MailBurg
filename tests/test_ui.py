@@ -5648,3 +5648,265 @@ class EinlesedialogTest(OberflaechenTest):
         self.assertEqual(stat.gelesen, 0)
         # Und das Archiv ist heil geblieben.
         self.assertEqual(self.archiv.index.count(), 0)
+
+
+class SuchleisteImLesefensterTest(OberflaechenTest):
+    """Suchen innerhalb einer geöffneten Nachricht.
+
+    **Von einem Anwender am 2026-09-03 vermisst:** »Leider wird
+    innerhalb des Fensters keine Suchfunktion angeboten, so dass die
+    Suche innerhalb einer einzelnen langen Mail nach einem Stichwort
+    innerhalb des Tools nicht möglich ist.«
+
+    Ein blinder Fleck: MailBurg sucht sehr gut *über* Mails und hörte in
+    der einzelnen auf. Wer einen Newsletter mit zweihundert Zeilen
+    öffnet, weil die Volltextsuche ihn gefunden hat, stand davor.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        basis = pathlib.Path(self._tmp.name)
+        for name in ("data_dir", "config_dir"):
+            patcher = mock.patch.object(
+                paths, name, return_value=basis / name
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
+            (basis / name).mkdir(parents=True, exist_ok=True)
+
+        self.wurzel = basis / "Archiv"
+        Archive.create(self.wurzel, name="P").close()
+        self.archiv = Archive.open(self.wurzel, exclusive=False)
+        self.addCleanup(self.archiv.close)
+
+    def _fenster(self, text: str):
+        """Ein Lesefenster mit vorgegebenem Text.
+
+        Die Leiste hängt allein am Textfeld – deshalb wird hier kein
+        Treffer aus dem Index geholt, sondern der Text unmittelbar
+        gesetzt. Das prüft genau das, worum es geht, und nichts daneben.
+        """
+        from PySide6.QtWidgets import QMainWindow, QTextBrowser
+
+        from mailburg.ui.lesefenster import Lesefenster
+        from mailburg.ui.suchleiste import Suchleiste
+
+        fenster = Lesefenster.__new__(Lesefenster)
+        QMainWindow.__init__(fenster)
+        feld = QTextBrowser()
+        feld.setPlainText(text)
+        fenster.suchleiste = Suchleiste(feld)
+        fenster.setCentralWidget(feld)
+        self.addCleanup(fenster.close)
+        return fenster, feld
+
+    def test_ein_wort_wird_gefunden_und_markiert(self):
+        fenster, feld = self._fenster(
+            "Vorne steht Text. In der Mitte Rechnungsnummer 4711. Hinten mehr."
+        )
+        leiste = fenster.suchleiste
+        leiste.feld.setText("Rechnungsnummer")
+
+        self.assertEqual(feld.textCursor().selectedText(), "Rechnungsnummer")
+        self.assertIn("1 Treffer", leiste.stand.text())
+
+    def test_was_nicht_da_ist_wird_gesagt(self):
+        fenster, _ = self._fenster("Nur ein kurzer Text.")
+        leiste = fenster.suchleiste
+        leiste.feld.setText("Rechnung")
+
+        self.assertIn("nicht gefunden", leiste.stand.text())
+
+    def test_gross_und_kleinschreibung_egal(self):
+        # Wer eine Stelle sucht, weiß meist nicht mehr, wie sie
+        # geschrieben war.
+        fenster, feld = self._fenster("Die RECHNUNG liegt bei.")
+        fenster.suchleiste.feld.setText("rechnung")
+
+        self.assertEqual(feld.textCursor().selectedText(), "RECHNUNG")
+
+    def test_die_zahl_der_treffer_stimmt(self):
+        fenster, _ = self._fenster("Rechnung, Rechnung und nochmal Rechnung.")
+        fenster.suchleiste.feld.setText("Rechnung")
+
+        self.assertIn("3 Treffer", fenster.suchleiste.stand.text())
+
+    def test_weiter_springt_zum_naechsten(self):
+        fenster, feld = self._fenster("eins Ziel zwei Ziel drei")
+        leiste = fenster.suchleiste
+        leiste.feld.setText("Ziel")
+        erste = feld.textCursor().position()
+
+        leiste.weiter()
+
+        self.assertGreater(feld.textCursor().position(), erste)
+
+    def test_am_ende_geht_es_von_vorne_weiter(self):
+        # Sonst hört die Suche beim letzten Treffer auf, ohne zu sagen,
+        # dass weiter oben noch welche sind.
+        fenster, feld = self._fenster("Ziel und dann nichts mehr.")
+        leiste = fenster.suchleiste
+        leiste.feld.setText("Ziel")
+        ende = feld.textCursor().position()
+
+        self.assertTrue(leiste.weiter())
+        self.assertEqual(feld.textCursor().position(), ende)
+
+    def test_jeder_buchstabe_sucht_von_vorn(self):
+        # Ohne das landet man beim Löschen eines Buchstabens unversehens
+        # weit hinten im Text.
+        fenster, feld = self._fenster("Abc und weiter hinten nochmal Abc.")
+        leiste = fenster.suchleiste
+        leiste.feld.setText("Abc")
+        leiste.weiter()
+        hinten = feld.textCursor().position()
+
+        leiste.feld.setText("Ab")
+
+        self.assertLess(feld.textCursor().position(), hinten)
+
+    def test_esc_schliesst_erst_die_leiste_nicht_das_fenster(self):
+        # Sonst verliert man mit einem Tastendruck die ganze Nachricht,
+        # obwohl man nur die Suche loswerden wollte.
+        from unittest import mock
+
+        from mailburg.ui.lesefenster import Lesefenster
+
+        fenster, _ = self._fenster("Text")
+        fenster.suchleiste.show()
+
+        with mock.patch.object(fenster, "close") as zu:
+            Lesefenster._esc(fenster)
+            self.assertFalse(zu.called, "Esc darf nicht die Mail schließen")
+
+        self.assertFalse(fenster.suchleiste.isVisible())
+
+        # Ist die Leiste zu, schließt Esc dann doch das Fenster.
+        with mock.patch.object(fenster, "close") as zu:
+            Lesefenster._esc(fenster)
+            self.assertTrue(zu.called)
+
+    def test_ein_markiertes_wort_wandert_ins_suchfeld(self):
+        # Wer etwas markiert und dann Strg+F drückt, meint fast immer
+        # genau das.
+        from PySide6.QtGui import QTextCursor
+
+        fenster, feld = self._fenster("Die Rechnungsnummer lautet 4711.")
+        strich = feld.textCursor()
+        strich.setPosition(4)
+        strich.setPosition(19, QTextCursor.KeepAnchor)
+        feld.setTextCursor(strich)
+
+        fenster.suchleiste.oeffnen()
+
+        self.assertEqual(fenster.suchleiste.feld.text(), "Rechnungsnummer")
+
+
+class LesefensterKuerzelTest(OberflaechenTest):
+    """Die Kürzel des Lesefensters – keines darf mehrdeutig sein.
+
+    Derselbe Wächter wie in ``TastenkuerzelTest``, nur für das Fenster,
+    das der Doppelklick öffnet. Am 2026-09-03 kam Strg+F dazu, und beim
+    Bauen stand hier zuerst ``[QKeySequence.Find, QKeySequence("Strg+F")]``
+    – zweimal dieselbe Folge, also mehrdeutig, also wirkungslos. Genau
+    der Fehler vom 2026-08-31 bei Strg++.
+
+    (Und »Strg« kennt Qt ohnehin nicht; es heißt »Ctrl«. Eine so
+    geschriebene Folge ist leer und tut gar nichts – was man ihr nicht
+    ansieht, weil Qt nicht meckert.)
+    """
+
+    def _echtes_fenster(self):
+        """Ein Lesefenster, wie der Doppelklick es baut."""
+        from unittest import mock
+
+        from mailburg.ui.lesefenster import Lesefenster
+        from mailburg.ui.vorschau import Mailvorschau
+
+        treffer = mock.Mock(subject="Eine Nachricht")
+        with mock.patch.object(Mailvorschau, "zeigen"):
+            fenster = Lesefenster(treffer, archiv=None)
+        # Zeigen, sonst ist nichts darin je `isVisible()` – und dann
+        # prüft der Test nur, dass Qt Fenster verbirgt.
+        fenster.show()
+        self.app.processEvents()
+        self.addCleanup(fenster.close)
+        return fenster
+
+    def test_keine_folge_ist_zweimal_belegt(self):
+        fenster = self._echtes_fenster()
+
+        gesehen = []
+        for aktion in fenster.actions():
+            for folge in aktion.shortcuts():
+                self.assertFalse(
+                    folge.isEmpty(),
+                    "eine leere Tastenfolge - vermutlich »Strg« statt »Ctrl«",
+                )
+                self.assertNotIn(
+                    folge, gesehen,
+                    f"{folge.toString()} ist zweimal belegt - Qt hält das "
+                    f"für mehrdeutig und löst dann keine davon aus",
+                )
+                gesehen.append(folge)
+
+    def test_strg_f_oeffnet_wirklich_die_suchleiste(self):
+        from PySide6.QtGui import QKeySequence
+
+        fenster = self._echtes_fenster()
+        self.assertFalse(fenster.suchleiste.isVisible())
+
+        gefunden = [
+            a for a in fenster.actions()
+            if QKeySequence(QKeySequence.Find) in a.shortcuts()
+        ]
+        self.assertEqual(len(gefunden), 1, "Strg+F muss es genau einmal geben")
+
+        gefunden[0].trigger()
+
+        self.assertTrue(fenster.suchleiste.isVisible())
+
+    def test_strg_w_schliesst_auch_bei_offener_suchleiste(self):
+        # Sonst käme man aus dem Fenster nicht mehr heraus, ohne vorher
+        # die Suche zu schließen.
+        from PySide6.QtGui import QKeySequence
+
+        fenster = self._echtes_fenster()
+        fenster.suchleiste.oeffnen()
+        self.app.processEvents()
+
+        [zu] = [
+            a for a in fenster.actions()
+            if QKeySequence(QKeySequence.Close) in a.shortcuts()
+        ]
+        zu.trigger()
+        self.app.processEvents()
+
+        self.assertFalse(fenster.isVisible())
+
+    def test_esc_bei_offener_leiste_laesst_das_fenster_stehen(self):
+        from PySide6.QtGui import QKeySequence
+
+        fenster = self._echtes_fenster()
+        fenster.suchleiste.oeffnen()
+        self.app.processEvents()
+
+        [esc] = [
+            a for a in fenster.actions()
+            if QKeySequence("Esc") in a.shortcuts()
+        ]
+        esc.trigger()
+        self.app.processEvents()
+
+        self.assertFalse(fenster.suchleiste.isVisible())
+        self.assertTrue(
+            fenster.isVisible(),
+            "Esc darf bei offener Suche nicht die Nachricht schließen",
+        )

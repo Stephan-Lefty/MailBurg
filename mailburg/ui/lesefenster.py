@@ -13,8 +13,9 @@ erlaubt – wer zwei Rechnungen vergleicht, braucht beide nebeneinander.
 from __future__ import annotations
 
 from PySide6.QtGui import QAction, QKeySequence
-from PySide6.QtWidgets import QMainWindow
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget
 
+from mailburg.ui.suchleiste import Suchleiste
 from mailburg.ui.vorschau import Mailvorschau
 
 #: Alle offenen Lesefenster. Aus demselben Grund wie die Läuferliste in
@@ -34,15 +35,63 @@ class Lesefenster(QMainWindow):
 
         self.vorschau = Mailvorschau()
         self.vorschau.zeigen(treffer, archiv)
-        self.setCentralWidget(self.vorschau)
 
-        # Fenster schließt man mit Strg+W, und Esc erwartet man bei
-        # etwas, das man nur angesehen hat.
-        for tasten in (QKeySequence.Close, QKeySequence("Esc")):
-            schliessen = QAction(self)
-            schliessen.setShortcut(tasten)
-            schliessen.triggered.connect(self.close)
-            self.addAction(schliessen)
+        # **Suchen in der Nachricht.** Ein Anwender hat es am 2026-09-03
+        # vermisst: MailBurg sucht hervorragend *über* Mails und hörte in
+        # der einzelnen auf. Wer einen langen Newsletter öffnet, weil die
+        # Volltextsuche ihn gefunden hat, stand dann davor.
+        self.suchleiste = Suchleiste(self.vorschau.text)
+
+        mitte = QWidget()
+        aufbau = QVBoxLayout(mitte)
+        aufbau.setContentsMargins(0, 0, 0, 0)
+        aufbau.setSpacing(0)
+        aufbau.addWidget(self.vorschau, 1)
+        aufbau.addWidget(self.suchleiste)
+        self.setCentralWidget(mitte)
+
+        # **Nur QKeySequence.Find, nichts daneben.** Das *ist* Strg+F.
+        # Ein zweites, von Hand gesetztes Kürzel derselben Tastenfolge
+        # macht Qt mehrdeutig, und dann löst es keines von beiden aus –
+        # derselbe Fehler wie am 2026-08-31 bei Strg++.
+        suchen = QAction(self)
+        suchen.setShortcut(QKeySequence.Find)
+        suchen.triggered.connect(self.suchleiste.oeffnen)
+        self.addAction(suchen)
+
+        for tasten, richtung in (
+            (QKeySequence.FindNext, self.suchleiste.weiter),
+            (QKeySequence.FindPrevious, self.suchleiste.zurueck),
+        ):
+            schritt = QAction(self)
+            schritt.setShortcut(tasten)
+            schritt.triggered.connect(richtung)
+            self.addAction(schritt)
+
+        # Fenster schließt man mit Strg+W – das gilt immer, auch bei
+        # offener Suchleiste.
+        zu = QAction(self)
+        zu.setShortcut(QKeySequence.Close)
+        zu.triggered.connect(self.close)
+        self.addAction(zu)
+
+        # Esc erwartet man bei etwas, das man nur angesehen hat – aber
+        # erst, wenn die Suchleiste zu ist.
+        abbrechen = QAction(self)
+        abbrechen.setShortcut(QKeySequence("Esc"))
+        abbrechen.triggered.connect(self._esc)
+        self.addAction(abbrechen)
+
+    def _esc(self) -> None:
+        """Esc schließt erst die Suchleiste, dann das Fenster.
+
+        Andersherum verlöre man mit einem Tastendruck die ganze
+        Nachricht, obwohl man nur die Suche loswerden wollte.
+        """
+        if self.suchleiste.isVisible():
+            self.suchleiste.schliessen()
+            return
+        self.close()
 
     def closeEvent(self, ereignis) -> None:
         _OFFEN.discard(self)
