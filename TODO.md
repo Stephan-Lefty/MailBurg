@@ -8,6 +8,75 @@ wurde.
 
 ## Offen
 
+### Aus dem dritten Nutzer-Feedback (2026-09-03)
+
+Derselbe Anwender, der sich JMAP gewünscht hatte – er hat es an einem
+eigens aufgesetzten **Stalwart** ausprobiert, mit 5.000 besorgten
+Testmails. Sein Urteil: »JMAP funktioniert einwandfrei und das Teil ist
+echt schnell. Für 200 Mails benötige ich weniger als 5 Sekunden.«
+
+- [x] **Nach der Installation ließ sich MailBurg nicht aus der Konsole
+  starten.** (2026-09-03) Seine Vermutung – »das liegt vermutlich an
+  fish« – stimmte, und der Fehler lag bei uns, gleich doppelt.
+
+  `install.sh` prüfte **seinen eigenen** Suchpfad, also den von bash, in
+  dem es läuft. Viele Distributionen tragen `~/.local/bin` in
+  `/etc/profile` ein, das fish nicht liest: bash findet den Ordner, das
+  Skript schweigt, und in der Shell des Anwenders fehlt er trotzdem.
+
+  Und der Hinweis nannte `~/.bashrc` – eine Datei, die weder fish noch
+  zsh anfassen. **Ein Hinweis, der auf die falsche Datei zeigt, ist
+  schlimmer als keiner**, denn wer die Zeile dort einträgt, sucht danach
+  überall, nur nicht mehr im Suchpfad. Jetzt wird die Anmelde-Shell
+  gefragt und die passende Zeile genannt (`fish_add_path`, `~/.zshrc`,
+  `~/.bashrc`); vier Tests in `tests/test_install.py` führen den Block
+  wirklich aus.
+
+- [ ] **Zurückspielen als eigener Vorgang – Sicherung und Rückgabe
+  entkoppeln.** Sein Wunsch für die Zukunft, und der größte offene Punkt
+  aus allen drei Rückmeldungen: »Ich würde mir ein Restore wünschen, wie
+  in MailStore Home. Dann wäre das mein 1. Wahl Backup-Tool. […] Also
+  unabhängige Backups und Restores.«
+
+  Zwei Beispiele nennt er selbst: vom Mailserver sichern und nach
+  Thunderbird zurückspielen; aus einem Thunderbird-Profil sichern und
+  per IMAP auf einen Server legen.
+
+  **Was davon schon steht:** das Holen aus beliebigen Quellen (IMAP,
+  JMAP, Thunderbird, Maildir, MBOX) und `core/rueckgabe.py` – dort ist
+  ausdrücklich vorgesehen, dass das Ziel *nicht* die Herkunft sein muss.
+
+  **Was fehlt, und das ist der eigentliche Punkt:** Heute geht die
+  Rückgabe nur für **eine** markierte Nachricht in den **Posteingang**
+  eines gewählten Kontos (`ui/zurueck.py`). Ein Restore im Sinne von
+  MailStore wäre: eine Suche oder ein ganzer Postfachbaum als Menge,
+  ein frei gewähltes Ziel – IMAP-Konto, Maildir, MBOX oder
+  Thunderbird-Profil –, die Ordnerstruktur wahlweise erhalten, und ein
+  Lauf, der sich abbrechen und fortsetzen lässt.
+
+  **Vor dem Bauen zu klären, weil es die Haltung des Programms
+  berührt:** Bisher schreibt MailBurg in ein Postfach nur auf
+  ausdrücklichen Befehl, für einzelne, benannte Nachrichten, nie im
+  Hintergrund. Zehntausend Mails auf einen fremden Server zu schieben
+  ist etwas anderes als eine – dafür braucht es eine Vorschau, eine
+  Bestätigung und einen Bericht darüber, was tatsächlich ankam.
+
+- [ ] **Sein Angebot: ein Testpostfach mit bis zu 500.000 Mails.**
+  »Falls du ein Postfach für eigene Tests brauchst, sag Bescheid.« Er
+  hat ein Stalwart aufgesetzt und 5.000 Testmails aus dem Netz
+  hochgeladen – »kann bei Bedarf auf bis zu 500.000 Mails erhöhen«.
+  Echte Post ist ausdrücklich keine dabei.
+
+  **Das beantwortet zwei Fragen, die hier seit Wochen offenstehen** –
+  ohne auf MailStore und die Windows-VM zu warten (siehe »Vertagt«):
+  wie schnell die Suche bei einer halben Million Mails wirklich ist, und
+  ob der Abruf über einen so großen Bestand durchhält.
+
+  **Entscheidung liegt bei Stephan.** Zu bedenken: Ein fremder Server
+  ist ein Zugang, den jemand anders verwaltet – die Zugangsdaten gehören
+  in den Schlüsselbund und nicht ins Repo, und der Bestand belegt
+  hochgerechnet rund 9 GB Suchindex plus Ablage.
+
 ### Aus dem zweiten Nutzer-Feedback (2026-09-03)
 
 Fedora Silverblue, MailBurg in einer Toolbox, Umsteiger von Thunderbird
@@ -261,8 +330,12 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
 
   Hochgerechnet auf 500.000 Mails wären das rund 9 GB Index. Offen bleibt,
   ob die Suchzeit dann noch unter 200 ms liegt; FTS5 sollte das packen,
-  gemessen ist es aber nicht. Dafür braucht es einen Bestand dieser Größe –
-  siehe »Vertagt«.
+  gemessen ist es aber nicht.
+
+  **Seit dem 2026-09-03 gibt es einen zweiten Weg dorthin**, und der
+  hängt nicht an MailStore: Ein Anwender bietet ein Stalwart-Postfach
+  mit bis zu 500.000 Testmails an. Siehe ganz oben unter »Aus dem
+  dritten Nutzer-Feedback«.
 
 - [ ] **Warum kommt das Startbild nicht in der `.exe` an?** Ausgebaut am
   2026-08-30, weil der Anlass wegfiel – nicht, weil die Frage beantwortet
@@ -352,10 +425,15 @@ Prüfung steht es hier und nicht in der laufenden Liste.
   Gmail-Fall (`all` enthält alles doppelt) ist mit abgedeckt. Die
   Nachricht kommt byteweise über die Download-Adresse.
 
-  **Offen: ein echter Anbieter.** Geprüft ist gegen `tests/fake_jmap.py`.
-  Fastmail bietet ein kostenloses Probekonto – damit ließe sich der Weg
-  einmal wirklich gehen. Bis dahin gilt derselbe Vorbehalt wie bei
-  OAuth2.
+  **Offen war: ein echter Anbieter.** Geprüft war nur gegen
+  `tests/fake_jmap.py`. **Erledigt am 2026-09-03** – der Anwender, der
+  JMAP gewünscht hatte, hat rund 5.000 Nachrichten aus einem selbst
+  betriebenen Stalwart geholt, 200 davon in unter fünf Sekunden.
+
+  Fastmail bleibt offen und ist nicht dasselbe: Dort meldet man sich mit
+  einer Zugriffsmarke an statt mit Benutzername und Passwort, und die
+  Ordnerrollen kommen von einem fremden Anbieter. Ein kostenloses
+  Probekonto gibt es dort.
 
 - [x] **Eine verwaiste Sperre räumt MailBurg selbst weg** (2026-09-01),
   und wo es nicht sicher ist, fragt es. Vier Lagen: keine Sperre,

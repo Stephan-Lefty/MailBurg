@@ -179,6 +179,10 @@ Ordner einsortiert hat.</p>
 sprechen JMAP; Gmail, Outlook, GMX, Web.de und Proton nicht. Wenn Ihrer
 nicht dabei ist, ändert sich für Sie nichts.</p>
 
+<p><b>Erprobt ist bisher Stalwart</b> – dort hat ein Anwender am
+3. September 2026 rund 5.000 Nachrichten geholt, 200 davon in weniger
+als fünf Sekunden. Bei Fastmail hat es noch niemand ausprobiert.</p>
+
 <p>Bei JMAP tragen Sie statt eines Servernamens eine vollständige
 Adresse ein, und statt eines Passworts meist eine <i>Zugriffsmarke</i>,
 die Sie beim Anbieter erzeugen. Port und Verschlüsselung entfallen –

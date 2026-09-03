@@ -120,9 +120,15 @@ Benutzername und Passwort – dann füllen Sie beide Felder aus.
 
 ## Was Sie wissen sollten
 
-> **Noch nie gegen einen echten Anbieter gelaufen.** Geprüft ist alles gegen
-> einen nachgebauten Server, also gegen die Annahmen des Programms. Dasselbe
-> gilt für OAuth2, und dort steht derselbe Satz.
+> **Einmal gegen einen echten Server gelaufen.** Am 03.09.2026 hat ein
+> Anwender rund 5.000 Nachrichten über JMAP aus einem selbst betriebenen
+> **Stalwart** geholt – 200 Mails in weniger als fünf Sekunden. Das ist der
+> erste Lauf außerhalb der eigenen Werkstatt; bis dahin war alles nur gegen
+> einen nachgebauten Server geprüft, also gegen die Annahmen des Programms.
+>
+> **Fastmail** ist damit noch nicht erprobt. Dort meldet man sich mit einer
+> Zugriffsmarke an statt mit Benutzername und Passwort, und die Ordner heißen
+> anders. Wer es dort ausprobiert: Bitte melden.
 >
 > Wenn Sie JMAP an einem echten Konto ausprobieren: Lassen Sie nach dem ersten
 > Abruf `mailburg pruefen ARCHIV` laufen und vergleichen Sie die Zahl der

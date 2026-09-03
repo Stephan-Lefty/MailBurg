@@ -3,6 +3,46 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Nach der 1.2.0: das dritte Feedback (2026-09-03, spätabends)
+
+**JMAP ist gelaufen – gegen einen echten Server.** Der Anwender, der es
+angestoßen hatte, hat ein **Stalwart** aufgesetzt, 5.000 Testmails
+hochgeladen und abgerufen: 200 Mails in unter fünf Sekunden. Damit fällt
+der Satz »noch nie gegen einen echten Anbieter gelaufen«, der seit der
+1.1.0 an sechs Stellen stand (README beide Sprachen, `sources/jmap.py`,
+`docs/jmap.md`, `ui/hilfe.py`, `tests/test_jmap.py`, TODO beide
+Sprachen).
+
+**Er fällt nicht ganz, und das ist wichtig:** Fastmail bleibt offen.
+Dort meldet man sich mit einer Zugriffsmarke an statt mit Benutzername
+und Passwort, und die Ordnerrollen kommen von einem fremden Anbieter –
+zwei Stellen, an denen Stalwart nichts beweist.
+
+**Der Fehler des Abends steckte in `install.sh`.** »Ich kann es nach der
+Installation nicht via Konsole starten, aber das liegt vermutlich an
+fish.« Es lag an fish, und der Fehler war unserer, doppelt:
+
+1. Das Skript prüfte **seinen eigenen** Suchpfad, also den von bash.
+   Viele Distributionen tragen `~/.local/bin` in `/etc/profile` ein, das
+   fish nicht liest – bash findet den Ordner, das Skript schweigt, und
+   in der Shell des Anwenders fehlt er trotzdem.
+2. Der Hinweis nannte `~/.bashrc`, eine Datei, die weder fish noch zsh
+   anfassen. **Ein Hinweis auf die falsche Datei ist schlimmer als
+   keiner** – wer die Zeile dort einträgt, sucht danach überall, nur
+   nicht mehr im Suchpfad.
+
+Dieselbe Klasse wie die drei Befunde vom Nachmittag: **Eine Prüfung, die
+nicht das misst, was sie zu messen vorgibt.** Der Test dazu führt den
+Block wirklich aus (`tests/test_install.py`), statt seinen Text zu
+lesen – ob eine Fallunterscheidung stimmt, sieht man ihr nicht an.
+
+**Offen und Stephans Entscheidung:** Der Rückmelder bietet ein
+Testpostfach mit bis zu 500.000 Mails an. Das beantwortet die
+Suchgeschwindigkeit bei einer halben Million, ohne auf MailStore und die
+Windows-VM zu warten. Und er wünscht sich **Restore als eigenen
+Vorgang** – Massenrückgabe in ein frei gewähltes Ziel, unabhängig von
+der Herkunft. Beides steht ausführlich in der TODO.
+
 ## Hier war Schluss (Stand 2026-09-03, Donnerstag abends)
 
 **1.2.0 ist getaggt.** Sie besteht fast vollständig aus einer einzigen

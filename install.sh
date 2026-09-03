@@ -277,10 +277,39 @@ EOF
     hinweis "Menüeintrag angelegt – MailBurg steht im Anwendungsmenü."
 fi
 
-if [[ ":$PATH:" != *":$BIN:"* ]]; then
+# Gefragt ist der Suchpfad der *Anmelde-Shell*, nicht der von bash, in dem
+# dieses Skript läuft. Bei fish ist das ein Unterschied ums Ganze: fish
+# liest weder /etc/profile noch ~/.profile, und genau dort tragen viele
+# Distributionen ~/.local/bin ein. Wer nur $PATH dieses Skripts prüft,
+# findet den Ordner, schweigt – und der Anwender kann »mailburg« in seiner
+# Shell trotzdem nicht aufrufen. Am 2026-09-03 genau so gemeldet.
+suchpfad_fehlt() {
+    case "$(basename "${SHELL:-bash}")" in
+        fish)
+            command -v fish >/dev/null 2>&1 || return 0
+            fish -c "contains -- '$BIN' \$PATH" >/dev/null 2>&1 && return 1
+            return 0
+            ;;
+        *)
+            [[ ":$PATH:" != *":$BIN:"* ]]
+            ;;
+    esac
+}
+
+if suchpfad_fehlt; then
     hinweis ""
-    hinweis "Achtung: $BIN steht nicht im Suchpfad. Diese Zeile hilft:"
-    hinweis "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
+    hinweis "Achtung: $BIN steht nicht im Suchpfad Ihrer Shell."
+    hinweis "Aus dem Anwendungsmenü startet MailBurg trotzdem – der Eintrag"
+    hinweis "nennt den vollen Pfad. Im Terminal nicht. Das hilft:"
+    # Die Zeile muss zur Shell passen. Ein Eintrag in ~/.bashrc wirkt in
+    # fish oder zsh nicht, und wer ihn dort hineinschreibt, sucht den
+    # Fehler danach an der falschen Stelle.
+    case "$(basename "${SHELL:-bash}")" in
+        fish) hinweis "    fish_add_path $BIN" ;;
+        zsh)  hinweis "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc" ;;
+        *)    hinweis "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc" ;;
+    esac
+    hinweis "Danach das Terminal einmal neu öffnen."
 fi
 
 # ----------------------------------------------------------- Zeitsteuerung

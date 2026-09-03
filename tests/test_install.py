@@ -270,3 +270,85 @@ class WindowsFassungKannAllesTest(unittest.TestCase):
                     f"»{extra}« fehlt in der Installationszeile der .exe – "
                     f"wer sie herunterlädt, kann das nicht nachrüsten",
                 )
+
+
+class SuchpfadhinweisTest(unittest.TestCase):
+    """Der Hinweis auf den Suchpfad muss zur Shell des Anwenders passen.
+
+    Am 2026-09-03 gemeldet: »Ich habe noch das Problem, dass ich es nach
+    der Installation nicht via Konsole starten kann, aber das liegt
+    vermutlich an fish.«
+
+    Es lag an fish, und der Fehler war doppelt. Erstens prüfte das Skript
+    seinen **eigenen** Suchpfad – den von bash, in dem es läuft. Viele
+    Distributionen tragen ``~/.local/bin`` in ``/etc/profile`` ein, das
+    fish gar nicht liest: bash findet den Ordner, das Skript schweigt,
+    und in der Shell des Anwenders fehlt er trotzdem. Zweitens nannte der
+    Hinweis ``~/.bashrc`` – eine Datei, die weder fish noch zsh anfassen.
+
+    Ein Hinweis, der auf die falsche Datei zeigt, ist schlimmer als
+    keiner: Wer die Zeile dort einträgt, sucht den Fehler danach überall,
+    nur nicht mehr im Suchpfad.
+    """
+
+    def setUp(self) -> None:
+        self.skript = (
+            pathlib.Path(__file__).resolve().parent.parent / "install.sh"
+        ).read_text(encoding="utf-8")
+
+    def _abschnitt(self, anfang: str, ende: str) -> str:
+        """Schneidet einen Block aus dem Skript heraus.
+
+        Das ganze ``install.sh`` laufen zu lassen ginge nicht – es würde
+        eine Python-Umgebung anlegen und Pakete holen. Geprüft wird
+        deshalb der Block selbst, aber **ausgeführt**, nicht gelesen: Ob
+        eine Fallunterscheidung stimmt, sieht man ihrem Text nicht an.
+        """
+        zeilen = self.skript.splitlines()
+        i = next(n for n, z in enumerate(zeilen) if z.startswith(anfang))
+        j = next(n for n in range(i + 1, len(zeilen)) if zeilen[n] == ende)
+        return "\n".join(zeilen[i:j + 1])
+
+    def _lauf(self, shell: str, im_suchpfad: bool = False) -> str:
+        import os
+        import subprocess
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as heim:
+            bin_ordner = os.path.join(heim, ".local", "bin")
+            programm = "\n".join([
+                f'BIN="{bin_ordner}"',
+                "hinweis() { printf '%s\\n' \"$*\"; }",
+                self._abschnitt("suchpfad_fehlt()", "}"),
+                self._abschnitt("if suchpfad_fehlt; then", "fi"),
+            ])
+            umgebung = dict(os.environ)
+            umgebung["SHELL"] = shell
+            umgebung["HOME"] = heim
+            pfad = "/usr/bin:/bin"
+            if im_suchpfad:
+                pfad = f"{bin_ordner}:{pfad}"
+            umgebung["PATH"] = pfad
+            fertig = subprocess.run(
+                ["bash", "-c", programm],
+                capture_output=True, text=True, env=umgebung,
+            )
+            self.assertEqual(fertig.returncode, 0, fertig.stderr)
+            return fertig.stdout
+
+    def test_fish_bekommt_fish_add_path(self) -> None:
+        ausgabe = self._lauf("/usr/bin/fish")
+        self.assertIn("fish_add_path", ausgabe)
+        self.assertNotIn("bashrc", ausgabe)
+
+    def test_zsh_bekommt_die_zshrc(self) -> None:
+        ausgabe = self._lauf("/usr/bin/zsh")
+        self.assertIn(".zshrc", ausgabe)
+        self.assertNotIn("bashrc", ausgabe)
+
+    def test_bash_bleibt_bei_der_bashrc(self) -> None:
+        ausgabe = self._lauf("/bin/bash")
+        self.assertIn(".bashrc", ausgabe)
+
+    def test_wer_den_ordner_im_suchpfad_hat_wird_nicht_belaestigt(self) -> None:
+        self.assertEqual(self._lauf("/bin/bash", im_suchpfad=True).strip(), "")

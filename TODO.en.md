@@ -7,6 +7,70 @@ down, with the date they were completed.
 
 ## Open
 
+### From the third user feedback (2026-09-03)
+
+The same user who had asked for JMAP — he tried it against a **Stalwart**
+server he set up himself, with 5,000 test messages. His verdict: "JMAP
+works flawlessly and the thing is really fast. 200 messages take me less
+than 5 seconds."
+
+- [x] **After installing, MailBurg would not start from the console.**
+  (2026-09-03) His guess — "probably fish" — was right, and the fault was
+  ours, twice over.
+
+  `install.sh` checked **its own** search path, i.e. the one bash sees.
+  Many distributions add `~/.local/bin` in `/etc/profile`, which fish does
+  not read: bash finds the directory, the script stays quiet, and the
+  user's shell still lacks it.
+
+  And the hint named `~/.bashrc` — a file neither fish nor zsh touches.
+  **A hint pointing at the wrong file is worse than none**, because
+  whoever adds the line there will look for the fault everywhere except
+  in the search path. The login shell is now asked and the matching line
+  given (`fish_add_path`, `~/.zshrc`, `~/.bashrc`); four tests in
+  `tests/test_install.py` actually execute the block.
+
+- [ ] **Restore as an independent operation — decouple backup and
+  restore.** His feature request for the future, and the largest open
+  item from all three reports: "I would wish for a restore like in
+  MailStore Home. Then this would be my first-choice backup tool. […] So,
+  independent backups and restores."
+
+  He gives two examples himself: back up from the mail server and restore
+  into Thunderbird; back up from a Thunderbird profile but push it onto a
+  server over IMAP.
+
+  **What already exists:** retrieval from arbitrary sources (IMAP, JMAP,
+  Thunderbird, Maildir, MBOX) and `core/rueckgabe.py`, which explicitly
+  allows a target other than the origin.
+
+  **What is missing, and that is the actual point:** today the return path
+  handles **one** selected message into the **inbox** of a chosen account
+  (`ui/zurueck.py`). A restore in the MailStore sense would be: a search
+  or a whole mailbox tree as a set, a freely chosen target — IMAP account,
+  Maildir, MBOX or Thunderbird profile —, optionally preserving the folder
+  structure, and a run that can be cancelled and resumed.
+
+  **To settle before building, because it touches the stance of the
+  program:** so far MailBurg writes into a mailbox only on explicit
+  command, for single named messages, never in the background. Pushing ten
+  thousand messages onto someone else's server is a different thing — it
+  needs a preview, a confirmation and a report of what actually arrived.
+
+- [ ] **His offer: a test mailbox with up to 500,000 messages.** "If you
+  need a mailbox for your own tests, say the word." He set up Stalwart and
+  uploaded 5,000 test messages found online — "can raise it to 500,000 if
+  needed". Explicitly no real mail.
+
+  **That answers two questions open here for weeks** — without waiting for
+  MailStore and the Windows VM (see "Postponed"): how fast search really is
+  at half a million messages, and whether retrieval holds up across a corpus
+  that size.
+
+  **Stephan decides.** To weigh: a foreign server is an account someone
+  else administers — credentials belong in the keyring, not the repo — and
+  the corpus means roughly 9 GB of search index plus storage.
+
 ### From the second user feedback (2026-09-03)
 
 Fedora Silverblue, MailBurg in a toolbox, a user who moved from
@@ -203,8 +267,11 @@ The first report from outside. Four points, three fixed straight away.
 
   Extrapolated to 500,000 messages that would be roughly 9 GB of index. What
   remains open is whether query time then stays below 200 ms; FTS5 should manage,
-  but it has not been measured. That needs a corpus of that size — see
-  "Postponed".
+  but it has not been measured.
+
+  **Since 2026-09-03 there is a second route there**, and it does not hang
+  on MailStore: a user offers a Stalwart mailbox with up to 500,000 test
+  messages. See the top, "From the third user feedback".
 
 - [ ] **Why does the splash image never arrive in the `.exe`?** Removed on
   2026-08-30 because the reason for having it fell away — not because the
@@ -288,9 +355,14 @@ they sit here and not in the running list.
   (`all` contains everything twice) is covered. The message itself comes
   byte for byte via the download URL.
 
-  **Still open: a real provider.** Verified against
-  `tests/fake_jmap.py`. Fastmail offers a free trial account — that
-  would let the path be walked for real once.
+  **Once open: a real provider.** Verified only against
+  `tests/fake_jmap.py`. **Settled on 2026-09-03** — the user who had asked
+  for JMAP pulled around 5,000 messages from a self-hosted Stalwart, 200 of
+  them in under five seconds.
+
+  Fastmail is still open, and it is not the same thing: sign-in there uses
+  an access token instead of username and password, and the folder roles
+  come from someone else's server. A free trial account exists.
 
 - [x] **An orphaned lock is cleared away by MailBurg itself**
   (2026-09-01), and where that is not safe, it asks. Four situations;

@@ -67,8 +67,10 @@ Verschlüsselte Archive gibt es seit dem 31.08.2026 – gebaut und getestet,
 aber im Alltag noch nicht erprobt. Siehe
 [docs/verschluesselung.md](docs/verschluesselung.md).
 
-[JMAP](docs/jmap.md) ist seit dem 01.09.2026 dabei, aber nur gegen einen
-nachgebauten Server geprüft – gegen einen echten Anbieter ist es nie gelaufen.
+[JMAP](docs/jmap.md) ist seit dem 01.09.2026 dabei und am 03.09.2026 zum
+ersten Mal gegen einen echten Server gelaufen: rund 5.000 Nachrichten aus
+einem selbst betriebenen Stalwart, 200 davon in unter fünf Sekunden. Bei
+Fastmail hat es noch niemand ausprobiert.
 
 Was noch fehlt: Outlook-`.pst`, fertige Pakete (`.deb`, AppImage, `.dmg`)
 und der erprobte Betrieb unter macOS. Die vollständige Liste steht in

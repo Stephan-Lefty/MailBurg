@@ -1,9 +1,10 @@
 """Der Abruf über JMAP.
 
-Geprüft wird gegen ``tests/fake_jmap.py``, einen nachgebauten Server –
-und das ist die Einschränkung, die hier oben stehen muss: **Gegen einen
-echten Anbieter ist das nie gelaufen.** Dasselbe gilt für OAuth2, und
-dort steht derselbe Satz.
+Geprüft wird gegen ``tests/fake_jmap.py``, einen nachgebauten Server.
+**Am 2026-09-03 ist der Abruf zum ersten Mal gegen einen echten Server
+gelaufen** – ein selbst betriebenes Stalwart, rund 5.000 Nachrichten,
+gemeldet von einem Anwender. Fastmail bleibt offen; dort meldet man sich
+mit einer Zugriffsmarke an statt mit Benutzername und Passwort.
 
 Was sich damit trotzdem verlässlich prüfen lässt, ist der Umgang mit
 dem, was das Protokoll vorschreibt: Ordnerrollen, Mails in mehreren

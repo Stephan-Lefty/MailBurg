@@ -7,6 +7,45 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **`install.sh` gab einen Hinweis, der bei fish und zsh ins Leere ging.**
+  Gemeldet von dem Anwender, der auch JMAP angestoßen hat: »Ich habe noch
+  das Problem, dass ich es nach der Installation nicht via Konsole starten
+  kann, aber das liegt vermutlich an fish.«
+
+  Es lag an fish, und der Fehler war unserer, gleich doppelt. Erstens
+  prüfte das Skript **seinen eigenen** Suchpfad – den von bash, in dem es
+  läuft. Viele Distributionen tragen `~/.local/bin` in `/etc/profile` ein,
+  das fish gar nicht liest: bash findet den Ordner, das Skript schweigt,
+  und in der Shell des Anwenders fehlt er trotzdem.
+
+  Zweitens nannte der Hinweis `~/.bashrc` – eine Datei, die weder fish
+  noch zsh anfassen. **Ein Hinweis, der auf die falsche Datei zeigt, ist
+  schlimmer als keiner:** Wer die Zeile dort einträgt, sucht den Fehler
+  danach überall, nur nicht mehr im Suchpfad.
+
+  Jetzt wird die Anmelde-Shell gefragt und die passende Zeile genannt –
+  `fish_add_path`, `~/.zshrc` oder `~/.bashrc` –, dazu der Satz, dass der
+  Start aus dem Anwendungsmenü davon unberührt bleibt: Der Menüeintrag
+  nennt den vollen Pfad. Vier Tests führen den Block wirklich aus.
+
+### Geändert
+
+- **JMAP ist zum ersten Mal gegen einen echten Server gelaufen.** Am
+  03.09.2026 hat ein Anwender rund 5.000 Nachrichten aus einem selbst
+  betriebenen **Stalwart** geholt – »JMAP funktioniert einwandfrei und das
+  Teil ist echt schnell. Für 200 Mails benötige ich weniger als 5
+  Sekunden.«
+
+  Damit fällt der Vorbehalt, der seit der 1.1.0 in README, Handbuch,
+  Anleitung und Quelltext stand. **Er fällt aber nicht ganz:** Bei
+  Fastmail hat es weiterhin niemand ausprobiert, und dort ist zweierlei
+  anders – die Anmeldung mit einer Zugriffsmarke statt mit Benutzername
+  und Passwort, und die Ordnerrollen kommen von einem fremden Anbieter.
+
 ## [1.2.0] – 2026-09-03
 
 ### Hinzugefügt

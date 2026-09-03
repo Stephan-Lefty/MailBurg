@@ -32,11 +32,17 @@ Fassung im JSON wäre bequemer und für ein Archiv wertlos.
 Nicht: Gmail, Outlook, GMX, Web.de, Proton. Das ist heute die
 Einschränkung – JMAP ist die bessere Technik und die seltenere.
 
-**Noch nie gegen einen echten Anbieter gelaufen.** Geprüft ist alles
-gegen einen nachgebauten Server in ``tests/fake_jmap.py``, also gegen
-die eigenen Annahmen. Dasselbe gilt für OAuth2, und dort steht derselbe
-Satz. Wer diese Quelle an einem echten Konto ausprobiert, sollte den
-ersten Lauf mit ``mailburg pruefen`` nachfassen.
+**Einmal gegen einen echten Server gelaufen.** Am 2026-09-03 hat ein
+Anwender rund 5.000 Nachrichten aus einem selbst betriebenen Stalwart
+geholt, 200 davon in unter fünf Sekunden. Vorher war alles nur gegen
+den nachgebauten Server in ``tests/fake_jmap.py`` geprüft, also gegen
+die eigenen Annahmen.
+
+**Fastmail bleibt offen** – und dort ist zweierlei anders als bei
+Stalwart: die Anmeldung mit einer Zugriffsmarke statt mit Benutzername
+und Passwort, und die Ordnerrollen eines fremden Anbieters. Wer diese
+Quelle an einem solchen Konto ausprobiert, sollte den ersten Lauf mit
+``mailburg pruefen`` nachfassen.
 """
 
 from __future__ import annotations

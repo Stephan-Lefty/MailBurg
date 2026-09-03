@@ -66,8 +66,9 @@ Encrypted archives have been available since 2026-08-31 — built and tested,
 but not yet exercised in daily use. See
 [docs/verschluesselung.md](docs/verschluesselung.md) (German).
 
-[JMAP](docs/jmap.md) arrived on 2026-09-01, but has only been verified
-against a mock server — never against a real provider.
+[JMAP](docs/jmap.md) arrived on 2026-09-01 and first ran against a real
+server on 2026-09-03: around 5,000 messages from a self-hosted Stalwart,
+200 of them in under five seconds. Nobody has tried it with Fastmail yet.
 
 Still missing: Outlook `.pst`, ready-made packages (`.deb`, AppImage, `.dmg`)
 and verified operation on macOS. Full list in [TODO.en.md](TODO.en.md).
