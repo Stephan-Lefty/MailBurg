@@ -375,3 +375,41 @@ class Einleselauf(Auftrag):
                 return stat
         finally:
             quelle.close()
+
+
+class Rueckspiellauf(Auftrag):
+    """Schreibt viele Mails auf einmal aus dem Archiv auf die Platte.
+
+    **Warum das Archiv hier nur lesend geöffnet wird.** Zurückspielen
+    nimmt nichts weg und ändert nichts – es entsteht eine Kopie. Bliebe
+    das Archiv gesperrt, könnte der Abruf im Hintergrund nicht weiter-
+    laufen, während jemand zehntausend Mails wegschreibt; und genau das
+    dauert am längsten.
+
+    Der Journaleintrag am Ende ist der eine Schreibvorgang, den es doch
+    gibt – dafür wird kurz ausschließlich geöffnet.
+    """
+
+    def __init__(self, archiv_pfad, ziel, *, format: str = "maildir",
+                 suche: str = "", struktur: bool = True) -> None:
+        super().__init__()
+        self.archiv_pfad = archiv_pfad
+        self.ziel = ziel
+        self.format = format
+        self.suche = suche
+        self.struktur = struktur
+
+    def ausfuehren(self):
+        from mailburg.core.archive import Archive
+        from mailburg.core.zurueckspielen import zurueckspielen
+
+        with Archive.open(self.archiv_pfad) as archiv:
+            def melden(getan: int, gesamt: int) -> None:
+                self.fortschritt.emit(getan, gesamt)
+                self.meldung.emit(f"{getan} von {gesamt} geschrieben …")
+
+            return zurueckspielen(
+                archiv, self.ziel, format=self.format, suche=self.suche,
+                struktur=self.struktur, fortschritt=melden,
+                weiter=lambda: not self.abgebrochen,
+            )

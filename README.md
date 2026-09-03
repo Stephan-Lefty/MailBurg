@@ -157,6 +157,20 @@ Ging eine Sache mehrmals hin und her, zeigt MailBurg zu jeder Nachricht den
 Mailprogramm mitführt, nicht über den Betreff. Der wechselt unterwegs, und
 zwei Mails mit „Rechnung" im Betreff haben meistens nichts miteinander zu tun.
 
+### Und wieder hinaus
+
+Ein Archiv, aus dem nichts wieder herauskommt, wäre ein Grab. Eine einzelne
+Nachricht geht über die rechte Maustaste zurück – ins Mailprogramm, in ein
+beliebiges Postfach oder als `.eml` auf die Platte.
+
+Für ganze Postfächer gibt es *Post → Ins Dateisystem zurückspielen …*
+beziehungsweise `mailburg zurueckspielen`: als **Maildir** (bytegenau, mit
+Lesezustand), als **MBOX** (das Format von Thunderbirds lokalen Ordnern) oder
+als einzelne `.eml`. Das Archiv bleibt dabei unverändert, und **zweimal
+zurückspielen schreibt nichts doppelt** – MailBurg erkennt im Zielordner
+wieder, was von ihm stammt. Siehe
+[docs/zurueckspielen.md](docs/zurueckspielen.md).
+
 ## Loslegen
 
 Voraussetzung ist Python 3.11 oder neuer. Weitere Pakete braucht der Kern nicht.

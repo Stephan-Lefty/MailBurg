@@ -592,6 +592,31 @@ class Index:
         """Alle Hashes im Index – für den Abgleich mit der Ablage."""
         return {r[0] for r in self.db.execute("SELECT hash FROM messages")}
 
+    def fundorte(self, digest: str, sicht=None) -> list[tuple[str, str, str]]:
+        """Wo eine Mail überall lag – Konto, Ordner und ihre Marken.
+
+        Für das Zurückspielen: Ohne die Fundorte landet alles in einem
+        Topf, und ein wiederhergestelltes Postfach hat keine Ordner mehr.
+
+        **Auch das gehorcht den Rechten.** Sonst verriete die Ordnerliste
+        einer sichtbaren Mail, in welchen fremden Postfächern sie sonst
+        noch liegt – und Ordnernamen sind selbst eine Auskunft.
+        """
+        from mailburg.core.sicht import Sicht
+
+        blick = sicht or Sicht.alles_sehen()
+        return [
+            (r["account"], r["folder"], r["flags"] or "")
+            for r in self.db.execute(
+                """SELECT l.account, l.folder, l.flags
+                   FROM locations l JOIN messages m ON m.id = l.msg_id
+                   WHERE m.hash = ?
+                   ORDER BY l.account, l.folder""",
+                (digest,),
+            )
+            if blick.darf_sehen(r["account"])
+        ]
+
     def accounts(self, sicht=None) -> list[tuple[str, str, int]]:
         """Konten und Ordner mit ihrer jeweiligen Anzahl – für den Ordnerbaum.
 

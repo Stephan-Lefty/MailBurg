@@ -32,49 +32,68 @@ echt schnell. Für 200 Mails benötige ich weniger als 5 Sekunden.«
   `~/.bashrc`); vier Tests in `tests/test_install.py` führen den Block
   wirklich aus.
 
-- [ ] **Zurückspielen als eigener Vorgang – Sicherung und Rückgabe
-  entkoppeln.** Sein Wunsch für die Zukunft, und der größte offene Punkt
-  aus allen drei Rückmeldungen: »Ich würde mir ein Restore wünschen, wie
-  in MailStore Home. Dann wäre das mein 1. Wahl Backup-Tool. […] Also
-  unabhängige Backups und Restores.«
+- [x] **Zurückspielen auf die Platte.** (2026-09-03) Der erste Teil
+  seines Wunsches: »Ich würde mir ein Restore wünschen, wie in MailStore
+  Home. […] Also unabhängige Backups und Restores.«
 
-  Zwei Beispiele nennt er selbst: vom Mailserver sichern und nach
-  Thunderbird zurückspielen; aus einem Thunderbird-Profil sichern und
-  per IMAP auf einen Server legen.
+  *Post → Ins Dateisystem zurückspielen …* und `mailburg
+  zurueckspielen`; Kern in `core/zurueckspielen.py`, Dialog in
+  `ui/zurueckspielen.py`, Anleitung in
+  [docs/zurueckspielen.md](docs/zurueckspielen.md). Drei Formate –
+  Maildir (bytegenau, mit Lesezustand), MBOX (Thunderbirds lokale
+  Ordner, **nicht** bytegenau wegen der »From «-Maskierung) und einzelne
+  `.eml`.
 
-  **Was davon schon steht:** das Holen aus beliebigen Quellen (IMAP,
-  JMAP, Thunderbird, Maildir, MBOX) und `core/rueckgabe.py` – dort ist
-  ausdrücklich vorgesehen, dass das Ziel *nicht* die Herkunft sein muss.
+  **Die eine Eigenschaft, um die es ging: Zweimal laufen schreibt nichts
+  doppelt.** Der Dateiname enthält den Hash der Nachricht, also erkennt
+  ein zweiter Lauf seine eigene Arbeit wieder. Bei MBOX geht das nicht
+  über den Namen – dort liegt eine Beiakte daneben, weil im Format kein
+  Platz für eine Kennung ist und eine hineinzuschreiben hieße, die Mails
+  zu verändern.
 
-  **Was fehlt, und das ist der eigentliche Punkt:** Heute geht die
-  Rückgabe nur für **eine** markierte Nachricht in den **Posteingang**
-  eines gewählten Kontos (`ui/zurueck.py`). Ein Restore im Sinne von
-  MailStore wäre: eine Suche oder ein ganzer Postfachbaum als Menge,
-  ein frei gewähltes Ziel – IMAP-Konto, Maildir, MBOX oder
-  Thunderbird-Profil –, die Ordnerstruktur wahlweise erhalten, und ein
-  Lauf, der sich abbrechen und fortsetzen lässt.
+- [ ] **Zurückspielen per IMAP – der zweite Teil, und der schwierigere.**
+  Sein zweites Beispiel: »Ich sichere Mails aus einem TB-Profil, spiele
+  sie dann aber via IMAP direkt auf einen Server.« Heute geht über IMAP
+  nur **eine** markierte Nachricht in den **Posteingang** eines
+  gewählten Kontos (`ui/zurueck.py`, `core/rueckgabe.py`).
 
   **Dass es das geben soll, steht nicht in Frage.** Der Kopf von
   `core/rueckgabe.py` sagt es seit dem 26.08.: »Ein Archiv, aus dem
   nichts wieder herauskommt, ist ein Grab.« Was hier steht, ist die
   Liste dessen, was dazugehört – nicht ein Einwand.
 
-  **Erstens weitet es die einzige Ausnahme.** MailBurg liest fremde
-  Postfächer sonst nur (`EXAMINE`, `BODY.PEEK[]`); geschrieben wird
-  ausschließlich beim Zurücklegen, auf Befehl, für einzelne benannte
-  Nachrichten, nie im Hintergrund. Zehntausend Mails auf einen fremden
-  Server zu schieben ist etwas anderes als eine – dafür braucht es eine
-  Vorschau vorher, eine Bestätigung und einen Bericht darüber, was
-  tatsächlich ankam.
+  **Der schwierige Teil: `APPEND` legt jedes Mal eine neue Kopie an.**
+  Wer zweimal in dasselbe Postfach restauriert, hat alles doppelt, und
+  der Server vergibt neue UIDs, an denen sich nichts wiedererkennen
+  lässt. Der einzige belastbare Anker ist die `Message-ID`; die müsste
+  MailBurg vor dem Schreiben aus dem Ziel auslesen (`UID SEARCH HEADER
+  Message-ID` je Ordner), und bei zehntausend Mails ist das ein eigener
+  Durchlauf. MailStore Home hat dasselbe Problem; dort fällt es nur
+  seltener auf.
 
-  **Zweitens, und das ist der schwierige Teil: `APPEND` legt jedes Mal
-  eine neue Kopie an.** Wer zweimal in dasselbe Postfach restauriert,
-  hat alles doppelt, und der Server vergibt neue UIDs, an denen sich
-  nichts wiedererkennen lässt. Der einzige belastbare Anker wäre die
-  `Message-ID` – die müsste MailBurg vor dem Schreiben aus dem Ziel
-  auslesen (`UID SEARCH HEADER Message-ID`), und bei zehntausend Mails
-  ist das ein eigener Durchlauf. MailStore Home hat dasselbe Problem;
-  dort fällt es nur seltener auf.
+  **Was dabei zu bedenken ist**, in dieser Reihenfolge:
+
+  1. **Der Abgleich vorweg.** Je Zielordner einmal die vorhandenen
+     `Message-ID` holen, dann nur schreiben, was fehlt. Mails ohne
+     `Message-ID` gibt es – für die bleibt nur »schreiben und im Bericht
+     nennen«, denn ein Duplikat ist besser als eine fehlende Mail.
+  2. **Ordner anlegen.** `CREATE`, und die Trennzeichen unterscheiden
+     sich je Server (`/` oder `.`) – die liefert `LIST` in der Antwort
+     mit. Das ist dieselbe Stelle, an der schon der Abruf aufpassen muss.
+  3. **Das Datum erhalten.** `APPEND` nimmt es als drittes Argument;
+     `core/rueckgabe.py` macht das für die einzelne Mail bereits richtig.
+  4. **Die Ausnahme bleibt eng.** Vorschau vorher, ausdrückliche
+     Bestätigung, Bericht hinterher – und niemals im Hintergrund oder
+     nach Zeitplan.
+  5. **Abbrechen und fortsetzen** wie beim Weg auf die Platte. Der
+     Abgleich aus Punkt 1 leistet das von selbst, wenn er je Lauf neu
+     gemacht wird.
+
+  Der Kern in `core/zurueckspielen.py` ist dafür vorbereitet: Auswahl,
+  Fortschritt, Abbruch, Bericht und Journaleintrag hängen nicht am
+  Zielformat. Was fehlt, ist eine Klasse neben `_Maildir`, `_Mbox` und
+  `_Eml`, die statt in Dateien in ein Postfach schreibt – und die vorher
+  einmal nachsieht, was dort schon liegt.
 
 - [ ] **Sein Angebot: ein Testpostfach mit bis zu 500.000 Mails.**
   »Falls du ein Postfach für eigene Tests brauchst, sag Bescheid.« Er

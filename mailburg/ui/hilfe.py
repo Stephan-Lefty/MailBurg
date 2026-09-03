@@ -478,6 +478,49 @@ weiterhin nichts.</p>
 <p>Zurückgespielt wird die Nachricht unverändert, Byte für Byte. Nur so
 bleibt eine vorhandene Signatur gültig, und nur so ist die Mail im
 Postfach dieselbe wie die im Archiv.</p>
+
+<h3>Viele Nachrichten auf einmal</h3>
+
+<p>Für einzelne Mails sind die Wege oben gedacht. Wer ein ganzes
+Postfach zurückhaben will – nach einem Plattenschaden, bei einem Umzug
+oder einfach, weil die Post wieder ins Mailprogramm soll –, nimmt
+<i>Post → Ins Dateisystem zurückspielen …</i>.</p>
+
+<p>Geschrieben wird, was Sie ausgewählt haben: alles, oder das Ergebnis
+einer Suche. Steht im Suchfeld schon etwas, ist es vorausgefüllt. Vor
+dem Start sagt der Dialog, um wie viele Nachrichten es geht.</p>
+
+<p><b>Drei Formate, und die Wahl ist keine Geschmacksfrage:</b></p>
+
+<ul>
+<li><b>Maildir</b> – eine Datei je Nachricht. Byte für Byte wie im
+    Archiv, der Lesezustand kommt mit, und die Postfächer und Ordner
+    entstehen wieder. Das ist das Format für alles, was noch einmal ein
+    Postfach werden soll.</li>
+<li><b>MBOX</b> – eine Datei je Ordner. So sind Thunderbirds lokale
+    Ordner aufgebaut. <b>Hier wird die Nachricht verändert:</b> Eine
+    Zeile, die mit »From « beginnt, bekommt ein »&gt;« davor, weil sie
+    sonst als Anfang der nächsten Mail gälte. Eine Signatur über den so
+    veränderten Text stimmt danach nicht mehr.</li>
+<li><b>Einzelne .eml-Dateien</b> – zum Hineinziehen in ein beliebiges
+    Mailprogramm.</li>
+</ul>
+
+<p><b>Zweimal zurückspielen ändert nichts.</b> MailBurg erkennt, was in
+dem Zielordner schon von ihm stammt, und überspringt es. Ein Lauf, den
+Sie abgebrochen haben, lässt sich also einfach wiederholen – er setzt
+dort an, wo der erste aufgehört hat.</p>
+
+<p><b>Das Archiv bleibt unangetastet.</b> Es entsteht eine Kopie;
+gelöscht wird nichts. Dass Post herausgegangen ist, steht im
+<a href="#journal">Journal</a> – mit Ziel, Format und Anzahl.</p>
+
+<p><b>Lag eine Mail an mehreren Stellen</b>, wird sie trotzdem nur
+einmal geschrieben. Bei Anbietern mit Etiketten statt Ordnern – Gmail,
+Proton – ist Mehrfachablage der Normalfall; wer alle Fundorte schreibt,
+hat dieselbe Rundmail hinterher fünfmal.</p>
+
+{menue}
 """
 
 _SCANS = """
@@ -875,7 +918,17 @@ def kapitel() -> list[Kapitel]:
             "Liest die wartenden Dokumente. Die Zahl dahinter sagt, wie "
             "viele es sind.",
         ))),
-        Kapitel("zurueck", "Eine Mail zurückholen", _ZURUECK),
+        Kapitel("zurueck", "Eine Mail zurückholen", _ZURUECK.format(
+            menue=_menue(
+                "Post → Ins Dateisystem zurückspielen …",
+                "Schreibt viele Nachrichten auf einmal als Dateien auf die "
+                "Platte – als Maildir, MBOX oder einzelne »eml«-Dateien. "
+                "Für einzelne Mails genügt die rechte Maustaste; dieser "
+                "Weg ist für ganze Postfächer. Das Archiv bleibt dabei "
+                "unverändert, und zweimal zurückspielen schreibt nichts "
+                "doppelt."
+            ),
+        )),
         Kapitel("aufraeumen", "Postfach aufräumen", _AUFRAEUMEN),
         Kapitel("fristen", "Geschäftsarchiv und Fristen", _FRISTEN),
         Kapitel("tipps", "Tipps", _TIPPS.format(menue=(

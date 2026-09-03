@@ -7,6 +7,48 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **Viele Nachrichten auf einmal aus dem Archiv auf die Platte
+  zurückspielen** – *Post → Ins Dateisystem zurückspielen …* und
+  `mailburg zurueckspielen`. Anleitung:
+  [docs/zurueckspielen.md](docs/zurueckspielen.md).
+
+  Gewünscht am 03.09.2026 von dem Anwender, der auch JMAP angestoßen
+  hat: »Ich würde mir ein Restore wünschen, wie in MailStore Home. […]
+  Also unabhängige Backups und Restores.« Einzelne Nachrichten gingen
+  längst zurück – ins Mailprogramm, in ein beliebiges Postfach, als
+  Datei. Was fehlte, war die Menge.
+
+  **Drei Formate, und die Wahl ist keine Geschmacksfrage.** *Maildir*
+  ist bytegenau und bringt den Lesezustand mit – das Format für alles,
+  was wieder ein Postfach werden soll. *MBOX* ist das Format von
+  Thunderbirds lokalen Ordnern und **als einziges nicht bytegenau**: Eine
+  Zeile, die mit »From « beginnt, bekommt ein »>« davor, sonst gälte sie
+  als Anfang der nächsten Nachricht. *.eml* ist eine Datei je Mail zum
+  Hineinziehen in ein beliebiges Programm.
+
+  **Zweimal zurückspielen ändert nichts.** MailBurg erkennt im
+  Zielordner wieder, was von ihm stammt – der Dateiname enthält den Hash
+  der Nachricht. Ein abgebrochener Lauf lässt sich deshalb einfach
+  wiederholen, und ein zweiter holt nach, was dazugekommen ist.
+
+  **Das ist der Grund, warum dieser Weg vor dem über IMAP kam.** Dort
+  legt der Server bei jedem `APPEND` eine neue Kopie an, und die neuen
+  UIDs identifizieren nichts. Wiedererkennen ginge nur über die
+  `Message-ID`, und die müsste MailBurg vor dem Schreiben aus dem Ziel
+  auslesen – bei zehntausend Mails ein eigener Durchlauf.
+
+  Weiteres, das nicht offensichtlich ist: Eine Mail, die an mehreren
+  Stellen lag, wird trotzdem nur einmal geschrieben – bei Gmail und
+  Proton ist Mehrfachablage der Normalfall, und wer alle Fundorte
+  schreibt, hat dieselbe Rundmail fünfmal. Eine kaputte Nachricht
+  beendet den Lauf nicht, sondern kommt in den Bericht. Und der Vorgang
+  steht im Journal, mit Ziel, Format und Anzahl: Aus dem Archiv sind
+  Daten herausgegangen.
+
 ## [1.2.1] – 2026-09-03
 
 ### Behoben

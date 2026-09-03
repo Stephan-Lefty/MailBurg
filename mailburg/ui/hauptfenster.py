@@ -359,6 +359,19 @@ class Hauptfenster(QMainWindow):
         self.einlesen_aktion.triggered.connect(self._einlesen)
         post.addAction(self.einlesen_aktion)
 
+        # **Und gleich darunter der Weg hinaus.** Hinein und hinaus
+        # gehören nebeneinander; wer das eine findet, findet das andere.
+        # Gewünscht am 2026-09-03: »Ich würde mir ein Restore wünschen,
+        # wie in MailStore Home.«
+        self.rueckspielen_aktion = QAction("Ins Dateisystem zurückspielen …", self)
+        self.rueckspielen_aktion.setStatusTip(
+            "Viele Nachrichten auf einmal als Dateien wegschreiben – als "
+            "Maildir, MBOX oder einzelne .eml. Das Archiv bleibt "
+            "unverändert."
+        )
+        self.rueckspielen_aktion.triggered.connect(self._zurueckspielen)
+        post.addAction(self.rueckspielen_aktion)
+
         post.addSeparator()
         # Mit der Zahl im Text: Ein eingescanntes PDF meldet sich nicht
         # von selbst. Wer nicht weiß, dass ein Teil seines Archivs
@@ -2046,6 +2059,23 @@ class Hauptfenster(QMainWindow):
         self._baum_fuellen(auswahl_halten=True)
         self._bestand_zeigen()
         self._suchen()
+
+    def _zurueckspielen(self) -> None:
+        """Schreibt viele Mails auf einmal auf die Platte.
+
+        **Der Suchausdruck aus dem Fenster kommt mit.** Wer erst sucht
+        und dann zurückspielt, meint in aller Regel genau das, was er
+        vor sich sieht – ihn den Ausdruck ein zweites Mal tippen zu
+        lassen wäre eine Gelegenheit, ihn anders zu tippen.
+
+        Anders als beim Einlesen wird die Anzeige danach nicht neu
+        aufgebaut: Am Archiv ändert sich nichts.
+        """
+        from mailburg.ui.zurueckspielen import Rueckspieldialog
+
+        if self.archiv is None:
+            return
+        Rueckspieldialog(self.archiv, self.suchfeld.text().strip(), self).exec()
 
     def _texterkennung(self) -> None:
         from mailburg.ui.texterkennung import Texterkennungsdialog

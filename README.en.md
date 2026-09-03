@@ -148,6 +148,19 @@ for any message in it — held together by the headers every mail client carries
 not by the subject. Subjects change along the way, and two messages with
 "Invoice" in the subject usually have nothing to do with each other.
 
+### And back out again
+
+An archive nothing comes back out of would be a grave. A single message goes
+back via the right mouse button — into the mail client, into any mailbox, or
+as an `.eml` file on disk.
+
+For whole mailboxes there is *Post → Ins Dateisystem zurückspielen …*, or
+`mailburg zurueckspielen`: as **Maildir** (byte-exact, read state included),
+as **MBOX** (the format of Thunderbird's local folders) or as individual
+`.eml` files. The archive stays unchanged, and **running it twice writes
+nothing twice** — MailBurg recognises in the target directory what came from
+it. See [docs/zurueckspielen.md](docs/zurueckspielen.md) (German).
+
 ## Getting started
 
 Requires Python 3.11 or newer. The core needs no further packages.

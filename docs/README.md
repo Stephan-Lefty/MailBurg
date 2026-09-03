@@ -19,6 +19,10 @@
 - **[Private Post im Geschäftsarchiv](regeln.md)** – wie Regeln den Verein
   und die Familie von selbst als privat einstufen, damit sie nicht unter
   Aufbewahrungsfristen fallen, die für sie nicht gelten.
+- **[Post aus dem Archiv zurückholen](zurueckspielen.md)** – eine einzelne
+  Nachricht ins Mailprogramm, oder ein ganzes Postfach als Maildir, MBOX oder
+  einzelne `.eml`. Welches Format wofür taugt, und warum zweimal
+  zurückspielen nichts doppelt schreibt.
 - **[Das Archiv sichern](sicherung.md)** – warum ein Archiv kein Backup ist,
   wie aus zehntausend Dateien eine wird, und wie sie in die Cloud kommt.
 - **[JMAP – der Nachfolger von IMAP](jmap.md)** – was es ist, warum es für

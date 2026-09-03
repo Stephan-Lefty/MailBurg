@@ -217,6 +217,12 @@ def _dialoge(anwendung, archiv) -> list[str]:
     befunde += _befunde(fenster, "Lokale Mailordner einlesen")
     fenster.close()
 
+    from mailburg.ui.zurueckspielen import Rueckspieldialog
+
+    fenster = _zeigen(Rueckspieldialog(archiv), anwendung)
+    befunde += _befunde(fenster, "Ins Dateisystem zurückspielen")
+    fenster.close()
+
     from mailburg.ui.zugaenge import Zugangsdialog
 
     fenster = _zeigen(Zugangsdialog(archiv=archiv), anwendung)

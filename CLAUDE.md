@@ -3,6 +3,69 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-03, nachts)
+
+**Der Weg aus dem Archiv hinaus, erste Hälfte: auf die Platte.**
+`core/zurueckspielen.py`, `ui/zurueckspielen.py`, `mailburg
+zurueckspielen`, [docs/zurueckspielen.md](docs/zurueckspielen.md). 1615
+Tests grün, `werkzeuge/lesbarkeit.py` ohne Befund. **Noch nicht
+veröffentlicht** – die 1.2.1 ist die letzte Fassung draußen.
+
+### Warum die Platte zuerst kam, und nicht IMAP
+
+Der Rückmelder wünschte sich »ein Restore wie in MailStore Home«.
+Stephans Frage dazu war berechtigt: Passt das überhaupt zum Konzept?
+**Es ist das Konzept** – `core/rueckgabe.py` sagt seit dem 26.08.: »Ein
+Archiv, aus dem nichts wieder herauskommt, ist ein Grab.«
+
+Der Unterschied ist die Menge, und dort steckt ein technischer Haken,
+der die Reihenfolge bestimmt hat: **`APPEND` legt jedes Mal eine neue
+Kopie an.** Wer zweimal in dasselbe Postfach restauriert, hat alles
+doppelt, und die neuen UIDs identifizieren nichts. Auf der Platte
+schreibt MailBurg die Zieldateien selbst und kann deshalb vorher
+nachsehen – der Dateiname enthält den Hash der Nachricht.
+
+**Das ist die Eigenschaft, um die es ging**, und dafür gibt es Tests in
+jedem Format: derselbe Lauf zweimal schreibt nichts doppelt, ein
+abgebrochener setzt fort, ein zweiter holt Neues nach.
+
+### Drei Entscheidungen, die nicht ohne Grund aufgemacht werden sollten
+
+**MBOX ist als einziges Format nicht bytegenau**, und das steht überall
+dabei – im Modulkopf, in der Anleitung, im Dialog, in der Meldung der
+Kommandozeile. Eine Zeile, die mit »From « beginnt, muss ein »>«
+bekommen, sonst gälte sie als Anfang der nächsten Nachricht. Für ein
+Archiv, das Bytegenauigkeit verspricht, ist das eine Aussage, die man
+nicht verschweigt.
+
+**Bei MBOX liegt eine Beiakte neben der Datei** (`.mailburg-bestand`).
+Im Format ist kein Platz für eine Kennung, und eine hineinzuschreiben
+hieße, die Mails zu verändern. Wer die Beiakte löscht, bekommt beim
+nächsten Lauf Duplikate – das steht in der Anleitung.
+
+**Eine Mail, die an mehreren Stellen lag, wird einmal geschrieben.** Bei
+Gmail und Proton ist Mehrfachablage der Normalfall: Jedes Etikett ist
+ein weiterer Fundort. Wer alle schreibt, hat dieselbe Rundmail fünfmal.
+Genommen wird der erste Fundort, die Zahl steht im Bericht.
+
+### Neu in `Index`: `fundorte(digest, sicht=…)`
+
+Und **prompt vom Wächtertest gemeldet**, weil sie in
+`tests/test_sicht.py` noch nicht eingetragen war. Genau dafür ist er da:
+Die Ordnerliste einer sichtbaren Mail verriete sonst, in welchen fremden
+Postfächern sie sonst noch liegt.
+
+### So geht es weiter
+
+Der zweite Teil ist **Zurückspielen per IMAP**, und der Kern ist dafür
+vorbereitet: Auswahl, Fortschritt, Abbruch, Bericht und Journaleintrag
+hängen nicht am Zielformat. **Was fehlt, ist eine Klasse neben
+`_Maildir`, `_Mbox` und `_Eml`**, die in ein Postfach schreibt und
+vorher einmal nachsieht, was dort liegt (`UID SEARCH HEADER Message-ID`
+je Ordner). Die vollständige Liste – Ordner anlegen, Trennzeichen aus
+`LIST`, Datum im `APPEND`, Mails ohne `Message-ID` – steht in der
+[TODO.md](TODO.md) unter »Zurückspielen per IMAP«.
+
 ## Nach der 1.2.0: das dritte Feedback (2026-09-03, spätabends)
 
 **JMAP ist gelaufen – gegen einen echten Server.** Der Anwender, der es
@@ -738,6 +801,8 @@ mailburg/
 │   ├── sicht.py       woraus die Rechteprüfung in jeder Abfrage entsteht
 │   ├── tresor.py      Passwörter ohne Schlüsselbund, für den Server
 │   ├── sprache.py     Zahlen und Datumsangaben für Menschen – deutsch, fest
+│   ├── rueckgabe.py   eine Mail zurück: ins Postfach, als Datei, ins Programm
+│   ├── zurueckspielen.py  viele auf einmal auf die Platte: Maildir, MBOX, eml
 │   └── paths.py       Verzeichnisse je Betriebssystem
 ├── extract/message.py Mails zerlegen; pdf.py, office.py, text.py für Anhänge
 ├── search/           query.py (Suchausdruck -> SQL), maske.py (Felder ->

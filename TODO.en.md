@@ -30,46 +30,64 @@ than 5 seconds."
   given (`fish_add_path`, `~/.zshrc`, `~/.bashrc`); four tests in
   `tests/test_install.py` actually execute the block.
 
-- [ ] **Restore as an independent operation — decouple backup and
-  restore.** His feature request for the future, and the largest open
-  item from all three reports: "I would wish for a restore like in
-  MailStore Home. Then this would be my first-choice backup tool. […] So,
-  independent backups and restores."
+- [x] **Restore to disk.** (2026-09-03) The first half of his request: "I
+  would wish for a restore like in MailStore Home. […] So, independent
+  backups and restores."
 
-  He gives two examples himself: back up from the mail server and restore
-  into Thunderbird; back up from a Thunderbird profile but push it onto a
-  server over IMAP.
+  *Post → Ins Dateisystem zurückspielen …* and `mailburg zurueckspielen`;
+  core in `core/zurueckspielen.py`, dialog in `ui/zurueckspielen.py`,
+  guide in [docs/zurueckspielen.md](docs/zurueckspielen.md). Three
+  formats — Maildir (byte-exact, read state included), MBOX
+  (Thunderbird's local folders, **not** byte-exact because of "From "
+  quoting) and individual `.eml` files.
 
-  **What already exists:** retrieval from arbitrary sources (IMAP, JMAP,
-  Thunderbird, Maildir, MBOX) and `core/rueckgabe.py`, which explicitly
-  allows a target other than the origin.
+  **The one property this was about: running it twice writes nothing
+  twice.** The filename carries the message hash, so a second run
+  recognises its own work. MBOX cannot do that through the name — there a
+  side file sits next to it, because the format has no room for an
+  identifier and writing one in would mean altering the messages.
 
-  **What is missing, and that is the actual point:** today the return path
-  handles **one** selected message into the **inbox** of a chosen account
-  (`ui/zurueck.py`). A restore in the MailStore sense would be: a search
-  or a whole mailbox tree as a set, a freely chosen target — IMAP account,
-  Maildir, MBOX or Thunderbird profile —, optionally preserving the folder
-  structure, and a run that can be cancelled and resumed.
+- [ ] **Restore over IMAP — the second half, and the harder one.** His
+  second example: "I back up mail from a TB profile but then push it onto
+  a server over IMAP." Today IMAP handles **one** selected message into
+  the **inbox** of a chosen account (`ui/zurueck.py`,
+  `core/rueckgabe.py`).
 
   **That it should exist is not in question.** The header of
   `core/rueckgabe.py` has said so since 2026-08-26: "An archive nothing
   comes back out of is a grave." What follows is the list of what belongs
   with it — not an objection.
 
-  **First, it widens the single exception.** MailBurg otherwise only reads
-  foreign mailboxes (`EXAMINE`, `BODY.PEEK[]`); it writes solely when
-  putting a message back, on command, for single named messages, never in
-  the background. Pushing ten thousand messages onto someone else's server
-  is a different thing — it needs a preview beforehand, a confirmation and
-  a report of what actually arrived.
+  **The hard part: `APPEND` creates a fresh copy every time.** Restore
+  twice into the same mailbox and everything is there twice, with new
+  UIDs that identify nothing. The only dependable anchor is the
+  `Message-ID`, which MailBurg would have to read out of the target first
+  (`UID SEARCH HEADER Message-ID` per folder) — at ten thousand messages
+  that is a pass of its own. MailStore Home has the same problem; it just
+  shows up less often there.
 
-  **Second, and this is the hard part: `APPEND` creates a fresh copy every
-  time.** Restore twice into the same mailbox and everything is there
-  twice, with new UIDs that identify nothing. The only dependable anchor
-  is the `Message-ID`, which MailBurg would have to read out of the target
-  first (`UID SEARCH HEADER Message-ID`) — at ten thousand messages that
-  is a pass of its own. MailStore Home has the same problem; it just shows
-  up less often there.
+  **What to keep in mind**, in this order:
+
+  1. **The reconciliation pass.** Fetch the existing `Message-ID`s per
+     target folder, then write only what is missing. Messages without a
+     `Message-ID` exist — for those, write and name them in the report: a
+     duplicate beats a missing message.
+  2. **Creating folders.** `CREATE`, and the delimiter differs per server
+     (`/` or `.`) — `LIST` reports it. Same spot the retrieval already
+     has to watch.
+  3. **Preserving the date.** `APPEND` takes it as its third argument;
+     `core/rueckgabe.py` already does this correctly for single messages.
+  4. **The exception stays narrow.** Preview first, explicit
+     confirmation, report afterwards — and never in the background or on
+     a schedule.
+  5. **Cancel and resume** as with the disk path. The pass from point 1
+     provides that by itself if it is redone per run.
+
+  The core in `core/zurueckspielen.py` is prepared for it: selection,
+  progress, cancellation, report and journal entry do not depend on the
+  target format. What is missing is a class alongside `_Maildir`, `_Mbox`
+  and `_Eml` that writes into a mailbox instead of files — and looks once
+  beforehand at what is already there.
 
 - [ ] **His offer: a test mailbox with up to 500,000 messages.** "If you
   need a mailbox for your own tests, say the word." He set up Stalwart and

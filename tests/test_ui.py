@@ -5910,3 +5910,135 @@ class LesefensterKuerzelTest(OberflaechenTest):
             fenster.isVisible(),
             "Esc darf bei offener Suche nicht die Nachricht schließen",
         )
+
+
+class RueckspieldialogTest(OberflaechenTest):
+    """Ins Dateisystem zurückspielen – der Weg aus dem Archiv hinaus.
+
+    **Gewünscht am 2026-09-03**, von demselben Anwender, der JMAP
+    angestoßen hat: »Ich würde mir ein Restore wünschen, wie in MailStore
+    Home.« Einzeln ging das längst; was fehlte, war die Menge.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.basis = pathlib.Path(self._tmp.name)
+
+        for name in ("data_dir", "config_dir"):
+            patcher = mock.patch.object(
+                paths, name, return_value=self.basis / name
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
+            (self.basis / name).mkdir(parents=True, exist_ok=True)
+
+        self.wurzel = self.basis / "Archiv"
+        Archive.create(self.wurzel, name="P").close()
+        self.archiv = Archive.open(self.wurzel, exclusive=False)
+        self.addCleanup(self.archiv.close)
+        self.archiv.add(
+            b"From: a@example.org\r\nTo: b@example.org\r\n"
+            b"Subject: Rechnung\r\nDate: Wed, 3 Sep 2026 09:00:00 +0200\r\n"
+            b"Message-ID: <x@example.org>\r\n\r\nText\r\n",
+            account="Firma", folder="INBOX",
+        )
+        # Sonst hält die offene Transaktion den Index fest, und das
+        # Hauptfenster im Test darunter bekommt "database is locked".
+        self.archiv.index.commit()
+
+    def _dialog(self, suche: str = ""):
+        from mailburg.ui.zurueckspielen import Rueckspieldialog
+
+        dialog = Rueckspieldialog(self.archiv, suche)
+        self.addCleanup(dialog.close)
+        return dialog
+
+    def test_der_menuepunkt_gibt_es_ueberhaupt(self):
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        fenster = Hauptfenster(self.wurzel)
+        self.addCleanup(fenster.close)
+
+        punkte = [
+            a.text()
+            for menue in fenster.menuBar().actions() if menue.menu()
+            for a in menue.menu().actions()
+        ]
+        self.assertIn("Ins Dateisystem zurückspielen …", punkte)
+
+    def test_ohne_ziel_laesst_sich_nichts_starten(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        dialog = self._dialog()
+
+        self.assertFalse(
+            dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled()
+        )
+
+    def test_vor_dem_start_steht_da_um_wie_viele_es_geht(self):
+        """Die Zahl ist der Punkt.
+
+        Ein Suchausdruck, der versehentlich auf alles passt, sieht
+        genauso aus wie einer, der auf drei Mails passt – bis hier die
+        Zahl steht.
+        """
+        dialog = self._dialog()
+        dialog.pfad.setText(str(self.basis / "Raus"))
+
+        self.assertIn("1 Nachricht", dialog.befund.text())
+
+    def test_der_suchausdruck_aus_dem_fenster_kommt_mit(self):
+        """Ihn ein zweites Mal tippen zu lassen hieße: anders tippen."""
+        dialog = self._dialog("von:a@example.org")
+
+        self.assertEqual(dialog.suche.text(), "von:a@example.org")
+
+    def test_eine_suche_ohne_treffer_laesst_sich_nicht_starten(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        dialog = self._dialog()
+        dialog.pfad.setText(str(self.basis / "Raus"))
+        dialog.suche.setText("gibtsnicht")
+
+        self.assertFalse(
+            dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled()
+        )
+        self.assertIn("0 Nachrichten", dialog.befund.text())
+
+    def test_das_format_erklaert_sich(self):
+        """Wer »MBOX« liest, weiß nicht, was das mit seinen Mails macht."""
+        dialog = self._dialog()
+        dialog.pfad.setText(str(self.basis / "Raus"))
+
+        dialog.format.setCurrentIndex(1)
+        self.assertEqual(dialog._format(), "mbox")
+        self.assertIn("From", dialog.befund.text())
+
+    def test_eine_datei_als_ziel_wird_abgewiesen(self):
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        datei = self.basis / "belegt"
+        datei.write_text("kein Ordner")
+
+        dialog = self._dialog()
+        dialog.pfad.setText(str(datei))
+
+        self.assertFalse(
+            dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled()
+        )
+
+    def test_ein_halb_getippter_suchausdruck_stuerzt_nicht_ab(self):
+        dialog = self._dialog()
+        dialog.pfad.setText(str(self.basis / "Raus"))
+
+        for zwischenstand in ('von:"', "seit:", "(von:a", "jahr:zweitausend"):
+            with self.subTest(ausdruck=zwischenstand):
+                dialog.suche.setText(zwischenstand)
+                self.assertTrue(dialog.befund.text())

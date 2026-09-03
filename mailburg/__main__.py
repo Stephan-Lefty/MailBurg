@@ -1690,6 +1690,82 @@ def cmd_verfahrensdoku(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_zurueckspielen(args: argparse.Namespace) -> int:
+    """Schreibt viele Mails auf einmal aus dem Archiv auf die Platte.
+
+    **Ohne ``--wirklich`` wird nur gezählt.** Wer zehntausend Mails
+    wegschreibt, sollte vorher sehen, wie viele es sind und wohin sie
+    gehen – ein falsch gesetzter Suchausdruck fällt dann auf, bevor
+    Gigabytes entstehen.
+    """
+    from mailburg.core import zurueckspielen as zurueck
+    from mailburg.core.sprache import anzahl
+
+    ziel = Path(args.ziel).expanduser()
+    with oeffnen(Path(args.archiv).expanduser().resolve(),
+                 exclusive=args.wirklich) as archiv:
+        try:
+            hinweis = zurueck.ziel_pruefen(ziel, args.format)
+        except zurueck.ZielFehler as fehler:
+            print(f"Fehler: {fehler}", file=sys.stderr)
+            return 2
+
+        gesamt = archiv.index.count(args.suche)
+        was = f"»{args.suche}«" if args.suche else "alles"
+        print(f"Archiv »{archiv.name}«, Auswahl: {was}")
+        print(f"  {anzahl(gesamt, 'Mail', 'Mails')}, Format {args.format}")
+        print(f"  {hinweis}")
+
+        if not gesamt:
+            return 0
+
+        if not args.wirklich:
+            print()
+            print("Das war ein Trockenlauf. Nichts wurde geschrieben.")
+            print("Zum Ausführen dasselbe noch einmal mit --wirklich.")
+            return 0
+
+        print()
+        stand = {"zuletzt": -1}
+
+        def fortschritt(getan: int, gesamt: int) -> None:
+            # Nicht bei jeder Mail eine Zeile: Bei zehntausend wären das
+            # zehntausend Zeilen, und die eigentliche Meldung am Ende
+            # wäre längst aus dem Fenster gelaufen.
+            prozent = getan * 100 // max(gesamt, 1)
+            if prozent // 10 > stand["zuletzt"]:
+                stand["zuletzt"] = prozent // 10
+                print(f"  {getan}/{gesamt} ({prozent} %)")
+
+        bericht = zurueck.zurueckspielen(
+            archiv, ziel, format=args.format, suche=args.suche,
+            struktur=not args.flach, fortschritt=fortschritt,
+        )
+
+        print()
+        print(bericht.zusammenfassung())
+        if bericht.mehrfach:
+            print(
+                f"  {bericht.mehrfach} davon lagen an mehreren Stellen – "
+                f"geschrieben wurde jede einmal, in den ersten Ordner."
+            )
+        for hash_, grund in bericht.fehler[:10]:
+            print(f"  Fehler bei {hash_[:12]}: {grund}", file=sys.stderr)
+        if len(bericht.fehler) > 10:
+            print(f"  … und {len(bericht.fehler) - 10} weitere",
+                  file=sys.stderr)
+        print("Im Journal vermerkt.")
+
+        if args.format == "mbox":
+            print()
+            print(
+                "Hinweis zum MBOX-Format: Zeilen, die mit »From « beginnen,\n"
+                "tragen in der Datei ein »>« davor – das verlangt das Format.\n"
+                "Wer es bytegenau braucht, nimmt --format maildir."
+            )
+        return 1 if bericht.fehler else 0
+
+
 def cmd_auskunft(args: argparse.Namespace) -> int:
     """Stellt alles zu einer Person zusammen – Art. 15 DSGVO.
 
@@ -2874,6 +2950,43 @@ def build_parser() -> argparse.ArgumentParser:
         help="Zieldatei (.md). Ohne Angabe wird der Text ausgegeben.",
     )
     p.set_defaults(func=cmd_verfahrensdoku)
+
+    p = subparsers.add_parser(
+        "zurueckspielen",
+        help="viele Mails auf einmal aus dem Archiv auf die Platte schreiben",
+        description=(
+            "Schreibt die gefundenen Nachrichten als Maildir, MBOX oder "
+            "einzelne .eml-Dateien - zum Zurückholen in ein Mailprogramm. "
+            "Das Archiv bleibt unverändert; geschrieben wird eine Kopie. "
+            "Derselbe Lauf zweimal ändert nichts: Was schon dort liegt, "
+            "wird erkannt und übersprungen."
+        ),
+    )
+    p.add_argument("archiv")
+    p.add_argument("ziel", help="Ordner, in den geschrieben wird")
+    p.add_argument(
+        "--format", choices=("maildir", "mbox", "eml"), default="maildir",
+        help=(
+            "maildir: eine Datei je Mail, bytegenau, mit Lesezustand "
+            "(Vorgabe). mbox: eine Datei je Ordner, wie Thunderbirds "
+            "lokale Ordner - dabei bekommt jede Zeile, die mit »From « "
+            "beginnt, ein »>« davor. eml: eine Datei je Mail, ohne "
+            "Maildir-Gerüst."
+        ),
+    )
+    p.add_argument(
+        "--suche", default="",
+        help="Suchausdruck; ohne Angabe kommt alles mit ('mailburg suchhilfe')",
+    )
+    p.add_argument(
+        "--flach", action="store_true",
+        help="alles in einen Topf, statt Postfach und Ordner nachzubauen",
+    )
+    p.add_argument(
+        "--wirklich", action="store_true",
+        help="wirklich schreiben; ohne diese Angabe wird nur gezählt",
+    )
+    p.set_defaults(func=cmd_zurueckspielen)
 
     p = subparsers.add_parser(
         "auskunft",

@@ -325,6 +325,11 @@ class KeineLuecken(unittest.TestCase):
         # Gespräch kann über mehrere Postfächer laufen; wer nur eines
         # sehen darf, bekommt auch nur die Teile daraus.
         "verlauf",
+        # Am 2026-09-03 für das Zurückspielen dazugekommen. Die
+        # Ordnerliste einer sichtbaren Mail verriete sonst, in welchen
+        # fremden Postfächern sie sonst noch liegt – Ordnernamen sind
+        # selbst eine Auskunft.
+        "fundorte",
     )
 
     #: Und diese ausdrücklich nicht. Sie beantworten keine Frage eines
