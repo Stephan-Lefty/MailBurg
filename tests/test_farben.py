@@ -152,5 +152,95 @@ class AlsCss(unittest.TestCase):
                     self.assertIn(wert, erlaubt)
 
 
+class BereichsrahmenTest(unittest.TestCase):
+    """Die Kanten, die die Oberfläche gliedern.
+
+    Aus dem Nutzer-Feedback vom 2026-09-01: »Für meinen Geschmack fehlen
+    da ein paar Rahmen oder farbliche Abhebungen.« Die Antwort darauf
+    darf keine ausgedachte Farbe sein – sie säße im dunklen Thema falsch
+    und im Hochkontrast-Thema erst recht, also ausgerechnet dort, wo
+    Kanten am nötigsten sind.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            from PySide6.QtWidgets import QApplication
+        except ImportError:  # pragma: no cover
+            raise unittest.SkipTest("PySide6 fehlt")
+        cls.app = QApplication.instance() or QApplication([])
+        cls.app.setStyle("Fusion")
+
+    def test_die_teilergriffe_sind_sichtbar(self):
+        """Sonst weiß niemand, dass sich die Bereiche verschieben lassen."""
+        from mailburg.ui import farben
+
+        blatt = farben.bereichsrahmen()
+
+        self.assertIn("QSplitter::handle", blatt)
+
+    def test_der_mailkopf_hebt_sich_ab(self):
+        from mailburg.ui import farben
+
+        blatt = farben.bereichsrahmen()
+
+        self.assertIn("QLabel#mailkopf", blatt)
+        self.assertIn("border-bottom", blatt)
+
+    def test_keine_einprogrammierte_farbe(self):
+        """Jeder Farbwert muss aus der Palette des Themas stammen.
+
+        Ein fester Ton säße in zwei von drei Themen falsch. Geprüft wird
+        deshalb, dass jeder Hexwert im Stylesheet auch wirklich in der
+        aktuellen Palette vorkommt.
+        """
+        import re
+
+        from PySide6.QtGui import QPalette
+
+        from mailburg.ui import farben
+
+        palette = self.app.palette()
+        aus_der_palette = {
+            palette.color(rolle).name()
+            for rolle in (
+                QPalette.Window, QPalette.WindowText, QPalette.Base,
+                QPalette.AlternateBase, QPalette.Text, QPalette.Button,
+                QPalette.ButtonText, QPalette.Mid, QPalette.Midlight,
+                QPalette.Dark, QPalette.Light, QPalette.Shadow,
+                QPalette.Highlight, QPalette.HighlightedText,
+            )
+        }
+
+        for wert in re.findall(r"#[0-9a-fA-F]{6}", farben.bereichsrahmen()):
+            with self.subTest(wert=wert):
+                self.assertIn(
+                    wert.lower(), {f.lower() for f in aus_der_palette},
+                    f"»{wert}« steht in keiner Palettenrolle – "
+                    f"eine ausgedachte Farbe bricht fremde Themen",
+                )
+
+    def test_die_kante_ist_gegen_den_inhalt_zu_sehen(self):
+        """Eine Grenze, die man nicht sieht, ist keine.
+
+        Gemessen wird gegen ``Base`` – den Hintergrund der Bereiche, die
+        sie trennt. 1,15 war der Wert *ohne* Kante, und der war zu wenig;
+        die Linie selbst muss deutlich darüber liegen.
+        """
+        from PySide6.QtGui import QPalette
+
+        from mailburg import farben as grundfarben
+        from mailburg.ui import farben
+
+        palette = self.app.palette()
+        gemessen = grundfarben.kontrast(
+            farben.kante(), palette.color(QPalette.Base).name()
+        )
+
+        self.assertGreater(
+            gemessen, 1.5, "Die Trennlinie geht im Inhalt unter"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

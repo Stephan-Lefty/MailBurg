@@ -315,6 +315,22 @@ def main() -> int:
 
     anwendung._uebersetzer = _deutsch(anwendung)
 
+    # **Dieselbe Aufmachung wie im Betrieb.** Das Werkzeug baute die
+    # Bilder bisher ohne das Stylesheet, das ``ui/app.py`` beim Start
+    # setzt - die Anleitung zeigte also ein MailBurg ohne Kanten
+    # zwischen den Bereichen, ohne abgesetzten Mailkopf und mit
+    # Auswahlfeldern, die zu schmal für ihren Inhalt sind.
+    #
+    # Am 2026-09-01 aufgefallen, als ein Bild belegen sollte, dass die
+    # neuen Kanten sitzen. Ein Bilderwerkzeug, das etwas anderes zeigt
+    # als das Programm, ist schlimmer als keines: Es belegt Dinge, die
+    # so nicht stimmen.
+    from mailburg.ui import farben
+
+    anwendung.setStyleSheet(farben.bereichsrahmen())
+    farben.platzhalter_aufhellen(anwendung)
+    farben.auswahlfelder_verbreitern(anwendung)
+
     zwischen = Path(tempfile.mkdtemp(prefix="mailburg-bilder-"))
     try:
         ort = zwischen / "Geschaeftsarchiv"

@@ -119,6 +119,10 @@ class Mailvorschau(QWidget):
         self.archiv = None
 
         self.kopf = QLabel()
+        # Der Name hängt an der Regel in ``farben.bereichsrahmen()`` –
+        # nur so lässt sich genau dieses Schild abheben, ohne jedem
+        # anderen Text im Programm einen Hintergrund zu geben.
+        self.kopf.setObjectName("mailkopf")
         self.kopf.setTextFormat(Qt.RichText)
         self.kopf.setWordWrap(True)
         self.kopf.setTextInteractionFlags(Qt.TextSelectableByMouse)

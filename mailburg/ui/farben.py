@@ -106,8 +106,46 @@ def bereichsrahmen() -> str:
         # Der waagerechte Strich, mit dem der Assistent Kopf und Inhalt
         # trennt.
         f"QFrame[frameShape=\"4\"], QFrame[frameShape=\"5\"] "
-        f"{{ color: {strich}; }}"
+        f"{{ color: {strich}; }}\n"
+        # **Die Griffe der Teiler sichtbar machen.** Zwischen
+        # Postfachbaum, Trefferliste und Vorschau sitzt je ein
+        # QSplitter, und in der Vorgabe ist sein Griff eine Fläche in
+        # Fensterfarbe – also unsichtbar. Wer nicht weiß, dass sich die
+        # Bereiche verschieben lassen, findet es nie heraus; und die
+        # Grenze zwischen zwei Bereichen ist ohnehin die Stelle, an der
+        # das Auge Halt sucht.
+        #
+        # Am 2026-09-01 aus dem Nutzer-Feedback: »Für meinen Geschmack
+        # fehlen da ein paar Rahmen oder farbliche Abhebungen.«
+        f"QSplitter::handle {{ background: {strich}; }}\n"
+        f"QSplitter::handle:horizontal {{ width: 1px; }}\n"
+        f"QSplitter::handle:vertical {{ height: 1px; }}\n"
+        # Beim Ziehen darf er kräftiger werden - dann weiß man, dass man
+        # ihn erwischt hat.
+        f"QSplitter::handle:hover {{ background: {_rolle(QPalette.Dark)}; }}\n"
+        # **Der Kopf einer Nachricht hebt sich ab.** Betreff, Absender,
+        # Empfänger und Datum standen bisher auf demselben Weiß wie der
+        # Mailtext darunter - ohne Grenze, ohne Halt. Jedes Mailprogramm
+        # setzt diesen Bereich ab; hier fehlte es.
+        #
+        # ``Window`` gegen ``Base`` ist die Abstufung, die jedes Thema
+        # selbst vorsieht - im hellen 1,15, im dunklen entsprechend.
+        # Allein wäre das zu wenig, deshalb die Kante darunter.
+        f"QLabel#mailkopf {{ background: {_rolle(QPalette.Window)}; "
+        f"border-bottom: 1px solid {strich}; }}"
     )
+
+
+def _rolle(rolle) -> str:
+    """Eine Farbe der Systempalette als Zeichenkette.
+
+    **Nie ein fester Farbwert.** Was hier herauskommt, stammt aus dem
+    Thema des Anwenders: hell, dunkel oder Hochkontrast. Ein
+    einprogrammierter Ton säße in zweien davon falsch – und im
+    Hochkontrast-Thema träfe er ausgerechnet die, für die es gemacht
+    ist.
+    """
+    return QApplication.palette().color(rolle).name()
 
 
 def platzhalter_aufhellen(anwendung) -> None:

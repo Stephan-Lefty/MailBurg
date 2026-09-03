@@ -3623,33 +3623,71 @@ class BereichskantenTest(OberflaechenTest):
 
         self.assertEqual(farben.kante(), erwartet.name())
 
-    def test_das_stylesheet_faerbt_keine_flaechen_und_keine_schrift(self):
-        """Alles andere bleibt beim Thema des Systems.
+    def test_das_stylesheet_erfindet_keine_farbe(self):
+        """Jeder Farbwert stammt aus der Palette des Themas.
 
-        Gesetzt werden ausschließlich Linien: Rahmen um die
-        Inhaltsbereiche und die Farbe waagerechter Trennstriche. Bei
-        einem ``QFrame`` mit ``HLine`` *ist* ``color`` die Linienfarbe –
-        deshalb steht sie hier, und nur dort.
+        **Diese Regel hieß bis zum 2026-09-01 »gar keine Flächen«**, und
+        sie war gut gemeint: Wer Hintergründe setzt, bricht
+        Hochkontrast-Themen und trifft damit ausgerechnet die Anwender,
+        für die solche Themen gemacht sind.
 
-        Hintergründe oder Schriftfarben zu setzen wäre etwas anderes:
-        Damit bräche man Hochkontrast-Themen und träfe ausgerechnet die
-        Anwender, für die solche Themen gemacht sind.
+        Nur zielte sie am eigentlichen Punkt vorbei. Gefährlich ist
+        nicht die Fläche, sondern die *ausgedachte* Farbe. Ein
+        Hintergrund in ``Window`` und ein Teilergriff in ``Mid``
+        stammen aus derselben Quelle wie die Rahmenfarbe – ein
+        Hochkontrast-Thema setzt beide selbst, und zwar kräftig.
+
+        Umgedreht wurde die Regel, weil aus dem Nutzer-Feedback der
+        Wunsch nach Struktur kam: Der Kopf einer Nachricht stand auf
+        demselben Weiß wie ihr Text, und die Teilergriffe waren
+        unsichtbar. Beides ließ sich nur mit Flächen beheben.
+
+        Geprüft wird jetzt das, worauf es ankommt – dass jeder Hexwert
+        im Blatt auch wirklich in der Palette vorkommt. Schriftfarben
+        bleiben tabu; die gehören dem Thema allein.
         """
+        import re
+
+        from PySide6.QtGui import QPalette
+        from PySide6.QtWidgets import QApplication
+
         from mailburg.ui import farben
 
         regel = farben.bereichsrahmen()
-
         self.assertIn("border", regel)
-        for verboten in ("background", "font", "text-decoration"):
+
+        palette = QApplication.instance().palette()
+        aus_der_palette = {
+            palette.color(rolle).name().lower()
+            for rolle in (
+                QPalette.Window, QPalette.WindowText, QPalette.Base,
+                QPalette.AlternateBase, QPalette.Text, QPalette.Button,
+                QPalette.ButtonText, QPalette.Mid, QPalette.Midlight,
+                QPalette.Dark, QPalette.Light, QPalette.Shadow,
+                QPalette.Highlight, QPalette.HighlightedText,
+            )
+        }
+        for wert in re.findall(r"#[0-9a-fA-F]{6}", regel):
+            with self.subTest(wert=wert):
+                self.assertIn(
+                    wert.lower(), aus_der_palette,
+                    f"»{wert}« steht in keiner Palettenrolle",
+                )
+
+        for verboten in ("font", "text-decoration"):
             with self.subTest(eigenschaft=verboten):
                 self.assertNotIn(verboten, regel)
 
-        # "color:" nur in der QFrame-Regel, nirgends sonst.
-        fuer_flaechen = [
+        # "color:" nur dort, wo es die Linienfarbe *ist* - bei einem
+        # QFrame mit HLine - oder als Teil von "background-color".
+        fuer_schrift = [
             zeile for zeile in regel.splitlines()
-            if "color:" in zeile and "QFrame" not in zeile
+            if "color:" in zeile
+            and "QFrame" not in zeile
+            and "background" not in zeile
+            and "border" not in zeile
         ]
-        self.assertEqual(fuer_flaechen, [], "hier wird Schrift eingefärbt")
+        self.assertEqual(fuer_schrift, [], "hier wird Schrift eingefärbt")
 
     def test_die_gruppen_der_einrichtung_bekommen_einen_rahmen(self):
         """Der erste Eindruck wiegt am schwersten.
