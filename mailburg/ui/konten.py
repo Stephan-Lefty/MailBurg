@@ -59,7 +59,7 @@ class Kontenverwaltung(QDialog):
 
         self.hinzu = QPushButton("Hinzufügen …")
         self.hinzu.clicked.connect(self._hinzufuegen)
-        self.uebernehmen = QPushButton("Aus Thunderbird übernehmen …")
+        self.uebernehmen = QPushButton("Aus dem Mailprogramm übernehmen …")
         self.uebernehmen.clicked.connect(self._uebernehmen)
         self.zuordnen = QPushButton("Archiv zuordnen …")
         self.zuordnen.setToolTip(

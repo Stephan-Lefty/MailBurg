@@ -25,6 +25,35 @@ Ordner archiviert würden. Klappt die Anmeldung nicht, wird das Konto gar nicht
 erst gespeichert – sonst scheiterte jeder nächtliche Abruf an einem Tippfehler,
 den niemand mehr sucht.
 
+## Aus Thunderbird oder Evolution übernehmen
+
+Wer seine Postfächer schon in einem Mailprogramm eingerichtet hat, muss sie
+nicht ein zweites Mal eintippen:
+
+```bash
+mailburg konten uebernehmen --zeigen    # erst nachsehen
+mailburg konten uebernehmen             # dann übernehmen
+```
+
+Gesucht wird nach **Thunderbird-Profilen** (auch als Flatpak und Snap) und
+nach **Evolutions Kontoverzeichnis** unter `~/.config/evolution/sources`. Ein
+bestimmter Ort lässt sich auch angeben:
+
+```bash
+mailburg konten uebernehmen ~/.config/evolution/sources
+```
+
+Übernommen werden Server, Port, Benutzername und Verschlüsselungsart.
+**Passwörter ausdrücklich nicht** – sie liegen dort verschlüsselt, und ein
+Programm, das die Passwörter anderer Programme abgreift, verhält sich wie
+Schadsoftware. Einem Archiv vertrauen Sie jahrzehntealte Post an; dieses
+Vertrauen ist mehr wert als die gesparte Tipparbeit.
+
+Konten, die kein IMAP sprechen, werden genannt statt verschwiegen: Bei POP3
+liegt die Post schon auf Ihrer Platte und kommt über
+*Post → Lokale Mailordner einlesen …* herein; bei Exchange lässt sich fast
+immer zusätzlich IMAP freischalten.
+
 ## Wo das Passwort landet
 
 Im Schlüsselbund des Betriebssystems:

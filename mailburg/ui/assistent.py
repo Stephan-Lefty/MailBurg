@@ -5,8 +5,9 @@ das ist der Teil, den bisher nur die Kommandozeile konnte – und niemand
 tippt freiwillig ``konten hinzufuegen --server … --port 143 --starttls``.
 
 Drei Schritte, mehr nicht: Wohin kommt das Archiv, welche Postfächer, und
-dann läuft es. Was Thunderbird schon weiß, wird übernommen; die Passwörter
-gibt der Anwender einmal ein, sie wandern in den Schlüsselbund.
+dann läuft es. Was Thunderbird oder Evolution schon wissen, wird übernommen;
+die Passwörter gibt der Anwender einmal ein, sie wandern in den
+Schlüsselbund.
 """
 
 from __future__ import annotations
@@ -784,7 +785,7 @@ class KontoZeile(QWidget):
 
 
 class KontenSeite(QWizardPage):
-    """Postfächer eintragen – vorbelegt aus Thunderbird, wenn vorhanden."""
+    """Postfächer eintragen – vorbelegt aus dem Mailprogramm, wenn möglich."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -855,15 +856,23 @@ class KontenSeite(QWizardPage):
         self._aus_thunderbird_laden()
 
     def _aus_thunderbird_laden(self) -> None:
+        """Übernimmt, was auf dem Rechner an Postfächern eingerichtet ist.
+
+        Seit dem 2026-09-03 nicht mehr nur aus Thunderbird: Ein Anwender
+        ist unter GNOME auf Evolution umgestiegen und wünschte sich, dass
+        auch dessen Konten mitkommen. Welche Programme in Frage kommen,
+        weiß ``uebernahme.alle_quellen()`` – damit die nächste Ergänzung
+        an einer Stelle geschieht und nicht an dreien.
+        """
         from mailburg.core import uebernahme
-        from mailburg.sources import local
 
         gefunden: list[Konto] = []
         vergeben: set[str] = set()
+        programme: list[str] = []
 
-        for profil in local.find_thunderbird_profiles():
+        for quelle in uebernahme.alle_quellen():
             try:
-                funde = uebernahme.aus_thunderbird(profil)
+                funde = quelle.funde()
             except (FileNotFoundError, OSError):
                 continue
             # Was sich nicht über IMAP abrufen lässt, wird stillschweigend
@@ -873,6 +882,8 @@ class KontenSeite(QWizardPage):
             brauchbar = [f for f in funde if f.brauchbar]
             uebernahme.namen_entzerren(brauchbar, vergeben)
             gefunden += [f.konto for f in brauchbar]
+            if brauchbar and quelle.programm not in programme:
+                programme.append(quelle.programm)
 
         bund = accounts.schluesselbund_name()
         ablage = (
@@ -882,15 +893,19 @@ class KontenSeite(QWizardPage):
                  f"Gespeichert werden sie nicht."
         )
 
+        # »aus Thunderbird« oder »aus Thunderbird und Evolution« – wer
+        # beides benutzt, soll sehen, dass beides gelesen wurde.
+        woher = " und ".join(programme) if programme else "Ihrem Mailprogramm"
+
         if gefunden:
             text = (
-                f"<p><b>{len(gefunden)} Postfächer aus Thunderbird "
+                f"<p><b>{len(gefunden)} Postfächer aus {woher} "
                 f"übernommen.</b> Server, Benutzername und Verschlüsselung "
                 f"sind bereits eingetragen – ergänzen Sie bitte nur noch die "
                 f"Passwörter.</p>"
 
                 f"<p><b>Warum müssen Sie die Passwörter noch einmal "
-                f"eingeben?</b> Weil MailBurg sie aus Thunderbird nicht "
+                f"eingeben?</b> Weil MailBurg sie dort nicht "
                 f"ausliest. Technisch ginge das – aber ein Programm, das die "
                 f"Passwörter anderer Programme abgreift, verhält sich wie "
                 f"Schadsoftware. Einem Archiv vertrauen Sie jahrzehntealte "
@@ -904,7 +919,9 @@ class KontenSeite(QWizardPage):
             )
         else:
             text = (
-                "<p><b>Kein Thunderbird-Profil gefunden.</b> Tragen Sie Ihre "
+                "<p><b>Kein Mailprogramm gefunden, aus dem sich etwas "
+                "übernehmen ließe.</b> Gesucht wurde nach Thunderbird und "
+                "Evolution. Tragen Sie Ihre "
                 "Postfächer bitte von Hand ein – Sie brauchen dafür den "
                 "IMAP-Server Ihres Anbieters, Ihre Mailadresse und das "
                 "Passwort.</p>"
@@ -1239,7 +1256,7 @@ class KontenSeite(QWizardPage):
 
 
 class KontoDialog(QDialog):
-    """Ein Postfach von Hand – für alles, was nicht in Thunderbird steht."""
+    """Ein Postfach von Hand – für alles, was kein Mailprogramm schon weiß."""
 
     def __init__(self, eltern=None) -> None:
         super().__init__(eltern)

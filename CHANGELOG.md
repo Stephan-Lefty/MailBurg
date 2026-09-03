@@ -27,6 +27,22 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Ordnernamen. Wer »Maildir« nicht kennt, kann einem Pfadfeld sonst
   nicht ansehen, ob er das Richtige gewählt hat.
 
+- **Konten lassen sich aus Evolution übernehmen**, nicht mehr nur aus
+  Thunderbird. Von demselben Anwender gewünscht, der unter GNOME
+  umgestiegen ist: »Wünschenswert für die Zukunft wäre also auch ein
+  Import der Konten aus Evolution.«
+
+  Evolution legt jedes Konto als eigene `.source`-Datei unter
+  `~/.config/evolution/sources` ab. Gelesen werden Server, Port,
+  Benutzername und Verschlüsselungsart – **Passwörter ausdrücklich
+  nicht**, aus demselben Grund wie bei Thunderbird.
+
+  Neu ist dabei `uebernahme.alle_quellen()`: **eine Stelle, die weiß,
+  welche Mailprogramme in Frage kommen.** Vorher nannte jeder Aufrufer
+  Thunderbird beim Namen – die Kommandozeile, der Assistent, der
+  Kontendialog. Evolution hinzuzufügen hieße sonst, dieselbe Ergänzung
+  dreimal zu machen und beim vierten Aufrufer zu vergessen.
+
 - **In einer geöffneten Nachricht lässt sich suchen** (*Strg+F*).
   Ebenfalls von einem Anwender gewünscht: »Leider wird innerhalb des
   Fensters keine Suchfunktion angeboten, so dass die Suche innerhalb

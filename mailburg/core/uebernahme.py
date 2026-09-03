@@ -27,6 +27,7 @@ von hier.
 
 from __future__ import annotations
 
+import configparser
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,11 +69,14 @@ class Fund:
         Auskunft – der Anwender soll wissen, welcher Weg stattdessen
         offensteht.
         """
-        if self.art == "pop3":
+        # Thunderbird schreibt »pop3«, Evolution »pop« – gemeint ist
+        # dasselbe.
+        if self.art in ("pop3", "pop"):
             return (
                 "POP3 holt die Mails auf den Rechner; auf dem Server bleibt "
-                "nichts zum Abrufen. Stattdessen 'mailburg importieren' mit "
-                "dem Profilpfad – das liest die lokalen Dateien."
+                "nichts zum Abrufen. Stattdessen »Post → Lokale Mailordner "
+                "einlesen …« mit dem Profilordner – das liest die Dateien "
+                "auf der Platte."
             )
         if self.art == "ews":
             return (
@@ -195,3 +199,178 @@ def namen_entzerren(funde: list[Fund], vergeben: set[str]) -> None:
             zaehler += 1
         fund.konto.name = kandidat
         vergeben.add(kandidat)
+
+
+# --------------------------------------------------------------- Evolution
+#
+# **Warum Evolution überhaupt dazukam.** Ein Anwender ist unter GNOME
+# von Thunderbird auf Evolution umgestiegen und schrieb am 2026-09-03:
+# »Wünschenswert für die Zukunft wäre also auch ein Import der Konten aus
+# Evolution.« Bis dahin las MailBurg nur Thunderbird – wer Evolution
+# benutzt, tippte alles von Hand.
+#
+# Evolution legt jedes Konto als eigene Datei unter
+# ``~/.config/evolution/sources/`` ab, im Format von GKeyFile: gewöhnliche
+# INI-Abschnitte. Was MailBurg braucht, steht in dreien davon –
+# ``[Data Source]`` für den Namen, ``[Mail Account]`` für die Kontoart und
+# ``[Authentication]`` für Server, Port und Benutzer.
+
+#: Evolutions Name für IMAP. ``imapx`` ist die neuere Umsetzung; ``imap``
+#: kommt in älteren Profilen vor.
+_EVOLUTION_IMAP = {"imapx", "imap"}
+
+#: Was in ``[Security] Method`` steht, wenn die Verbindung von Anfang an
+#: verschlüsselt ist. ``starttls`` heißt: im Klartext beginnen und
+#: hochstufen; ``none`` heißt gar nicht – das bietet MailBurg nicht an,
+#: solche Konten kommen deshalb mit STARTTLS herein.
+_EVOLUTION_SSL = {"tls", "ssl"}
+
+
+def evolution_verzeichnisse() -> list[Path]:
+    """Wo Evolution seine Kontodateien ablegen könnte."""
+    heim = Path.home()
+    return [
+        heim / ".config" / "evolution" / "sources",
+        # Flatpak sperrt die Anwendung in ein eigenes Verzeichnis.
+        heim / ".var" / "app" / "org.gnome.Evolution" / "config"
+        / "evolution" / "sources",
+    ]
+
+
+def evolution_gefunden() -> Path | None:
+    """Das erste vorhandene Kontoverzeichnis – oder nichts."""
+    for ort in evolution_verzeichnisse():
+        if ort.is_dir():
+            return ort
+    return None
+
+
+def aus_evolution(ordner: Path) -> list[Fund]:
+    """Liest die eingerichteten Postfächer aus Evolutions Kontodateien.
+
+    Wie bei Thunderbird gilt: **Passwörter bleiben, wo sie sind.**
+    Evolution legt sie im Schlüsselbund von GNOME ab; sie von dort zu
+    holen wäre genau das, was Schadsoftware tut. Die Begründung steht
+    ausführlich oben im Modul und gilt hier unverändert.
+
+    Zurückgegeben werden auch POP3- und Exchange-Konten, damit der
+    Aufrufer sagen kann, warum sie nicht in Frage kommen.
+    """
+    ordner = Path(ordner).expanduser()
+    if not ordner.is_dir():
+        raise FileNotFoundError(
+            f"{ordner} gibt es nicht – dort legt Evolution seine Konten ab."
+        )
+
+    dateien = sorted(ordner.glob("*.source"))
+    if not dateien:
+        raise FileNotFoundError(
+            f"In {ordner} liegt keine einzige .source-Datei – das sieht "
+            f"nicht nach Evolutions Kontoverzeichnis aus."
+        )
+
+    gefunden: list[Fund] = []
+    for datei in dateien:
+        fund = _evolution_datei(datei)
+        if fund is not None:
+            gefunden.append(fund)
+    return gefunden
+
+
+def _evolution_datei(datei: Path) -> Fund | None:
+    """Wertet eine einzelne ``.source``-Datei aus, oder gibt nichts."""
+    lese = configparser.ConfigParser(interpolation=None)
+    # **Ohne das macht configparser alle Schlüssel klein.** Evolution
+    # schreibt sie in Großschreibung (``Host``, ``User``), und dann fände
+    # man nichts wieder.
+    lese.optionxform = str
+    try:
+        lese.read(datei, encoding="utf-8")
+    except (configparser.Error, UnicodeDecodeError, OSError):
+        # Eine unlesbare Datei darf die übrigen nicht kosten – in diesem
+        # Verzeichnis liegen auch Adressbücher und Kalender.
+        return None
+
+    if not lese.has_section("Mail Account"):
+        return None
+
+    art = lese.get("Mail Account", "BackendName", fallback="").strip().lower()
+    if not art or art == "none":
+        # »Auf diesem Rechner« – die lokalen Ordner. Die kommen über
+        # »Lokale Mailordner einlesen« herein, nicht als Postfach.
+        return None
+
+    anmeldung = "Authentication"
+    server = lese.get(anmeldung, "Host", fallback="").strip()
+    if not server:
+        return None
+
+    benutzer = lese.get(anmeldung, "User", fallback="").strip()
+    name = lese.get("Data Source", "DisplayName", fallback="").strip()
+    if not name:
+        name = benutzer.split("@")[0] if benutzer else server
+
+    sicherheit = lese.get("Security", "Method", fallback="tls").strip().lower()
+    ssl = sicherheit in _EVOLUTION_SSL
+
+    try:
+        port = int(lese.get(anmeldung, "Port", fallback="0") or 0)
+    except ValueError:
+        port = 0
+    port = port or (993 if ssl else 143)
+
+    return Fund(
+        konto=Konto(
+            name=name,
+            server=server,
+            benutzer=benutzer or name,
+            port=port,
+            ssl=ssl,
+            bruecke=server.lower() in LOKALE_ADRESSEN,
+        ),
+        quelle=datei.stem,
+        art="imap" if art in _EVOLUTION_IMAP else art,
+    )
+
+
+@dataclass
+class Quelle:
+    """Ein Mailprogramm, aus dem sich Konten übernehmen lassen."""
+
+    programm: str
+    """Wie es heißt – für die Anzeige."""
+
+    ort: Path
+    """Profil oder Kontoverzeichnis."""
+
+    lesen: object
+    """Die Funktion, die daraus Funde macht."""
+
+    def funde(self) -> list[Fund]:
+        return self.lesen(self.ort)
+
+
+def alle_quellen() -> list[Quelle]:
+    """Sucht alle Mailprogramme, aus denen sich übernehmen lässt.
+
+    **Eine Stelle, die weiß, welche Programme es gibt.** Vorher kannte
+    jeder Aufrufer nur Thunderbird und nannte es beim Namen – die
+    Kommandozeile, der Assistent, der Kontendialog. Evolution
+    hinzuzufügen hieße sonst, dieselbe Ergänzung dreimal zu machen und
+    beim vierten Aufrufer zu vergessen.
+
+    Dasselbe Muster wie ``sources.quelle_fuer()`` beim Abrufweg, und aus
+    demselben Grund: Es funktioniert an drei Stellen und an der vierten
+    nicht – das Merkwürdigste, was ein Programm tun kann.
+    """
+    from mailburg.sources import local
+
+    gefunden: list[Quelle] = []
+    for profil in local.find_thunderbird_profiles():
+        gefunden.append(Quelle("Thunderbird", profil, aus_thunderbird))
+
+    ort = evolution_gefunden()
+    if ort is not None:
+        gefunden.append(Quelle("Evolution", ort, aus_evolution))
+
+    return gefunden

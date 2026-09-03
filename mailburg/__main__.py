@@ -469,17 +469,28 @@ def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
 
 
 def cmd_konten_uebernehmen(args: argparse.Namespace) -> int:
-    """Übernimmt die Einstellungen aus einem Thunderbird-Profil."""
+    """Übernimmt die Einstellungen aus einem vorhandenen Mailprogramm."""
     from mailburg.core import uebernahme
 
     if args.profil:
-        profile = [Path(args.profil)]
+        # Ein von Hand angegebener Pfad kann beides sein. Welches, sagt
+        # sein Inhalt – danach zu fragen wäre eine Frage, deren Antwort
+        # danebenliegt.
+        ort = Path(args.profil)
+        if (ort / "prefs.js").is_file():
+            quellen = [uebernahme.Quelle("Thunderbird", ort,
+                                         uebernahme.aus_thunderbird)]
+        else:
+            quellen = [uebernahme.Quelle("Evolution", ort,
+                                         uebernahme.aus_evolution)]
     else:
-        profile = local.find_thunderbird_profiles()
-        if not profile:
+        quellen = uebernahme.alle_quellen()
+        if not quellen:
             print(
-                "Kein Thunderbird-Profil gefunden. Pfad bitte angeben:\n"
-                "  mailburg konten uebernehmen ~/.thunderbird/xxxx.default",
+                "Weder ein Thunderbird-Profil noch Evolutions Konten "
+                "gefunden. Pfad bitte angeben:\n"
+                "  mailburg konten uebernehmen ~/.thunderbird/xxxx.default\n"
+                "  mailburg konten uebernehmen ~/.config/evolution/sources",
                 file=sys.stderr,
             )
             return 2
@@ -488,14 +499,15 @@ def cmd_konten_uebernehmen(args: argparse.Namespace) -> int:
     vergeben = {k.name for k in liste.konten}
     uebernommen = 0
 
-    for pfad in profile:
+    for quelle in quellen:
+        pfad = quelle.ort
         try:
-            funde = uebernahme.aus_thunderbird(pfad)
+            funde = quelle.funde()
         except (FileNotFoundError, OSError) as exc:
             print(f"Fehler: {exc}", file=sys.stderr)
             continue
 
-        print(f"\nProfil {pfad}")
+        print(f"\n{quelle.programm}: {pfad}")
         if not funde:
             print("  Keine Postfächer eingerichtet.")
             continue
@@ -2522,13 +2534,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     k = konten_befehle.add_parser(
         "uebernehmen",
-        help="Postfächer aus einem Thunderbird-Profil übernehmen",
+        help="Postfächer aus Thunderbird oder Evolution übernehmen",
         description="Übernimmt Server, Port, Benutzername und Verschlüsselungsart "
-                    "aus Thunderbird. Das Passwort wird von Hand abgefragt – aus "
-                    "dem Profil holt MailBurg es ausdrücklich nicht.",
+                    "aus Thunderbird oder Evolution. Das Passwort wird von Hand "
+                    "abgefragt – aus dem Profil holt MailBurg es ausdrücklich "
+                    "nicht.",
     )
     k.add_argument(
-        "profil", nargs="?", help="Thunderbird-Profil; ohne Angabe wird gesucht"
+        "profil",
+        nargs="?",
+        help="Thunderbird-Profil oder Evolutions Kontoverzeichnis; "
+             "ohne Angabe wird gesucht",
     )
     k.add_argument(
         "--zeigen",

@@ -145,8 +145,14 @@ _POSTFAECHER = """
 
 <p>Jedes Postfach, das archiviert werden soll, wird einmal eingerichtet:
 Server, Benutzername und Passwort. Bei der Ersteinrichtung liest
-MailBurg die Einstellungen aus Thunderbird aus, falls vorhanden – die
-Passwörter aber nicht.</p>
+MailBurg die Einstellungen aus <b>Thunderbird</b> und <b>Evolution</b>
+aus, falls vorhanden – die Passwörter aber nicht.</p>
+
+<p>Übernommen werden Server, Port, Benutzername und Verschlüsselungsart.
+Konten, die sich nicht über IMAP abrufen lassen – POP3 oder Exchange –,
+bleiben außen vor; bei POP3 liegt die Post ohnehin schon auf Ihrer
+Platte und kommt über <a href="#abrufen">Lokale Mailordner einlesen</a>
+herein.</p>
 
 <p><b>Warum Sie die Passwörter noch einmal eingeben müssen.</b>
 Technisch ließen sie sich aus anderen Programmen auslesen. Ein Programm,
@@ -263,7 +269,7 @@ Archiv nicht als aktuell aus.</p>
 <p>Während ein Abruf läuft, wächst der Postfachbaum links mit: Sie sehen
 schon, was da ist, bevor der Lauf zu Ende ist.</p>
 
-<h3 id="einlesen">Post von der eigenen Platte</h3>
+<h3>Post von der eigenen Platte</h3>
 
 <p>Nicht alles kommt vom Server. Wer jahrelang mit Thunderbird,
 Evolution oder KMail gearbeitet hat, hat Mails in <b>lokalen
