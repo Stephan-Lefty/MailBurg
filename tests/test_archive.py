@@ -229,6 +229,85 @@ class TestPruefen(ArchiveTestCase):
         self.assertEqual(len(bericht["unexpected"]), 1)
 
 
+class TestNeuaufbauMitErkanntemText(ArchiveTestCase):
+    """Text aus eingescannten PDF muss den Neuaufbau überleben.
+
+    **Warum das wichtiger ist, als es klingt.** Texterkennung dauert
+    Stunden; an Stephans Bestand waren es 431 Dokumente. Der erkannte
+    Text liegt deshalb in einem Nebenspeicher neben dem Index –
+    ausdrücklich damit ein Neuaufbau ihn nicht vernichtet.
+
+    Nur holte ihn dort niemand ab. Wer den Index neu baute, fand seine
+    Scans anschließend nicht mehr – ohne dass irgendwo etwas fehlte
+    oder eine Meldung kam. Man musste ``mailburg texterkennung``
+    hinterherschieben und von selbst darauf kommen.
+
+    Aufgefallen am 2026-08-31 nach der Umstellung auf Schemafassung 2.
+    """
+
+    def _mit_scan(self) -> str:
+        """Legt eine Mail mit »eingescanntem« Anhang ab, gibt ihren Hash."""
+        self.archive.add(
+            probe("Eingescannt", anhang="scan.pdf"),
+            account="firma", folder="INBOX",
+        )
+        self.archive.index.commit()
+        return self.archive.index.search("betreff:eingescannt")[0].hash
+
+    def _erkannt(self, digest: str, text: str) -> None:
+        """Legt Text so ab, wie es die Texterkennung tut."""
+        from mailburg.core.erkennung import Textspeicher, _kennung
+
+        Textspeicher().schreiben(f"{digest}-{_kennung('scan.pdf')}", text)
+
+    def test_der_erkannte_text_ist_danach_wieder_auffindbar(self) -> None:
+        digest = self._mit_scan()
+        self._erkannt(digest, "Rechnungsnummer 4711 ueber 250 Euro")
+
+        self.archive.rebuild_index()
+
+        self.assertEqual(len(self.archive.index.search("4711")), 1)
+
+    def test_der_mailtext_geht_darueber_nicht_verloren(self) -> None:
+        """Angehängt, nicht ersetzt – sonst wäre der Gewinn ein Verlust."""
+        digest = self._mit_scan()
+        self._erkannt(digest, "Rechnungsnummer 4711")
+
+        self.archive.rebuild_index()
+
+        self.assertEqual(len(self.archive.index.search("4711")), 1)
+        self.assertEqual(len(self.archive.index.search("betreff:eingescannt")), 1)
+
+    def test_ohne_erkannten_text_aendert_sich_nichts(self) -> None:
+        """Der häufige Fall darf davon nichts merken."""
+        self._mit_scan()
+
+        anzahl = self.archive.rebuild_index()
+
+        self.assertEqual(anzahl, 1)
+        self.assertEqual(len(self.archive.index.search("4711")), 0)
+
+    def test_es_wird_nichts_neu_erkannt(self) -> None:
+        """Gelesen wird, was dasteht – erkannt wird hier nichts.
+
+        Sonst würde aus einem Neuaufbau von Minuten wieder einer von
+        Stunden, und zwar unangekündigt. Geprüft am Textspeicher: Wer
+        nur liest, schreibt nicht.
+        """
+        from unittest import mock
+
+        from mailburg.core.erkennung import Textspeicher
+
+        digest = self._mit_scan()
+        self._erkannt(digest, "schon erkannt")
+
+        with mock.patch.object(Textspeicher, "schreiben") as geschrieben:
+            self.archive.rebuild_index()
+
+        geschrieben.assert_not_called()
+        self.assertEqual(len(self.archive.index.search("schon")), 1)
+
+
 class TestNeuaufbau(ArchiveTestCase):
     def test_index_entsteht_vollstaendig_neu(self) -> None:
         """Der Beweis, dass der Index entbehrlich ist."""
@@ -334,6 +413,98 @@ class TestGeschaeftsarchiv(ArchiveTestCase):
         self.assertEqual(eintrag["op"], "seal")
         self.assertGreaterEqual(eintrag["count"], 2)
         self.assertTrue(self.archive.verify()["chain_ok"])
+
+
+class TestVerwaisteSperre(ArchiveTestCase):
+    """Eine Sperre, deren Vorgang nicht mehr läuft.
+
+    **Der Fall kommt vor, und zwar bei Abstürzen.** Am 2026-09-01 hat
+    Stephan im Geschäftsarchiv F5 gedrückt und bekam »Abruf
+    gescheitert« – die Sperre stammte von einem Lauf zwei Stunden
+    zuvor, den es nicht mehr gab.
+
+    MailBurg wusste das sogar: In der Meldung stand »der Vorgang, der es
+    hielt, läuft nicht mehr … die Datei kann gelöscht werden«. Nur
+    musste der Anwender dann ins Terminal, um eine versteckte Datei auf
+    einer externen Platte zu entfernen. Wer das nicht kann, kommt an
+    sein Archiv nicht mehr heran – und das bei einem Programm, dessen
+    einzige Aufgabe es ist, Post zugänglich zu halten.
+    """
+
+    def _sperre_legen(self, host: str, pid: int) -> None:
+        import json
+        from mailburg.core.archive import LOCK_FILE
+
+        (self.archive.root / LOCK_FILE).write_text(
+            json.dumps({
+                "host": host, "pid": pid,
+                "since": "2026-08-31T16:21:30+00:00",
+            }),
+            encoding="utf-8",
+        )
+
+    def _tote_pid(self) -> int:
+        """Eine Prozessnummer, die es sicher nicht gibt."""
+        import os
+
+        for kandidat in range(99999, 90000, -1):
+            try:
+                os.kill(kandidat, 0)
+            except ProcessLookupError:
+                return kandidat
+            except PermissionError:
+                continue
+        raise AssertionError("keine freie Prozessnummer gefunden")
+
+    def test_eine_verwaiste_sperre_wird_uebernommen(self) -> None:
+        import socket
+
+        self.archive.close()
+        self._sperre_legen(socket.gethostname(), self._tote_pid())
+
+        wieder = Archive.open(self.archive.root)
+        try:
+            self.assertEqual(wieder.uuid, self.archive.uuid)
+        finally:
+            wieder.close()
+
+    def test_eine_fremde_sperre_bleibt_unangetastet(self) -> None:
+        """Über einen anderen Rechner lässt sich nichts sagen.
+
+        Beim Archiv in der Cloud ist das keine Theorie: Läuft MailBurg
+        zu Hause und in der Firma, hielte die Sperre dort zu Recht – und
+        sie wegzuräumen hieße, zwei Läufe gleichzeitig ans selbe Journal
+        zu lassen.
+        """
+        self.archive.close()
+        self._sperre_legen("ein-anderer-rechner", 4242)
+
+        with self.assertRaises(ArchiveLocked):
+            Archive.open(self.archive.root)
+
+    def test_eine_laufende_sperre_bleibt_unangetastet(self) -> None:
+        """Der häufigste Fall überhaupt: der Abruf im Hintergrund."""
+        import os
+        import socket
+
+        self.archive.close()
+        self._sperre_legen(socket.gethostname(), os.getpid())
+
+        with self.assertRaises(ArchiveLocked):
+            Archive.open(self.archive.root)
+
+    def test_ohne_prozessnummer_wird_nichts_angefasst(self) -> None:
+        """Alte Sperrdateien führten keine PID – dann gilt Vorsicht."""
+        import json
+        from mailburg.core.archive import LOCK_FILE
+
+        self.archive.close()
+        (self.archive.root / LOCK_FILE).write_text(
+            json.dumps({"host": "irgendwer"}), encoding="utf-8"
+        )
+
+        with self.assertRaises(ArchiveLocked):
+            Archive.open(self.archive.root)
 
 
 class TestSperre(ArchiveTestCase):

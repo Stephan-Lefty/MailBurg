@@ -448,7 +448,36 @@ class Archive:
                 held = json.loads(lock.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 held = {}
-            raise ArchiveLocked(_sperre_erklaeren(lock, held)) from None
+
+            # **Eine nachweislich verwaiste Sperre räumen wir selbst weg.**
+            # MailBurg wusste schon vorher, dass sie verwaist ist – es
+            # stand in der Meldung: »der Vorgang, der es hielt, läuft
+            # nicht mehr … die Datei kann gelöscht werden«. Nur musste
+            # der Anwender dann ins Terminal, um eine versteckte Datei
+            # auf einer externen Platte zu löschen. Wer das nicht kann,
+            # kommt an sein Archiv nicht mehr heran.
+            #
+            # Am 2026-09-01 von Stephan gemeldet: F5 im Geschäftsarchiv,
+            # Sperre von einem abgestürzten Lauf zwei Stunden zuvor.
+            #
+            # **Sicher ist das nur unter zwei Bedingungen**, und beide
+            # prüft ``_laeuft_noch``: Die Sperre stammt von *diesem*
+            # Rechner, und den Prozess gibt es nicht mehr. Bei einer
+            # Sperre von einem anderen Rechner – Archiv in der Cloud,
+            # zweiter PC – lässt sich darüber nichts sagen, und dann
+            # wird auch nichts angefasst.
+            if _laeuft_noch(held) is False:
+                try:
+                    lock.unlink()
+                    fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                except (OSError, FileExistsError):
+                    # Zwischen Prüfen und Anlegen kann ein anderer Lauf
+                    # dazwischengekommen sein. Dann gilt dessen Sperre.
+                    raise ArchiveLocked(
+                        _sperre_erklaeren(lock, held)
+                    ) from None
+            else:
+                raise ArchiveLocked(_sperre_erklaeren(lock, held)) from None
         # Gelesen wird oben ausdrücklich als UTF-8, also muss auch so
         # geschrieben werden. Ohne die Angabe nimmt Python die Kodierung des
         # Systems – cp1252 unter Windows, ASCII bei LC_ALL=C. Ein Rechnername
@@ -796,6 +825,45 @@ class Archive:
         self.journal.flush()
         return entry
 
+    def _erkannten_text_holen(self, digest: str, parsed) -> str:
+        """Holt Text aus eingescannten Anhängen aus dem Nebenspeicher.
+
+        **Warum das hierher gehört.** Text aus einem eingescannten PDF
+        entsteht durch Texterkennung – ein Vorgang von Minuten bis
+        Stunden. Er liegt deshalb in einem Nebenspeicher neben dem
+        Index, ausdrücklich damit er einen Neuaufbau überlebt; so steht
+        es seit jeher im Docstring von
+        :class:`~mailburg.core.erkennung.Textspeicher`.
+
+        Nur holte ihn dort niemand ab. Wer den Index neu baute, musste
+        anschließend ``mailburg texterkennung`` hinterherschieben, und
+        niemand kam von selbst darauf: Die Suche fand die Scans einfach
+        nicht mehr, ohne dass irgendwo etwas fehlte.
+
+        Aufgefallen am 2026-08-31 beim Neuaufbau nach der Umstellung auf
+        Fassung 2 des Schemas.
+
+        **Nichts wird dabei neu erkannt.** Gelesen wird, was schon
+        dasteht – und was nicht dasteht, bleibt Sache von
+        ``mailburg texterkennung``.
+        """
+        from mailburg.core.erkennung import Textspeicher, _kennung
+
+        speicher = Textspeicher()
+        stuecke = []
+        for anhang in parsed.attachments:
+            if not anhang.filename:
+                continue
+            # Derselbe Schlüssel, unter dem die Erkennung ablegt: Er
+            # gehört der Mail, nicht dem Dokument. Der zweite Schlüssel
+            # - der Fingerabdruck - erspart das erneute Erkennen, taugt
+            # hier aber nicht: Er hängt am Inhalt des Anhangs, und den
+            # müssten wir dafür erst wieder auspacken.
+            text = speicher.lesen(f"{digest}-{_kennung(anhang.filename)}")
+            if text:
+                stuecke.append(text)
+        return "\n".join(stuecke)
+
     def verify(self) -> dict[str, Any]:
         """Prüft Kette und Ablage gegeneinander.
 
@@ -893,6 +961,9 @@ class Archive:
             anhangstext = ""
             if mit_anhangstext and parsed.attachments:
                 anhangstext, _ = text_module.aus_mail(parsed)
+                erkannt = self._erkannten_text_holen(digest, parsed)
+                if erkannt:
+                    anhangstext = f"{anhangstext}\n{erkannt}".strip()
 
             for entry in entries:
                 self.index.add(
