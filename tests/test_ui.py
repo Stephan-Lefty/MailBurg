@@ -5087,3 +5087,155 @@ class TastenkuerzelTest(OberflaechenTest):
         # Die Schrift hängt an der Anwendung – ohne Zurücksetzen liefe
         # der nächste Test mit der vergrößerten weiter.
         self.fenster._schrift_setzen(0)
+
+
+class SperrfrageTest(OberflaechenTest):
+    """Was passiert, wenn beim Abruf eine Sperre im Weg liegt.
+
+    **Vier Lagen, vier Antworten.** Bis zum 2026-09-01 gab es nur eine:
+    Der Abruf lief los, scheiterte und meldete »der Vorgang, der es
+    hielt, läuft nicht mehr … die Datei kann gelöscht werden«. Wer das
+    las, musste ins Terminal – eine versteckte Datei auf einer externen
+    Platte entfernen –, und wer das nicht kann, kam an sein Archiv nicht
+    mehr heran.
+
+    Stephan hat es am 2026-09-01 gemeldet, nachdem F5 im
+    Geschäftsarchiv daran hängenblieb.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive, Mode
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        basis = pathlib.Path(self._tmp.name)
+
+        patcher = mock.patch.object(
+            paths, "data_dir", return_value=basis / "daten"
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        (basis / "daten").mkdir(parents=True, exist_ok=True)
+
+        self.wurzel = basis / "Archiv"
+        Archive.create(self.wurzel, mode=Mode.GESCHAEFTLICH, name="G").close()
+
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        self.fenster = Hauptfenster(self.wurzel)
+        self.addCleanup(self.fenster.close)
+
+    def _sperre(self, host: str, pid: int) -> None:
+        import json
+
+        from mailburg.core.archive import LOCK_FILE
+
+        (self.wurzel / LOCK_FILE).write_text(
+            json.dumps({
+                "host": host, "pid": pid,
+                "since": "2026-08-31T16:21:30+00:00",
+            }),
+            encoding="utf-8",
+        )
+
+    def _tote_pid(self) -> int:
+        import os
+
+        for kandidat in range(99999, 90000, -1):
+            try:
+                os.kill(kandidat, 0)
+            except ProcessLookupError:
+                return kandidat
+            except PermissionError:
+                continue
+        raise AssertionError("keine freie Prozessnummer gefunden")
+
+    def test_ohne_sperre_wird_nicht_gefragt(self):
+        self.assertIs(self.fenster._sperre_klaeren(self.wurzel), False)
+
+    def test_eine_verwaiste_sperre_braucht_keine_frage(self):
+        """Der Kern räumt sie selbst weg – fragen wäre lästig."""
+        import socket
+
+        self._sperre(socket.gethostname(), self._tote_pid())
+
+        self.assertIs(self.fenster._sperre_klaeren(self.wurzel), False)
+
+    def test_ein_laufender_vorgang_bekommt_eine_auskunft_keine_frage(self):
+        """Der häufigste Fall: der Abruf im Hintergrund.
+
+        Das ist kein Fehler, sondern Betrieb – und wer in diesem Moment
+        eine Anleitung zum Löschen von Dateien bekäme, richtete damit
+        Schaden an.
+        """
+        import os
+        import socket
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        self._sperre(socket.gethostname(), os.getpid())
+
+        with mock.patch.object(QMessageBox, "information") as auskunft:
+            with mock.patch.object(QMessageBox, "question") as frage:
+                ergebnis = self.fenster._sperre_klaeren(self.wurzel)
+
+        self.assertIsNone(ergebnis)
+        self.assertTrue(auskunft.called)
+        self.assertFalse(frage.called, "hier gibt es nichts zu entscheiden")
+
+    def test_bei_einem_fremden_rechner_entscheidet_der_anwender(self):
+        """Ob dort noch etwas läuft, weiß er – das Programm nicht."""
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        self._sperre("ein-anderer-rechner", 4242)
+
+        with mock.patch.object(
+            QMessageBox, "question",
+            staticmethod(lambda *a, **k: QMessageBox.Yes),
+        ):
+            self.assertIs(self.fenster._sperre_klaeren(self.wurzel), True)
+
+    def test_wer_abbricht_laesst_die_sperre_liegen(self):
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+        from mailburg.core.archive import LOCK_FILE
+
+        self._sperre("ein-anderer-rechner", 4242)
+
+        with mock.patch.object(
+            QMessageBox, "question",
+            staticmethod(lambda *a, **k: QMessageBox.Cancel),
+        ):
+            ergebnis = self.fenster._sperre_klaeren(self.wurzel)
+
+        self.assertIsNone(ergebnis)
+        self.assertTrue(
+            (self.wurzel / LOCK_FILE).exists(),
+            "abgebrochen heißt: nichts anfassen",
+        )
+
+    def test_die_frage_nennt_die_folgen(self):
+        """Wer zustimmt, soll wissen, worauf er sich einlässt."""
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        self._sperre("ein-anderer-rechner", 4242)
+        gesehen = {}
+
+        def merken(eltern, titel, text, *rest):
+            gesehen["text"] = text
+            return QMessageBox.Cancel
+
+        with mock.patch.object(QMessageBox, "question", staticmethod(merken)):
+            self.fenster._sperre_klaeren(self.wurzel)
+
+        self.assertIn("zwei Vorgänge gleichzeitig", gesehen["text"])

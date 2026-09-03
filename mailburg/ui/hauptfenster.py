@@ -1486,12 +1486,17 @@ class Hauptfenster(QMainWindow):
         # lesend. Deshalb gibt der Auftrag es sich selbst - und wir
         # schließen unseren Index solange nicht, sondern lesen weiter.
         pfad = self.archiv.root
+
+        uebergehen = self._sperre_klaeren(pfad)
+        if uebergehen is None:
+            return
+
         self.abrufen_aktion.setEnabled(False)
         self.balken.setRange(0, 0)
         self.balken.show()
         self.stand.setText("Rufe ab …")
 
-        auftrag = Abruflauf(pfad, konten)
+        auftrag = Abruflauf(pfad, konten, sperre_uebergehen=uebergehen)
         auftrag.meldung.connect(self.stand.setText)
         auftrag.fertig.connect(self._abruf_fertig)
         auftrag.gescheitert.connect(self._abruf_gescheitert)
@@ -1538,6 +1543,64 @@ class Hauptfenster(QMainWindow):
             + (f"\n\n{neu} neu hinzugekommen." if neu else
                "\n\nEs war nichts Neues da."),
         )
+
+    def _sperre_klaeren(self, pfad) -> bool | None:
+        """Klärt vor dem Abruf, ob eine Sperre im Weg liegt.
+
+        Gibt ``True`` zurück, wenn der Anwender sie ausdrücklich
+        übergehen will, ``False``, wenn nichts im Weg ist, und ``None``,
+        wenn abgebrochen wurde.
+
+        **Warum die Frage hierhin gehört und nicht in eine
+        Fehlermeldung.** Bis zum 2026-09-01 lief der Abruf einfach los,
+        scheiterte an der Sperre und meldete: »der Vorgang, der es hielt,
+        läuft nicht mehr … die Datei kann gelöscht werden«. Wer das las,
+        musste ins Terminal, um eine versteckte Datei auf einer externen
+        Platte zu entfernen – und stand sonst vor einer Sackgasse.
+
+        Eine nachweislich verwaiste Sperre räumt der Kern inzwischen
+        selbst weg. Übrig bleiben die Fälle, in denen er es *nicht*
+        wissen kann: Die Sperre stammt von einem anderen Rechner oder
+        führt keine Prozessnummer. Genau dort weiß der Anwender mehr als
+        das Programm – dass der zweite Rechner aus ist, dass die Platte
+        gerade erst angesteckt wurde.
+        """
+        liegt, erklaerung = Archive.sperre_pruefen(pfad)
+        if not liegt:
+            return False
+
+        laeuft = Archive.sperre_laeuft_noch(pfad)
+        if laeuft is True:
+            # Der häufigste Fall: der Abruf im Hintergrund. Kein Wort
+            # über Sperrdateien - das ist kein Fehler, sondern Betrieb.
+            QMessageBox.information(self, "Bitte einen Augenblick", erklaerung)
+            return None
+        if laeuft is False:
+            # Verwaist und auf diesem Rechner: Der Kern räumt selbst auf.
+            return False
+
+        antwort = QMessageBox.question(
+            self,
+            "Das Archiv ist als geöffnet vermerkt",
+            f"<p>{erklaerung.replace(chr(10), '<br>')}</p>"
+            f"<p><b>Läuft dort wirklich noch MailBurg?</b> Ob auf einem "
+            f"anderen Rechner noch etwas läuft, kann MailBurg von hier "
+            f"aus nicht feststellen – Sie schon.</p>"
+            f"<p>Ist der andere Rechner aus oder das Programm dort "
+            f"längst beendet, können Sie den Vermerk entfernen lassen "
+            f"und jetzt abrufen.</p>"
+            f"<p><i>Läuft dort noch etwas, schreiben hinterher zwei "
+            f"Vorgänge gleichzeitig ins Protokoll – und das lässt sich "
+            f"nicht wieder auflösen.</i></p>",
+            QMessageBox.Yes | QMessageBox.Cancel,
+            QMessageBox.Cancel,
+        )
+        if antwort != QMessageBox.Yes:
+            self.stand.setText("Abruf abgebrochen – der Vermerk bleibt.")
+            return None
+
+        self.stand.setText("Vermerk entfernt, rufe ab …")
+        return True
 
     def _abruf_gescheitert(self, text: str) -> None:
         self.laeufer = None

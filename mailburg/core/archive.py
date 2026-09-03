@@ -242,6 +242,7 @@ class Archive:
         exclusive: bool = True,
         index_verwerfen: bool = False,
         schluessel=None,
+        sperre_uebergehen: bool = False,
     ) -> None:
         self.root = root
         self.meta = meta
@@ -252,7 +253,7 @@ class Archive:
         self._lock_held = False
 
         if exclusive:
-            self._acquire_lock()
+            self._acquire_lock(uebergehen=sperre_uebergehen)
 
         # **Die Sperre darf nicht liegenbleiben.** Sie ist oben schon
         # gesetzt, ``close()`` ruft hier aber niemand mehr - ein
@@ -354,6 +355,7 @@ class Archive:
         exclusive: bool = True,
         index_verwerfen: bool = False,
         passwort: str = "",
+        sperre_uebergehen: bool = False,
     ) -> Archive:
         """Öffnet ein vorhandenes Archiv.
 
@@ -404,7 +406,45 @@ class Archive:
             exclusive=exclusive,
             index_verwerfen=index_verwerfen,
             schluessel=schluessel,
+            sperre_uebergehen=sperre_uebergehen,
         )
+
+    @staticmethod
+    def sperre_pruefen(root: Path) -> tuple[bool, str]:
+        """Sagt, ob eine Sperre liegt und was von ihr zu halten ist.
+
+        Gibt zurück, ob überhaupt eine daliegt, und die Erklärung dazu –
+        dieselbe, die auch in der Fehlermeldung stünde.
+
+        **Wozu das gut ist:** Die Oberfläche muss fragen können, *bevor*
+        sie den Anwender vor ein Problem stellt. Wer nach einem Absturz
+        F5 drückt, soll nicht in eine Sackgasse laufen, sondern eine
+        Frage bekommen, die er beantworten kann.
+        """
+        lock = Path(root) / LOCK_FILE
+        if not lock.exists():
+            return False, ""
+        try:
+            held = json.loads(lock.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            held = {}
+        return True, _sperre_erklaeren(lock, held)
+
+    @staticmethod
+    def sperre_laeuft_noch(root: Path) -> bool | None:
+        """Ob der Vorgang hinter der Sperre noch läuft.
+
+        ``None`` heißt: nicht zu beantworten – die Sperre stammt von
+        einem anderen Rechner oder führt keine Prozessnummer. Genau in
+        diesem Fall lohnt die Rückfrage beim Anwender: Er weiß, ob der
+        zweite Rechner läuft, das Programm nicht.
+        """
+        lock = Path(root) / LOCK_FILE
+        try:
+            held = json.loads(lock.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        return _laeuft_noch(held)
 
     @staticmethod
     def ist_verschluesselt(root: Path) -> bool:
@@ -424,7 +464,7 @@ class Archive:
 
     # -------------------------------------------------------------- Sperren
 
-    def _acquire_lock(self) -> None:
+    def _acquire_lock(self, uebergehen: bool = False) -> None:
         """Verhindert, dass zwei Rechner gleichzeitig hineinschreiben.
 
         Beim Archiv in der Cloud ist das keine Theorie: Läuft MailBurg auf
@@ -466,7 +506,12 @@ class Archive:
             # Sperre von einem anderen Rechner – Archiv in der Cloud,
             # zweiter PC – lässt sich darüber nichts sagen, und dann
             # wird auch nichts angefasst.
-            if _laeuft_noch(held) is False:
+            # ``uebergehen`` kommt nur von einem Menschen, der gefragt
+            # wurde – siehe die Rückfrage in ``ui/hauptfenster.py``. Er
+            # weiß Dinge, die das Programm nicht wissen kann: dass der
+            # zweite Rechner aus ist, dass die Platte gerade erst
+            # angesteckt wurde. Nie automatisch, nie als Vorgabe.
+            if uebergehen or _laeuft_noch(held) is False:
                 try:
                     lock.unlink()
                     fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)

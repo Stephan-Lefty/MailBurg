@@ -196,12 +196,16 @@ class Abruflauf(Auftrag):
     konto_fertig = Signal(str, object)
 
     def __init__(self, archiv_pfad, konten, *, voll: bool = False,
-                 mit_anhangstext: bool = True) -> None:
+                 mit_anhangstext: bool = True,
+                 sperre_uebergehen: bool = False) -> None:
         super().__init__()
         self.archiv_pfad = archiv_pfad
         self.konten = list(konten)
         self.voll = voll
         self.mit_anhangstext = mit_anhangstext
+        # Kommt nur von einem Menschen, der ausdrücklich gefragt wurde -
+        # siehe ``Hauptfenster._sperre_klaeren``. Nie als Vorgabe.
+        self.sperre_uebergehen = sperre_uebergehen
 
     def ausfuehren(self) -> dict:
         from mailburg.core import accounts
@@ -211,7 +215,9 @@ class Abruflauf(Auftrag):
         from mailburg.sources.imap import ImapFehler, ImapSource
 
         ergebnisse: dict = {}
-        with Archive.open(self.archiv_pfad) as archiv:
+        with Archive.open(
+            self.archiv_pfad, sperre_uebergehen=self.sperre_uebergehen
+        ) as archiv:
             zustand = Abrufzustand(archiv.uuid)
 
             for konto in self.konten:
