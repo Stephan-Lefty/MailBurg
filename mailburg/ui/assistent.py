@@ -1265,13 +1265,39 @@ class KontoDialog(QDialog):
         self.verschluesselung.addItem("STARTTLS (Port 143)", False)
         self.verschluesselung.currentIndexChanged.connect(self._port_anpassen)
 
+        # **Die Protokollwahl steht oben, nicht unten.** Sie bestimmt,
+        # was die Felder darunter überhaupt bedeuten: Bei JMAP ist der
+        # »Server« eine Adresse mit https://, es gibt keinen Port und
+        # keine Verschlüsselungswahl, und das Passwort ist meist eine
+        # Zugriffsmarke.
+        #
+        # Wer sie unten fände, hätte die Felder darüber schon falsch
+        # ausgefüllt.
+        self.protokoll = QComboBox()
+        self.protokoll.addItem("IMAP (fast überall)", "imap")
+        self.protokoll.addItem("JMAP (Fastmail, Stalwart, Cyrus)", "jmap")
+        self.protokoll.setAccessibleName("Abrufweg")
+        self.protokoll.currentIndexChanged.connect(self._protokoll_gewechselt)
+
+        # Die Beschriftungen werden festgehalten, nicht später ersetzt:
+        # ``QFormLayout.setWidget`` weigert sich, eine belegte Zelle neu
+        # zu besetzen ("Cell already occupied") - der Text lässt sich
+        # aber jederzeit ändern.
+        self._schild_benutzer = QLabel("Mailadresse:")
+        self._schild_server = QLabel("IMAP-Server:")
+        self._schild_passwort = QLabel("Passwort:")
+        self._schild_verschluesselung = QLabel("Verschlüsselung:")
+        self._schild_port = QLabel("Port:")
+
         formular = QFormLayout()
+        self._formular = formular
+        formular.addRow("Abrufweg:", self.protokoll)
         formular.addRow("Name im Archiv:", self.name)
-        formular.addRow("Mailadresse:", self.benutzer)
-        formular.addRow("IMAP-Server:", self.server)
-        formular.addRow("Verschlüsselung:", self.verschluesselung)
-        formular.addRow("Port:", self.port)
-        formular.addRow("Passwort:", self.passwort)
+        formular.addRow(self._schild_benutzer, self.benutzer)
+        formular.addRow(self._schild_server, self.server)
+        formular.addRow(self._schild_verschluesselung, self.verschluesselung)
+        formular.addRow(self._schild_port, self.port)
+        formular.addRow(self._schild_passwort, self.passwort)
 
         # Erst prüfen, dann übernehmen: Ein Postfach, das sich nicht
         # anmelden kann, in der Liste zu haben, führt nur dazu, dass jeder
@@ -1432,15 +1458,62 @@ class KontoDialog(QDialog):
         # und damit eine Einladung, die Prüfung zu überspringen.
         self.ungeprueft_knopf.setVisible(True)
 
+    def _protokoll_gewechselt(self) -> None:
+        """Stellt die Felder auf den gewählten Abrufweg um.
+
+        **Ein Feld, das nicht gilt, gehört nicht angezeigt.** JMAP kennt
+        keinen Port und keine Wahl der Verschlüsselung – es ist immer
+        HTTPS. Wer die Felder trotzdem sähe, füllte sie aus und wunderte
+        sich, dass es nichts ändert.
+        """
+        ist_jmap = self.protokoll.currentData() == "jmap"
+
+        for teil in (self._schild_port, self.port,
+                     self._schild_verschluesselung, self.verschluesselung):
+            teil.setVisible(not ist_jmap)
+
+        self._schild_server.setText("Adresse:" if ist_jmap else "IMAP-Server:")
+        self.server.setPlaceholderText(
+            "https://api.fastmail.com/jmap/session" if ist_jmap
+            else "imap.example.org"
+        )
+        self._schild_benutzer.setText(
+            "Benutzername:" if ist_jmap else "Mailadresse:"
+        )
+        self.benutzer.setPlaceholderText(
+            "leer lassen, wenn Sie eine Marke benutzen" if ist_jmap
+            else "post@example.org"
+        )
+        self._schild_passwort.setText(
+            "Marke oder Passwort:" if ist_jmap else "Passwort:"
+        )
+        self.passwort.setPlaceholderText(
+            "Zugriffsmarke des Anbieters" if ist_jmap
+            else "Passwort oder App-Passwort"
+        )
+
+        # Der Abrufweg ändert alles darunter - eine Prüfung von vorher
+        # sagt über den neuen nichts mehr.
+        self.pruefstand.setText("Noch nicht geprüft")
+        self.pruefstand.setStyleSheet("")
+        self.pruefstand.setEnabled(False)
+        self.uebernehmen_knopf.setEnabled(False)
+
     def konto(self) -> Konto:
         server = self.server.text().strip()
+        ist_jmap = self.protokoll.currentData() == "jmap"
         return Konto(
-            name=self.name.text().strip() or self.benutzer.text().strip(),
+            name=self.name.text().strip() or self.benutzer.text().strip()
+                 or server,
             server=server,
             benutzer=self.benutzer.text().strip(),
-            port=self.port.value(),
-            ssl=bool(self.verschluesselung.currentData()),
-            bruecke=server.lower() in accounts.LOKALE_ADRESSEN,
+            # JMAP läuft immer über HTTPS; Port und Verschlüsselung
+            # stehen dort in der Adresse, nicht in eigenen Feldern.
+            port=443 if ist_jmap else self.port.value(),
+            ssl=True if ist_jmap else bool(self.verschluesselung.currentData()),
+            bruecke=(not ist_jmap
+                     and server.lower() in accounts.LOKALE_ADRESSEN),
+            protokoll="jmap" if ist_jmap else "imap",
         )
 
 

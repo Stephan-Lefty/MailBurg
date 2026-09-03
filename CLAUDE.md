@@ -3,6 +3,97 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-03, Donnerstag)
+
+**1.1.0 ist getaggt und veröffentlicht.** Sie bringt JMAP, die Struktur
+in der Oberfläche und die RFC-3161-Zeitstempel. 1507 Tests grün, ohne
+Zusatzpakete 1486 mit 486 übersprungenen.
+
+### JMAP, und warum es für ein Archiv lohnt
+
+`sources/jmap.py`, Anleitung in [docs/jmap.md](docs/jmap.md). Der Gewinn
+ist `Email/changes`: **IMAP kann nicht sagen, was sich geändert hat.**
+MailBurg baut die Frage über die höchste bekannte Nachrichtennummer je
+Ordner nach – eine Näherung, bei der nachträglich einsortierte Mails
+durchrutschen. JMAP kennt einen Zustand und beantwortet die Frage in
+einer Anfrage.
+
+Drei Festlegungen, die nicht ohne Kenntnis des Grundes aufgemacht
+werden sollten:
+
+**Die Rohnachricht kommt über `downloadUrl`, nicht aus dem JSON.** Die
+zerlegte Fassung wäre bequemer und für ein Archiv wertlos – die
+DKIM-Signatur wäre dahin.
+
+**Ordner werden über ihre Rolle beurteilt, nicht über den Namen.** Ein
+Ordner heißt je nach Sprache »Papierkorb«, »Trash« oder »Corbeille«,
+seine Rolle heißt überall `trash`. Der Gmail-Fall (`all` enthält alles
+doppelt) fällt damit von selbst mit ab.
+
+**Es gibt genau eine Stelle, die entscheidet, wie abgerufen wird:**
+`sources.quelle_fuer()`. Vorher erzeugten fünf Stellen eine
+IMAP-Verbindung von Hand. Die sechste, die später dazukäme, wüsste von
+JMAP nichts – und das merkte der Anwender als das Merkwürdigste, was
+ein Programm tun kann: Es funktioniert an vier Stellen und an der
+fünften nicht.
+
+**Noch nie gegen einen echten Anbieter gelaufen.** Geprüft ist alles
+gegen `tests/fake_jmap.py`, also gegen meine eigenen Annahmen –
+derselbe Satz wie bei OAuth2, und er stimmt dort wie hier. Fastmail
+bietet ein kostenloses Probekonto; das wäre der Weg.
+
+**Ein Fehler, der dabei auffiel und älter ist als JMAP:** Der
+Schlüsselbund-Eintrag heißt `benutzer@server`. Wer sich mit einer
+Zugriffsmarke anmeldet, hat keinen Benutzer, und alle Fastmail-Konten
+zeigen auf dieselbe Adresse – zwei Konten hätten sich stillschweigend
+überschrieben. Jetzt tritt der Kontoname an die Stelle.
+
+### Was das erste Nutzer-Feedback gebracht hat
+
+Vier Punkte aus dem Linux-Guides-Forum, **drei davon echte Fehler.**
+Das ist dieselbe Lehre wie am 31.08. mit Stephans Meldungen: Diese
+Fehlerklasse findet kein Test, den ich mir ausdenke.
+
+Der vierte war Geschmack und der wichtigste: »Für meinen Geschmack
+fehlen da ein paar Rahmen oder farbliche Abhebungen.« Jetzt heben sich
+Suchbereich, Postfachbaum, Nachrichtenkopf und Statuszeile ab, und die
+Griffe der Teiler sind sichtbar – **vorher wusste niemand, dass sich
+die Bereiche verschieben lassen.**
+
+**Alle Farben kommen aus der Systempalette**, ein Wächtertest prüft das
+Stylesheet Wert für Wert. Feste Farbwerte säßen im dunklen Thema oder
+bei einem Hochkontrast-Thema falsch.
+
+Dabei fiel auf, dass **die Bilder in den Anleitungen ein anderes
+MailBurg zeigten als das Programm** – `werkzeuge/screenshots.py` setzte
+das Stylesheet gar nicht.
+
+### Zwei Dinge, die Anwender ins Terminal geschickt hätten
+
+**Der Neuaufbau des Index verlor den erkannten PDF-Text.** Der Kommentar
+in `erkennung.py` sagte seit jeher, welcher Schlüssel dafür da ist;
+abgeholt hat ihn niemand. Nach der 1.0 baute jeder seinen Index neu –
+und fand seine Scans nicht mehr, ohne Meldung.
+
+**Eine verwaiste Sperrdatei sperrte dauerhaft aus.** Stephan hat sie an
+seinem Geschäftsarchiv getroffen: Vorgang 9814 gab es längst nicht
+mehr. MailBurg räumt sie jetzt selbst weg, wenn Rechner und Vorgang das
+zulassen – und **wo es nicht sicher ist, fragt es**, statt den Anwender
+mit einem Pfad ins Terminal zu schicken. Vier Lagen, nur die letzte
+braucht eine Entscheidung.
+
+### Und der Begriff »Server Edition« ist aus der Anwender-Doku raus
+
+Stephans Urteil: Das schreckt ab. Die Anleitungen heißen jetzt »Das
+Archiv im Browser«. Im Code bleibt er (Modulname, Windows-Dienst), in
+CHANGELOG und TODO auch – das sind Protokolle.
+
+**Dabei fiel auf, dass der Dienst im README gar nicht vorkam.** Gebaut
+seit dem 31.08., aber wer nur die Übersicht las, erfuhr nichts davon.
+Und das rote Wappen unter `assets/server/` wird **an keiner einzigen
+Stelle im Programm benutzt** – seit heute steht es wenigstens über den
+beiden Anleitungen. Der Rest steht in der TODO.
+
 ## Hier war Schluss (Stand 2026-08-31, Montag abends)
 
 **1.0.0 ist getaggt, 1.0.1 vorbereitet.** Der Tag `v1.0.1` steht auf

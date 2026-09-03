@@ -157,6 +157,30 @@ Vertrauen ist mehr wert als die gesparte Tipparbeit.</p>
 <p>Abgelegt werden die Passwörter im Schlüsselbund Ihres Systems, nie in
 einer Datei des Programms.</p>
 
+<h3>IMAP oder JMAP</h3>
+
+<p>Oben im Postfachdialog steht <b>Abrufweg</b>. In aller Regel bleibt
+er auf <i>IMAP</i> – so holen fast alle Anbieter ihre Post heraus.</p>
+
+<p><b>JMAP</b> ist der Nachfolger von IMAP: JSON über HTTPS statt eines
+eigenen Protokolls von 1986. Für ein Archiv ist er der bessere Weg, denn
+er beantwortet in einer einzigen Anfrage, was seit dem letzten Abruf
+dazugekommen ist. Über IMAP muss MailBurg das umständlich nachbauen –
+und dabei rutschen Nachrichten durch, die jemand nachträglich in einen
+Ordner einsortiert hat.</p>
+
+<p><b>Können muss es der Anbieter.</b> Fastmail, Stalwart und Cyrus
+sprechen JMAP; Gmail, Outlook, GMX, Web.de und Proton nicht. Wenn Ihrer
+nicht dabei ist, ändert sich für Sie nichts.</p>
+
+<p>Bei JMAP tragen Sie statt eines Servernamens eine vollständige
+Adresse ein, und statt eines Passworts meist eine <i>Zugriffsmarke</i>,
+die Sie beim Anbieter erzeugen. Port und Verschlüsselung entfallen –
+JMAP läuft immer über HTTPS.</p>
+
+<p><b>Beides zugleich ist ausdrücklich vorgesehen.</b> Der Abrufweg
+gehört zum einzelnen Postfach, nicht zum Programm.</p>
+
 <p><b>Wenn das Zertifikat abgelehnt wird.</b> Läuft Ihr Mailserver bei
 einem größeren Anbieter, weist er sich oft unter dessen Namen aus.
 MailBurg sieht dann nach, für welchen Namen das Zertifikat gilt, und

@@ -29,7 +29,9 @@ from mailburg.core.sync import Abrufzustand
 from mailburg.extract import pdf
 from mailburg.search.query import QueryError, describe_syntax
 from mailburg.sources import local
+from mailburg.sources import quelle_fuer
 from mailburg.sources.imap import ImapFehler, ImapSource
+from mailburg.sources.jmap import JmapFehler
 
 
 def _human_size(count: int) -> str:
@@ -393,15 +395,28 @@ def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
         print("Ohne --server geht es nicht.", file=sys.stderr)
         return 2
 
+    per_jmap = getattr(args, "jmap", False)
     konto = Konto(
         name=args.name,
         server=server,
-        benutzer=args.benutzer or args.name,
+        # **Bei JMAP darf der Benutzername leer bleiben.** Wer sich mit
+        # einer Zugriffsmarke anmeldet, hat keinen - und den Kurznamen
+        # dort einzusetzen, wie es bei IMAP richtig ist, ergäbe eine
+        # Basic-Anmeldung, die der Server abweist.
+        benutzer=args.benutzer or ("" if per_jmap else args.name),
         port=port,
         ssl=not starttls,
         bruecke=bruecke,
+        protokoll="jmap" if per_jmap else "imap",
     )
-    passwort = getpass.getpass(f"Passwort für {konto.benutzer} auf {konto.server}: ")
+    if per_jmap:
+        passwort = getpass.getpass(
+            f"Zugriffsmarke oder Passwort für {konto.server}: "
+        )
+    else:
+        passwort = getpass.getpass(
+            f"Passwort für {konto.benutzer} auf {konto.server}: "
+        )
     if not passwort:
         print("Ohne Passwort geht es nicht.", file=sys.stderr)
         return 2
@@ -411,13 +426,19 @@ def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
     # Abruf mit einem Fehler endet.
     print(f"Verbinde mit {konto.server} …")
     try:
-        quelle = ImapSource(konto, passwort)
-    except ImapFehler as exc:
+        quelle = quelle_fuer(konto, passwort)
+    except (ImapFehler, JmapFehler) as exc:
         print(f"Fehler: {exc}", file=sys.stderr)
         return 2
 
     try:
         ordner = quelle.folders()
+    except JmapFehler as exc:
+        # JMAP verbindet sich erst beim ersten Aufruf, nicht schon im
+        # Konstruktor - eine falsche Adresse oder Marke fällt deshalb
+        # hier auf und nicht oben.
+        print(f"Fehler: {exc}", file=sys.stderr)
+        return 2
     finally:
         quelle.close()
 
@@ -531,7 +552,7 @@ def cmd_konten_uebernehmen(args: argparse.Namespace) -> int:
 
             if not args.ohne_test:
                 try:
-                    quelle = ImapSource(konto, passwort)
+                    quelle = quelle_fuer(konto, passwort)
                 except ImapFehler as exc:
                     print(f"    FEHLER: {exc}", file=sys.stderr)
                     print("    Nicht übernommen.")
@@ -589,7 +610,7 @@ def cmd_konten_pruefen(args: argparse.Namespace) -> int:
     for konto in konten:
         print(f"{konto.beschreibung()}")
         try:
-            quelle = ImapSource(konto, _passwort_besorgen(konto))
+            quelle = quelle_fuer(konto, _passwort_besorgen(konto))
         except ImapFehler as exc:
             print(f"  FEHLER: {exc}", file=sys.stderr)
             fehler += 1
@@ -837,7 +858,7 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
         for konto in konten:
             sagen(f"\n{konto.beschreibung()}")
             try:
-                quelle = ImapSource(
+                quelle = quelle_fuer(
                     konto,
                     _passwort_besorgen(konto),
                     hoechststand=lambda ordner, k=konto: archive.index.max_uid(
@@ -999,7 +1020,7 @@ def cmd_abgleich(args: argparse.Namespace) -> int:
         for konto in konten:
             print(f"{konto.beschreibung()}")
             try:
-                quelle = ImapSource(konto, _passwort_besorgen(konto))
+                quelle = quelle_fuer(konto, _passwort_besorgen(konto))
             except ImapFehler as exc:
                 print(f"  FEHLER: {exc}\n", file=sys.stderr)
                 bedenklich += 1
@@ -2471,6 +2492,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--starttls",
         action="store_true",
         help="unverschlüsselt verbinden und auf TLS hochstufen (Port meist 143)",
+    )
+    k.add_argument(
+        "--jmap",
+        action="store_true",
+        help="über JMAP statt IMAP abrufen (RFC 8620/8621). Der Server "
+             "gehört dann als Adresse angegeben, etwa "
+             "»https://api.fastmail.com/jmap/session«. Als Passwort dient "
+             "meist eine Zugriffsmarke, nicht das Kontopasswort – dann "
+             "bleibt --benutzer leer. Können unter anderem Fastmail, "
+             "Stalwart und Cyrus; Gmail, Outlook, GMX, Web.de und Proton "
+             "nicht.",
     )
     k.add_argument(
         "--proton",

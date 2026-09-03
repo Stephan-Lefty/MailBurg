@@ -1,10 +1,15 @@
-[Übersicht](../README.md) | [Anleitungen](README.md) | [Erste Schritte](erste-schritte.md) | [Zeitsteuerung](zeitsteuerung.md) | [Windows](windows.md) | [Postfach entlasten](postfach-entlasten.md) | [Sichern](sicherung.md)
+[Übersicht](../README.md) | [Anleitungen](README.md) | [Erste Schritte](erste-schritte.md) | [JMAP](jmap.md) | [Zeitsteuerung](zeitsteuerung.md) | [Windows](windows.md) | [Postfach entlasten](postfach-entlasten.md) | [Sichern](sicherung.md)
 
 # Postfächer einrichten
 
 MailBurg holt die Post über IMAP. Dafür braucht es drei Angaben – Server,
 Benutzername und Passwort – und einen Kurznamen, unter dem die Mails im Archiv
 erscheinen.
+
+> Es gibt einen zweiten Weg: **[JMAP](jmap.md)**, den Nachfolger von IMAP.
+> Er ist für ein Archiv der bessere, aber nur wenige Anbieter können ihn –
+> Fastmail, Stalwart, Cyrus. Wenn Ihrer nicht dabei ist, lesen Sie hier
+> einfach weiter.
 
 ```bash
 mailburg konten hinzufuegen Firma \

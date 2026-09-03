@@ -114,6 +114,19 @@ class Konto:
     es folgenlos.
     """
 
+    protokoll: str = "imap"
+    """Wie geholt wird: ``imap`` oder ``jmap``.
+
+    **IMAP bleibt die Vorgabe**, und das wird eine Weile so bleiben:
+    JMAP ist die bessere Technik und die seltenere. Fastmail, Stalwart
+    und Cyrus sprechen es; Gmail, Outlook, GMX, Web.de und Proton nicht.
+
+    Für ein Archiv lohnt es dort, wo es geht. ``Email/changes``
+    beantwortet in einer Anfrage, was seit dem letzten Lauf dazugekommen
+    ist – über IMAP muss MailBurg das mit ``UID n:*`` und Nachfiltern
+    nachbauen, Ordner für Ordner.
+    """
+
     oauth_anbieter: str = ""
     """Bei welchem Anbieter angemeldet wird – ``microsoft``, ``google``.
 
@@ -142,6 +155,11 @@ class Konto:
     """
 
     @property
+    def per_jmap(self) -> bool:
+        """Ob dieses Postfach über JMAP geholt wird."""
+        return self.protokoll.lower() == "jmap"
+
+    @property
     def per_oauth2(self) -> bool:
         """Ob dieses Postfach über OAuth2 angemeldet wird."""
         return bool(self.oauth_anbieter)
@@ -163,10 +181,29 @@ class Konto:
 
     @property
     def schluessel(self) -> str:
-        """Kennung im Schlüsselbund – Server und Benutzer zusammen."""
-        return f"{self.benutzer}@{self.server}"
+        """Kennung im Schlüsselbund – Server und Benutzer zusammen.
+
+        **Ohne Benutzernamen tritt der Kontoname an seine Stelle.** Das
+        betrifft JMAP mit einer Zugriffsmarke: Dort gibt es keinen
+        Benutzer, und alle Konten desselben Anbieters zeigen auf
+        dieselbe Adresse – zwei Fastmail-Konten bekämen sonst beide den
+        Schlüssel »@https://api.fastmail.com/jmap/session«, und das
+        zweite Passwort überschriebe das erste stillschweigend.
+        """
+        return f"{self.benutzer or self.name}@{self.server}"
 
     def beschreibung(self) -> str:
+        """Eine Zeile für die Kontenliste und für Meldungen.
+
+        **Bei JMAP passt die IMAP-Form nicht.** Der Server ist dort eine
+        vollständige Adresse, an die ein »:443« nur angeklebt aussähe,
+        und wer sich mit einer Zugriffsmarke anmeldet, hat gar keinen
+        Benutzernamen – »( auf https://…:443)« mit der Lücke davor wäre
+        das Ergebnis.
+        """
+        if self.per_jmap:
+            wer = f"{self.benutzer} über " if self.benutzer else "über "
+            return f"{self.name} ({wer}JMAP an {self.server})"
         return f"{self.name} ({self.benutzer} auf {self.server}:{self.port})"
 
 

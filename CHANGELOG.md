@@ -7,6 +7,145 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.1.0] – 2026-09-03
+
+### Hinzugefügt
+
+- **JMAP als zweiter Abrufweg** ([RFC 8620](https://www.rfc-editor.org/rfc/rfc8620)
+  und [RFC 8621](https://www.rfc-editor.org/rfc/rfc8621)), von einem Anwender
+  gewünscht. Anleitung: [docs/jmap.md](docs/jmap.md).
+
+  **Warum das für ein Archiv lohnt.** IMAP kann nicht sagen, was sich
+  geändert hat – MailBurg baut die Frage über die höchste bekannte
+  Nachrichtennummer je Ordner nach, und das ist eine Näherung: Nachträglich
+  einsortierte Mails rutschen durch, nach einem Serverumzug beginnt die
+  Zählung von vorn. JMAP kennt einen *Stand* und beantwortet in einer
+  Anfrage, was seither dazugekommen ist.
+
+  Nachgemessen am nachgebauten Server: Der zweite Lauf lädt genau die neuen
+  Nachrichten und rührt die vorhandenen nicht an. Kennt der Server den Stand
+  nicht mehr – Änderungslisten werden nicht ewig aufbewahrt –, fällt der
+  Abruf auf den vollständigen Weg zurück, statt stillschweigend nichts mehr
+  zu holen.
+
+  **Die Nachricht kommt über die Download-Adresse**, nicht aus dem JSON:
+  byteweise so, wie sie ankam, mit prüfbarer DKIM-Signatur. Die zerlegte
+  Fassung wäre bequemer und für ein Archiv wertlos.
+
+  **Ordner werden über ihre Rolle beurteilt**, nicht über den Namen. Ein
+  Ordner heißt je nach Sprache »Papierkorb«, »Trash« oder »Corbeille«; seine
+  Rolle heißt überall `trash`. Der Gmail-Fall ist mit abgedeckt: Ein Ordner
+  mit der Rolle `all` enthält sämtliche Mails ein zweites Mal.
+
+  Einzurichten im Fenster über *Abrufweg* im Postfachdialog oder mit
+  `mailburg konten hinzufuegen … --jmap`. Der Weg steht am einzelnen
+  Postfach – ein Fastmail-Konto über JMAP und die übrigen weiter über IMAP
+  ist ausdrücklich vorgesehen.
+
+  **Wer es benutzen kann:** Fastmail, Stalwart, Cyrus ab 3.6, Apache James.
+  Nicht Gmail, Outlook, GMX, Web.de oder Proton. Das ist heute die
+  Einschränkung – JMAP ist die bessere Technik und die seltenere.
+
+  **Noch nie gegen einen echten Anbieter gelaufen.** Geprüft ist alles gegen
+  `tests/fake_jmap.py`, also gegen die Annahmen des Programms. Derselbe Satz
+  steht bei OAuth2, und er stimmt dort wie hier.
+
+- **Zeitstempel nach RFC 3161.** Ein Siegel kann jetzt zusätzlich ein
+  Datum von dritter Seite tragen: Ein Zeitstempeldienst bestätigt, dass
+  der Zustand des Archivs zu einem bestimmten Zeitpunkt schon so war.
+  Bisher stand nur die Uhr des eigenen Rechners dahinter, und die lässt
+  sich stellen.
+
+  ASN.1 und DER sind von Hand kodiert (`core/der.py`), damit der Kern
+  ohne Fremdpakete auskommt – ein Archivprogramm soll in zwanzig Jahren
+  noch an seine eigenen Daten kommen. Geprüft gegen `openssl ts`, das
+  die erzeugten Anfragen liest und die Stempel mit »Verification: OK«
+  bestätigt. **Ein echter Dienst wurde noch nie gefragt.**
+
+- **Der Abschnitt über das Archiv im Browser steht jetzt auch im
+  README.** Gebaut ist der Dienst seit dem 31.08., aber wer nur die
+  Übersicht las, erfuhr nichts davon.
+
+### Behoben
+
+- **Der Neuaufbau des Suchindex verlor den erkannten Text aus
+  eingescannten PDF.** Der Kommentar in `erkennung.py` sagte seit jeher,
+  welcher Schlüssel dafür gedacht ist; abgeholt hat ihn niemand. Wer
+  seinen Index neu baute – nach der 1.0 also jeder –, fand seine Scans
+  nicht mehr, und es sagte ihm nichts.
+
+- **Eine verwaiste Sperrdatei sperrte das Archiv dauerhaft aus.** Nach
+  einem Absturz blieb sie liegen und nannte einen Vorgang, den es nicht
+  mehr gab. MailBurg räumt sie jetzt selbst weg, wenn sie von diesem
+  Rechner stammt und der Vorgang tot ist. Stammt sie von einem anderen
+  Rechner, lässt sich das nicht entscheiden – dann **fragt MailBurg und
+  der Anwender entscheidet**, statt ihn ins Terminal zu schicken.
+
+- **Die DBus-Meldung beim ersten Start.**
+  `qt.qpa.services: Failed to register with host portal` –
+  `setDesktopFileName` ist statisch und stand nach der Erzeugung der
+  `QApplication`. Harmlos war die Meldung immer; sie stand aber als
+  Erstes im Terminal, wenn jemand MailBurg zum ersten Mal startet.
+
+- **Zwei JMAP-Konten beim selben Anbieter überschrieben sich im
+  Schlüsselbund.** Der Eintrag heißt `benutzer@server`; bei einer
+  Zugriffsmarke gibt es keinen Benutzer, und alle Fastmail-Konten zeigen
+  auf dieselbe Adresse. Jetzt tritt der Kontoname an die Stelle des
+  fehlenden Benutzernamens.
+
+### Geändert
+
+- **Eine Stelle entscheidet, wie abgerufen wird.** Fünf Stellen im Programm
+  erzeugten eine IMAP-Verbindung von Hand – aus dem Fenster, aus dem
+  Zeitplan, über `mailburg abrufen`, beim Prüfen und beim Abgleich. Die
+  sechste, die später dazukäme, wüsste von JMAP nichts, und der Anwender
+  merkte das als das Merkwürdigste, was ein Programm tun kann: Es
+  funktioniert an vier Stellen und an der fünften nicht.
+
+### Oberfläche
+
+Vier Punkte aus der ersten Rückmeldung von außerhalb – jemand, der
+MailBurg nicht gebaut hat, hat es benutzt. Drei davon waren echte
+Fehler.
+
+- **Die Bereiche heben sich jetzt voneinander ab.** Wörtlich bemängelt:
+  »Für meinen Geschmack fehlen da ein paar Rahmen oder farbliche
+  Abhebungen.« Suchbereich, Postfachbaum, Kopf einer Nachricht und
+  Statuszeile sind abgesetzt, und die Griffe der Teiler sind sichtbar –
+  vorher wusste niemand, dass sich die Bereiche verschieben lassen.
+
+  **Alle Farben stammen aus der Systempalette.** Feste Farbwerte säßen
+  im dunklen Thema oder bei einem Hochkontrast-Thema falsch; ein
+  Wächtertest prüft das Stylesheet Wert für Wert.
+
+- **Der Knopf zur Ordnerwahl war zu übersehen.** Er heißt jetzt »Ordner
+  auswählen …«, trägt ein Symbol und ist der Vorgabeknopf der Seite. Wo
+  das Archiv liegt, ist die wichtigste Entscheidung des Assistenten –
+  wer den Knopf nicht findet, nimmt den Vorschlag, statt zu wählen.
+
+- **Die Passwortfelder gingen unter.** Sie standen weit rechts vom
+  Kontonamen, weil sich die Namensspalte dehnte.
+
+- **In der Standardgröße wird nicht mehr gerollt.** Sechs Runden
+  Meldungen an einem Abend, jede ein echter Fehler: Auswahlfelder so
+  breit wie das Layout statt wie ihr Inhalt, aufgeklappte Listen, die
+  bei 120 px blieben, Dialoggrößen als geratene Zahlen, und umbrechende
+  Texte, die zusammengedrückt wurden. Geratene Maße sitzen falsch,
+  sobald jemand die Schrift ändert – und die lässt sich in MailBurg
+  einstellen.
+
+- **Strg++ vergrößerte nichts.** `QKeySequence.ZoomIn` *ist* unter Linux
+  Strg++, und daneben stand dasselbe noch einmal von Hand. Qt hält zwei
+  gleiche Kürzel für mehrdeutig und löst dann keines aus. Das Menü
+  zeigte es brav an – deshalb sucht man dort zuletzt.
+
+- **Die Schriftgröße wirkte nur auf das Hauptfenster.** Menüs, Dialoge
+  und das Lesefenster sind in Qt eigene Fenster, keine Kinder.
+
+- **Die Bilder in den Anleitungen zeigten ein anderes MailBurg als das
+  Programm** – das Werkzeug, das sie erzeugt, setzte das Stylesheet gar
+  nicht.
+
 ## [1.0.1] – 2026-08-31
 
 ### Behoben

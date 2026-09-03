@@ -13,24 +13,22 @@ wurde.
 Der erste Rückmelder von außerhalb. Vier Punkte, drei davon sofort
 behoben – der vierte ist Geschmack und braucht eine Entscheidung.
 
-- [ ] **Der Oberfläche fehlt Struktur.** Wörtlich: »Für meinen Geschmack
-  fehlen da ein paar Rahmen oder farbliche Abhebungen.«
+- [x] **Der Oberfläche fehlte Struktur.** (2026-09-01) Wörtlich: »Für
+  meinen Geschmack fehlen da ein paar Rahmen oder farbliche
+  Abhebungen.«
 
-  Das trifft einen wunden Punkt. Die drei Bereiche des Hauptfensters –
-  Postfachbaum, Trefferliste, Vorschau – grenzen sich nur durch die
-  Trennlinien des Splitters ab, und die sind im hellen Thema kaum zu
-  sehen. `farben.bereichsrahmen()` setzt zwar Kanten, aber offenbar zu
-  zurückhaltend.
+  Vier Bereiche heben sich jetzt ab: der Suchbereich oben, der
+  Postfachbaum, der Kopf einer Nachricht und die Statuszeile. Dazu sind
+  die Griffe der Teiler sichtbar – vorher wusste niemand, dass sich die
+  Bereiche verschieben lassen.
 
-  **Die Schwierigkeit dabei:** Die Farben müssen aus der Systempalette
-  kommen, sonst sitzen sie im dunklen Thema oder bei einem
-  Hochkontrast-Thema falsch. Feste Farbwerte scheiden aus. Zu prüfen
-  wäre, ob kräftigere Kanten und eine leichte Hintergrundabstufung
-  zwischen den Bereichen genügen – und ob das im dunklen Thema noch
-  trägt.
+  Alle Farben stammen aus der Systempalette; ein Wächtertest prüft das
+  Stylesheet Hexwert für Hexwert. Gemessen: Kante gegen Inhalt 1,98 im
+  hellen und 2,59 im dunklen Thema.
 
-  Vorher mit Stephan abstimmen: Die Farbpalette gilt bei ihm
-  projektübergreifend, ein Alleingang hier zöge Kreise.
+  **Dabei fiel auf, dass die Anleitung ein anderes MailBurg zeigte als
+  das Programm** – `werkzeuge/screenshots.py` setzte das Stylesheet gar
+  nicht.
 
 - [x] **Die DBus-Meldung beim ersten Start.** (2026-09-01)
   `qt.qpa.services: Failed to register with host portal` –
@@ -57,37 +55,21 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
   wichtigste offene Punkt, und OAuth2 ist an einem echten Konto nie
   gelaufen. Nachfragen, sobald er sich meldet.
 
-### Angefragt
-
-- [ ] **JMAP als Abrufweg** ([RFC 8620/8621](https://jmap.io/), von
-  einem Anwender gewünscht). Der Nachfolger von IMAP: JSON über HTTPS
-  statt eines eigenen Protokolls, mit Stapelabfragen und
-  Änderungsverfolgung.
-
-  **Was dafür spricht.** Für ein Archiv ist der interessanteste Teil
-  `Email/changes`: Der Server sagt, was sich seit einem Stichpunkt
-  geändert hat. Das ist genau die Frage, die MailBurg bei jedem Abruf
-  stellt – und die es heute mit `UID n:*` und Nachfiltern beantworten
-  muss. Dazu Stapelabfragen: eine Anfrage statt eines Dialogs pro
-  Ordner.
-
-  **Was dagegen spricht.** Kaum ein Anbieter kann es. Fastmail ja,
-  Stalwart und Cyrus ja; Gmail, Outlook, GMX, Web.de, Proton: nein.
-  Für Stephans acht Postfächer brächte es heute nichts.
-
-  **Der Zuschnitt wäre eine weitere Quelle** neben `sources/imap.py`,
-  nicht ein Ersatz. Die Schnittstelle in `sources/base.py` ist dafür
-  da; sie liefert Rohnachrichten und Fundorte, und woher die kommen,
-  ist dem Archiv gleichgültig. Aufwand grob: die Anmeldung samt
-  Sitzungsobjekt, `Email/query` und `Email/get` für den Erstabruf,
-  `Email/changes` für alles danach.
-
-  **Zu klären, bevor es losgeht:** Ob es einen Anbieter gibt, bei dem
-  sich das erproben lässt. Ein zweiter Abrufweg, der nur gegen einen
-  nachgebauten Server geprüft ist, wäre dieselbe halbe Sache wie OAuth2
-  – siehe dort.
-
 ### Beim nächsten Mal zuerst
+
+- [ ] **Das rote Wappen fehlt in der Weboberfläche.**
+  `werkzeuge/server_logo.py` erzeugt es, `assets/server/` enthält es in
+  allen Größen samt `.ico` – benutzt wird es an keiner einzigen Stelle.
+  Die Anmeldeseite zeigt »MailBurg SERVER« als Text, ein Favicon gibt
+  es nicht. Stephan hat am 2026-09-03 danach gesucht und es nicht
+  gefunden; seit dem Tag steht es wenigstens über den beiden
+  Anleitungen.
+
+  **Was dafür fehlt:** eine Route, die `assets/server/icon-*.png`
+  ausliefert. Bisher liefert der Dienst nur erzeugtes HTML – es gäbe
+  also erstmals statische Dateien, und damit die Frage, ob sie aus dem
+  Paket kommen (`importlib.resources`) oder von der Platte. Aus dem
+  Paket, sonst fehlen sie in der `.exe`.
 
 - [ ] **Die Fenstergrößen am echten Bildschirm nachsehen.** Am
   2026-08-31 hat Stephan in sechs Runden gemeldet, dass Text fehlt:
@@ -113,19 +95,7 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
   alles ohne Rollen lesbar sein. Der Rollbereich ist die Rückfalllinie
   für kleine Bildschirme, nicht der Normalzustand.
 
-- [ ] **Der Neuaufbau holt den erkannten Text nicht zurück.** Der
-  Docstring von `erkennung.vorrat_aufbauen` behauptet, der Neuaufbau
-  finde ihn über den älteren Schlüssel wieder – im Code steht das
-  nirgends. Wer den Index neu baut, muss deshalb anschließend
-  `mailburg texterkennung` laufen lassen.
-
-  Das dauert nur Minuten, weil der Textspeicher unter
-  `~/.local/share/mailburg/ocr` unangetastet bleibt und erkannter Text
-  von dort kommt statt aus `tesseract`. Aber es ist ein zweiter
-  Schritt, den niemand erwartet – und ein Kommentar, der etwas
-  verspricht, was der Code nicht tut.
-
-### Für die 1.1
+### Für die 1.2
 
 - [ ] **macOS.** Tests und Einrichtung laufen dort in der CI durch,
   benutzt hat MailBurg dort noch niemand. Für ein Archivprogramm ist das
@@ -341,6 +311,35 @@ Prüfung steht es hier und nicht in der laufenden Liste.
   Antwort, privat eilt nichts.
 
 ## Erledigtes
+
+### Am 2026-09-01
+
+- [x] **JMAP als zweiter Abrufweg.** (2026-09-01) Von einem Anwender
+  gewünscht. `sources/jmap.py`, Anleitung in [docs/jmap.md](docs/jmap.md).
+
+  Der Gewinn ist `Email/changes`: Es beantwortet in einer Anfrage, was
+  seit dem letzten Lauf dazugekommen ist. Über IMAP baut MailBurg das
+  über die höchste bekannte Nachrichtennummer je Ordner nach – eine
+  Näherung, bei der nachträglich einsortierte Mails durchrutschen.
+
+  Ordner werden über ihre Rolle beurteilt, nicht über den Namen; der
+  Gmail-Fall (`all` enthält alles doppelt) ist mit abgedeckt. Die
+  Nachricht kommt byteweise über die Download-Adresse.
+
+  **Offen: ein echter Anbieter.** Geprüft ist gegen `tests/fake_jmap.py`.
+  Fastmail bietet ein kostenloses Probekonto – damit ließe sich der Weg
+  einmal wirklich gehen. Bis dahin gilt derselbe Vorbehalt wie bei
+  OAuth2.
+
+- [x] **Eine verwaiste Sperre räumt MailBurg selbst weg** (2026-09-01),
+  und wo es nicht sicher ist, fragt es. Vier Lagen: keine Sperre,
+  verwaist auf diesem Rechner, laufender Vorgang, fremder Rechner – nur
+  die letzte braucht eine Entscheidung, und die trifft der Anwender.
+
+- [x] **Der Neuaufbau holt den erkannten PDF-Text zurück.**
+  (2026-09-01) Der Kommentar in `erkennung.py` sagte seit jeher,
+  welcher Schlüssel dafür da ist; abgeholt hat ihn niemand. Wer den
+  Index neu baute, fand seine Scans nicht mehr – ohne Meldung.
 
 ### Am 2026-08-31
 

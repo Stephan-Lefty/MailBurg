@@ -28,7 +28,7 @@ Jahre später auf. macOS ist deshalb für die Fassung 1.1 vorgesehen, mit einem
 Gerät zum Prüfen.
 
 <p align="center">
-  <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer, Mailprogramme und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile." width="960">
+  <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer über IMAP oder JMAP, Mailprogramme und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile." width="960">
 </p>
 
 **Neu hier?** [Erste Schritte](docs/erste-schritte.md) führt mit Bildern von der Installation bis zum ersten durchsuchbaren Archiv. [Die Oberfläche](docs/oberflaeche.md) erklärt jedes Fenster und jeden Menüpunkt.
@@ -54,7 +54,7 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 1.0.1, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
+**Fassung 1.1.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
 Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
 Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
 Bestand von über 16.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
@@ -67,9 +67,12 @@ Verschlüsselte Archive gibt es seit dem 31.08.2026 – gebaut und getestet,
 aber im Alltag noch nicht erprobt. Siehe
 [docs/verschluesselung.md](docs/verschluesselung.md).
 
-Was noch fehlt: Outlook-`.pst`, fertige Pakete (`.deb`, AppImage, `.dmg`),
-Zeitstempel nach RFC 3161 und der erprobte Betrieb unter macOS. Die
-vollständige Liste steht in [TODO.md](TODO.md).
+[JMAP](docs/jmap.md) ist seit dem 01.09.2026 dabei, aber nur gegen einen
+nachgebauten Server geprüft – gegen einen echten Anbieter ist es nie gelaufen.
+
+Was noch fehlt: Outlook-`.pst`, fertige Pakete (`.deb`, AppImage, `.dmg`)
+und der erprobte Betrieb unter macOS. Die vollständige Liste steht in
+[TODO.md](TODO.md).
 
 ## Wie es funktioniert
 
@@ -131,6 +134,18 @@ neben dem Wortindex einen zweiten über Dreizeichengruppen.
 Auch die Schreibweise darf abweichen: `von:muller` und `von:mueller` finden
 beide „Müller", `bahnhofstrasse` findet „Bahnhofstraße". Groß- und
 Kleinschreibung spielt nirgends eine Rolle.
+
+### Woher die Post kommt
+
+Aus **IMAP-Postfächern** – so gut wie überall –, aus Thunderbird-Profilen,
+Maildir-Verzeichnissen und MBOX-Dateien. Und seit Kurzem über
+**[JMAP](docs/jmap.md)**, den Nachfolger von IMAP: Er beantwortet in einer
+Anfrage, was seit dem letzten Abruf dazugekommen ist, statt es aus
+Nachrichtennummern zu erraten. Können bisher Fastmail, Stalwart und Cyrus –
+Gmail, Outlook, GMX, Web.de und Proton nicht.
+
+Der Abrufweg gehört zum einzelnen Postfach: ein Konto über JMAP und die
+übrigen weiter über IMAP ist vorgesehen.
 
 Ging eine Sache mehrmals hin und her, zeigt MailBurg zu jeder Nachricht den
 **ganzen Gesprächsverlauf** – zusammengehalten über die Kopfzeilen, die jedes
@@ -241,6 +256,27 @@ sondern aus dem Archiv selbst abgelesen. Bricht ein Abruf mitten im Ordner ab,
 holt der nächste genau den Rest. Und eine einzelne Mail, an der sich MailBurg
 verschluckt hat, wird vorgemerkt und beim nächsten Lauf erneut angefordert –
 sonst fehlte sie für immer, ohne dass es je jemand bemerkte.
+
+## Im Browser, wenn mehrere darauf zugreifen
+
+Für den Fall, dass nicht nur eine Person an das Archiv soll – eine Kanzlei,
+ein Verein, eine Firma –, lässt sich MailBurg als Dienst betreiben. Dann
+liegt das Archiv auf einem Rechner, der läuft, und alle anderen erreichen es
+über den Browser: anmelden, suchen, lesen, Anhänge herunterladen.
+
+**Wer was sehen darf, steht im Archiv selbst**, nicht beim Dienst. Ein Zugang
+kann auf bestimmte Postfächer beschränkt sein, und die Einschränkung wirkt
+*in* der Suchabfrage: Wer die Buchhaltung nicht sehen darf, bekommt auch keine
+Trefferzahl, aus der er auf sie schließen könnte.
+
+**Gelesen wird nur.** Einstufen, Löschen und das Zurücklegen ins Postfach
+bleiben der Kommandozeile und dem Fenster vorbehalten – das sind die Vorgänge,
+die ins Journal schreiben.
+
+Der Weg vom leeren Rechner bis dahin steht in
+[docs/server-einrichten.md](docs/server-einrichten.md), die Überlegungen
+dahinter in [docs/server.md](docs/server.md). Für Debian ist er durchgespielt;
+der Windows-Dienst ist gebaut, aber noch nicht erprobt.
 
 ## Zu Nextcloud
 

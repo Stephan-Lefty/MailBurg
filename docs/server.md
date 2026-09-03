@@ -1,9 +1,16 @@
 [Übersicht](../README.md) | [Anleitungen](README.md) | [Erste Schritte](erste-schritte.md) | [Die Oberfläche](oberflaeche.md)
 
-# Server Edition – Entwurf
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/server/banner-dark-1600.png">
+    <img src="../assets/server/banner-1600.png" alt="MailBurg im Browser – E-Mails. Sicher bewahrt." width="620">
+  </picture>
+</p>
+
+# Das Archiv im Browser – Entwurf
 
 **Zum Einrichten geht es hier entlang:**
-[Die Server Edition einrichten](server-einrichten.md). Dieses Dokument
+[Das Archiv im Browser einrichten](server-einrichten.md). Dieses Dokument
 ist die Begründung dahinter, nicht die Anleitung.
 
 **Stand 2026-08-31: Vier der fünf Brocken sind gebaut** – Benutzer und
@@ -58,7 +65,7 @@ Die Farbwerte stehen in [assets/farben.md](../assets/farben.md).
 
 ## Ein Repository, saubere Trennung
 
-Am 2026-08-31 besprochen und entschieden: **Die Server Edition bekommt
+Am 2026-08-31 besprochen und entschieden: **Der Dienst bekommt
 kein eigenes Repository.**
 
 Der Gedanke dahinter war Sauberkeit – und genau die spricht dagegen. Ein

@@ -5239,3 +5239,96 @@ class SperrfrageTest(OberflaechenTest):
             self.fenster._sperre_klaeren(self.wurzel)
 
         self.assertIn("zwei Vorgänge gleichzeitig", gesehen["text"])
+
+
+class KontoDialogProtokollTest(OberflaechenTest):
+    """Der Abrufweg stellt die Felder darunter um.
+
+    **Ein Feld, das nicht gilt, gehört nicht angezeigt.** JMAP kennt
+    keinen Port und keine Wahl der Verschlüsselung – es ist immer HTTPS.
+    Wer die Felder trotzdem sähe, füllte sie aus und wunderte sich, dass
+    es nichts ändert.
+    """
+
+    def _dialog(self):
+        from mailburg.ui.assistent import KontoDialog
+
+        dialog = KontoDialog()
+        self.addCleanup(dialog.close)
+        dialog.show()
+        self.app.processEvents()
+        return dialog
+
+    def test_imap_ist_die_vorgabe(self):
+        """JMAP ist die bessere Technik und die seltenere."""
+        dialog = self._dialog()
+
+        self.assertEqual(dialog.protokoll.currentData(), "imap")
+        self.assertEqual(dialog.konto().protokoll, "imap")
+
+    def test_bei_jmap_verschwinden_port_und_verschluesselung(self):
+        dialog = self._dialog()
+
+        dialog.protokoll.setCurrentIndex(1)
+        self.app.processEvents()
+
+        self.assertFalse(dialog.port.isVisible())
+        self.assertFalse(dialog.verschluesselung.isVisible())
+
+    def test_bei_jmap_heissen_die_felder_anders(self):
+        """»IMAP-Server« wäre bei einer https-Adresse schlicht falsch."""
+        dialog = self._dialog()
+
+        dialog.protokoll.setCurrentIndex(1)
+        self.app.processEvents()
+
+        self.assertEqual(dialog._schild_server.text(), "Adresse:")
+        self.assertIn("Marke", dialog._schild_passwort.text())
+
+    def test_ein_jmap_konto_traegt_port_443_und_ssl(self):
+        """Beides steht dort in der Adresse, nicht in eigenen Feldern."""
+        dialog = self._dialog()
+        dialog.protokoll.setCurrentIndex(1)
+        dialog.server.setText("https://api.example.org/jmap/session")
+        self.app.processEvents()
+
+        konto = dialog.konto()
+
+        self.assertEqual(konto.protokoll, "jmap")
+        self.assertTrue(konto.per_jmap)
+        self.assertEqual(konto.port, 443)
+        self.assertTrue(konto.ssl)
+
+    def test_ohne_benutzernamen_geht_es_bei_jmap_auch(self):
+        """Wer eine Zugriffsmarke hat, hat keinen Benutzernamen."""
+        dialog = self._dialog()
+        dialog.protokoll.setCurrentIndex(1)
+        dialog.server.setText("https://api.example.org/jmap/session")
+        self.app.processEvents()
+
+        konto = dialog.konto()
+
+        self.assertEqual(konto.benutzer, "")
+        self.assertTrue(konto.name, "ohne Namen wäre es in der Liste namenlos")
+
+    def test_der_wechsel_verwirft_eine_frühere_pruefung(self):
+        """Eine Prüfung gilt für den Weg, auf dem sie lief."""
+        dialog = self._dialog()
+        dialog.uebernehmen_knopf.setEnabled(True)
+
+        dialog.protokoll.setCurrentIndex(1)
+        self.app.processEvents()
+
+        self.assertFalse(dialog.uebernehmen_knopf.isEnabled())
+        self.assertIn("Noch nicht geprüft", dialog.pruefstand.text())
+
+    def test_zurueck_auf_imap_stellt_alles_wieder_her(self):
+        dialog = self._dialog()
+        dialog.protokoll.setCurrentIndex(1)
+        self.app.processEvents()
+        dialog.protokoll.setCurrentIndex(0)
+        self.app.processEvents()
+
+        self.assertTrue(dialog.port.isVisible())
+        self.assertEqual(dialog.konto().protokoll, "imap")
+        self.assertEqual(dialog.konto().port, 993)

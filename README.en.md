@@ -28,7 +28,7 @@ years later. macOS is therefore planned for version 1.1, with a machine to
 verify it on.
 
 <p align="center">
-  <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes, mail clients and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Access via the interface or the command line." width="960">
+  <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes over IMAP or JMAP, mail clients and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Access via the interface or the command line." width="960">
 </p>
 
 <sub>Die Grafik ist auf Deutsch – wie die Oberfläche und die Suchsprache.</sub>
@@ -53,7 +53,7 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 1.0.1, in daily use.** Archive format, IMAP retrieval, search, the
+**Version 1.1.0, in daily use.** Archive format, IMAP retrieval, search, the
 graphical interface, text recognition for scanned PDFs, backups and scheduled
 retrieval are all in place and used every day — on Linux with a corpus of more
 than 16,000 messages, on Windows with the ready-made `MailBurg.exe`.
@@ -66,9 +66,11 @@ Encrypted archives have been available since 2026-08-31 — built and tested,
 but not yet exercised in daily use. See
 [docs/verschluesselung.md](docs/verschluesselung.md) (German).
 
-Still missing: Outlook `.pst`, ready-made packages (`.deb`, AppImage, `.dmg`),
-RFC 3161 timestamps and verified operation on macOS. Full list in
-[TODO.en.md](TODO.en.md).
+[JMAP](docs/jmap.md) arrived on 2026-09-01, but has only been verified
+against a mock server — never against a real provider.
+
+Still missing: Outlook `.pst`, ready-made packages (`.deb`, AppImage, `.dmg`)
+and verified operation on macOS. Full list in [TODO.en.md](TODO.en.md).
 
 ## How it works
 
@@ -124,6 +126,18 @@ konto:firma ordner:Gesendet
 special case but the norm — we run words together. Hence a second index over
 character trigrams alongside the word index. And `von:muller` finds "Müller"
 too, for when the umlaut is hard to type.
+
+### Where the mail comes from
+
+From **IMAP mailboxes** — almost everywhere —, from Thunderbird profiles,
+Maildir directories and MBOX files. And recently over
+**[JMAP](docs/jmap.md)** (German), the successor to IMAP: it answers in one
+request what has arrived since the last run, rather than inferring it from
+message numbers. Supported so far by Fastmail, Stalwart and Cyrus — not by
+Gmail, Outlook, GMX, Web.de or Proton.
+
+The retrieval path belongs to the individual mailbox: one account over JMAP
+and the rest over IMAP is intended.
 
 When a matter went back and forth, MailBurg shows the **whole conversation**
 for any message in it — held together by the headers every mail client carries,
@@ -210,6 +224,27 @@ the archive itself. If a fetch is interrupted mid-folder, the next one picks up
 exactly the remainder. And a single message MailBurg choked on is flagged and
 requested again next time — otherwise it would be missing forever, with nobody
 any the wiser.
+
+## In the browser, when more than one person needs access
+
+Where the archive is not for one person alone — a practice, a club, a company —
+MailBurg can run as a service. The archive then sits on a machine that stays on,
+and everyone else reaches it through a browser: sign in, search, read, download
+attachments.
+
+**Who may see what is recorded in the archive itself**, not in the service. An
+account can be restricted to certain mailboxes, and the restriction takes effect
+*inside* the query: someone barred from accounting does not even get a result
+count they could infer from.
+
+**Read-only.** Classifying, deleting and restoring to a mailbox stay with the
+command line and the desktop window — those are the operations that write to the
+journal.
+
+The path from a bare machine is in
+[docs/server-einrichten.md](docs/server-einrichten.md) (German), the reasoning
+in [docs/server.md](docs/server.md) (German). It has been walked through on
+Debian; the Windows service is built but not yet exercised.
 
 ## On Nextcloud
 

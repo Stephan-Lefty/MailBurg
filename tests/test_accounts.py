@@ -23,6 +23,34 @@ class KontoTest(unittest.TestCase):
         anderer = Konto(name="B", server="imap.example.net", benutzer="post")
         self.assertNotEqual(einer.schluessel, anderer.schluessel)
 
+    def test_schluessel_ohne_benutzer_nimmt_den_kontonamen(self):
+        # Zwei JMAP-Konten beim selben Anbieter, beide mit einer
+        # Zugriffsmarke statt eines Benutzernamens: Ohne den Kontonamen
+        # bekämen sie denselben Schlüssel, und das zweite Passwort
+        # überschriebe das erste, ohne dass jemand etwas merkt.
+        adresse = "https://api.example.org/jmap/session"
+        einer = Konto(name="Privat", server=adresse, benutzer="", protokoll="jmap")
+        anderer = Konto(name="Firma", server=adresse, benutzer="", protokoll="jmap")
+        self.assertNotEqual(einer.schluessel, anderer.schluessel)
+
+    def test_beschreibung_bei_jmap_klebt_keinen_port_an_die_adresse(self):
+        konto = Konto(
+            name="Firma",
+            server="https://api.example.org/jmap/session",
+            benutzer="",
+            port=443,
+            protokoll="jmap",
+        )
+        text = konto.beschreibung()
+        self.assertIn("JMAP", text)
+        self.assertNotIn(":443", text)
+        # Und keine Lücke da, wo der Benutzername fehlt.
+        self.assertNotIn("( auf", text)
+
+    def test_beschreibung_bei_imap_bleibt_wie_sie_war(self):
+        konto = Konto(name="A", server="imap.example.org", benutzer="post", port=993)
+        self.assertEqual(konto.beschreibung(), "A (post auf imap.example.org:993)")
+
     def test_papierkorb_ist_von_haus_aus_ausgeschlossen(self):
         konto = Konto(name="A", server="s", benutzer="b")
         self.assertIn("Trash", konto.ausschluss)

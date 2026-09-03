@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 660" width="1240" height="660" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
   <title>MailBurg – wie es arbeitet</title>
-  <desc>Postfächer und lokale Mailordner werden nur gelesen. MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, und führt darüber ein Protokoll mit Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile.</desc>
+  <desc>Postfächer über IMAP oder JMAP und lokale Mailordner werden nur gelesen. MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, und führt darüber ein Protokoll mit Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile.</desc>
 
   <defs>
     <marker id="pfeil" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -30,9 +30,9 @@
     <rect x="40" y="72" width="250" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <circle cx="72" cy="106" r="15" fill="#1668e3"/>
     <path d="M64 101 h16 v10 h-16 z M64 101 l8 6 l8 -6" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
-    <text x="100" y="103" class="kasten-titel">IMAP-Postfächer</text>
-    <text x="100" y="123" class="kasten-text">Beliebig viele Konten,</text>
-    <text x="100" y="140" class="kasten-text">auch von mehreren Anbietern</text>
+    <text x="100" y="103" class="kasten-titel">Postfächer</text>
+    <text x="100" y="123" class="kasten-text">IMAP oder JMAP – beliebig</text>
+    <text x="100" y="140" class="kasten-text">viele Konten und Anbieter</text>
   </g>
 
   <g>
@@ -146,7 +146,7 @@
   <!-- ============================================ Fußzeile -->
   <line x1="40" y1="614" x2="1200" y2="614" stroke="#d6dde8" stroke-width="1.5"/>
   <text x="40" y="638" class="band">
-    Läuft unter Linux, Windows und macOS · Jede Mail bleibt als <tspan font-style="italic">.eml</tspan> auch ohne MailBurg lesbar · Passwörter im Schlüsselbund des Systems
+    Läuft unter Linux und Windows · Jede Mail bleibt als <tspan font-style="italic">.eml</tspan> auch ohne MailBurg lesbar · Passwörter im Schlüsselbund des Systems
   </text>
   <text x="1200" y="638" class="band" text-anchor="end" fill="#667080">MIT-Lizenz</text>
 </svg>

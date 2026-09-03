@@ -1,6 +1,13 @@
-[Übersicht](../README.md) | [Anleitungen](README.md) | [Entwurf der Server Edition](server.md)
+[Übersicht](../README.md) | [Anleitungen](README.md) | [Der Entwurf dahinter](server.md)
 
-# Die Server Edition einrichten
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/server/banner-dark-1600.png">
+    <img src="../assets/server/banner-1600.png" alt="MailBurg im Browser – E-Mails. Sicher bewahrt." width="620">
+  </picture>
+</p>
+
+# Das Archiv im Browser einrichten
 
 Vom leeren Server bis zum Archiv im Browser. Rechnen Sie mit einer
 halben Stunde.

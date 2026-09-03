@@ -21,15 +21,18 @@
   Aufbewahrungsfristen fallen, die für sie nicht gelten.
 - **[Das Archiv sichern](sicherung.md)** – warum ein Archiv kein Backup ist,
   wie aus zehntausend Dateien eine wird, und wie sie in die Cloud kommt.
+- **[JMAP – der Nachfolger von IMAP](jmap.md)** – was es ist, warum es für
+  ein Archiv der bessere Weg ist, und wie man ein Postfach darüber
+  einrichtet. Können bisher nur wenige Anbieter.
 - **[Das Archiv verschlüsseln](verschluesselung.md)** – für Post, die das
   Haus verlässt: Passwort, Notschlüssel, was geschützt ist und was nicht,
   und wie ein bestehendes Archiv umzieht.
 - **[MailBurg unter Windows](windows.md)** – Einrichtung, Ablageorte,
   Thunderbird und Outlook.
-- **[Die Server Edition einrichten](server-einrichten.md)** – vom leeren
-  Server bis zum Archiv im Browser: Tresor, Zugänge, Dienst, Reverse
+- **[Das Archiv im Browser einrichten](server-einrichten.md)** – vom leeren
+  Rechner bis zum Archiv im Browser: Tresor, Zugänge, Dienst, Reverse
   Proxy. Für Debian durchgespielt, der Windows-Teil noch ungeprüft.
-- **[Server Edition: der Entwurf](server.md)** – die Überlegungen
+- **[Das Archiv im Browser: der Entwurf](server.md)** – die Überlegungen
   dahinter. Was der Server können muss, welche Entscheidungen warum so
   gefallen sind und was noch offen ist.
 

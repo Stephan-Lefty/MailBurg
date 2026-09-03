@@ -11,14 +11,13 @@ down, with the date they were completed.
 
 The first report from outside. Four points, three fixed straight away.
 
-- [ ] **The interface lacks structure.** Verbatim: "for my taste a few
-  frames or colour separations are missing". The three areas of the main
-  window are separated only by splitter handles, barely visible in the
-  light theme.
+- [x] **The interface lacked structure.** (2026-09-01) Four areas now
+  stand apart: the search area at the top, the mailbox tree, the header
+  of a message and the status bar. Splitter handles are visible too.
 
-  **The difficulty:** colours must come from the system palette, or they
-  sit wrong in dark and high-contrast themes. Fixed colour values are
-  out.
+  Every colour comes from the system palette; a guard test checks the
+  stylesheet value by value. Measured: edge against content 1.98 in the
+  light theme, 2.59 in the dark one.
 
 - [x] **The DBus message on first start.** (2026-09-01)
   `setDesktopFileName` is static and stood after the `QApplication` was
@@ -33,25 +32,6 @@ The first report from outside. Four points, three fixed straight away.
 
 - [ ] **Gmail retrieval failed** for the reporter. Worth following up:
   Gmail is the most significant entry under "not yet tested".
-
-### Requested
-
-- [ ] **JMAP as a retrieval path** ([RFC 8620/8621](https://jmap.io/),
-  requested by a user). The successor to IMAP: JSON over HTTPS, batched
-  requests, change tracking.
-
-  **For:** `Email/changes` answers exactly the question MailBurg asks on
-  every run — what changed since this point? Today that takes `UID n:*`
-  plus filtering afterwards.
-
-  **Against:** hardly any provider supports it. Fastmail, Stalwart and
-  Cyrus do; Gmail, Outlook, GMX, Web.de and Proton do not.
-
-  It would be another source alongside `sources/imap.py`, not a
-  replacement — `sources/base.py` exists for exactly that. To settle
-  first: whether there is a provider to verify it against. A second
-  retrieval path tested only against a mock would be the same half-job
-  as OAuth2.
 
 ### Next session, first
 
@@ -70,12 +50,7 @@ The first report from outside. Four points, three fixed straight away.
   always be readable without scrolling. The scroll area is the fallback
   for small screens, not the normal state.
 
-- [ ] **Rebuilding the index does not bring back recognised text.** The
-  docstring of `erkennung.vorrat_aufbauen` claims the rebuild finds it
-  again via the older key — the code does no such thing. After a rebuild
-  you have to run `mailburg texterkennung` as a second step.
-
-### For 1.1
+### For 1.2
 
 - [ ] **macOS.** The test suite and the setup pass in CI, but nobody has
   used MailBurg there. For an archiving program that is too little to
@@ -274,6 +249,34 @@ they sit here and not in the running list.
   urgent.
 
 ## Done
+
+### 2026-09-01
+
+- [x] **JMAP as a second retrieval path.** (2026-09-01) Requested by a
+  user. `sources/jmap.py`, guide in [docs/jmap.md](docs/jmap.md)
+  (German).
+
+  The gain is `Email/changes`: it answers in one request what has
+  arrived since the last run. Over IMAP, MailBurg approximates that via
+  the highest known message number per folder — and messages filed
+  retroactively slip through.
+
+  Folders are judged by their role, not their name; the Gmail case
+  (`all` contains everything twice) is covered. The message itself comes
+  byte for byte via the download URL.
+
+  **Still open: a real provider.** Verified against
+  `tests/fake_jmap.py`. Fastmail offers a free trial account — that
+  would let the path be walked for real once.
+
+- [x] **An orphaned lock is cleared away by MailBurg itself**
+  (2026-09-01), and where that is not safe, it asks. Four situations;
+  only the last — a lock from another machine — needs a decision, and
+  the user makes it.
+
+- [x] **Rebuilding the index brings back recognised PDF text.**
+  (2026-09-01) The comment in `erkennung.py` had always said which key
+  was meant for it; nobody ever picked it up.
 
 ### 2026-08-31
 

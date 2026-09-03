@@ -167,7 +167,9 @@ class Anmeldeprobe(Auftrag):
 
         self.meldung.emit(f"Verbinde mit {self.konto.server} …")
         # Kürzer als beim Abruf: Hier sitzt jemand davor und wartet.
-        quelle = ImapSource(
+        from mailburg.sources import quelle_fuer
+
+        quelle = quelle_fuer(
             self.konto, self.passwort, zeitgrenze=ZEITGRENZE_PRUEFEN
         )
         try:
@@ -235,7 +237,9 @@ class Abruflauf(Auftrag):
                     continue
 
                 try:
-                    quelle = ImapSource(
+                    from mailburg.sources import quelle_fuer
+
+                    quelle = quelle_fuer(
                         konto,
                         passwort,
                         hoechststand=lambda ordner, k=konto: archiv.index.max_uid(
