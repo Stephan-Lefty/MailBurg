@@ -215,3 +215,110 @@ class SystemuebergabeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AnhangOeffnenTest(unittest.TestCase):
+    """Der Anhang einer Mail, wenn man ihn zum Ansehen öffnet.
+
+    **Bis zum 2026-09-03 ging er nach /tmp und blieb dort liegen.**
+    ``ui/vorschau.py`` legte ihn mit ``mkdtemp`` ab und räumte nie auf.
+    Für die vollständige Mail daneben war seit jeher begründet, warum
+    sie dort nicht hingehört – für den PDF-Anhang derselben Mail galt
+    dieselbe Begründung, nur tat es niemand.
+
+    Ein Anhang aus einem Geschäftsarchiv ist eine Rechnung, ein
+    Vertrag, ein Arztbericht.
+    """
+
+    def setUp(self):
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        patch = mock.patch.dict(
+            os.environ, {"XDG_CACHE_HOME": self.ordner.name}
+        )
+        patch.start()
+        self.addCleanup(patch.stop)
+
+        # Das System soll im Test nichts starten.
+        uebergeben = mock.patch.object(rueckgabe, "_dem_system_uebergeben")
+        self.uebergeben = uebergeben.start()
+        self.addCleanup(uebergeben.stop)
+
+    def test_liegt_im_geschuetzten_ordner_neben_den_mails(self):
+        # Nicht mehr in einem eigenen mkdtemp-Verzeichnis: Das lag in
+        # /tmp, wo auf einem Mehrbenutzersystem jeder mitlesen darf, und
+        # es blieb liegen. (Im Test zeigt XDG_CACHE_HOME selbst nach
+        # /tmp - deshalb wird hier der Ordner verglichen, nicht der Pfad.)
+        ziel = rueckgabe.anhang_oeffnen(b"%PDF-1.4", "Rechnung.pdf")
+
+        self.assertEqual(ziel.parent, paths.geoeffnet_dir())
+
+    def test_jeder_anhang_bekommt_kein_eigenes_verzeichnis(self):
+        # Der alte Weg legte je Anhang ein mkdtemp-Verzeichnis an, das
+        # niemand je wieder entfernte.
+        eine = rueckgabe.anhang_oeffnen(b"eins", "A.pdf")
+        andere = rueckgabe.anhang_oeffnen(b"zwei", "B.pdf")
+
+        self.assertEqual(eine.parent, andere.parent)
+
+    @unittest.skipIf(sys.platform == "win32", "Rechte gibt es dort anders")
+    def test_nur_der_benutzer_darf_hineinsehen(self):
+        ziel = rueckgabe.anhang_oeffnen(b"%PDF-1.4", "Rechnung.pdf")
+
+        self.assertEqual(ziel.stat().st_mode & 0o777, 0o600)
+
+    def test_die_endung_bleibt_erhalten(self):
+        # Ohne sie weiß das System nicht, womit es die Datei öffnen soll.
+        ziel = rueckgabe.anhang_oeffnen(b"%PDF-1.4", "Rechnung.pdf")
+
+        self.assertEqual(ziel.suffix, ".pdf")
+
+    def test_der_inhalt_kommt_unveraendert_an(self):
+        ziel = rueckgabe.anhang_oeffnen(b"%PDF-1.4\nInhalt", "Rechnung.pdf")
+
+        self.assertEqual(ziel.read_bytes(), b"%PDF-1.4\nInhalt")
+
+    def test_zwei_gleichnamige_anhaenge_ueberschreiben_sich_nicht(self):
+        # Zwei Rechnungen aus verschiedenen Mails, beide "Rechnung.pdf",
+        # beide zugleich offen.
+        eine = rueckgabe.anhang_oeffnen(b"eins", "Rechnung.pdf")
+        andere = rueckgabe.anhang_oeffnen(b"zwei", "Rechnung.pdf")
+
+        self.assertNotEqual(eine, andere)
+        self.assertEqual(eine.read_bytes(), b"eins")
+        self.assertEqual(andere.read_bytes(), b"zwei")
+
+    def test_ein_anhang_ohne_namen_bekommt_einen(self):
+        ziel = rueckgabe.anhang_oeffnen(b"daten", "")
+
+        self.assertTrue(ziel.name)
+        self.assertTrue(ziel.is_file())
+
+    def test_beim_beenden_ist_er_weg(self):
+        ziel = rueckgabe.anhang_oeffnen(b"%PDF-1.4", "Rechnung.pdf")
+        self.assertTrue(ziel.is_file())
+
+        rueckgabe.aufraeumen_beim_beenden()
+
+        self.assertFalse(
+            ziel.is_file(),
+            "ein Anhang aus einem Geschäftsarchiv darf nicht liegen bleiben",
+        )
+
+    def test_nach_vier_stunden_raeumt_ihn_der_naechste_auf(self):
+        alt = rueckgabe.anhang_oeffnen(b"%PDF-1.4", "Alt.pdf")
+        vorgestern = time.time() - rueckgabe.HALTBARKEIT - 60
+        os.utime(alt, (vorgestern, vorgestern))
+
+        rueckgabe.anhang_oeffnen(b"%PDF-1.4", "Neu.pdf")
+
+        self.assertFalse(alt.is_file())
+
+    def test_fremdes_bleibt_auch_hier_liegen(self):
+        rueckgabe.anhang_oeffnen(b"%PDF-1.4", "Rechnung.pdf")
+        fremd = paths.geoeffnet_dir() / "notizen.txt"
+        fremd.write_text("nicht von uns", encoding="utf-8")
+
+        rueckgabe.aufraeumen_beim_beenden()
+
+        self.assertTrue(fremd.is_file())

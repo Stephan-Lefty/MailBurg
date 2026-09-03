@@ -14,7 +14,6 @@ verlässt.
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl
@@ -85,17 +84,42 @@ class Anhangszeile(QFrame):
             )
         return pixmap
 
-    def _ablegen(self) -> Path:
-        """Schreibt den Anhang in eine Wegwerfdatei, um ihn zu öffnen."""
-        ordner = Path(tempfile.mkdtemp(prefix="mailburg-"))
-        # Der Name des Anhangs bleibt erhalten, aber ohne Pfadanteile: Ein
-        # Anhang namens "../../.bashrc" darf nirgendwo landen außer hier.
-        ziel = ordner / Path(self.anhang.filename).name
-        ziel.write_bytes(self.anhang.payload)
-        return ziel
-
     def _oeffnen(self) -> None:
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(self._ablegen())))
+        """Übergibt den Anhang dem Programm, das dafür eingerichtet ist.
+
+        **Ein Fehlschlag muss auffallen.** Bis zum 2026-09-03 stand hier
+        ein nacktes ``QDesktopServices.openUrl(...)``, dessen Rückgabewert
+        niemand ansah: Fand das System kein Programm für die Datei,
+        passierte einfach nichts. Ein Anwender hat genau das gemeldet – er
+        klickte auf ein PDF, und es öffnete sich ein Browser mit einer
+        fremden Seite. Er lief in einem Container, in dem es keinen
+        PDF-Betrachter gab; dass MailBurg dazu schwieg, machte aus einer
+        erklärbaren Lage ein Rätsel.
+        """
+        from PySide6.QtWidgets import QMessageBox
+
+        from mailburg.core import rueckgabe
+
+        try:
+            ziel = rueckgabe.anhang_oeffnen(
+                self.anhang.payload or b"", self.anhang.filename
+            )
+        except (OSError, rueckgabe.RueckgabeFehler) as exc:
+            QMessageBox.warning(self, "Anhang lässt sich nicht öffnen", str(exc))
+            return
+
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(ziel))):
+            QMessageBox.information(
+                self,
+                "Kein Programm dafür",
+                f"Für »{self.anhang.filename}« ist auf diesem Rechner kein "
+                f"Programm eingerichtet.\n\n"
+                f"Die Datei liegt bereit unter:\n{ziel}\n\n"
+                f"Wenn Sie MailBurg in einem Container betreiben – etwa "
+                f"einer Toolbox oder einem Flatpak –, sieht ein Programm "
+                f"außerhalb diesen Ordner unter Umständen gar nicht. Dann "
+                f"hilft »Als Datei speichern …« daneben.",
+            )
 
     def _speichern(self) -> None:
         from PySide6.QtWidgets import QFileDialog, QMessageBox

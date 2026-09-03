@@ -63,6 +63,20 @@ from mailburg.ui.vorschau import Mailvorschau
 #: großen Archiv wäre das Tippen dann zäh.
 TIPPAUSE = 250
 
+#: So oft frischt der Postfachbaum auf, während ein Abruf läuft.
+#:
+#: **Warum es das überhaupt gibt.** Der Baum wurde bis dahin erst
+#: aufgebaut, wenn der Abruf *fertig* war. Bei sechstausend Mails hieß
+#: das: eine Viertelstunde lang ein leerer Baum und »0 Mails im Archiv ·
+#: noch nicht abgerufen« – während unten links längst »2800 geholt«
+#: stand. Zwei Anzeigen im selben Fenster, die einander widersprachen.
+#: Ein Anwender hat genau das gemeldet: Er war sich nicht sicher, ob das
+#: Programm etwas Sinnvolles tut.
+#:
+#: Drei Sekunden, nicht bei jeder Mail: Der Baum wird dabei vollständig
+#: neu aufgebaut, und das kostet bei vielen Ordnern spürbar.
+MITWACHSEN = 3000
+
 
 class Hauptfenster(QMainWindow):
     """Das Fenster, in dem ein Archiv durchsucht und gefüllt wird."""
@@ -132,6 +146,12 @@ class Hauptfenster(QMainWindow):
         self.tipp_uhr = QTimer(self)
         self.tipp_uhr.setSingleShot(True)
         self.tipp_uhr.timeout.connect(self._suchen)
+
+        # Läuft nur während eines Abrufs. Lesen und Schreiben zugleich
+        # ist zulässig, weil der Index im WAL-Modus liegt – der Kommentar
+        # in core/index.py sagt das seit jeher, abgeholt hat es niemand.
+        self.mitwachsen = QTimer(self)
+        self.mitwachsen.timeout.connect(self._mitwachsen)
 
         self.baum = Postfachbaum()
         self.baum.setHeaderLabels(["Postfächer", "Mails"])
@@ -1172,7 +1192,15 @@ class Hauptfenster(QMainWindow):
 
         from mailburg.core.sprache import mails
 
-        wann = _abrufzeit(Abrufzustand(self.archiv.uuid).zuletzt)
+        # **Während eines Abrufs nicht »zuletzt abgerufen«.** Der Stand
+        # wird erst am Ende geschrieben; bis dahin stünde dort »noch nicht
+        # abgerufen«, während daneben die geholten Mails hochzählen. Das
+        # hat ein Anwender gemeldet, und er hatte recht: Zwei Anzeigen im
+        # selben Fenster dürfen sich nicht widersprechen.
+        if self.mitwachsen.isActive():
+            wann = "wird gerade abgerufen …"
+        else:
+            wann = _abrufzeit(Abrufzustand(self.archiv.uuid).zuletzt)
         self.bestand.setText(
             f"{mails(self.archiv.index.count())} im Archiv · {wann}"
         )
@@ -1182,7 +1210,15 @@ class Hauptfenster(QMainWindow):
 
         merken_unter("postfachreihenfolge", self.baum.reihenfolge())
 
-    def _baum_fuellen(self) -> None:
+    def _baum_fuellen(self, auswahl_halten: bool = False) -> None:
+        """Baut den Postfachbaum neu auf.
+
+        Mit ``auswahl_halten`` überlebt, was der Anwender ausgewählt und
+        aufgeklappt hatte. Das ist nötig, seit der Baum **während** eines
+        laufenden Abrufs mitwächst: Wer alle paar Sekunden auf »Alle
+        Postfächer« zurückgeworfen wird, kann nicht nebenher arbeiten.
+        """
+        vorher = self._baumstand() if auswahl_halten else None
         self.baum.clear()
         if self.archiv is None:
             return
@@ -1252,8 +1288,54 @@ class Hauptfenster(QMainWindow):
                 )
         alle.setText(1, f"{self.archiv.index.count():,}".replace(",", "."))
 
+        if vorher is not None and self._baumstand_herstellen(*vorher):
+            return
+
         alle.setSelected(True)
         self.baum.expandItem(alle)
+
+    def _baumeintraege(self):
+        """Alle Einträge des Baums, Konten und Ordner."""
+        for i in range(self.baum.topLevelItemCount()):
+            oben = self.baum.topLevelItem(i)
+            yield oben
+            for j in range(oben.childCount()):
+                yield oben.child(j)
+
+    def _baumstand(self) -> tuple[str | None, set[str]]:
+        """Merkt, was ausgewählt und was aufgeklappt ist.
+
+        Festgehalten wird der Suchausdruck des Eintrags, nicht seine
+        Zeilennummer: Kommt während des Abrufs ein Ordner dazu, rutscht
+        alles darunter eine Zeile weiter.
+        """
+        aktuell = self.baum.currentItem()
+        gewaehlt = aktuell.data(0, Qt.UserRole) if aktuell is not None else None
+        offen = {
+            eintrag.data(0, Qt.UserRole)
+            for eintrag in self._baumeintraege()
+            if eintrag.isExpanded() and eintrag.data(0, Qt.UserRole) is not None
+        }
+        return gewaehlt, offen
+
+    def _baumstand_herstellen(self, gewaehlt: str | None, offen: set[str]) -> bool:
+        """Stellt Auswahl und aufgeklappte Zweige wieder her.
+
+        Gibt zurück, ob die Auswahl wiedergefunden wurde. Wurde sie es
+        nicht – das Postfach ist weg, der Ordner umbenannt –, fällt der
+        Aufrufer auf »Alle Postfächer« zurück, statt den Baum ohne jede
+        Auswahl stehen zu lassen.
+        """
+        getroffen = False
+        for eintrag in self._baumeintraege():
+            kennung = eintrag.data(0, Qt.UserRole)
+            if kennung in offen:
+                eintrag.setExpanded(True)
+            if not getroffen and gewaehlt is not None and kennung == gewaehlt:
+                eintrag.setSelected(True)
+                self.baum.setCurrentItem(eintrag)
+                getroffen = True
+        return getroffen
 
     # -------------------------------------------------------------- Suchen
 
@@ -1503,9 +1585,28 @@ class Hauptfenster(QMainWindow):
 
         self.laeufer = Läufer(auftrag)
         self.laeufer.starten()
+        self.mitwachsen.start(MITWACHSEN)
+
+    def _mitwachsen(self) -> None:
+        """Zeigt während des Abrufs, was schon im Archiv liegt.
+
+        **Darf nie selbst scheitern.** Das hier ist eine Nebensache, die
+        alle drei Sekunden läuft, während im Hintergrund geschrieben
+        wird. Ein Lesefehler – eine Sperre, ein halb geschriebener Stand –
+        darf den Abruf nicht mit einem Traceback beenden; beim nächsten
+        Schlag steht es ohnehin wieder richtig da.
+        """
+        if self.archiv is None:
+            return
+        try:
+            self._baum_fuellen(auswahl_halten=True)
+            self._bestand_zeigen()
+        except Exception:  # noqa: BLE001 – siehe Docstring
+            pass
 
     def _abruf_fertig(self, ergebnisse: dict) -> None:
         self.laeufer = None
+        self.mitwachsen.stop()
         self.balken.hide()
         self.abrufen_aktion.setEnabled(True)
 
@@ -1604,8 +1705,14 @@ class Hauptfenster(QMainWindow):
 
     def _abruf_gescheitert(self, text: str) -> None:
         self.laeufer = None
+        self.mitwachsen.stop()
         self.balken.hide()
         self.abrufen_aktion.setEnabled(True)
+        # Auch hier auffrischen: Ein Abruf, der nach der Hälfte
+        # abbricht, hat die erste Hälfte trotzdem archiviert. Der Baum
+        # dürfte sie nicht verschweigen.
+        self._baum_fuellen(auswahl_halten=True)
+        self._bestand_zeigen()
         self.stand.setText("Abruf gescheitert")
         QMessageBox.critical(self, "Abruf gescheitert", text)
 

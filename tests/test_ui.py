@@ -302,16 +302,24 @@ class VorschauTest(OberflaechenTest):
     def test_pfadanteile_im_dateinamen_werden_abgeschnitten(self):
         # Ein Anhang namens "../../.bashrc" darf beim Öffnen nirgendwo
         # landen außer im Wegwerfordner.
-        from mailburg.extract.message import Attachment
-        from mailburg.ui.vorschau import Anhangszeile
+        #
+        # Seit dem 2026-09-03 legt nicht mehr die Oberfläche ab, sondern
+        # ``rueckgabe.anhang_oeffnen`` - im geschützten Cache-Ordner statt
+        # in /tmp. Die Abwehr musste beim Umzug erhalten bleiben.
+        import tempfile
+        from unittest import mock
 
-        zeile = Anhangszeile(
-            Attachment(filename="../../.bashrc", mime_type="text/plain",
-                       size=4, payload="böse".encode("utf-8"))
-        )
-        ziel = zeile._ablegen()
-        self.assertEqual(ziel.name, ".bashrc")
-        self.assertNotIn("..", str(ziel))
+        from mailburg.core import paths, rueckgabe
+
+        with tempfile.TemporaryDirectory() as ort:
+            with mock.patch.object(
+                paths, "geoeffnet_dir", return_value=pathlib.Path(ort)
+            ), mock.patch.object(rueckgabe, "_dem_system_uebergeben"):
+                ziel = rueckgabe.anhang_oeffnen(b"boese", "../../.bashrc")
+
+            self.assertEqual(ziel.parent, pathlib.Path(ort))
+            self.assertNotIn("..", str(ziel))
+            self.assertNotIn("/", ziel.name)
 
 
 class OrteTest(unittest.TestCase):
@@ -5332,3 +5340,162 @@ class KontoDialogProtokollTest(OberflaechenTest):
         self.assertTrue(dialog.port.isVisible())
         self.assertEqual(dialog.konto().protokoll, "imap")
         self.assertEqual(dialog.konto().port, 993)
+
+
+class BaumWaechstMitTest(OberflaechenTest):
+    """Der Postfachbaum während eines laufenden Abrufs.
+
+    **Der Befund, von einem Anwender am 2026-09-03 gemeldet.** Er
+    archivierte 6.000 Mails und sah minutenlang dieses Bild: unten links
+    »2800 geholt, 2791 neu«, daneben »0 Mails im Archiv · noch nicht
+    abgerufen«, und dazwischen ein leerer Postfachbaum. Sein Satz dazu:
+    »Während des Abrufs war ich mir nicht sicher, ob das Tool wirklich
+    etwas Sinnvolles macht.«
+
+    Zwei Anzeigen im selben Fenster widersprachen einander. Der Baum
+    wurde erst aufgebaut, wenn der Abruf *fertig* war – dabei sagt der
+    Kommentar in ``core/index.py`` seit jeher, dass der WAL-Modus
+    genau dafür da ist, gleichzeitig lesen zu können.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        basis = pathlib.Path(self._tmp.name)
+
+        for name in ("data_dir", "config_dir"):
+            patcher = mock.patch.object(
+                paths, name, return_value=basis / name
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
+            (basis / name).mkdir(parents=True, exist_ok=True)
+
+        self.wurzel = basis / "Archiv"
+        Archive.create(self.wurzel, name="P").close()
+
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        self.fenster = Hauptfenster(self.wurzel)
+        self.addCleanup(self.fenster.close)
+
+    def _mail(self, konto: str, ordner: str, betreff: str) -> None:
+        """Legt eine Mail so ins Archiv, wie es der Abruf täte.
+
+        **Über ein eigenes Handle**, genau wie im Betrieb: Das Fenster
+        hält das Archiv nur lesend, der Abruf öffnet es schreibend. Über
+        das Handle des Fensters zu schreiben liefe an der Wirklichkeit
+        vorbei – und hängt.
+        """
+        from mailburg.core.archive import Archive
+
+        roh = (
+            f"From: wer@example.org\r\n"
+            f"To: ich@example.org\r\n"
+            f"Subject: {betreff}\r\n"
+            f"Date: Wed, 3 Sep 2026 09:00:00 +0200\r\n"
+            f"Message-ID: <{betreff}@example.org>\r\n"
+            f"\r\nInhalt\r\n"
+        ).encode()
+        with Archive.open(self.wurzel, exclusive=False) as archiv:
+            archiv.add(roh, account=konto, folder=ordner)
+
+    def test_der_baum_waechst_waehrend_des_abrufs(self):
+        # Vorher: leer, so wie der Anwender es sah.
+        self.assertEqual(self.fenster.baum.topLevelItemCount(), 1)
+
+        self._mail("Firma", "INBOX", "eins")
+        self._mail("Firma", "INBOX", "zwei")
+
+        # Was die Uhr alle drei Sekunden tut.
+        self.fenster._mitwachsen()
+
+        beschriftungen = [
+            self.fenster.baum.topLevelItem(i).text(0)
+            for i in range(self.fenster.baum.topLevelItemCount())
+        ]
+        self.assertIn("Firma", beschriftungen)
+        self.assertIn(
+            "2", self.fenster.bestand.text(),
+            "der Bestand muss mitzählen, sonst widerspricht er dem "
+            f"Fortschritt: {self.fenster.bestand.text()!r}",
+        )
+
+    def test_die_auswahl_ueberlebt_das_auffrischen(self):
+        # Sonst wird der Anwender alle drei Sekunden auf "Alle
+        # Postfächer" zurückgeworfen und kann nebenher nicht arbeiten.
+        self._mail("Firma", "INBOX", "eins")
+        self._mail("Privat", "INBOX", "zwei")
+        self.fenster._mitwachsen()
+
+        ziel = None
+        for i in range(self.fenster.baum.topLevelItemCount()):
+            if self.fenster.baum.topLevelItem(i).text(0) == "Privat":
+                ziel = self.fenster.baum.topLevelItem(i)
+        self.assertIsNotNone(ziel)
+        ziel.setSelected(True)
+        self.fenster.baum.setCurrentItem(ziel)
+        ziel.setExpanded(True)
+
+        self._mail("Firma", "Gesendet", "drei")
+        self.fenster._mitwachsen()
+
+        aktuell = self.fenster.baum.currentItem()
+        self.assertIsNotNone(aktuell)
+        self.assertEqual(aktuell.text(0), "Privat")
+        self.assertTrue(aktuell.isExpanded())
+
+    def test_waehrend_des_abrufs_steht_dort_nicht_nie_abgerufen(self):
+        # Die eigentliche Meldung des Anwenders: Der Abrufstand wird erst
+        # am Ende geschrieben, also behauptete die Anzeige die ganze Zeit
+        # das Gegenteil dessen, was daneben stand.
+        self._mail("Firma", "INBOX", "eins")
+
+        self.fenster.mitwachsen.start(3000)
+        self.addCleanup(self.fenster.mitwachsen.stop)
+        self.fenster._bestand_zeigen()
+
+        self.assertNotIn("noch nicht abgerufen", self.fenster.bestand.text())
+
+    def test_nach_dem_abruf_steht_der_zeitpunkt_wieder_da(self):
+        self._mail("Firma", "INBOX", "eins")
+        self.fenster.mitwachsen.stop()
+        self.fenster._bestand_zeigen()
+
+        self.assertIn("abgerufen", self.fenster.bestand.text())
+
+    def test_ein_lesefehler_beendet_den_abruf_nicht(self):
+        # _mitwachsen läuft alle drei Sekunden, während im Hintergrund
+        # geschrieben wird. Eine Nebensache darf den Abruf nie mit einem
+        # Traceback abbrechen.
+        from unittest import mock
+
+        with mock.patch.object(
+            type(self.fenster), "_baum_fuellen",
+            side_effect=RuntimeError("database is locked"),
+        ):
+            self.fenster._mitwachsen()
+
+    def test_ein_gescheiterter_abruf_zeigt_die_halbe_ernte(self):
+        # Bricht der Abruf nach der Hälfte ab, ist die erste Hälfte
+        # trotzdem archiviert - der Baum darf sie nicht verschweigen.
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        self._mail("Firma", "INBOX", "eins")
+        with mock.patch.object(QMessageBox, "critical"):
+            self.fenster._abruf_gescheitert("Verbindung verloren")
+
+        beschriftungen = [
+            self.fenster.baum.topLevelItem(i).text(0)
+            for i in range(self.fenster.baum.topLevelItemCount())
+        ]
+        self.assertIn("Firma", beschriftungen)
+        self.assertFalse(self.fenster.mitwachsen.isActive())

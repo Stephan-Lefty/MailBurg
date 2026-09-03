@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import imaplib
 import os
+import re
 import subprocess
 import sys
 import time
@@ -63,6 +64,18 @@ def als_datei(rohdaten: bytes, ziel: Path) -> Path:
 HALTBARKEIT = 4 * 60 * 60
 
 
+#: Die acht Zufallsziffern, die jeder von MailBurg abgelegten Datei
+#: angehängt werden – siehe ``im_mailprogramm_oeffnen`` und
+#: ``anhang_oeffnen``. Sie sind zugleich das Erkennungszeichen beim
+#: Aufräumen.
+_UNSER_MUSTER = re.compile(r"-[0-9a-f]{8}(\.[^.]*)?$")
+
+
+def _von_uns(datei: Path) -> bool:
+    """Ob MailBurg diese Datei selbst abgelegt hat."""
+    return bool(_UNSER_MUSTER.search(datei.name))
+
+
 def _aufraeumen(ordner: Path, *, alles: bool = False) -> int:
     """Wirft weg, was niemand mehr braucht. Gibt die Zahl zurück.
 
@@ -74,7 +87,17 @@ def _aufraeumen(ordner: Path, *, alles: bool = False) -> int:
     """
     weg = 0
     grenze = time.time() - HALTBARKEIT
-    for datei in ordner.glob("*.eml"):
+    # **Nicht nur ``.eml``.** Seit dem 2026-09-03 liegen hier auch
+    # geöffnete Anhänge, und die tragen jede denkbare Endung – ein
+    # Glob-Muster auf die Endung greift nicht mehr.
+    #
+    # Trotzdem nicht einfach *alles*: Erkannt wird, was MailBurg selbst
+    # angelegt hat, an den acht Zufallsziffern vor der Endung. Fremdes
+    # bleibt liegen, auch wenn der Ordner uns gehört – wer sich beim
+    # Aufräumen irrt, löscht etwas, das ihm nicht gehört.
+    for datei in ordner.iterdir():
+        if datei.is_dir() or not _von_uns(datei):
+            continue
         try:
             if alles or datei.stat().st_mtime < grenze:
                 datei.unlink()
@@ -126,6 +149,39 @@ def im_mailprogramm_oeffnen(rohdaten: bytes, betreff: str = "") -> Path:
     # beide offen sind.
     ziel = ordner / f"{_namensteil(betreff)}-{uuid.uuid4().hex[:8]}.eml"
     ziel.write_bytes(rohdaten)
+    if sys.platform != "win32":
+        ziel.chmod(0o600)
+
+    _dem_system_uebergeben(ziel)
+    return ziel
+
+
+def anhang_oeffnen(inhalt: bytes, dateiname: str) -> Path:
+    """Legt einen Anhang ab und übergibt ihn dem System.
+
+    **Warum das hier steht und nicht in der Oberfläche.** Bis zum
+    2026-09-03 legte ``ui/vorschau.py`` den Anhang mit ``mkdtemp`` in
+    ``/tmp`` – und räumte ihn nie wieder weg. Für die vollständige Mail
+    daneben war längst sorgfältig begründet, warum sie dort nicht
+    hingehört (siehe ``paths.geoeffnet_dir()``): Auf einem
+    Mehrbenutzersystem darf in ``/tmp`` jeder lesen. Für den PDF-Anhang
+    derselben Mail galt das genauso, nur tat es niemand.
+
+    Ein Anhang aus einem Geschäftsarchiv ist eine Rechnung, ein Vertrag,
+    ein Arztbericht. Er liegt jetzt im selben geschützten Ordner, mit
+    ``0600``, und wird nach vier Stunden und spätestens beim Beenden
+    weggeräumt.
+    """
+    ordner = paths.geoeffnet_dir()
+    _aufraeumen(ordner)
+
+    # **Nur der Name, nie der Pfad.** Ein Anhang, der »../../.bashrc«
+    # heißt, darf nirgendwo landen außer hier. Das galt schon vorher und
+    # muss beim Umzug erhalten bleiben.
+    roh = Path(dateiname or "Anhang").name
+    endung = Path(roh).suffix[:12]
+    ziel = ordner / f"{_namensteil(Path(roh).stem)}-{uuid.uuid4().hex[:8]}{endung}"
+    ziel.write_bytes(inhalt)
     if sys.platform != "win32":
         ziel.chmod(0o600)
 
