@@ -54,12 +54,27 @@ echt schnell. Für 200 Mails benötige ich weniger als 5 Sekunden.«
   Thunderbird-Profil –, die Ordnerstruktur wahlweise erhalten, und ein
   Lauf, der sich abbrechen und fortsetzen lässt.
 
-  **Vor dem Bauen zu klären, weil es die Haltung des Programms
-  berührt:** Bisher schreibt MailBurg in ein Postfach nur auf
-  ausdrücklichen Befehl, für einzelne, benannte Nachrichten, nie im
-  Hintergrund. Zehntausend Mails auf einen fremden Server zu schieben
-  ist etwas anderes als eine – dafür braucht es eine Vorschau, eine
-  Bestätigung und einen Bericht darüber, was tatsächlich ankam.
+  **Dass es das geben soll, steht nicht in Frage.** Der Kopf von
+  `core/rueckgabe.py` sagt es seit dem 26.08.: »Ein Archiv, aus dem
+  nichts wieder herauskommt, ist ein Grab.« Was hier steht, ist die
+  Liste dessen, was dazugehört – nicht ein Einwand.
+
+  **Erstens weitet es die einzige Ausnahme.** MailBurg liest fremde
+  Postfächer sonst nur (`EXAMINE`, `BODY.PEEK[]`); geschrieben wird
+  ausschließlich beim Zurücklegen, auf Befehl, für einzelne benannte
+  Nachrichten, nie im Hintergrund. Zehntausend Mails auf einen fremden
+  Server zu schieben ist etwas anderes als eine – dafür braucht es eine
+  Vorschau vorher, eine Bestätigung und einen Bericht darüber, was
+  tatsächlich ankam.
+
+  **Zweitens, und das ist der schwierige Teil: `APPEND` legt jedes Mal
+  eine neue Kopie an.** Wer zweimal in dasselbe Postfach restauriert,
+  hat alles doppelt, und der Server vergibt neue UIDs, an denen sich
+  nichts wiedererkennen lässt. Der einzige belastbare Anker wäre die
+  `Message-ID` – die müsste MailBurg vor dem Schreiben aus dem Ziel
+  auslesen (`UID SEARCH HEADER Message-ID`), und bei zehntausend Mails
+  ist das ein eigener Durchlauf. MailStore Home hat dasselbe Problem;
+  dort fällt es nur seltener auf.
 
 - [ ] **Sein Angebot: ein Testpostfach mit bis zu 500.000 Mails.**
   »Falls du ein Postfach für eigene Tests brauchst, sag Bescheid.« Er

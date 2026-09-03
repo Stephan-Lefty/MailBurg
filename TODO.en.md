@@ -51,11 +51,25 @@ than 5 seconds."
   Maildir, MBOX or Thunderbird profile —, optionally preserving the folder
   structure, and a run that can be cancelled and resumed.
 
-  **To settle before building, because it touches the stance of the
-  program:** so far MailBurg writes into a mailbox only on explicit
-  command, for single named messages, never in the background. Pushing ten
-  thousand messages onto someone else's server is a different thing — it
-  needs a preview, a confirmation and a report of what actually arrived.
+  **That it should exist is not in question.** The header of
+  `core/rueckgabe.py` has said so since 2026-08-26: "An archive nothing
+  comes back out of is a grave." What follows is the list of what belongs
+  with it — not an objection.
+
+  **First, it widens the single exception.** MailBurg otherwise only reads
+  foreign mailboxes (`EXAMINE`, `BODY.PEEK[]`); it writes solely when
+  putting a message back, on command, for single named messages, never in
+  the background. Pushing ten thousand messages onto someone else's server
+  is a different thing — it needs a preview beforehand, a confirmation and
+  a report of what actually arrived.
+
+  **Second, and this is the hard part: `APPEND` creates a fresh copy every
+  time.** Restore twice into the same mailbox and everything is there
+  twice, with new UIDs that identify nothing. The only dependable anchor
+  is the `Message-ID`, which MailBurg would have to read out of the target
+  first (`UID SEARCH HEADER Message-ID`) — at ten thousand messages that
+  is a pass of its own. MailStore Home has the same problem; it just shows
+  up less often there.
 
 - [ ] **His offer: a test mailbox with up to 500,000 messages.** "If you
   need a mailbox for your own tests, say the word." He set up Stalwart and
