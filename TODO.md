@@ -189,7 +189,7 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
 
 ### Beim nächsten Mal zuerst
 
-- [x] **Das rote Wappen in der Weboberfläche.** (2026-09-04)
+- [x] **Das rote Wappen in der Weboberfläche.** (2026-09-04, in der 1.3.0)
   `werkzeuge/server_logo.py` erzeugte es, `assets/server/` enthielt es in
   allen Größen samt `.ico` – benutzt wurde es an keiner einzigen Stelle.
   Stephan hat am 2026-09-03 danach gesucht und es nicht gefunden.
@@ -235,7 +235,7 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
   alles ohne Rollen lesbar sein. Der Rollbereich ist die Rückfalllinie
   für kleine Bildschirme, nicht der Normalzustand.
 
-### Für die 1.2
+### Für eine der nächsten Fassungen
 
 - [ ] **macOS.** Tests und Einrichtung laufen dort in der CI durch,
   benutzt hat MailBurg dort noch niemand. Für ein Archivprogramm ist das
@@ -348,6 +348,14 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
   macOS ist zu klären, wie mit Gatekeeper umgegangen wird, solange keine
   Signatur vorliegt.
 
+  **Solange es sie nicht gibt, ist Aktualisieren unter Linux
+  Handarbeit:** `git pull` und `./install.sh` noch einmal, mit fünf bis
+  fünfzehn Minuten Wartezeit für die Oberfläche. Seit dem 2026-09-04
+  steht das wenigstens in der Anleitung
+  ([docs/erste-schritte.md](docs/erste-schritte.md), Abschnitt 8) statt
+  nirgends. Für Stephan ist das in Ordnung – für jemanden, der nur die
+  Anleitung liest, ist es die Hürde vor jeder neuen Fassung.
+
 ### Offene Fragen
 
 - [ ] **OAuth2 an einem echten Konto.** Geprüft ist der Ablauf nur gegen
@@ -455,6 +463,25 @@ Prüfung steht es hier und nicht in der laufenden Liste.
   Antwort, privat eilt nichts.
 
 ## Erledigtes
+
+### Am 2026-09-04
+
+Zwei Punkte von der Liste, dazu die Fassung **1.3.0**.
+
+- [x] **Der Restore ist vollständig.** Viele Nachrichten auf einmal aus
+  dem Archiv heraus – als Maildir, MBOX, einzelne `.eml` oder über IMAP
+  zurück in ein Postfach. Die Einzelheiten stehen oben unter »Aus dem
+  dritten Nutzer-Feedback«; hier nur der Satz, um den es ging:
+  **Zweimal zurückspielen schreibt nichts doppelt.**
+
+- [x] **Das rote Wappen steht in der Weboberfläche.** Erzeugt seit dem
+  31.08., abgeholt hat es bis heute keine einzige Stelle.
+
+- [x] **Wie man unter Linux aktualisiert, steht jetzt in der
+  Anleitung.** `git pull` und `install.sh` noch einmal – und dazu der
+  Satz, dass Archiv, Kontenliste, Suchindex und Schlüsselbund dabei
+  unangetastet bleiben. Das war nirgends gesagt, und es ist die erste
+  Frage, die sich jemand vor einem Update stellt.
 
 ### Am 2026-09-01
 

@@ -5,9 +5,13 @@ Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 
 ## Hier war Schluss (Stand 2026-09-04, Freitagabend)
 
-Zwei Punkte aus der TODO, beide fertig. 1655 Tests grün,
-`werkzeuge/lesbarkeit.py` ohne Befund. **Noch nicht veröffentlicht** –
-draußen ist die 1.2.1; das hier wäre eine 1.3.0.
+**1.3.0 ist veröffentlicht**, samt `MailBurg.exe`. Zwei Punkte aus der
+TODO abgearbeitet, 1655 Tests grün, `werkzeuge/lesbarkeit.py` ohne
+Befund.
+
+Die Fassung bringt vor allem eines: **den Restore.** Damit ist der
+Wunsch des dritten Rückmelders vollständig erfüllt – Sicherung und
+Rückgabe haben nichts mehr miteinander zu tun.
 
 ### Das rote Wappen ist endlich in der Weboberfläche
 
@@ -64,12 +68,37 @@ beim Übertragen der Marken absichtlich draußen.
 Duplikatprüfung jede Mail von der Platte gelesen werden, bevor
 feststeht, ob sie überhaupt gebraucht wird.
 
+### Und wie man an neue Fassungen kommt, steht jetzt auch da
+
+Stephans Frage nach dem Release: Wie kommt man unter Linux an ein
+Update? Die Antwort war `git pull` und `./install.sh` – und **nirgends
+aufgeschrieben.** Jetzt in
+[docs/erste-schritte.md](docs/erste-schritte.md) als Abschnitt 8, mit
+dem Satz, der die eigentliche Sorge beantwortet: Archiv, Kontenliste,
+Suchindex und Schlüsselbund bleiben unangetastet.
+
+**Solange es keine Pakete gibt, bleibt das die Hürde vor jeder neuen
+Fassung** – fünf bis fünfzehn Minuten, weil die Oberfläche jedes Mal neu
+geholt wird. Für Stephan in Ordnung, für einen Anwender nicht. Steht bei
+den Paketen in der TODO.
+
 ### Was als Nächstes ansteht
 
-Die TODO ist an den zwei Stellen abgehakt. Oben stehen jetzt: das
-Testpostfach mit 500.000 Mails (Stephans Entscheidung), die Rückfrage
-zum PDF-Betrachter, Gmail/OAuth2 – und die Fenstergrößen am echten
-Bildschirm, die ohne Stephan nicht zu prüfen sind.
+Die TODO ist an den zwei Stellen abgehakt, und der veraltete Abschnitt
+»Für die 1.2« heißt jetzt »Für eine der nächsten Fassungen« – so
+veraltet er nicht wieder.
+
+Oben stehen: das Testpostfach mit 500.000 Mails (Stephans
+Entscheidung), die Rückfrage zum PDF-Betrachter, Gmail/OAuth2 – und die
+Fenstergrößen am echten Bildschirm, die ohne Stephan nicht zu prüfen
+sind.
+
+**Der Vorbehalt, der mit der 1.3.0 dazugekommen ist:** Der Weg ins
+Postfach ist gegen `tests/fake_imap.py` geprüft, nicht gegen einen
+echten Server. Derselbe Satz wie bei OAuth2 und bei JMAP – hier wiegt er
+schwerer, denn zum ersten Mal schreibt MailBurg *viele* Nachrichten in
+ein fremdes Postfach. Er steht im Release-Text und gehört stehen
+gelassen, bis es jemand ausprobiert hat.
 
 ## Hier war Schluss (Stand 2026-09-03, nachts)
 

@@ -157,7 +157,7 @@ The first report from outside. Four points, three fixed straight away.
 
 ### Next session, first
 
-- [x] **The red crest in the web interface.** (2026-09-04)
+- [x] **The red crest in the web interface.** (2026-09-04, in 1.3.0)
   `werkzeuge/server_logo.py` produced it, `assets/server/` held it in
   every size including an `.ico` — and not a single place used it.
   Stephan went looking for it on 2026-09-03 and did not find it.
@@ -192,7 +192,7 @@ The first report from outside. Four points, three fixed straight away.
   always be readable without scrolling. The scroll area is the fallback
   for small screens, not the normal state.
 
-### For 1.2
+### For one of the next versions
 
 - [ ] **macOS.** The test suite and the setup pass in CI, but nobody has
   used MailBurg there. For an archiving program that is too little to
@@ -298,6 +298,13 @@ The first report from outside. Four points, three fixed straight away.
   it remains to be settled how to deal with Gatekeeper as long as there is no
   signature.
 
+  **Until they exist, updating on Linux is manual work:** `git pull` and
+  `./install.sh` again, with five to fifteen minutes of waiting for the
+  interface. Since 2026-09-04 that is at least written down
+  ([docs/erste-schritte.md](docs/erste-schritte.md), section 8) instead
+  of nowhere. Fine for Stephan — for someone who only reads the guide it
+  is the hurdle in front of every new version.
+
 ### Open questions
 
 - [ ] **OAuth2 against a real account.** The flow has only been verified against
@@ -394,6 +401,23 @@ they sit here and not in the running list.
   urgent.
 
 ## Done
+
+### 2026-09-04
+
+Two items off the list, plus version **1.3.0**.
+
+- [x] **Restore is complete.** Many messages at once out of the archive —
+  as Maildir, MBOX, individual `.eml` files or back into a mailbox over
+  IMAP. Details above under "From the third user feedback"; here only the
+  sentence it was all about: **running it twice writes nothing twice.**
+
+- [x] **The red crest is in the web interface.** Generated since 08-31,
+  fetched by not a single place until today.
+
+- [x] **How to update on Linux is now in the guide.** `git pull` and
+  `install.sh` again — plus the sentence that archive, account list,
+  search index and keyring stay untouched. That was written nowhere, and
+  it is the first question anyone asks before updating.
 
 ### 2026-09-01
 

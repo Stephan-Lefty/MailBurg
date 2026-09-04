@@ -227,3 +227,59 @@ steht, wie viele Dokumente noch ein weißes Blatt für die Suche sind.
 **Das Postfach entlasten.** Der eigentliche Zweck: erst nachweisen, dass alles
 im Archiv ist, dann beim Anbieter aufräumen –
 [Postfach entlasten](postfach-entlasten.md).
+
+## 8. Auf den neuesten Stand bringen
+
+MailBurg sieht **nicht** von selbst nach, ob es etwas Neues gibt. Ein
+Archivprogramm, das beim Start nach Hause telefoniert, wäre das Gegenteil
+dessen, was hier sonst gilt: Es verbindet sich ausschließlich mit den
+Mailservern, die Sie eingetragen haben.
+
+Welche Fassung bei Ihnen läuft, sagt `mailburg --version` oder im Fenster
+*Hilfe → Info*. Was es Neues gibt, steht bei den
+[Veröffentlichungen](https://github.com/Stephan-Lefty/MailBurg/releases).
+
+### Linux
+
+Neuen Stand holen, Einrichtung wiederholen:
+
+```bash
+cd ~/MailBurg
+git pull
+./install.sh --ohne-pakete
+```
+
+`--ohne-pakete` überspringt die Frage nach poppler und tesseract – die liegen
+ja schon auf Ihrem Rechner. Ohne die Angabe fragt das Skript noch einmal
+nach; schaden tut das nicht.
+
+**Rechnen Sie wieder mit fünf bis fünfzehn Minuten.** Die Python-Umgebung
+wird dabei neu aufgebaut, und der längste Teil daran ist erneut die
+grafische Oberfläche.
+
+> **Ihr Archiv bleibt unberührt.** `install.sh` fasst es nie an – auch
+> `--entfernen` nimmt nur das Programm weg. Dasselbe gilt für die
+> Kontenliste, den Suchindex und die Passwörter im Schlüsselbund.
+
+**Wenn Sie den regelmäßigen Abruf eingerichtet haben**, läuft er unverändert
+weiter: Er zeigt auf `~/.local/bin/mailburg`, und dieser Verweis bleibt
+derselbe.
+
+**Bei einem Sprung auf eine neue Hauptfassung** kann es vorkommen, dass der
+Suchindex neu gebaut werden muss. Dann sagt MailBurg das beim Öffnen und
+nennt den Befehl dazu (`mailburg neuaufbau IHR-ARCHIV`). Verloren geht dabei
+nichts – der Index entsteht vollständig aus dem Archiv.
+
+### Windows
+
+Die neue `MailBurg.exe` von der
+[jüngsten Veröffentlichung](https://github.com/Stephan-Lefty/MailBurg/releases/latest)
+herunterladen und die alte damit ersetzen. Mehr ist es nicht: Die Datei
+bringt alles mit, und Ihre Einstellungen liegen ohnehin woanders.
+
+### Warum es kein Paket gibt
+
+Ein `.deb`, ein AppImage oder ein Eintrag in den Paketquellen wären der
+bequemere Weg, und beides steht auf der Liste ([TODO.md](../TODO.md)). Bis
+dahin ist `git pull` und `./install.sh` der Weg – umständlicher, aber
+durchschaubar: Sie sehen, was Sie bekommen.
