@@ -11,6 +11,26 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Das rote Wappen steht jetzt in der Weboberfläche** – in der Kopfzeile
+  jeder Seite und als Lesezeichensymbol im Browser.
+
+  `werkzeuge/server_logo.py` erzeugt es seit dem 31.08., `assets/server/`
+  enthält es in allen Größen samt `.ico` – **benutzt wurde es an keiner
+  einzigen Stelle.** Stephan hat am 03.09. danach gesucht und es nicht
+  gefunden. Dieselbe Klasse wie die drei Befunde vom selben Tag: etwas,
+  das vollständig da ist und nirgends abgeholt wird.
+
+  Die Bildersuche liegt dafür jetzt in `mailburg/bilder.py` statt in
+  `mailburg/ui/bilder.py`: Der Dienst darf nicht von PySide6 abhängen,
+  das auf einem Server gar nicht installiert ist. Was zwei Teile
+  brauchen, gehört keinem von beiden.
+
+  Nebenbei aufgefallen: Die `.ico` wiegt 370 KB, weil sie alle Größen bis
+  256 Pixel enthält – als Lesezeichensymbol das Hundertfache des
+  64er-PNG für dieselbe Briefmarke. Verlinkt sind deshalb die PNG; die
+  `.ico` liegt allein unter `/favicon.ico`, für Programme, die dort
+  blind nachfragen.
+
 - **Viele Nachrichten auf einmal aus dem Archiv auf die Platte
   zurückspielen** – *Post → Ins Dateisystem zurückspielen …* und
   `mailburg zurueckspielen`. Anleitung:

@@ -154,6 +154,26 @@ The first report from outside. Four points, three fixed straight away.
 
 ### Next session, first
 
+- [x] **The red crest in the web interface.** (2026-09-04)
+  `werkzeuge/server_logo.py` produced it, `assets/server/` held it in
+  every size including an `.ico` — and not a single place used it.
+  Stephan went looking for it on 2026-09-03 and did not find it.
+
+  It now sits in the header of every page and serves as the favicon. The
+  image lookup moved to `mailburg/bilder.py` from `ui/bilder.py`: the
+  service must not depend on PySide6, which is not installed there.
+
+  **Two things that are not obvious.** The names come from a fixed table
+  (`dienst.WAPPEN`), not from the URL — a filename taken from a request
+  is the classic place where a `..` escapes the image directory. And each
+  image gets its own route: a `/{name}` would have swallowed everything
+  single-segment, `/anmelden` included.
+
+  **Found along the way:** the `.ico` weighs 370 KB because it carries
+  every size up to 256 pixels. As a favicon that is a hundred times the
+  64-pixel PNG for the same postage stamp — so the pages link the PNGs,
+  and the `.ico` lives only at `/favicon.ico`.
+
 - [ ] **Check window sizes on a real screen.** On 2026-08-31 Stephan
   reported missing text six times over: first a dropdown, then height,
   then width. Every round turned up a real fault, but the last one could

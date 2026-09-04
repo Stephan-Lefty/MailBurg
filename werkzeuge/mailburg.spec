@@ -104,6 +104,14 @@ analyse = Analysis(
         (str(WURZEL / "assets" / "banner-dark.svg"), "assets"),
         (str(WURZEL / "assets" / "icon.svg"), "assets"),
         (str(WURZEL / "assets" / "mailburg.ico"), "assets"),
+        # Das rote Wappen der Weboberfläche. Nur die drei Größen, die
+        # der Dienst wirklich ausliefert (siehe ``server/dienst.py``,
+        # ``WAPPEN``) – die 2048er-Fassung und die Banner sind für
+        # Druck und Website da und hätten in einer .exe nichts verloren.
+        (str(WURZEL / "assets" / "server" / "icon-64.png"), "assets/server"),
+        (str(WURZEL / "assets" / "server" / "icon-128.png"), "assets/server"),
+        (str(WURZEL / "assets" / "server" / "mailburg-server.ico"),
+         "assets/server"),
         (str(WURZEL / "docs"), "docs"),
         (str(WURZEL / "LICENSE"), "."),
         (str(WURZEL / "RECHTLICHES.md"), "."),

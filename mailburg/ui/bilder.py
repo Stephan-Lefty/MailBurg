@@ -1,48 +1,26 @@
-"""Wo die Grafiken liegen – und welche gerade passt.
+"""Welche Grafik zum Erscheinungsbild passt.
 
 Banner und Programmsymbol gibt es in einer hellen und einer dunklen
 Fassung. Welche genommen wird, entscheidet nicht eine Einstellung, sondern
 das Erscheinungsbild des Systems: Wer sein KDE oder GNOME dunkel gestellt
 hat, soll kein weiß leuchtendes Banner vorgesetzt bekommen.
 
-Gesucht wird an mehreren Orten, weil MailBurg auf verschiedene Weisen
-installiert sein kann – aus dem Quellordner heraus, als Paket, als
-AppImage. Findet sich nichts, bleibt die Stelle eben leer; ein fehlendes
-Bild ist kein Grund, das Programm nicht zu starten.
+**Wo die Dateien liegen, weiß** :mod:`mailburg.bilder`. Diese Suche
+stand bis zum 2026-09-04 hier – bis die Weboberfläche sie ebenfalls
+brauchte, und die darf nicht von PySide6 abhängen.
 """
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
-def _orte() -> tuple[Path, ...]:
-    """Wo Grafiken liegen können, in der Reihenfolge der Suche.
+from mailburg.bilder import finden, orte
 
-    Eine Funktion und keine Konstante, weil der erste Ort erst zur
-    Laufzeit feststeht: In einer gepackten Windows-Fassung entpackt sich
-    PyInstaller in ein Verzeichnis, das beim Start entsteht, und
-    hinterlegt dessen Pfad in ``sys._MEIPASS``.
+#: Nur damit bestehende Aufrufer nicht brechen; neue nehmen
+#: ``mailburg.bilder`` unmittelbar.
+_orte = orte
 
-    Ohne diesen Fall blieb der Willkommensbildschirm ohne Logo – die
-    Burg mit dem Schriftzug, also das Erste, was ein neuer Anwender
-    sieht. Am 2026-08-28 in der ersten ausgelieferten Fassung
-    aufgefallen.
-    """
-    orte = []
-    gepackt = getattr(sys, "_MEIPASS", None)
-    if gepackt:
-        orte.append(Path(gepackt) / "assets")
-    orte.extend([
-        # Aus dem Quellordner heraus – so läuft es während der Entwicklung.
-        Path(__file__).resolve().parent.parent.parent / "assets",
-        # Neben dem Paket, falls die Grafiken einmal mitgeliefert werden.
-        Path(__file__).resolve().parent / "assets",
-    # Systemweit installiert.
-        Path("/usr/share/mailburg/assets"),
-        Path("/usr/share/pixmaps"),
-    ])
-    return tuple(orte)
+__all__ = ["banner", "dunkel", "finden"]
 
 
 def dunkel() -> bool:
@@ -58,15 +36,6 @@ def dunkel() -> bool:
     # Grauwert: Ein sattes Dunkelblau ist dunkel, auch wenn der Blaukanal
     # hoch steht.
     return (farbe.red() * 299 + farbe.green() * 587 + farbe.blue() * 114) / 1000 < 128
-
-
-def finden(name: str) -> Path | None:
-    """Sucht eine Bilddatei an den bekannten Orten."""
-    for ort in _orte():
-        kandidat = ort / name
-        if kandidat.exists():
-            return kandidat
-    return None
 
 
 def banner(breite: int = 560):

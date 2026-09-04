@@ -186,19 +186,27 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
 
 ### Beim nächsten Mal zuerst
 
-- [ ] **Das rote Wappen fehlt in der Weboberfläche.**
-  `werkzeuge/server_logo.py` erzeugt es, `assets/server/` enthält es in
-  allen Größen samt `.ico` – benutzt wird es an keiner einzigen Stelle.
-  Die Anmeldeseite zeigt »MailBurg SERVER« als Text, ein Favicon gibt
-  es nicht. Stephan hat am 2026-09-03 danach gesucht und es nicht
-  gefunden; seit dem Tag steht es wenigstens über den beiden
-  Anleitungen.
+- [x] **Das rote Wappen in der Weboberfläche.** (2026-09-04)
+  `werkzeuge/server_logo.py` erzeugte es, `assets/server/` enthielt es in
+  allen Größen samt `.ico` – benutzt wurde es an keiner einzigen Stelle.
+  Stephan hat am 2026-09-03 danach gesucht und es nicht gefunden.
 
-  **Was dafür fehlt:** eine Route, die `assets/server/icon-*.png`
-  ausliefert. Bisher liefert der Dienst nur erzeugtes HTML – es gäbe
-  also erstmals statische Dateien, und damit die Frage, ob sie aus dem
-  Paket kommen (`importlib.resources`) oder von der Platte. Aus dem
-  Paket, sonst fehlen sie in der `.exe`.
+  Jetzt steht es in der Kopfzeile jeder Seite und ist das
+  Lesezeichensymbol. Die Bildersuche liegt dafür in `mailburg/bilder.py`
+  statt in `ui/bilder.py`: Der Dienst darf nicht von PySide6 abhängen,
+  das dort gar nicht installiert ist.
+
+  **Zwei Dinge dabei, die nicht offensichtlich sind.** Die Namen kommen
+  aus einer festen Tabelle (`dienst.WAPPEN`), nicht aus der URL – ein
+  Dateiname aus einer Anfrage ist die klassische Stelle, an der ein `..`
+  aus dem Bilderverzeichnis hinausführt. Und je Bild steht eine eigene
+  Route da: Ein `/{name}` hätte alles Einteilige verschluckt, auch
+  `/anmelden`.
+
+  **Nebenbei gefunden:** Die `.ico` wiegt 370 KB, weil sie alle Größen
+  bis 256 Pixel enthält. Als Lesezeichensymbol wäre das das
+  Hundertfache des 64er-PNG für dieselbe Briefmarke – verlinkt sind
+  deshalb die PNG, und die `.ico` liegt allein unter `/favicon.ico`.
 
 - [ ] **Die Fenstergrößen am echten Bildschirm nachsehen.** Am
   2026-08-31 hat Stephan in sechs Runden gemeldet, dass Text fehlt:

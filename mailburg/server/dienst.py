@@ -28,6 +28,21 @@ from typing import Any
 from mailburg import __version__
 from mailburg.core import sprache
 
+#: Was unter welcher Adresse ausgeliefert wird. **Eine feste Tabelle,
+#: kein Pfad aus der Anfrage:** Einen Dateinamen aus einer URL
+#: zusammenzusetzen ist die klassische Stelle, an der ein ``..`` aus dem
+#: Bilderverzeichnis hinausführt und plötzlich ``/etc/passwd`` ausliefert.
+WAPPEN = {
+    "wappen.png": ("server/icon-64.png", "image/png"),
+    "wappen-128.png": ("server/icon-128.png", "image/png"),
+    # **Die ``.ico`` steht in keiner Seite.** Sie enthält alle Größen bis
+    # 256 Pixel und wiegt deshalb 370 KB – als Lesezeichensymbol wäre das
+    # das Hundertfache des 64er-PNG, für dieselbe Briefmarke. Verlinkt
+    # sind die PNG; die ``.ico`` liegt allein unter ``/favicon.ico``, für
+    # Programme, die dort blind nachfragen.
+    "wappen.ico": ("server/mailburg-server.ico", "image/x-icon"),
+}
+
 
 def _zustand(lage) -> dict[str, Any]:
     """Alles, was die Statusseite zeigt – und ihre Sorgen.
@@ -207,7 +222,7 @@ def anwendung(lage=None):
     startet nichts.
     """
     from starlette.applications import Starlette
-    from starlette.responses import HTMLResponse, JSONResponse
+    from starlette.responses import HTMLResponse, JSONResponse, Response
     from starlette.routing import Route
 
     from mailburg.server.einstellungen import Serverlage
@@ -220,6 +235,53 @@ def anwendung(lage=None):
     async def zustand_json(anfrage):
         """Für die Überwachung – dieselben Angaben, maschinenlesbar."""
         return JSONResponse(_zustand(wo))
+
+    def _wappen(name: str):
+        """Liefert das rote Wappen aus – für Kopfzeile und Lesezeichen.
+
+        **Ohne Anmeldung, und das mit Absicht.** Ein Programmsymbol ist
+        kein Geheimnis, und der Browser holt das Lesezeichensymbol schon
+        für die Anmeldeseite. Verlangte das eine Sitzung, stünde in jedem
+        Protokoll eine Reihe abgewiesener Anfragen, die nichts bedeuten –
+        und die Anmeldeseite bliebe ohne Symbol.
+
+        Bis zum 2026-09-04 kam die Weboberfläche ohne jedes Bild aus:
+        ``assets/server/`` lag vollständig da, benutzt wurde es an keiner
+        einzigen Stelle.
+        """
+        from mailburg.bilder import finden
+
+        eintrag = WAPPEN.get(name)
+        pfad = finden(eintrag[0]) if eintrag else None
+        if pfad is None:
+            # Fehlt die Datei – etwa in einer Installation ohne das
+            # Bilderverzeichnis –, fehlt eben das Bild. Kein Grund, eine
+            # Seite nicht auszuliefern; der Alternativtext ist leer, weil
+            # das Wappen nichts sagt, was nicht danebenstünde.
+            return Response(status_code=404)
+        return Response(
+            pfad.read_bytes(),
+            media_type=eintrag[1],
+            # Ein Jahr. Das Wappen ändert sich nicht, und ohne diesen
+            # Kopf holt der Browser es bei jedem Seitenaufruf erneut –
+            # beim Blättern durch eine Trefferliste wäre das eine
+            # Anfrage je Seite für immer dasselbe Bild.
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        )
+
+    def _handler(name: str):
+        """Bindet den Namen fest, statt ihn aus der Anfrage zu nehmen.
+
+        Ein Name aus der URL wäre die klassische Stelle, an der ein
+        ``..`` aus dem Bilderverzeichnis hinausführt. Hier kann nur
+        stehen, was in ``WAPPEN`` steht.
+        """
+        gewaehlt = "wappen.ico" if name == "favicon.ico" else name
+
+        async def ausliefern(anfrage):
+            return _wappen(gewaehlt)
+
+        return ausliefern
 
     async def lebt(anfrage):
         """Nur »ja«, ohne das Archiv anzufassen.
@@ -245,6 +307,14 @@ def anwendung(lage=None):
         Route("/zustand", status),
         Route("/zustand.json", zustand_json),
         Route("/lebt", lebt),
+        # **Je Bild eine eigene Route, kein Platzhalter.** Ein
+        # ``/{name}`` an dieser Stelle verschluckte alles Einteilige –
+        # auch »/anmelden« und »/maske«, denn diese Liste steht vor den
+        # Routen der Weboberfläche.
+        *[
+            Route(f"/{name}", _handler(name))
+            for name in (*WAPPEN, "favicon.ico")
+        ],
         *routen(wo, sitzungen),
     ])
 

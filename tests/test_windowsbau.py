@@ -283,8 +283,12 @@ class GrafikenTest(unittest.TestCase):
         self.assertNotIn("QtSvg", draussen)
 
     def test_der_gepackte_ordner_wird_durchsucht(self) -> None:
-        """Sonst nützt das Einpacken nichts."""
-        quelle = (WURZEL / "mailburg" / "ui" / "bilder.py").read_text(
+        """Sonst nützt das Einpacken nichts.
+
+        Die Suche stand bis zum 2026-09-04 in ``ui/bilder.py``; seit die
+        Weboberfläche sie auch braucht, liegt sie eine Ebene höher.
+        """
+        quelle = (WURZEL / "mailburg" / "bilder.py").read_text(
             encoding="utf-8"
         )
 

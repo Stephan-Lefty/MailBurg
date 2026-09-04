@@ -23,6 +23,8 @@ _KOPF = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{titel}</title>
+<link rel="icon" href="/wappen.png" type="image/png" sizes="64x64">
+<link rel="icon" href="/wappen-128.png" type="image/png" sizes="128x128">
 <style>
   :root {{ color-scheme: light dark; --marke: #c62828; --leise: #667080; }}
   * {{ box-sizing: border-box; }}
@@ -30,6 +32,7 @@ _KOPF = """<!doctype html>
   header {{ border-bottom: 1px solid #d6dde8; padding: .8rem 1.5rem;
             display: flex; gap: 1.5rem; align-items: baseline;
             flex-wrap: wrap; }}
+  header .wappen {{ align-self: center; margin-right: -.9rem; }}
   header .name {{ font-weight: 700; font-size: 1.15rem; }}
   header .marke {{ color: var(--marke); }}
   header .wer {{ margin-left: auto; color: var(--leise); font-size: .9rem; }}
@@ -127,9 +130,14 @@ def _rahmen(titel: str, inhalt: str, benutzer=None) -> str:
         )
     else:
         wer = ""
+    # **Das Wappen mit fester Größe im Markup, nicht nur im Stylesheet.**
+    # Sonst springt die Kopfzeile, während das Bild noch lädt – und beim
+    # ersten Aufruf springt sie bei jedem Anwender.
     return (
         _KOPF.format(titel=html.escape(titel))
-        + f'<header><span class="name">MailBurg '
+        + f'<header><img class="wappen" src="/wappen.png" width="28" '
+        f'height="28" alt="">'
+        f'<span class="name">MailBurg '
         f'<span class="marke">SERVER</span></span>{wer}</header>\n'
         f"<main>{inhalt}</main>\n"
         + _FUSS.format(fassung=html.escape(__version__))

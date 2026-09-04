@@ -698,5 +698,89 @@ class VerschluesseltesArchivImDienstTest(unittest.TestCase):
         )
 
 
+@unittest.skipUnless(HAT_STARLETTE, "starlette fehlt")
+class WappenTest(unittest.TestCase):
+    """Das rote Wappen in der Weboberfläche.
+
+    **Bis zum 2026-09-04 kam sie ohne jedes Bild aus.**
+    ``werkzeuge/server_logo.py`` erzeugt das Wappen, ``assets/server/``
+    enthält es in allen Größen samt ``.ico`` – benutzt wurde es an keiner
+    einzigen Stelle. Stephan hat am 2026-09-03 danach gesucht und es
+    nicht gefunden; das ist die Sorte Befund, die ein Test festhalten
+    muss, damit sie nicht zurückkommt.
+    """
+
+    def setUp(self):
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name) / "Archiv"
+        Archive.create(self.wo, name="Probe").close()
+
+        from mailburg.server.dienst import anwendung
+
+        self.kunde = Kunde(anwendung(Serverlage(archiv=self.wo)))
+
+    def test_das_wappen_wird_ausgeliefert(self):
+        antwort = self.kunde.get("/wappen.png")
+
+        self.assertEqual(antwort.status_code, 200)
+        # PNG erkennt man an den ersten acht Bytes.
+        self.assertTrue(antwort.content.startswith(b"\x89PNG\r\n\x1a\n"))
+
+    def test_auch_als_lesezeichensymbol(self):
+        for pfad in ("/wappen.ico", "/favicon.ico"):
+            with self.subTest(pfad=pfad):
+                self.assertEqual(self.kunde.get(pfad).status_code, 200)
+
+    def test_ohne_anmeldung(self):
+        """Sonst bliebe ausgerechnet die Anmeldeseite ohne Symbol."""
+        self.assertEqual(self.kunde.get("/wappen.png").status_code, 200)
+        # Zur Gegenprobe: Die Suche verlangt sehr wohl eine Anmeldung.
+        self.assertEqual(self.kunde.get("/").status_code, 303)
+
+    def test_die_anmeldeseite_zeigt_es(self):
+        seite = self.kunde.get("/anmelden").text
+
+        self.assertIn("/wappen.png", seite)
+
+    def test_die_seiten_verlinken_das_kleine_bild_und_nicht_die_ico(self):
+        """Die ``.ico`` wiegt 370 KB, das 64er-PNG drei.
+
+        Sie enthält alle Größen bis 256 Pixel. Als Lesezeichensymbol
+        wäre das das Hundertfache für dieselbe Briefmarke – deshalb
+        verlinken die Seiten die PNG, und die ``.ico`` liegt allein
+        unter ``/favicon.ico`` für Programme, die dort blind nachfragen.
+        """
+        seite = self.kunde.get("/anmelden").text
+
+        self.assertNotIn(".ico", seite)
+        self.assertLess(
+            len(self.kunde.get("/wappen.png").content),
+            len(self.kunde.get("/favicon.ico").content) // 10,
+        )
+
+    def test_es_wird_lange_zwischengespeichert(self):
+        """Sonst holt der Browser dasselbe Bild auf jeder Seite erneut."""
+        kopf = self.kunde.get("/wappen.png").headers
+
+        self.assertIn("max-age=", kopf.get("cache-control", ""))
+
+    def test_ein_erfundener_name_liefert_nichts(self):
+        """Und vor allem keinen Weg aus dem Bilderverzeichnis hinaus."""
+        for pfad in ("/wappen.svg", "/wappen.png/../../../etc/passwd"):
+            with self.subTest(pfad=pfad):
+                self.assertNotEqual(self.kunde.get(pfad).status_code, 200)
+
+    def test_die_wichtigen_wege_bleiben_frei(self):
+        """Ein Platzhalter an dieser Stelle verschluckte »/anmelden«.
+
+        Die Bildrouten stehen **vor** denen der Weboberfläche. Wäre eine
+        davon ein ``/{name}``, ginge alles Einteilige an sie – und die
+        Anmeldung wäre nicht mehr erreichbar.
+        """
+        self.assertEqual(self.kunde.get("/anmelden").status_code, 200)
+        self.assertEqual(self.kunde.get("/zustand").status_code, 200)
+
+
 if __name__ == "__main__":
     unittest.main()

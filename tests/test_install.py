@@ -352,3 +352,39 @@ class SuchpfadhinweisTest(unittest.TestCase):
 
     def test_wer_den_ordner_im_suchpfad_hat_wird_nicht_belaestigt(self) -> None:
         self.assertEqual(self._lauf("/bin/bash", im_suchpfad=True).strip(), "")
+
+
+class WappenInDerExeTest(unittest.TestCase):
+    """Was die Weboberfläche ausliefert, muss in der ``.exe`` stecken.
+
+    **Wer eine fertige Datei herunterlädt, installiert nichts nach.**
+    Fehlt ein Bild in der Spezifikation, liefert der Dienst dort eine 404
+    aus – und niemand merkt es, weil eine Seite ohne Wappen genauso
+    funktioniert wie eine mit. Genau deshalb dieser Test.
+    """
+
+    def setUp(self) -> None:
+        self.wurzel = pathlib.Path(__file__).resolve().parent.parent
+        self.spec = (
+            self.wurzel / "werkzeuge" / "mailburg.spec"
+        ).read_text(encoding="utf-8")
+
+    def test_jede_ausgelieferte_datei_wird_mitgepackt(self) -> None:
+        from mailburg.server.dienst import WAPPEN
+
+        for name, _ in WAPPEN.values():
+            with self.subTest(datei=name):
+                self.assertIn(
+                    pathlib.PurePosixPath(name).name,
+                    self.spec,
+                    f"»{name}« liefert der Dienst aus, die .exe bringt es "
+                    f"aber nicht mit",
+                )
+
+    def test_die_dateien_gibt_es_wirklich(self) -> None:
+        """Sonst steht in der Tabelle ein Name, den niemand mehr erzeugt."""
+        from mailburg.server.dienst import WAPPEN
+
+        for name, _ in WAPPEN.values():
+            with self.subTest(datei=name):
+                self.assertTrue((self.wurzel / "assets" / name).is_file())
