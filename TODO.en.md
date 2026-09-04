@@ -47,11 +47,13 @@ than 5 seconds."
   side file sits next to it, because the format has no room for an
   identifier and writing one in would mean altering the messages.
 
-- [ ] **Restore over IMAP — the second half, and the harder one.** His
-  second example: "I back up mail from a TB profile but then push it onto
-  a server over IMAP." Today IMAP handles **one** selected message into
-  the **inbox** of a chosen account (`ui/zurueck.py`,
-  `core/rueckgabe.py`).
+- [x] **Restore over IMAP.** (2026-09-04) The second half, and the harder
+  one. His
+  His second example: "I back up mail from a TB profile but then push it
+  onto a server over IMAP." Until then IMAP handled **one** selected
+  message into the **inbox** of a chosen account (`ui/zurueck.py`,
+  `core/rueckgabe.py`); that path remains, being the shorter one for a
+  single message.
 
   **That it should exist is not in question.** The header of
   `core/rueckgabe.py` has said so since 2026-08-26: "An archive nothing
@@ -61,33 +63,34 @@ than 5 seconds."
   **The hard part: `APPEND` creates a fresh copy every time.** Restore
   twice into the same mailbox and everything is there twice, with new
   UIDs that identify nothing. The only dependable anchor is the
-  `Message-ID`, which MailBurg would have to read out of the target first
-  (`UID SEARCH HEADER Message-ID` per folder) — at ten thousand messages
-  that is a pass of its own. MailStore Home has the same problem; it just
-  shows up less often there.
+  `Message-ID` — which MailBurg now reads out of the target folder before
+  writing. MailStore Home has the same problem; it just shows up less
+  often there.
 
-  **What to keep in mind**, in this order:
+  **All five points are in place:**
 
-  1. **The reconciliation pass.** Fetch the existing `Message-ID`s per
-     target folder, then write only what is missing. Messages without a
-     `Message-ID` exist — for those, write and name them in the report: a
-     duplicate beats a missing message.
-  2. **Creating folders.** `CREATE`, and the delimiter differs per server
-     (`/` or `.`) — `LIST` reports it. Same spot the retrieval already
-     has to watch.
-  3. **Preserving the date.** `APPEND` takes it as its third argument;
-     `core/rueckgabe.py` already does this correctly for single messages.
-  4. **The exception stays narrow.** Preview first, explicit
-     confirmation, report afterwards — and never in the background or on
-     a schedule.
-  5. **Cancel and resume** as with the disk path. The pass from point 1
-     provides that by itself if it is redone per run.
+  1. **The reconciliation pass.** All existing `Message-ID`s per target
+     folder in *one* request, not one per message; then write only what
+     is missing. Messages without a `Message-ID` are written and counted
+     in the report: a duplicate beats a missing message.
+  2. **Creating folders.** `CREATE`, with the delimiter taken from the
+     server's own folder list — `/` on most, `.` on Courier and Dovecot
+     in Maildir++ layout. Non-ASCII names go through modified UTF-7;
+     `utf7_kodieren()` is the new counterpart to reading.
+  3. **Preserving the date.** Via `rueckgabe._zeitstempel()`, the same
+     place single-message restore uses. Read state comes along, only
+     `\Deleted` stays behind.
+  4. **The exception stays narrow.** The dialog confirms before writing,
+     naming the count and the target mailbox; none of it runs in the
+     background or on a schedule.
+  5. **Cancel and resume.** The reconciliation pass provides that by
+     itself, being redone on every run.
 
-  The core in `core/zurueckspielen.py` is prepared for it: selection,
-  progress, cancellation, report and journal entry do not depend on the
-  target format. What is missing is a class alongside `_Maildir`, `_Mbox`
-  and `_Eml` that writes into a mailbox instead of files — and looks once
-  beforehand at what is already there.
+  **The counter-check on the tests was necessary and held:** disable the
+  reconciliation and exactly the two tests meant to prevent duplication
+  fail. `tests/fake_imap.py` has learned `CREATE` and `APPEND` for this —
+  and behaves like a real server, creating a fresh copy on every
+  `APPEND`.
 
 - [ ] **His offer: a test mailbox with up to 500,000 messages.** "If you
   need a mailbox for your own tests, say the word." He set up Stalwart and

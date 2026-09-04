@@ -117,10 +117,45 @@ Klickfolge, die morgen falsch ist. Zwei Wege, die es gibt:
   Thunderbird muss dafür geschlossen sein, und es legt beim nächsten Start
   seine eigene Indexdatei (`.msf`) daneben.
 
-Wenn Sie den Weg über ein Postfach gehen wollen statt über die Platte:
-Einzelne Nachrichten legt MailBurg per *Im Postfach wiederherstellen …*
-direkt zurück. Für ganze Ordner über IMAP gibt es das noch nicht – siehe
-[TODO.md](../TODO.md).
+## Zurück in ein Postfach
+
+Statt auf die Platte geht es auch unmittelbar in ein Postfach – im Dialog
+über *Format: In ein Postfach (IMAP)*, auf der Kommandozeile so:
+
+```bash
+mailburg zurueckspielen ~/Archiv "Mein Konto" --format postfach --wirklich
+```
+
+Das Ziel ist dann kein Ordner, sondern der Name eines eingerichteten
+Postfachs (`mailburg konten liste` zeigt sie). Es muss **nicht** das
+Postfach sein, aus dem die Post stammt: Der Sinn der Sache ist gerade, dass
+Sicherung und Rückgabe nichts miteinander zu tun haben.
+
+Die Ordner werden dort angelegt, mit dem Postfachnamen aus dem Archiv als
+oberster Ebene. Ob der Server dabei mit `/` oder `.` trennt, liest MailBurg
+aus seiner Ordnerliste – geraten wird nichts.
+
+> **Auch hier schreibt zweimal Laufen nichts doppelt** – aber auf einem
+> anderen Weg als auf der Platte. Der Server hilft dabei nämlich nicht:
+> `APPEND` legt jedes Mal eine neue Kopie an und vergibt eine neue Nummer.
+> MailBurg holt deshalb vor dem Schreiben die `Message-ID` aller
+> Nachrichten, die im Zielordner schon liegen, und überspringt, was es
+> davon kennt. Das gilt auch für Post, die jemand anders dort abgelegt hat.
+>
+> **Eine Mail ohne `Message-ID` lässt sich so nicht wiedererkennen.** Die
+> wird geschrieben und im Bericht gezählt: Ein Duplikat ist besser als eine
+> fehlende Nachricht. Solche Mails sind selten – aber es gibt sie.
+
+**Der Lesezustand kommt mit**, soweit im Archiv vermerkt: Was gelesen oder
+beantwortet war, ist es auch im neuen Postfach. Nur `\Deleted` bleibt
+draußen – eine Nachricht, die im alten Postfach zum Löschen vorgemerkt war,
+soll im neuen nicht als halb gelöscht ankommen.
+
+**Und eines sollten Sie wissen, bevor Sie anfangen:** Was Sie
+zurückspielen, holt MailBurg beim nächsten Abruf wieder ins Archiv. Auf der
+Platte entsteht dadurch keine zweite Datei – die Ablage erkennt gleiche
+Inhalte –, wohl aber ein weiterer Fundort im Journal. Wer das nicht will,
+nimmt für den Abruf ein anderes Postfach als für die Rückgabe.
 
 ## Wenn etwas schiefgeht
 

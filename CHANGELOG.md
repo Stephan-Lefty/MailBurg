@@ -11,6 +11,37 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Zurückspielen jetzt auch über IMAP, direkt in ein Postfach** – im
+  Dialog als viertes Format, auf der Kommandozeile mit
+  `--format postfach`. Damit ist der Wunsch vom 03.09. vollständig
+  erfüllt: »Also unabhängige Backups und Restores.« Sicherung und
+  Rückgabe haben nichts mehr miteinander zu tun – aus einem
+  Thunderbird-Profil eingelesene Post kann auf einen Server, vom Server
+  geholte in ein anderes Postfach.
+
+  **Der Server hilft beim Wiedererkennen nicht**, und das ist der ganze
+  Aufwand an dieser Stelle: `APPEND` legt jedes Mal eine neue Kopie an
+  und vergibt eine neue UID. MailBurg holt deshalb vor dem Schreiben die
+  `Message-ID` aller Nachrichten, die im Zielordner schon liegen – in
+  **einer** Anfrage je Ordner, nicht in einer je Mail. Erkannt wird auch
+  Post, die jemand anders dort abgelegt hat.
+
+  Nachrichten **ohne** `Message-ID` lassen sich so nicht wiedererkennen.
+  Sie werden geschrieben und im Bericht gezählt: Ein Doppelgänger ist
+  weniger schlimm als eine fehlende Nachricht.
+
+  Weiteres: Ordner werden angelegt, das Trennzeichen des Servers kommt
+  aus seiner eigenen Ordnerliste (`/` bei den meisten, `.` bei Courier
+  und Dovecot in Maildir++-Aufstellung), Umlaute werden in das
+  abgewandelte UTF-7 umgeschrieben, das IMAP dafür vorsieht – dafür gibt
+  es jetzt `utf7_kodieren()` als Gegenstück zum Lesen. Der Lesezustand
+  kommt mit, nur `\Deleted` bleibt draußen: Eine Nachricht, die im alten
+  Postfach zum Löschen vorgemerkt war, soll im neuen nicht als halb
+  gelöscht ankommen.
+
+  **Vor dem Start wird bestätigt.** Auf der Platte ließe sich ein
+  Fehlgriff wegwerfen, im Postfach eines Kollegen nicht.
+
 - **Das rote Wappen steht jetzt in der Weboberfläche** – in der Kopfzeile
   jeder Seite und als Lesezeichensymbol im Browser.
 

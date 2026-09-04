@@ -60,6 +60,14 @@ FORMATE = (
         "Eine Datei je Nachricht, ohne Maildir-Gerüst. Zum Hineinziehen "
         "in ein beliebiges Mailprogramm.",
     ),
+    (
+        "postfach",
+        "In ein Postfach (IMAP)",
+        "Legt die Nachrichten über IMAP in ein eingerichtetes Konto – "
+        "auch in ein anderes als das, aus dem sie stammen. Vorhandene "
+        "erkennt MailBurg an ihrer Message-ID und überspringt sie; ohne "
+        "das legte der Server bei jedem Lauf neue Kopien an.",
+    ),
 )
 
 
@@ -85,11 +93,21 @@ class Rueckspieldialog(QDialog):
         self.pfad = QLineEdit()
         self.pfad.setPlaceholderText("Noch kein Ordner gewählt")
         self.pfad.textChanged.connect(self._pruefen)
-        waehlen = QPushButton("Ordner auswählen …")
-        waehlen.clicked.connect(self._waehlen)
+        self.waehlen = QPushButton("Ordner auswählen …")
+        self.waehlen.clicked.connect(self._waehlen)
         zeile = QHBoxLayout()
         zeile.addWidget(self.pfad, 1)
-        zeile.addWidget(waehlen)
+        zeile.addWidget(self.waehlen)
+
+        # **Ein Postfach wählt man nicht als Pfad.** Deshalb steht an
+        # derselben Stelle wahlweise eine Liste der eingerichteten
+        # Konten – sichtbar nur, wenn sie gebraucht wird.
+        self.postfach = QComboBox()
+        for konto in self._konten():
+            self.postfach.addItem(konto.beschreibung(), konto.name)
+        self.postfach.currentIndexChanged.connect(self._pruefen)
+        self.postfach.hide()
+        zeile.addWidget(self.postfach, 1)
 
         self.format = QComboBox()
         for kennung, beschriftung, _ in FORMATE:
@@ -112,7 +130,8 @@ class Rueckspieldialog(QDialog):
         )
 
         felder = QFormLayout()
-        felder.addRow("Wohin:", zeile)
+        self.wohin = QLabel("Wohin:")
+        felder.addRow(self.wohin, zeile)
         felder.addRow("Format:", self.format)
         felder.addRow("Auswahl:", self.suche)
 
@@ -143,6 +162,23 @@ class Rueckspieldialog(QDialog):
 
     # ------------------------------------------------------------ Wählen
 
+    @staticmethod
+    def _konten() -> list:
+        from mailburg.core.accounts import Kontenliste
+
+        return list(Kontenliste().konten)
+
+    def _ins_postfach(self) -> bool:
+        return self._format() == "postfach"
+
+    def _zielzeile_richten(self) -> None:
+        """Zeigt das Pfadfeld oder die Kontenliste, je nach Format."""
+        postfach = self._ins_postfach()
+        self.pfad.setVisible(not postfach)
+        self.waehlen.setVisible(not postfach)
+        self.postfach.setVisible(postfach)
+        self.wohin.setText("In welches Postfach:" if postfach else "Wohin:")
+
     def _waehlen(self) -> None:
         ort = QFileDialog.getExistingDirectory(
             self, "Zielordner auswählen",
@@ -163,8 +199,18 @@ class Rueckspieldialog(QDialog):
         from mailburg.core import zurueckspielen as kern
         from mailburg.core.sprache import anzahl
 
+        self._zielzeile_richten()
+
         teile = []
-        gut = bool(self.pfad.text().strip())
+        if self._ins_postfach():
+            gut = self.postfach.count() > 0
+            if not gut:
+                teile.append(
+                    "Dafür braucht es ein eingerichtetes Postfach – "
+                    "<i>Einstellungen → Postfächer verwalten …</i>"
+                )
+        else:
+            gut = bool(self.pfad.text().strip())
 
         try:
             treffer = self.archiv.index.count(self.suche.text().strip())
@@ -181,10 +227,10 @@ class Rueckspieldialog(QDialog):
             gut = False
 
         if gut:
+            ziel = ("" if self._ins_postfach()
+                    else Path(self.pfad.text().strip()))
             try:
-                teile.append(kern.ziel_pruefen(
-                    Path(self.pfad.text().strip()), self._format()
-                ))
+                teile.append(kern.ziel_pruefen(ziel, self._format()))
             except kern.ZielFehler as fehler:
                 teile.append(str(fehler))
                 gut = False
@@ -199,6 +245,12 @@ class Rueckspieldialog(QDialog):
     # ------------------------------------------------------------ Laufen
 
     def _starten(self) -> None:
+        konto = passwort = None
+        if self._ins_postfach():
+            konto, passwort = self._konto_und_passwort()
+            if konto is None:
+                return
+
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
         self.knoepfe.button(QDialogButtonBox.Cancel).setText("Abbrechen")
         self.balken.setRange(0, 0)
@@ -206,10 +258,12 @@ class Rueckspieldialog(QDialog):
 
         auftrag = Rueckspiellauf(
             self.archiv.root,
-            Path(self.pfad.text().strip()),
+            "" if konto else Path(self.pfad.text().strip()),
             format=self._format(),
             suche=self.suche.text().strip(),
             struktur=self.struktur.isChecked(),
+            konto=konto,
+            passwort=passwort or "",
         )
         auftrag.meldung.connect(self.befund.setText)
         auftrag.fortschritt.connect(self._zaehlen)
@@ -218,6 +272,54 @@ class Rueckspieldialog(QDialog):
 
         self.laeufer = Läufer(auftrag)
         self.laeufer.starten()
+
+    def _konto_und_passwort(self):
+        """Holt das gewählte Postfach samt Passwort – oder fragt danach.
+
+        **Zurückspielen schreibt in ein fremdes Postfach.** Deshalb wird
+        hier zuletzt bestätigt, wie viele Nachrichten wohin gehen: Auf
+        der Platte ließe sich ein Fehlgriff wegwerfen, im Postfach eines
+        Kollegen nicht.
+        """
+        from mailburg.core import accounts
+        from mailburg.core.sprache import anzahl
+
+        name = self.postfach.currentData()
+        konto = next((k for k in self._konten() if k.name == name), None)
+        if konto is None:
+            return None, None
+
+        treffer = self.archiv.index.count(self.suche.text().strip())
+        antwort = QMessageBox.question(
+            self,
+            "Ins Postfach zurückspielen",
+            f"{anzahl(treffer, 'Nachricht', 'Nachrichten')} gehen nach "
+            f"»{konto.name}« ({konto.server}).\n\n"
+            f"Dort wird geschrieben – gelöscht oder verändert wird nichts. "
+            f"Was schon da ist, erkennt MailBurg an der Message-ID und "
+            f"überspringt es.",
+            QMessageBox.Ok | QMessageBox.Cancel,
+            QMessageBox.Ok,
+        )
+        if antwort != QMessageBox.Ok:
+            return None, None
+
+        # **Hier wird nicht nach dem Passwort gefragt.** Ein Postfach,
+        # aus dem MailBurg abruft, hat eines im Schlüsselbund; fehlt es,
+        # ist etwas an der Einrichtung nicht in Ordnung, und das gehört
+        # dorthin geklärt und nicht in einen Dialog, der gerade
+        # zehntausend Nachrichten wegschreiben will. Genauso hält es die
+        # Einzelrückgabe in ``ui/zurueck.py``.
+        passwort = accounts.passwort_holen(konto)
+        if not passwort:
+            QMessageBox.warning(
+                self, "Kein Passwort",
+                f"Für »{konto.name}« liegt kein Passwort im Schlüsselbund. "
+                f"Unter Einstellungen → Postfächer verwalten … lässt es "
+                f"sich hinterlegen.",
+            )
+            return None, None
+        return konto, passwort
 
     def _zaehlen(self, getan: int, gesamt: int) -> None:
         if gesamt:

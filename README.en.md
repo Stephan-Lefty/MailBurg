@@ -156,10 +156,14 @@ as an `.eml` file on disk.
 
 For whole mailboxes there is *Post → Ins Dateisystem zurückspielen …*, or
 `mailburg zurueckspielen`: as **Maildir** (byte-exact, read state included),
-as **MBOX** (the format of Thunderbird's local folders) or as individual
-`.eml` files. The archive stays unchanged, and **running it twice writes
-nothing twice** — MailBurg recognises in the target directory what came from
-it. See [docs/zurueckspielen.md](docs/zurueckspielen.md) (German).
+as **MBOX** (the format of Thunderbird's local folders), as individual `.eml`
+files — or **back into a mailbox over IMAP**, including one other than where
+the mail came from.
+
+The archive stays unchanged, and **running it twice writes nothing twice**:
+on disk MailBurg recognises its own files by name, in a mailbox it compares
+the `Message-ID` against what is already there. See
+[docs/zurueckspielen.md](docs/zurueckspielen.md) (German).
 
 ## Getting started
 

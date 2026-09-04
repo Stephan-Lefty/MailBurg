@@ -3,6 +3,74 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-04, Freitagabend)
+
+Zwei Punkte aus der TODO, beide fertig. 1655 Tests grün,
+`werkzeuge/lesbarkeit.py` ohne Befund. **Noch nicht veröffentlicht** –
+draußen ist die 1.2.1; das hier wäre eine 1.3.0.
+
+### Das rote Wappen ist endlich in der Weboberfläche
+
+`server_logo.py` erzeugte es seit dem 31.08., `assets/server/` enthielt
+es in allen Größen – **benutzt wurde es an keiner einzigen Stelle.**
+Wieder derselbe Befund wie am 03.09.: etwas, das vollständig da ist und
+nirgends abgeholt wird.
+
+Drei Dinge, die dabei nicht offensichtlich sind:
+
+**Die Bildersuche liegt jetzt in `mailburg/bilder.py`**, nicht mehr in
+`ui/bilder.py`. Der Dienst darf nicht von PySide6 abhängen, das auf
+einem Server gar nicht installiert ist. Was zwei Teile brauchen, gehört
+keinem von beiden.
+
+**Je Bild eine eigene Route, kein `/{name}`.** Ein Platzhalter dort
+verschluckte alles Einteilige – auch `/anmelden`, denn die Bildrouten
+stehen vor denen der Weboberfläche. Ein Test hält das fest.
+
+**Die Namen kommen aus `dienst.WAPPEN`, nicht aus der URL.** Ein
+Dateiname aus einer Anfrage ist die klassische Stelle für ein `..`.
+
+Nebenbei: Die `.ico` wiegt 370 KB (alle Größen bis 256 Pixel). Verlinkt
+sind deshalb die PNG; die `.ico` liegt allein unter `/favicon.ico`.
+
+### Zurückspielen per IMAP – der zweite Teil des Restore-Wunsches
+
+`core/zurueckspielen.py` hat jetzt ein viertes Ziel: `_Postfach`. Damit
+ist der Wunsch vom 03.09. vollständig erfüllt – Sicherung und Rückgabe
+haben nichts mehr miteinander zu tun.
+
+**Der ganze Aufwand steckt in einer einzigen Eigenschaft des
+Protokolls:** `APPEND` legt jedes Mal eine neue Kopie an und vergibt
+eine neue UID. Der Server hilft beim Wiedererkennen **nicht**. Deshalb
+holt MailBurg vor dem Schreiben alle `Message-ID` des Zielordners – in
+*einer* Anfrage je Ordner, nicht in einer je Mail. Bei zehntausend
+Nachrichten ist das der Unterschied zwischen einem Durchlauf und
+zehntausend Umläufen.
+
+**Die Gegenprobe war nötig.** Alle 52 Tests liefen auf Anhieb grün, und
+das ist verdächtig. Setzt man `_vorhandene()` außer Kraft, schlagen
+genau die beiden Tests fehl, die das Verdoppeln verhindern sollen – die
+Tests prüfen also wirklich etwas. `tests/fake_imap.py` kann dafür seit
+heute `CREATE` und `APPEND` und verhält sich dabei wie ein echter
+Server.
+
+**Drei Kleinigkeiten, die man leicht rät statt nachzusehen:** Das
+Trennzeichen der Ordner kommt aus `LIST` (`/` bei den meisten, `.` bei
+Courier und Dovecot); Umlaute gehen durch `utf7_kodieren()`, das
+Gegenstück zum Lesen, das es bis heute nicht gab; und `\Deleted` bleibt
+beim Übertragen der Marken absichtlich draußen.
+
+**`Hit` trägt jetzt `message_id`.** Ohne sie müsste für die
+Duplikatprüfung jede Mail von der Platte gelesen werden, bevor
+feststeht, ob sie überhaupt gebraucht wird.
+
+### Was als Nächstes ansteht
+
+Die TODO ist an den zwei Stellen abgehakt. Oben stehen jetzt: das
+Testpostfach mit 500.000 Mails (Stephans Entscheidung), die Rückfrage
+zum PDF-Betrachter, Gmail/OAuth2 – und die Fenstergrößen am echten
+Bildschirm, die ohne Stephan nicht zu prüfen sind.
+
 ## Hier war Schluss (Stand 2026-09-03, nachts)
 
 **Der Weg aus dem Archiv hinaus, erste Hälfte: auf die Platte.**
@@ -802,8 +870,9 @@ mailburg/
 │   ├── tresor.py      Passwörter ohne Schlüsselbund, für den Server
 │   ├── sprache.py     Zahlen und Datumsangaben für Menschen – deutsch, fest
 │   ├── rueckgabe.py   eine Mail zurück: ins Postfach, als Datei, ins Programm
-│   ├── zurueckspielen.py  viele auf einmal auf die Platte: Maildir, MBOX, eml
+│   ├── zurueckspielen.py  viele auf einmal: Maildir, MBOX, eml oder ins Postfach
 │   └── paths.py       Verzeichnisse je Betriebssystem
+├── bilder.py          wo die Grafiken liegen - für Fenster und Weboberfläche
 ├── extract/message.py Mails zerlegen; pdf.py, office.py, text.py für Anhänge
 ├── search/           query.py (Suchausdruck -> SQL), maske.py (Felder ->
 │                      Suchausdruck, gemeinsam für Fenster und Browser)

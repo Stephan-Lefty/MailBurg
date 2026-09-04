@@ -51,11 +51,13 @@ echt schnell. Für 200 Mails benötige ich weniger als 5 Sekunden.«
   Platz für eine Kennung ist und eine hineinzuschreiben hieße, die Mails
   zu verändern.
 
-- [ ] **Zurückspielen per IMAP – der zweite Teil, und der schwierigere.**
+- [x] **Zurückspielen per IMAP.** (2026-09-04) Der zweite Teil, und der
+  schwierigere.
   Sein zweites Beispiel: »Ich sichere Mails aus einem TB-Profil, spiele
-  sie dann aber via IMAP direkt auf einen Server.« Heute geht über IMAP
-  nur **eine** markierte Nachricht in den **Posteingang** eines
-  gewählten Kontos (`ui/zurueck.py`, `core/rueckgabe.py`).
+  sie dann aber via IMAP direkt auf einen Server.« Bis dahin ging über
+  IMAP nur **eine** markierte Nachricht in den **Posteingang** eines
+  gewählten Kontos (`ui/zurueck.py`, `core/rueckgabe.py`); den Weg für
+  einzelne Mails gibt es weiterhin, er ist der kürzere.
 
   **Dass es das geben soll, steht nicht in Frage.** Der Kopf von
   `core/rueckgabe.py` sagt es seit dem 26.08.: »Ein Archiv, aus dem
@@ -65,35 +67,36 @@ echt schnell. Für 200 Mails benötige ich weniger als 5 Sekunden.«
   **Der schwierige Teil: `APPEND` legt jedes Mal eine neue Kopie an.**
   Wer zweimal in dasselbe Postfach restauriert, hat alles doppelt, und
   der Server vergibt neue UIDs, an denen sich nichts wiedererkennen
-  lässt. Der einzige belastbare Anker ist die `Message-ID`; die müsste
-  MailBurg vor dem Schreiben aus dem Ziel auslesen (`UID SEARCH HEADER
-  Message-ID` je Ordner), und bei zehntausend Mails ist das ein eigener
-  Durchlauf. MailStore Home hat dasselbe Problem; dort fällt es nur
-  seltener auf.
+  lässt. Der einzige belastbare Anker ist die `Message-ID` – die liest
+  MailBurg jetzt vor dem Schreiben aus dem Zielordner aus. MailStore
+  Home hat dasselbe Problem; dort fällt es nur seltener auf.
 
-  **Was dabei zu bedenken ist**, in dieser Reihenfolge:
+  **Umgesetzt ist alles fünf Punkte:**
 
-  1. **Der Abgleich vorweg.** Je Zielordner einmal die vorhandenen
-     `Message-ID` holen, dann nur schreiben, was fehlt. Mails ohne
-     `Message-ID` gibt es – für die bleibt nur »schreiben und im Bericht
-     nennen«, denn ein Duplikat ist besser als eine fehlende Mail.
-  2. **Ordner anlegen.** `CREATE`, und die Trennzeichen unterscheiden
-     sich je Server (`/` oder `.`) – die liefert `LIST` in der Antwort
-     mit. Das ist dieselbe Stelle, an der schon der Abruf aufpassen muss.
-  3. **Das Datum erhalten.** `APPEND` nimmt es als drittes Argument;
-     `core/rueckgabe.py` macht das für die einzelne Mail bereits richtig.
-  4. **Die Ausnahme bleibt eng.** Vorschau vorher, ausdrückliche
-     Bestätigung, Bericht hinterher – und niemals im Hintergrund oder
-     nach Zeitplan.
-  5. **Abbrechen und fortsetzen** wie beim Weg auf die Platte. Der
-     Abgleich aus Punkt 1 leistet das von selbst, wenn er je Lauf neu
-     gemacht wird.
+  1. **Der Abgleich vorweg.** Je Zielordner einmal alle vorhandenen
+     `Message-ID` holen – in *einer* Anfrage, nicht in einer je Mail –,
+     dann nur schreiben, was fehlt. Mails ohne `Message-ID` werden
+     geschrieben und im Bericht gezählt: Ein Duplikat ist besser als eine
+     fehlende Mail.
+  2. **Ordner anlegen.** `CREATE`, mit dem Trennzeichen aus der
+     Ordnerliste des Servers – `/` bei den meisten, `.` bei Courier und
+     Dovecot in Maildir++-Aufstellung. Umlaute werden ins abgewandelte
+     UTF-7 umgeschrieben; dafür gibt es jetzt `utf7_kodieren()` als
+     Gegenstück zum Lesen.
+  3. **Das Datum erhalten.** Über `rueckgabe._zeitstempel()`, dieselbe
+     Stelle wie bei der Einzelrückgabe. Der Lesezustand kommt mit, nur
+     `\Deleted` bleibt draußen.
+  4. **Die Ausnahme bleibt eng.** Der Dialog fragt vor dem Schreiben
+     nach, mit Anzahl und Zielpostfach im Text; nichts davon läuft im
+     Hintergrund oder nach Zeitplan.
+  5. **Abbrechen und fortsetzen.** Der Abgleich leistet das von selbst,
+     weil er bei jedem Lauf neu gemacht wird.
 
-  Der Kern in `core/zurueckspielen.py` ist dafür vorbereitet: Auswahl,
-  Fortschritt, Abbruch, Bericht und Journaleintrag hängen nicht am
-  Zielformat. Was fehlt, ist eine Klasse neben `_Maildir`, `_Mbox` und
-  `_Eml`, die statt in Dateien in ein Postfach schreibt – und die vorher
-  einmal nachsieht, was dort schon liegt.
+  **Die Gegenprobe zu den Tests war nötig und hat gehalten:** Setzt man
+  den Abgleich außer Kraft, schlagen genau die beiden Tests fehl, die
+  das Verdoppeln verhindern sollen. `tests/fake_imap.py` kann dafür seit
+  heute `CREATE` und `APPEND` – und verhält sich dabei wie ein echter
+  Server, der bei jedem `APPEND` eine neue Kopie anlegt.
 
 - [ ] **Sein Angebot: ein Testpostfach mit bis zu 500.000 Mails.**
   »Falls du ein Postfach für eigene Tests brauchst, sag Bescheid.« Er

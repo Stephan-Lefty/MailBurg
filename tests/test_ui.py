@@ -6042,3 +6042,100 @@ class RueckspieldialogTest(OberflaechenTest):
             with self.subTest(ausdruck=zwischenstand):
                 dialog.suche.setText(zwischenstand)
                 self.assertTrue(dialog.befund.text())
+
+
+class RueckspielenInsPostfachTest(RueckspieldialogTest):
+    """Der Dialog, wenn das Ziel ein Postfach ist.
+
+    Ein Postfach wählt man nicht als Pfad – an derselben Stelle steht
+    dann eine Liste der eingerichteten Konten.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        from unittest import mock
+
+        from mailburg.core.accounts import Konto, Kontenliste
+
+        liste = Kontenliste(self.basis / "konten.json")
+        liste.hinzufuegen(Konto(name="Ziel", server="imap.example.org",
+                                benutzer="wer@example.org"))
+        liste.speichern()
+        patcher = mock.patch(
+            "mailburg.core.accounts.Kontenliste",
+            lambda *a, **k: Kontenliste(self.basis / "konten.json"),
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _auf_postfach(self):
+        dialog = self._dialog()
+        for i in range(dialog.format.count()):
+            if dialog.format.itemData(i) == "postfach":
+                dialog.format.setCurrentIndex(i)
+                break
+        return dialog
+
+    def test_das_pfadfeld_weicht_der_kontenliste(self):
+        dialog = self._auf_postfach()
+
+        self.assertFalse(dialog.pfad.isVisible())
+        self.assertTrue(dialog.postfach.isVisibleTo(dialog))
+        self.assertEqual(dialog.postfach.count(), 1)
+
+    def test_ohne_pfad_laesst_es_sich_trotzdem_starten(self):
+        """Beim Weg auf die Platte wäre ein leeres Feld ein Abbruchgrund."""
+        from PySide6.QtWidgets import QDialogButtonBox
+
+        dialog = self._auf_postfach()
+
+        self.assertEqual(dialog.pfad.text(), "")
+        self.assertTrue(dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
+
+    def test_der_befund_erklaert_den_abgleich(self):
+        dialog = self._auf_postfach()
+
+        self.assertIn("Message-ID", dialog.befund.text())
+
+    def test_die_beschriftung_wechselt_mit(self):
+        dialog = self._auf_postfach()
+        self.assertIn("Postfach", dialog.wohin.text())
+
+        dialog.format.setCurrentIndex(0)
+        self.assertEqual(dialog.wohin.text(), "Wohin:")
+        self.assertTrue(dialog.pfad.isVisibleTo(dialog))
+
+    def test_ohne_passwort_im_schluesselbund_geschieht_nichts(self):
+        """Und zwar mit einer Meldung, nicht stillschweigend."""
+        from unittest import mock
+
+        dialog = self._auf_postfach()
+        with mock.patch("mailburg.core.accounts.passwort_holen",
+                        return_value=None), \
+                mock.patch("PySide6.QtWidgets.QMessageBox.question",
+                           return_value=None) as frage, \
+                mock.patch("PySide6.QtWidgets.QMessageBox.warning") as warnung:
+            from PySide6.QtWidgets import QMessageBox
+
+            frage.return_value = QMessageBox.Ok
+            konto, passwort = dialog._konto_und_passwort()
+
+        self.assertIsNone(konto)
+        self.assertTrue(warnung.called)
+
+    def test_vor_dem_schreiben_wird_bestaetigt(self):
+        """In ein fremdes Postfach schreibt man nicht versehentlich."""
+        from unittest import mock
+
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog = self._auf_postfach()
+        with mock.patch("mailburg.core.accounts.passwort_holen",
+                        return_value="geheim"), \
+                mock.patch("PySide6.QtWidgets.QMessageBox.question",
+                           return_value=QMessageBox.Cancel) as frage:
+            konto, _ = dialog._konto_und_passwort()
+
+        self.assertTrue(frage.called)
+        self.assertIn("Message-ID", frage.call_args[0][2])
+        self.assertIsNone(konto)

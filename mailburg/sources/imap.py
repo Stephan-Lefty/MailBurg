@@ -30,7 +30,7 @@ import imaplib
 import re
 import socket
 import ssl
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from collections.abc import Callable, Iterator
 
 from mailburg.core.accounts import Konto
@@ -198,6 +198,47 @@ def utf7_dekodieren(roh: str) -> str:
             # Kein gültiger Umschreibungsblock – dann war das ``&`` wohl
             # wörtlich gemeint. Lieber ein schiefer Name als ein Abbruch.
             ergebnis.append("&" + kodiert + "-")
+    return "".join(ergebnis)
+
+
+def utf7_kodieren(name: str) -> str:
+    """Der Rückweg: lesbarer Text in einen IMAP-Ordnernamen.
+
+    Gebraucht seit dem 2026-09-04, seit MailBurg Ordner **anlegt** – für
+    das Zurückspielen ganzer Postfächer. Beim Lesen genügte die eine
+    Richtung; wer einen Ordner »Rechnungen für 2024« schreiben will, muss
+    ihn umschreiben, sonst weist der Server ihn ab oder legt einen Namen
+    an, den er selbst später anders zurückgibt.
+
+    Dieselben Eigenheiten wie beim Lesen (RFC 3501, 5.1.3): ``&`` leitet
+    ein, ``&-`` ist ein wörtliches ``&``, im Base64-Teil steht ``,`` für
+    ``/``, und die Füllzeichen fallen weg.
+    """
+    if all(0x20 <= ord(z) <= 0x7E for z in name) and "&" not in name:
+        return name
+
+    ergebnis: list[str] = []
+    puffer: list[str] = []
+
+    def leeren() -> None:
+        if not puffer:
+            return
+        roh = "".join(puffer).encode("utf-16-be")
+        ergebnis.append(
+            "&" + b64encode(roh).decode("ascii").rstrip("=").replace("/", ",") + "-"
+        )
+        puffer.clear()
+
+    for zeichen in name:
+        if zeichen == "&":
+            leeren()
+            ergebnis.append("&-")
+        elif 0x20 <= ord(zeichen) <= 0x7E:
+            leeren()
+            ergebnis.append(zeichen)
+        else:
+            puffer.append(zeichen)
+    leeren()
     return "".join(ergebnis)
 
 

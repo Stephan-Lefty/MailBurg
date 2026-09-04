@@ -12,6 +12,13 @@ denen der Code sonst stillschweigend vorbeiliefe:
 * ``BODY.PEEK[]`` lässt die Mail ungelesen, ``BODY[]`` nicht. Der Server
   merkt sich hier, wonach gefragt wurde, damit ein Test es prüfen kann.
 * Ordnernamen kommen im abgewandelten UTF-7 zurück.
+
+Seit dem 2026-09-04 kann er auch **schreiben** – ``CREATE`` und
+``APPEND``, für das Zurückspielen ganzer Ordner. Der Server vergibt
+dabei neue UIDs und legt bei jedem ``APPEND`` eine neue Kopie an, auch
+wenn dieselbe Nachricht schon dort liegt: Genau so verhält sich ein
+echter Server, und genau daran scheitert ein Restore, der nicht vorher
+nachsieht.
 """
 
 from __future__ import annotations
@@ -65,6 +72,10 @@ class FakeImap:
         self.nur_lesend: list[bool] = []
         #: Alle FETCH-Anforderungen im Wortlaut.
         self.abgefragt: list[str] = []
+        #: Was angelegt wurde – auch die Versuche auf schon Vorhandenes.
+        self.angelegt: list[str] = []
+        #: Jede angehängte Nachricht: Ordner, Marken, Datum, Bytes.
+        self.angehaengt: list[tuple] = []
         self.abgemeldet = False
 
     # ------------------------------------------------------- imaplib-Ersatz
@@ -97,6 +108,34 @@ class FakeImap:
         if befehl.upper() == "FETCH":
             return self._holen(args[0], args[1])
         raise AssertionError(f"Unerwarteter Befehl: {befehl}")
+
+    def create(self, mailbox: str):
+        """Legt einen Ordner an – oder sagt, dass es ihn schon gibt."""
+        name = mailbox.strip('"')
+        self.angelegt.append(name)
+        if name in self.ordner:
+            return "NO", [b"Mailbox already exists"]
+        self.ordner[name] = FakeOrdner(name, {}, uidvalidity=4711)
+        return "OK", [b"Create completed"]
+
+    def append(self, mailbox: str, flags, date_time, message):
+        """Hängt eine Nachricht an – **immer als neue Kopie.**
+
+        Das ist der Punkt, um den es beim Zurückspielen geht: Ein
+        zweiter Lauf, der nicht vorher nachsieht, was schon da ist,
+        verdoppelt den ganzen Ordner. Der Server hilft dabei nicht; er
+        vergibt nur eine neue UID.
+        """
+        name = mailbox.strip('"')
+        if name not in self.ordner:
+            return "NO", [b"Mailbox doesn't exist"]
+        if isinstance(message, str):
+            message = message.encode()
+        ziel = self.ordner[name]
+        naechste = max(ziel.mails, default=0) + 1
+        ziel.mails[naechste] = message
+        self.angehaengt.append((name, flags or "", date_time, message))
+        return "OK", [f"[APPENDUID {ziel.uidvalidity} {naechste}] Append completed".encode()]
 
     def logout(self):
         self.abgemeldet = True
@@ -139,7 +178,16 @@ class FakeImap:
 
     def _holen(self, bereich: str, was: str):
         self.abgefragt.append(was)
-        uids = [int(t) for t in bereich.split(",") if t.strip().isdigit()]
+        # »1:*« heißt: alles, was da ist. So fragt der Abgleich beim
+        # Zurückspielen einen ganzen Zielordner ab.
+        offen = _BEREICH.match("UID " + bereich.strip()) or re.match(
+            r"^(\d+):\*$", bereich.strip()
+        )
+        if offen:
+            ab = int(offen.group(1))
+            uids = [u for u in sorted(self.aktuell.mails) if u >= ab]
+        else:
+            uids = [int(t) for t in bereich.split(",") if t.strip().isdigit()]
 
         if "RFC822.SIZE" in was and "BODY" not in was:
             zeilen = [
@@ -148,6 +196,28 @@ class FakeImap:
                 if u in self.aktuell.mails
             ]
             return "OK", zeilen
+
+        # Nur bestimmte Kopfzeilen - so fragt der Abgleich beim
+        # Zurückspielen nach den Message-ID eines ganzen Ordners.
+        if "HEADER.FIELDS" in was.upper():
+            felder = was.upper().split("HEADER.FIELDS", 1)[1]
+            gesucht = [f.strip("() []").lower() for f in felder.split()]
+            antwort = []
+            for n, uid in enumerate(uids, 1):
+                roh = self.aktuell.mails.get(uid)
+                if roh is None:
+                    continue
+                zeilen = [
+                    z for z in roh.split(b"\r\n")
+                    if any(z.lower().startswith(f.encode() + b":") for f in gesucht)
+                ]
+                stueck = b"\r\n".join(zeilen) + b"\r\n\r\n"
+                antwort.append(
+                    (f"{n} (UID {uid} BODY[HEADER.FIELDS] {{{len(stueck)}}}".encode(),
+                     stueck)
+                )
+                antwort.append(b")")
+            return "OK", antwort
 
         antwort = []
         for n, uid in enumerate(uids, 1):

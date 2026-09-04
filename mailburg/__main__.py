@@ -1701,7 +1701,24 @@ def cmd_zurueckspielen(args: argparse.Namespace) -> int:
     from mailburg.core import zurueckspielen as zurueck
     from mailburg.core.sprache import anzahl
 
-    ziel = Path(args.ziel).expanduser()
+    ins_postfach = args.format == "postfach"
+    konto = None
+    passwort = ""
+    if ins_postfach:
+        # Beim Zurückspielen in ein Postfach ist das Ziel kein Pfad,
+        # sondern ein eingerichtetes Konto - dasselbe, aus dem sonst
+        # abgerufen wird.
+        konto = Kontenliste().finden(args.ziel)
+        if konto is None:
+            print(f"Fehler: Kein Postfach namens »{args.ziel}«. "
+                  f"Vorhandene zeigt »mailburg konten liste«.", file=sys.stderr)
+            return 2
+        if args.wirklich:
+            passwort = _passwort_besorgen(konto)
+        ziel = konto.name
+    else:
+        ziel = Path(args.ziel).expanduser()
+
     with oeffnen(Path(args.archiv).expanduser().resolve(),
                  exclusive=args.wirklich) as archiv:
         try:
@@ -1712,8 +1729,12 @@ def cmd_zurueckspielen(args: argparse.Namespace) -> int:
 
         gesamt = archiv.index.count(args.suche)
         was = f"»{args.suche}«" if args.suche else "alles"
+        wohin = (
+            f"Postfach »{konto.name}« ({konto.server})" if ins_postfach
+            else f"Format {args.format}"
+        )
         print(f"Archiv »{archiv.name}«, Auswahl: {was}")
-        print(f"  {anzahl(gesamt, 'Mail', 'Mails')}, Format {args.format}")
+        print(f"  {anzahl(gesamt, 'Mail', 'Mails')}, {wohin}")
         print(f"  {hinweis}")
 
         if not gesamt:
@@ -1737,10 +1758,18 @@ def cmd_zurueckspielen(args: argparse.Namespace) -> int:
                 stand["zuletzt"] = prozent // 10
                 print(f"  {getan}/{gesamt} ({prozent} %)")
 
-        bericht = zurueck.zurueckspielen(
-            archiv, ziel, format=args.format, suche=args.suche,
-            struktur=not args.flach, fortschritt=fortschritt,
-        )
+        try:
+            bericht = zurueck.zurueckspielen(
+                archiv, ziel, format=args.format, suche=args.suche,
+                struktur=not args.flach, fortschritt=fortschritt,
+                konto=konto, passwort=passwort,
+            )
+        except zurueck.ZielFehler as fehler:
+            # Kommt das Postfach gar nicht erst zustande, hat noch nichts
+            # stattgefunden - dann ist das dieselbe Lage wie ein Ziel,
+            # das nicht taugt.
+            print(f"Fehler: {fehler}", file=sys.stderr)
+            return 2
 
         print()
         print(bericht.zusammenfassung())
@@ -1748,6 +1777,12 @@ def cmd_zurueckspielen(args: argparse.Namespace) -> int:
             print(
                 f"  {bericht.mehrfach} davon lagen an mehreren Stellen – "
                 f"geschrieben wurde jede einmal, in den ersten Ordner."
+            )
+        if bericht.ohne_kennung:
+            print(
+                f"  {bericht.ohne_kennung} ohne Message-ID – die lassen "
+                f"sich bei einem zweiten Lauf nicht wiedererkennen und "
+                f"kämen dann noch einmal an."
             )
         for hash_, grund in bericht.fehler[:10]:
             print(f"  Fehler bei {hash_[:12]}: {grund}", file=sys.stderr)
@@ -1762,6 +1797,14 @@ def cmd_zurueckspielen(args: argparse.Namespace) -> int:
                 "Hinweis zum MBOX-Format: Zeilen, die mit »From « beginnen,\n"
                 "tragen in der Datei ein »>« davor – das verlangt das Format.\n"
                 "Wer es bytegenau braucht, nimmt --format maildir."
+            )
+        if ins_postfach:
+            print()
+            print(
+                "Die Nachrichten liegen jetzt im Postfach und werden beim\n"
+                "nächsten Abruf wieder mit archiviert – dieselbe Mail bekommt\n"
+                "dabei keinen zweiten Platz auf der Platte, wohl aber einen\n"
+                "weiteren Fundort im Journal."
             )
         return 1 if bericht.fehler else 0
 
@@ -2956,22 +2999,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="viele Mails auf einmal aus dem Archiv auf die Platte schreiben",
         description=(
             "Schreibt die gefundenen Nachrichten als Maildir, MBOX oder "
-            "einzelne .eml-Dateien - zum Zurückholen in ein Mailprogramm. "
-            "Das Archiv bleibt unverändert; geschrieben wird eine Kopie. "
-            "Derselbe Lauf zweimal ändert nichts: Was schon dort liegt, "
-            "wird erkannt und übersprungen."
+            "einzelne .eml-Dateien - oder über IMAP zurück in ein "
+            "Postfach. Das Archiv bleibt unverändert; geschrieben wird "
+            "eine Kopie. Derselbe Lauf zweimal ändert nichts: Was schon "
+            "dort liegt, wird erkannt und übersprungen - auf der Platte "
+            "am Dateinamen, im Postfach an der Message-ID."
         ),
     )
     p.add_argument("archiv")
-    p.add_argument("ziel", help="Ordner, in den geschrieben wird")
     p.add_argument(
-        "--format", choices=("maildir", "mbox", "eml"), default="maildir",
+        "ziel",
+        help=(
+            "Ordner, in den geschrieben wird - oder, bei »--format "
+            "postfach«, der Name eines eingerichteten Postfachs"
+        ),
+    )
+    p.add_argument(
+        "--format", choices=("maildir", "mbox", "eml", "postfach"),
+        default="maildir",
         help=(
             "maildir: eine Datei je Mail, bytegenau, mit Lesezustand "
             "(Vorgabe). mbox: eine Datei je Ordner, wie Thunderbirds "
             "lokale Ordner - dabei bekommt jede Zeile, die mit »From « "
             "beginnt, ein »>« davor. eml: eine Datei je Mail, ohne "
-            "Maildir-Gerüst."
+            "Maildir-Gerüst. postfach: über IMAP in ein eingerichtetes "
+            "Konto, dessen Namen »ziel« dann nennt."
         ),
     )
     p.add_argument(

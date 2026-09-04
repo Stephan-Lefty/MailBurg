@@ -476,3 +476,225 @@ class KommandozeileTest(Grundlage):
         _, text = self._cli(str(self.ziel), "--suche", "Rechnung")
 
         self.assertIn("1 Mail,", text)
+
+
+class PostfachTest(Grundlage):
+    """Zurückspielen über IMAP – die schwierigere Hälfte.
+
+    **Der Unterschied zu jedem Weg auf die Platte:** Der Server hilft
+    nicht beim Wiedererkennen. ``APPEND`` legt jedes Mal eine neue Kopie
+    an und vergibt eine neue UID; wer nicht vorher nachsieht, verdoppelt
+    bei jedem Lauf den ganzen Ordner.
+
+    Der nachgebaute Server in ``tests/fake_imap.py`` verhält sich genau
+    so – sonst prüfte dieser Test eine Freundlichkeit, die es in der
+    Wirklichkeit nicht gibt.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        from mailburg.core.accounts import Konto
+
+        self.konto = Konto(
+            name="Ziel", server="imap.example.org", benutzer="wer@example.org",
+        )
+
+    def _server(self, *ordner, trenner: str = "/"):
+        from fake_imap import FakeImap, FakeOrdner
+
+        return FakeImap(list(ordner) or [FakeOrdner("INBOX", {})],
+                        trenner=trenner)
+
+    def _lauf(self, server, **wie):
+        wie.setdefault("format", "postfach")
+        wie.setdefault("konto", self.konto)
+        wie.setdefault("verbindung", server)
+        return zurueckspielen.zurueckspielen(self.archiv, "", **wie)
+
+    def test_jede_mail_kommt_im_postfach_an(self):
+        server = self._server()
+
+        bericht = self._lauf(server)
+
+        self.assertEqual(bericht.geschrieben, 3)
+        self.assertEqual(len(server.angehaengt), 3)
+
+    def test_die_ordner_werden_angelegt(self):
+        server = self._server()
+
+        self._lauf(server)
+
+        self.assertIn("Firma/INBOX", server.angelegt)
+        self.assertIn("Firma/Projekte/2025", server.angelegt)
+        self.assertIn("Privat/INBOX", server.angelegt)
+
+    def test_das_trennzeichen_des_servers_gilt(self):
+        """Courier und Dovecot trennen mit einem Punkt, nicht mit ``/``.
+
+        Wer das rät, legt dort **einen** Ordner mit einem Schrägstrich im
+        Namen an statt einer Hierarchie.
+        """
+        from fake_imap import FakeOrdner
+
+        server = self._server(FakeOrdner("INBOX", {}), trenner=".")
+
+        self._lauf(server)
+
+        self.assertIn("Firma.Projekte.2025", server.angelegt)
+        self.assertNotIn("Firma/Projekte/2025", server.angelegt)
+
+    def test_umlaute_im_ordnernamen_werden_umgeschrieben(self):
+        """IMAP überträgt Ordnernamen in abgewandeltem UTF-7."""
+        self.archiv.add(
+            _mail("Anfrage", tag=17), account="Firma", folder="Entwürfe alt",
+        )
+
+        server = self._server()
+        self._lauf(server)
+
+        self.assertIn("Firma/Entw&APw-rfe alt", server.angelegt)
+
+    def test_bytegenau(self):
+        server = self._server()
+
+        self._lauf(server)
+
+        angekommen = {roh for _o, _f, _d, roh in server.angehaengt}
+        self.assertIn(_mail("Rechnung"), angekommen)
+
+    def test_der_lesezustand_kommt_mit(self):
+        server = self._server()
+
+        self._lauf(server)
+
+        marken = {
+            ordner: flags for ordner, flags, _d, _r in server.angehaengt
+        }
+        self.assertEqual(marken["Firma/INBOX"], "\\Answered \\Seen")
+        self.assertEqual(marken["Firma/Projekte/2025"], "")
+
+    def test_zweimal_laufen_schreibt_nicht_doppelt(self):
+        """**Der Kern der Sache.** Sonst verdoppelt jeder Lauf alles."""
+        server = self._server()
+
+        erst = self._lauf(server)
+        wieder = self._lauf(server)
+
+        self.assertEqual(erst.geschrieben, 3)
+        self.assertEqual(wieder.geschrieben, 0)
+        self.assertEqual(wieder.uebersprungen, 3)
+        self.assertEqual(len(server.angehaengt), 3)
+
+    def test_was_schon_im_ordner_lag_wird_erkannt(self):
+        """Auch dann, wenn es nicht von MailBurg stammt.
+
+        Erkannt wird an der ``Message-ID`` – die trägt jede Mail, egal
+        wer sie dorthin gelegt hat.
+        """
+        from fake_imap import FakeOrdner
+
+        server = self._server(
+            FakeOrdner("INBOX", {}),
+            FakeOrdner("Firma/INBOX", {7: _mail("Rechnung")}),
+        )
+
+        bericht = self._lauf(server)
+
+        self.assertEqual(bericht.uebersprungen, 1)
+        self.assertEqual(bericht.geschrieben, 2)
+
+    def test_eine_mail_ohne_kennung_wird_geschrieben_und_gemeldet(self):
+        """Ein Duplikat ist besser als eine fehlende Nachricht.
+
+        Ohne ``Message-ID`` lässt sich nicht sagen, ob sie schon da ist.
+        Geschrieben wird sie trotzdem – und im Bericht steht, wie oft das
+        vorkam, damit es niemanden überrascht.
+        """
+        self.archiv.add(
+            b"From: wer@example.org\r\nTo: du@example.org\r\n"
+            b"Subject: Ohne Kennung\r\n"
+            b"Date: Mon, 18 May 2025 09:14:00 +0000\r\n\r\nText\r\n",
+            account="Firma", folder="INBOX",
+        )
+        server = self._server()
+
+        erst = self._lauf(server)
+        wieder = self._lauf(server)
+
+        self.assertEqual(erst.ohne_kennung, 1)
+        # Beim zweiten Lauf ist sie wieder dabei - anders geht es nicht.
+        self.assertEqual(wieder.geschrieben, 1)
+        self.assertEqual(wieder.ohne_kennung, 1)
+
+    def test_der_trockenlauf_ruehrt_das_postfach_nicht_an(self):
+        server = self._server()
+
+        bericht = self._lauf(server, trockenlauf=True)
+
+        self.assertEqual(bericht.geschrieben, 3)
+        self.assertEqual(server.angehaengt, [])
+        self.assertEqual(server.angelegt, [])
+
+    def test_ein_abgelehnter_ordner_beendet_den_lauf_nicht(self):
+        """Ein Server kann einzelne Ordner verweigern – Kontingent, Rechte."""
+        server = self._server()
+        echt = server.append
+
+        def manchmal_nein(mailbox, flags, date_time, message):
+            if "Projekte" in mailbox:
+                return "NO", [b"Over quota"]
+            return echt(mailbox, flags, date_time, message)
+
+        server.append = manchmal_nein
+
+        bericht = self._lauf(server)
+
+        self.assertEqual(bericht.geschrieben, 2)
+        self.assertEqual(len(bericht.fehler), 1)
+        self.assertIn("Over quota", bericht.fehler[0][1])
+
+    def test_der_vorgang_steht_im_journal(self):
+        self._lauf(self._server())
+
+        eintraege = [e for e in self.archiv.journal.read_all()
+                     if e.get("art") == "zurueckgespielt"]
+        self.assertEqual(eintraege[0]["format"], "postfach")
+        self.assertEqual(eintraege[0]["ziel"], "Ziel")
+
+    def test_der_abgleich_fragt_einmal_je_ordner_nach(self):
+        """Nicht einmal je Mail: Das wären zehntausend Umläufe.
+
+        Geholt werden die Kopfzeilen eines ganzen Ordners in einer
+        Anfrage, und nur die ``Message-ID`` – nicht die Nachrichten.
+        """
+        server = self._server()
+
+        self._lauf(server)
+
+        self.assertEqual(len(server.abgefragt), 3)
+        for anforderung in server.abgefragt:
+            self.assertIn("HEADER.FIELDS", anforderung)
+            self.assertIn("BODY.PEEK", anforderung)
+
+
+class ImapMarkenTest(unittest.TestCase):
+    """Der Rückweg der Marken."""
+
+    def test_beide_schreibweisen_ergeben_dasselbe(self):
+        self.assertEqual(
+            zurueckspielen._imap_marken("\\Seen \\Answered"),
+            "\\Answered \\Seen",
+        )
+        self.assertEqual(
+            zurueckspielen._imap_marken("SR"), "\\Answered \\Seen"
+        )
+
+    def test_geloescht_bleibt_draussen(self):
+        """Sonst käme sie im neuen Postfach halb gelöscht an."""
+        self.assertEqual(zurueckspielen._imap_marken("\\Deleted"), "")
+
+    def test_kennungen_werden_einheitlich_verglichen(self):
+        """Mal mit spitzen Klammern, mal ohne – wie beim Verlauf."""
+        self.assertEqual(zurueckspielen._kennung("<a@b>"), "a@b")
+        self.assertEqual(zurueckspielen._kennung(b" <a@b> "), "a@b")
+        self.assertEqual(zurueckspielen._kennung(""), "")

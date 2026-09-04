@@ -165,11 +165,14 @@ beliebiges Postfach oder als `.eml` auf die Platte.
 
 Für ganze Postfächer gibt es *Post → Ins Dateisystem zurückspielen …*
 beziehungsweise `mailburg zurueckspielen`: als **Maildir** (bytegenau, mit
-Lesezustand), als **MBOX** (das Format von Thunderbirds lokalen Ordnern) oder
-als einzelne `.eml`. Das Archiv bleibt dabei unverändert, und **zweimal
-zurückspielen schreibt nichts doppelt** – MailBurg erkennt im Zielordner
-wieder, was von ihm stammt. Siehe
-[docs/zurueckspielen.md](docs/zurueckspielen.md).
+Lesezustand), als **MBOX** (das Format von Thunderbirds lokalen Ordnern), als
+einzelne `.eml` – oder **über IMAP zurück in ein Postfach**, auch in ein
+anderes als das, aus dem die Post stammt.
+
+Das Archiv bleibt dabei unverändert, und **zweimal zurückspielen schreibt
+nichts doppelt**: auf der Platte erkennt MailBurg seine eigenen Dateien am
+Namen, im Postfach vergleicht es die `Message-ID` mit dem, was dort schon
+liegt. Siehe [docs/zurueckspielen.md](docs/zurueckspielen.md).
 
 ## Loslegen
 

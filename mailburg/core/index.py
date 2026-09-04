@@ -164,6 +164,15 @@ class Hit:
     has_attachments: bool
     snippet: str = ""
 
+    message_id: str = ""
+    """Die Kennung aus dem Kopf der Nachricht, ohne spitze Klammern.
+
+    Mitgeführt seit dem 2026-09-04, für das Zurückspielen in ein
+    Postfach: Sie ist dort der **einzige** Anker, an dem sich erkennen
+    lässt, ob eine Mail schon im Zielordner liegt. Über IMAP legt
+    ``APPEND`` sonst bei jedem Lauf eine neue Kopie an.
+    """
+
     category: str = "unbestimmt"
     """Wozu die Mail aufbewahrungsrechtlich zählt.
 
@@ -465,7 +474,8 @@ class Index:
         # sich beim Nachladen - die Liste sprünge dem Anwender weg.
         rows = self.db.execute(
             f"""SELECT m.hash, m.bucket, m.subject, m.from_addr, m.from_name,
-                       m.date, m.size, m.has_attachments, m.category
+                       m.date, m.size, m.has_attachments, m.category,
+                       m.message_id
                 FROM messages m
                 WHERE {where}
                 ORDER BY {feld} {richtung}, m.date DESC
@@ -484,6 +494,7 @@ class Index:
                 size=row["size"],
                 has_attachments=bool(row["has_attachments"]),
                 category=row["category"] or "unbestimmt",
+                message_id=row["message_id"] or "",
             )
             for row in rows
         ]
@@ -504,7 +515,8 @@ class Index:
         where, params = self._mit_sicht("m.hash = ?", [digest], sicht)
         row = self.db.execute(
             f"""SELECT m.hash, m.bucket, m.subject, m.from_addr, m.from_name,
-                       m.date, m.size, m.has_attachments, m.category
+                       m.date, m.size, m.has_attachments, m.category,
+                       m.message_id
                 FROM messages m
                 WHERE {where} LIMIT 1""",
             params,
@@ -521,6 +533,7 @@ class Index:
             size=row["size"],
             has_attachments=bool(row["has_attachments"]),
             category=row["category"] or "unbestimmt",
+            message_id=row["message_id"] or "",
         )
 
     def verlauf(self, digest: str, sicht=None) -> list[Hit]:
@@ -551,7 +564,8 @@ class Index:
         )
         rows = self.db.execute(
             f"""SELECT m.hash, m.bucket, m.subject, m.from_addr, m.from_name,
-                       m.date, m.size, m.has_attachments, m.category
+                       m.date, m.size, m.has_attachments, m.category,
+                       m.message_id
                 FROM messages m
                 WHERE {where}
                 ORDER BY m.date ASC""",
@@ -569,6 +583,7 @@ class Index:
                 size=row["size"],
                 has_attachments=bool(row["has_attachments"]),
                 category=row["category"] or "unbestimmt",
+                message_id=row["message_id"] or "",
             )
             for row in rows
         ]

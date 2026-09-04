@@ -391,13 +391,16 @@ class Rueckspiellauf(Auftrag):
     """
 
     def __init__(self, archiv_pfad, ziel, *, format: str = "maildir",
-                 suche: str = "", struktur: bool = True) -> None:
+                 suche: str = "", struktur: bool = True,
+                 konto=None, passwort: str = "") -> None:
         super().__init__()
         self.archiv_pfad = archiv_pfad
         self.ziel = ziel
         self.format = format
         self.suche = suche
         self.struktur = struktur
+        self.konto = konto
+        self.passwort = passwort
 
     def ausfuehren(self):
         from mailburg.core.archive import Archive
@@ -412,4 +415,5 @@ class Rueckspiellauf(Auftrag):
                 archiv, self.ziel, format=self.format, suche=self.suche,
                 struktur=self.struktur, fortschritt=melden,
                 weiter=lambda: not self.abgebrochen,
+                konto=self.konto, passwort=self.passwort,
             )

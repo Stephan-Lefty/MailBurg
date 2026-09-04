@@ -504,12 +504,27 @@ dem Start sagt der Dialog, um wie viele Nachrichten es geht.</p>
     veränderten Text stimmt danach nicht mehr.</li>
 <li><b>Einzelne .eml-Dateien</b> – zum Hineinziehen in ein beliebiges
     Mailprogramm.</li>
+<li><b>In ein Postfach</b> – über IMAP unmittelbar zurück in ein
+    eingerichtetes Konto, auch in ein anderes als das, aus dem die Post
+    stammt.</li>
 </ul>
 
 <p><b>Zweimal zurückspielen ändert nichts.</b> MailBurg erkennt, was in
 dem Zielordner schon von ihm stammt, und überspringt es. Ein Lauf, den
 Sie abgebrochen haben, lässt sich also einfach wiederholen – er setzt
 dort an, wo der erste aufgehört hat.</p>
+
+<p><b>Im Postfach geht das anders, und das ist der Grund, warum dieser
+Weg zuletzt kam.</b> Ein Mailserver hilft beim Wiedererkennen nicht: Er
+legt bei jeder Ablage eine neue Kopie an. MailBurg sieht deshalb vorher
+nach, welche Nachrichten im Zielordner schon liegen – erkennbar an der
+Kennung, die jede Mail im Kopf trägt – und überspringt sie. Das gilt
+auch für Post, die jemand anders dort abgelegt hat.</p>
+
+<p>Die wenigen Nachrichten <b>ohne</b> eine solche Kennung lassen sich
+so nicht wiedererkennen. Sie werden geschrieben, und am Ende steht, wie
+viele es waren: Ein Doppelgänger ist weniger schlimm als eine fehlende
+Nachricht.</p>
 
 <p><b>Das Archiv bleibt unangetastet.</b> Es entsteht eine Kopie;
 gelöscht wird nichts. Dass Post herausgegangen ist, steht im
@@ -922,7 +937,8 @@ def kapitel() -> list[Kapitel]:
             menue=_menue(
                 "Post → Ins Dateisystem zurückspielen …",
                 "Schreibt viele Nachrichten auf einmal als Dateien auf die "
-                "Platte – als Maildir, MBOX oder einzelne »eml«-Dateien. "
+                "Platte – als Maildir, MBOX oder einzelne »eml«-Dateien – "
+                "oder über IMAP zurück in ein Postfach. "
                 "Für einzelne Mails genügt die rechte Maustaste; dieser "
                 "Weg ist für ganze Postfächer. Das Archiv bleibt dabei "
                 "unverändert, und zweimal zurückspielen schreibt nichts "
