@@ -24,8 +24,8 @@ regelmäßige Abruf über die Aufgabenplanung sind dort durchgespielt.
 **macOS ist noch nicht dran.** Tests und Einrichtung laufen dort nachweislich
 durch, benutzt hat MailBurg dort aber noch niemand. Für ein Archivprogramm ist
 das zu wenig, um es zu empfehlen: Was beim Aufnehmen schiefgeht, fällt erst
-Jahre später auf. macOS ist deshalb für die Fassung 1.1 vorgesehen, mit einem
-Gerät zum Prüfen.
+Jahre später auf. **Es hängt an einem Gerät zum Prüfen**, nicht an einer
+Fassungsnummer – solange es keines gibt, bleibt dieser Absatz stehen.
 
 <p align="center">
   <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer über IMAP oder JMAP, Mailprogramme und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile." width="960">

@@ -24,8 +24,8 @@ retrieval have all been exercised there.
 **macOS is not there yet.** The test suite and the setup demonstrably pass,
 but nobody has actually used MailBurg on macOS. For an archiving program that
 is too little to recommend it: what goes wrong during capture only surfaces
-years later. macOS is therefore planned for version 1.1, with a machine to
-verify it on.
+years later. **It hangs on having a machine to verify it on**, not on a
+version number — until there is one, this paragraph stays.
 
 <p align="center">
   <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes over IMAP or JMAP, mail clients and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Access via the interface or the command line." width="960">

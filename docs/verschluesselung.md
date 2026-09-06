@@ -10,7 +10,7 @@ auf einem Server –, ist es eines.
 
 Dagegen hilft die Verschlüsselung.
 
-> **Neu in Fassung 1.0 und im Alltag noch nicht erprobt.** Gebaut, getestet
+> **Seit Fassung 1.0 dabei und im Alltag noch nicht erprobt.** Gebaut, getestet
 > und in der Werkstatt durchgespielt — aber noch niemand hat damit ein Jahr
 > lang gearbeitet. Legen Sie damit vorerst kein Archiv an, dessen Mails Sie
 > nicht auch anderswo noch haben.
