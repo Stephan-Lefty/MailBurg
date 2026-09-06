@@ -7,7 +7,11 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.3.1] – 2026-09-06
+
+Eine Fassung aus einer einzigen Rückmeldung – der ersten zur
+Server-Variante. Sie brachte einen Widerspruch in der Anleitung ans
+Licht und, beim Nachsehen, drei Fehler im Weg auf einen Server.
 
 ### Behoben
 
@@ -47,6 +51,13 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - **[docs/oauth2.md](docs/oauth2.md) sagt, wie ein Server an eine
   OAuth2-Anmeldung kommt** – nämlich nicht selbst, sondern über den
   Arbeitsplatz und den Tresor.
+
+- **`werkzeuge/lesbarkeit.py` misst keine versteckten Auswahlfelder
+  mehr.** Sie tragen die Breite, die das Layout ihnen zugeteilt hat,
+  während ihr Platz belegt war – beim Einblenden wachsen sie auf ihren
+  Inhalt und das Fenster mit. Gemeldet wurde also etwas, das im Betrieb
+  nicht auftritt, und das entwertet die übrigen Befunde. Was das
+  Werkzeug auslässt, steht jetzt am Ende des Berichts.
 
 ## [1.3.0] – 2026-09-04
 

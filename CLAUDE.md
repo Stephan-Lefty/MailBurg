@@ -65,9 +65,41 @@ Grund, der geblieben ist, wiegt schwerer – HTTP ohne TLS – und steht
 jetzt da. Ein Test hält Startmeldung und `/zustand` zusammen, damit die
 beiden nicht wieder auseinanderlaufen.
 
-1664 Tests grün. **Noch nicht veröffentlicht:** Die Änderungen stehen im
-CHANGELOG unter »Unveröffentlicht«, die 1.3.0 ist die letzte Fassung
-draußen.
+1664 Tests grün, **als 1.3.1 getaggt.** Eine Fassung aus einer einzigen
+Rückmeldung – wie die 1.2.0, und aus demselben Grund: Ein Anwender
+benutzt das Programm anders, als der es gebaut hat.
+
+**Warum eine eigene Fassung und nicht »kommt mit der nächsten mit«:**
+Der Tresor-Fehler trifft jeden, der die Server-Variante aufsetzt, und
+sieht dabei nicht nach einem Fehler aus, sondern nach einem leeren
+Schlüsselbund. Wer danach sucht, sucht am falschen Ende.
+
+### Beim Abschluss noch: das Messwerkzeug hat gelogen
+
+`werkzeuge/lesbarkeit.py` meldete ein zu schmales Auswahlfeld im
+Rückspieldialog. **Nachgemessen war nichts dran:** Das Feld ist beim
+Öffnen versteckt und trägt die Breite, die das Layout ihm zugeteilt
+hat, während sein Platz vom Pfadfeld belegt war. Beim Einblenden wächst
+es auf 691 px und das Fenster von 324 auf 834.
+
+Mein erster Anlauf war ein Fix in `ui/farben.py` samt Test – **beide
+habe ich zurückgenommen.** Die Gegenprobe im Scratchpad zeigte, dass Qt
+den Dialog von selbst weitet: Der Test wäre auch ohne den Fix grün
+gewesen. Ein Test, der nicht rot werden kann, ist keiner, und eine
+Änderung ohne belegten Grund ist Ballast.
+
+**Der Fehler lag im Werkzeug**, und er ist die schlimmere Sorte: Ein
+Prüfwerkzeug, das etwas meldet, was im Betrieb nicht auftritt, entwertet
+seine übrigen Befunde. In CLAUDE.md steht seit dem 31.08. der Satz »was
+das Werkzeug findet, ist echt« – der galt nicht mehr. Versteckte Felder
+werden jetzt übersprungen und **am Ende des Berichts genannt**: Was ein
+Prüfwerkzeug auslässt, muss es sagen, sonst liest sich »nichts
+abgeschnitten« wie »alles geprüft«.
+
+Nebenbei aufgefallen und in der TODO: **Das Werkzeug liest die echten
+Konten des Rechners.** In der Ausgabe stand eine echte Firmenadresse
+samt Mailserver – also genau das, was man in einen Fehlerbericht
+kopiert.
 
 ## Hier war Schluss (Stand 2026-09-04, Freitagabend)
 

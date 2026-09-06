@@ -40,6 +40,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 #: Meldung Rauschen.
 TOLERANZ = 4
 
+#: Felder, die beim Öffnen versteckt sind und deshalb nicht gemessen
+#: werden. **Sie fallen nicht still weg**, sondern stehen am Ende des
+#: Berichts: Was ein Prüfwerkzeug auslässt, muss es sagen, sonst liest
+#: sich »nichts abgeschnitten« wie »alles geprüft«.
+UEBERSPRUNGEN: list[str] = []
+
+
+def _bezeichner(bauteil) -> str:
+    """Woran ein Feld im Bericht zu erkennen ist."""
+    return bauteil.accessibleName() or bauteil.objectName() or "ohne Namen"
+
 
 def _befunde(fenster, name: str) -> list[str]:
     from PySide6.QtWidgets import QComboBox, QLabel
@@ -48,6 +59,21 @@ def _befunde(fenster, name: str) -> list[str]:
 
     for box in fenster.findChildren(QComboBox):
         if not box.count():
+            continue
+        # **Ein verstecktes Feld hat noch keine Breite, die etwas
+        # bedeutet.** Es trägt die, die das Layout ihm zugeteilt hat,
+        # während sein Platz von einem anderen Bauteil belegt war. Beim
+        # Einblenden wächst es auf seinen Inhalt, und das Fenster wächst
+        # mit – nachgemessen am 2026-09-06 am Rückspieldialog: 324 px
+        # Fensterbreite vorher, 834 px nachher, das Feld passt.
+        #
+        # **Gemessen wäre es trotzdem zu schmal gewesen**, und das ist
+        # die eigentliche Gefahr: Ein Werkzeug, das etwas meldet, was im
+        # Betrieb nicht auftritt, entwertet seine übrigen Befunde. Wer
+        # zweimal umsonst gesucht hat, sieht beim dritten Mal nicht mehr
+        # nach.
+        if box.isHidden():
+            UEBERSPRUNGEN.append(f"{name}: »{_bezeichner(box)}«")
             continue
         gebraucht = box.sizeHint().width()
         vorhanden = box.width()
@@ -242,15 +268,33 @@ def _dialoge(anwendung, archiv) -> list[str]:
     return befunde
 
 
+def _ausgelassenes_melden() -> None:
+    """Sagt, was nicht gemessen wurde – und warum das in Ordnung ist."""
+    if not UEBERSPRUNGEN:
+        return
+    print(
+        f"\nNicht gemessen, weil beim Öffnen versteckt "
+        f"({len(UEBERSPRUNGEN)}):"
+    )
+    for zeile in UEBERSPRUNGEN:
+        print(f"  {zeile}")
+    print(
+        "  Solche Felder wachsen beim Einblenden auf ihren Inhalt, das\n"
+        "  Fenster wächst mit. Gemessen wäre ihre Breite falsch."
+    )
+
+
 def main() -> int:
     befunde = pruefen()
     if not befunde:
         print("Nichts abgeschnitten – alle geprüften Fenster sind lesbar.")
+        _ausgelassenes_melden()
         return 0
 
     print(f"{len(befunde)} Stellen, an denen Text nicht hineinpasst:\n")
     for zeile in befunde:
         print(f"  {zeile}")
+    _ausgelassenes_melden()
     return 1
 
 

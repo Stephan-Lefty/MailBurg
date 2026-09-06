@@ -63,6 +63,23 @@ Server sitze.«
   spricht HTTP, ohne TLS davor geht das Passwort im Klartext übers Netz.
   Ein Test hält beide Texte (Startmeldung und `/zustand`) zusammen.
 
+- [ ] **`werkzeuge/lesbarkeit.py` liest die echten Konten des Rechners.**
+  Beim Lauf vom 06.09. stand deshalb eine echte Firmenadresse samt
+  Mailserver in der Ausgabe. Im Repo landet sie nicht, aber die Ausgabe
+  ist genau das, was man in einen Fehlerbericht kopiert. Das Werkzeug
+  sollte mit einer erfundenen Kontenliste laufen, so wie
+  `werkzeuge/vorfuehrarchiv.py` mit erfundener Post – dort wacht ein
+  Test darüber, dass jede Adresse auf `.example` endet.
+
+- [x] **Und es meldete etwas, das im Betrieb nicht auftritt.**
+  (2026-09-06) Ein Auswahlfeld, das beim Öffnen versteckt ist, trägt die
+  Breite, die das Layout ihm zugeteilt hat, während sein Platz belegt
+  war. Nachgemessen am Rückspieldialog: 324 px Fensterbreite vorher,
+  834 px nach dem Einblenden – das Feld passt. **Ein Werkzeug, das
+  umsonst suchen lässt, entwertet seine übrigen Befunde.** Versteckte
+  Felder werden jetzt übersprungen und am Ende des Berichts genannt,
+  damit das Auslassen nicht still geschieht.
+
 - [ ] **`pyflakes` oder `ruff` gehören in die CI.** Der APP_ID-Fehler
   stand seit dem 31.08. im Code und wäre in einer Sekunde aufgefallen –
   `pyflakes mailburg/` meldet undefinierte Namen. Nachgesehen: Es war

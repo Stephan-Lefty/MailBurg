@@ -61,6 +61,22 @@ localhost at all, because I'm sitting at a headless server."
   the network in the clear. A test now holds both texts (startup message
   and `/zustand`) together.
 
+- [ ] **`werkzeuge/lesbarkeit.py` reads the machine's real accounts.**
+  The run on 6 September therefore printed a real company address and
+  mail server. It never reaches the repository, but that output is
+  exactly what one pastes into a bug report. The tool should run against
+  a made-up account list, the way `werkzeuge/vorfuehrarchiv.py` runs on
+  made-up mail — where a test watches that every address ends in
+  `.example`.
+
+- [x] **And it reported something that never happens in use.**
+  (2026-09-06) A combo box hidden at opening time carries the width the
+  layout gave it while its place was taken by something else. Measured
+  on the restore dialog: 324 px window width before, 834 px after it
+  appears — the field fits. **A tool that sends you looking for nothing
+  devalues its other findings.** Hidden fields are now skipped and named
+  at the end of the report, so the omission is not silent.
+
 - [ ] **`pyflakes` or `ruff` belong in CI.** The APP_ID fault had been in
   the code since 31 August and would have surfaced in a second —
   `pyflakes mailburg/` reports undefined names. Checked: it was the only
