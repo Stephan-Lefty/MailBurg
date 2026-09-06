@@ -294,5 +294,74 @@ class WindowsDienstTest(unittest.TestCase):
         self.assertIn("Nicht geprüft", self.quelle)
 
 
+class StartmeldungTest(unittest.TestCase):
+    """Was »mailburg server« sagt, bevor er lauscht.
+
+    **Auf einem Server sitzt niemand vor einem Browser.** Ein Rückmelder
+    ist am 2026-09-06 genau daran hängengeblieben: Die Meldung nannte
+    ``http://127.0.0.1:8383/`` als erreichbar – auf einem Rechner ohne
+    Arbeitsumgebung stimmt das und hilft niemandem.
+    """
+
+    def setUp(self):
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name) / "Archiv"
+        Archive.create(self.wo, name="Probe", mode=Mode.GESCHAEFTLICH).close()
+
+    def _laufen_lassen(self, adresse: str) -> tuple[str, str]:
+        """Führt den Befehl wirklich aus – nur ohne zu lauschen."""
+        import argparse
+        import io
+        import contextlib
+
+        from mailburg import __main__ as cli
+
+        umgebung = {
+            lage.ARCHIV: str(self.wo),
+            lage.ADRESSE: adresse,
+            lage.ANSCHLUSS: "8383",
+        }
+        aus, fehler = io.StringIO(), io.StringIO()
+        with mock.patch.dict(os.environ, umgebung), \
+                mock.patch("mailburg.server.dienst.starten", return_value=0), \
+                mock.patch.object(lage, "anschluss_frei", return_value=True), \
+                contextlib.redirect_stdout(aus), \
+                contextlib.redirect_stderr(fehler):
+            cli.cmd_server(argparse.Namespace())
+
+        return aus.getvalue(), fehler.getvalue()
+
+    def test_lokal_steht_der_ssh_tunnel_dabei(self):
+        """Sonst nennt die Meldung eine Adresse, die niemand aufrufen kann."""
+        aus, _ = self._laufen_lassen("127.0.0.1")
+
+        self.assertIn("ssh -L 8383:127.0.0.1:8383", aus)
+
+    def test_bei_ipv6_steht_die_adresse_in_klammern(self):
+        """Ohne sie liest ssh die Doppelpunkte als eigene Trennzeichen."""
+        aus, _ = self._laufen_lassen("::1")
+
+        self.assertIn("ssh -L 8383:[::1]:8383", aus)
+
+    def test_oeffentlich_wird_vor_dem_klartext_gewarnt(self):
+        """Nicht mehr vor der fehlenden Anmeldung – die gibt es seit 31.08."""
+        aus, fehler = self._laufen_lassen("0.0.0.0")  # noqa: S104
+
+        self.assertIn("Klartext", fehler)
+        self.assertNotIn("keine Anmeldung", fehler)
+        # Wer im ganzen Netz lauscht, braucht keinen Tunnel.
+        self.assertNotIn("ssh -L", aus)
+
+    def test_die_sorge_auf_der_zustandsseite_sagt_dasselbe(self):
+        """Zwei Texte zur selben Lage dürfen nicht auseinanderlaufen."""
+        offen = lage.Serverlage(archiv=self.wo, adresse="0.0.0.0")  # noqa: S104
+
+        sorgen = " ".join(_zustand(offen)["sorgen"])
+
+        self.assertIn("Klartext", sorgen)
+        self.assertNotIn("keine Anmeldung", sorgen)
+
+
 if __name__ == "__main__":
     unittest.main()

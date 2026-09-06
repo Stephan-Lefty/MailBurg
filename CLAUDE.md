@@ -3,6 +3,72 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-06, Sonntag)
+
+**Das vierte Nutzer-Feedback, und diesmal zur Server-Variante.**
+Derselbe Anwender wie beim JMAP- und Restore-Wunsch – **der erste
+Mensch außer Stephan, der sich den Dienst überhaupt ansieht.** Sein
+Einwand war eine Frage, keine Fehlermeldung, und trotzdem der beste
+Befund seit Tagen:
+
+> »Du schreibst *ohne Oberfläche, das sind hundertfünfzig Megabyte Qt
+> für ein Fenster, das auf einem Server niemand öffnet*. Dann soll man
+> aber die WebUI via Port 8383 auf localhost öffnen. Aber localhost kann
+> ich ja gar nicht aufrufen, weil ich an einem headless Server sitze.«
+
+Beide Sätze stehen in derselben Anleitung, keine drei Bildschirmseiten
+auseinander. **Die Anleitung war auf Debian durchgespielt worden – von
+jemandem, der dabei einen Bildschirm hatte.**
+
+### Der eigentliche Fund liegt tiefer
+
+Der Widerspruch war in zwanzig Minuten behoben (SSH-Tunnel in Abschnitt
+4, `curl …/zustand.json` daneben, `ssh -L` in der Startmeldung). Beim
+Nachsehen, wo dieselbe Voraussetzung noch klemmt, kam OAuth2 dran: Die
+Anmeldung braucht einen Browser auf demselben Rechner. Der einzige Weg
+auf einen Server führt über den Tresor.
+
+**Und dort lagen zwei Fehler übereinander:**
+
+`mailburg tresor uebernehmen` nahm nur Passwörter mit, keine Token –
+also genau das nicht, was sich auf einem Server nicht nachholen lässt.
+Beim Schreiben des ersten Tests dafür fielen zwei weitere auf, beide
+seit dem 31.08. drin: **`APP_ID` war in `__main__.py` nirgends
+importiert** – ein blankes `except Exception` verschluckte den NameError
+bei jedem Konto, der Befehl meldete »0 Passwörter übernommen«, als wäre
+der Schlüsselbund leer. Und **`paths` fehlte ebenfalls**, weshalb die
+Schlussmeldung danach im Traceback endete.
+
+**Der zweite beweist, dass den Befehl nie jemand ausgeführt hat** – er
+kracht laut. Der erste ist trotzdem der lehrreichere, und die Lehre ist
+neu in dieser Sammlung: Ein Auffangnetz, das auch Programmierfehler
+fängt, macht aus einem Absturz eine falsche Auskunft. »0 übernommen«
+sieht aus wie ein Ergebnis; ein Traceback sieht aus wie ein Fehler. Das
+`except` ist jetzt auf `keyring.errors.KeyringError` eingeengt.
+
+**`pyflakes mailburg/` hätte das in einer Sekunde gesagt.** Es läuft
+nirgends – steht als offener Punkt in der TODO. Nachgesehen: Der
+APP_ID-Fehler war der einzige seiner Art, der Rest sind unbenutzte
+Importe.
+
+### Was daraus für die Zukunft folgt
+
+**Wer eine Anleitung schreibt, hat die Umgebung im Kopf, in der er sie
+geschrieben hat.** Zwei Fälle sind gefunden (Weboberfläche, OAuth2), der
+dritte steht als Aufgabe in der TODO. Es ist dieselbe Klasse wie der
+fish-Fehler vom 03.09.: eine Voraussetzung, die dort selbstverständlich
+ist, wo geprüft wurde – und anderswo nicht gilt.
+
+Nebenbei fiel ein überholter Text auf: Der Hinweis beim Lauschen im Netz
+sagte »solange es keine Anmeldung gibt«. Die gibt es seit dem 31.08. Der
+Grund, der geblieben ist, wiegt schwerer – HTTP ohne TLS – und steht
+jetzt da. Ein Test hält Startmeldung und `/zustand` zusammen, damit die
+beiden nicht wieder auseinanderlaufen.
+
+1664 Tests grün. **Noch nicht veröffentlicht:** Die Änderungen stehen im
+CHANGELOG unter »Unveröffentlicht«, die 1.3.0 ist die letzte Fassung
+draußen.
+
 ## Hier war Schluss (Stand 2026-09-04, Freitagabend)
 
 **1.3.0 ist veröffentlicht**, samt `MailBurg.exe`. Zwei Punkte aus der

@@ -8,6 +8,76 @@ wurde.
 
 ## Offen
 
+### Aus dem vierten Nutzer-Feedback (2026-09-06) – die Server-Variante
+
+Derselbe Anwender, der JMAP angestoßen und den Restore gewünscht hatte.
+Diesmal hat er sich die Server-Variante angesehen – **der erste Mensch
+außer Stephan, der das tut** – und dabei einen Widerspruch gefunden, der
+seit dem 31.08. in der Anleitung stand.
+
+Wörtlich: »Du schreibst ja *ohne Oberfläche, das sind hundertfünfzig
+Megabyte Qt für ein Fenster, das auf einem Server niemand öffnet*. Dann
+soll man aber die WebUI via Port 8383 auf localhost öffnen. Aber
+localhost kann ich ja gar nicht aufrufen, weil ich an einem headless
+Server sitze.«
+
+- [x] **Die Anleitung schickte auf einem Server in den Browser.**
+  (2026-09-06) Er hat recht, und die Lösung stand in seiner eigenen
+  Frage: ein SSH-Tunnel. Abschnitt 4 von
+  [docs/server-einrichten.md](docs/server-einrichten.md) heißt jetzt
+  »Und wie sieht man ihn dann?« und zeigt beide Wege – den Tunnel für
+  die Sicht, `curl …/zustand.json` für die Frage, ob überhaupt etwas
+  läuft. In der Wegetabelle steht der Tunnel als fünfte Zeile: für einen
+  Menschen allein ist er die ganze Antwort.
+
+  **Und die Startmeldung sagt es jetzt selbst.** Sie nannte
+  `http://127.0.0.1:8383/` als »erreichbar« – auf einem Server stimmt
+  das und hilft niemandem. Darunter steht nun der fertige `ssh -L`.
+
+- [x] **`mailburg tresor uebernehmen` hat noch nie etwas übernommen.**
+  (2026-09-06) Aufgefallen erst beim Schreiben des ersten Tests dafür:
+  `APP_ID` war in `__main__.py` nirgends importiert, und ein blankes
+  `except Exception` verschluckte den NameError bei *jedem* Konto. Der
+  Befehl meldete »0 Passwörter übernommen«, als wäre der Schlüsselbund
+  leer.
+
+  **Das traf genau den Weg, den die Server-Anleitung empfiehlt** – und
+  es sah nicht nach einem Fehler aus, sondern nach einem leeren
+  Schlüsselbund. Ein Auffangnetz, das auch Programmierfehler fängt,
+  macht aus einem Absturz eine falsche Auskunft.
+
+  Gleich daneben fehlte `paths`, weshalb die Schlussmeldung danach im
+  Traceback endete. **Das beweist, dass den Befehl nie jemand ausgeführt
+  hat** – ein Traceback wäre gemeldet worden.
+
+- [x] **Und die OAuth2-Token blieben dabei liegen.** (2026-09-06)
+  Übernommen wurden nur Passwörter. Das traf ausgerechnet die Konten,
+  die sich auf einem Server nicht nachholen lassen: Eine
+  OAuth2-Anmeldung braucht einen Browser auf demselben Rechner. Steht
+  jetzt auch in [docs/oauth2.md](docs/oauth2.md) unter »Auf einem Server
+  ohne Bildschirm«.
+
+- [x] **Der Warnhinweis beim Lauschen im Netz war überholt.**
+  (2026-09-06) »Solange es keine Anmeldung gibt« – die gibt es seit dem
+  31.08. Der Grund ist heute ein anderer und wiegt schwerer: Der Dienst
+  spricht HTTP, ohne TLS davor geht das Passwort im Klartext übers Netz.
+  Ein Test hält beide Texte (Startmeldung und `/zustand`) zusammen.
+
+- [ ] **`pyflakes` oder `ruff` gehören in die CI.** Der APP_ID-Fehler
+  stand seit dem 31.08. im Code und wäre in einer Sekunde aufgefallen –
+  `pyflakes mailburg/` meldet undefinierte Namen. Nachgesehen: Es war
+  der einzige seiner Art, der Rest sind unbenutzte Importe. Zu klären
+  ist, ob die vorhandenen Befunde erst aufgeräumt oder zunächst nur
+  `F821` (undefinierter Name) geprüft wird – das ist die Klasse, die
+  wirklich weh tut.
+
+- [ ] **Die übrigen Anleitungen auf denselben blinden Fleck durchgehen.**
+  Wo wird eine Arbeitsumgebung vorausgesetzt, die auf einem Server
+  fehlt? Zwei Fälle sind gefunden und behoben (Weboberfläche, OAuth2);
+  gesucht ist der dritte. **Wer eine Anleitung schreibt, hat die
+  Umgebung im Kopf, in der er sie geschrieben hat** – und sieht
+  ausgerechnet die Voraussetzung nicht, die dort selbstverständlich ist.
+
 ### Aus dem dritten Nutzer-Feedback (2026-09-03)
 
 Derselbe Anwender, der sich JMAP gewünscht hatte – er hat es an einem

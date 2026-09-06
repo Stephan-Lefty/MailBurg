@@ -254,6 +254,90 @@ class KontenTest(Umgebung):
         self.assertNotIn("geheimes-erneuerungstoken", roh)
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
+@unittest.skipUnless(HAT_KEYRING, "keyring fehlt")
+class UebernehmenTest(Umgebung):
+    """»mailburg tresor uebernehmen« – vom Arbeitsplatz auf den Server.
+
+    **Für OAuth2-Konten führt der Weg nur hier entlang.** Eine
+    OAuth2-Anmeldung braucht einen Browser auf demselben Rechner; auf
+    einem Server gibt es keinen. Wer die Token hier liegen lässt, lässt
+    genau die Konten zurück, die sich dort nicht nachholen lassen.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.oauth = Konto(name="Firma", server="outlook.office365.com",
+                           benutzer="post@example.org",
+                           oauth_anbieter="microsoft", oauth_kennung="abc")
+        self.einfach = Konto(name="Privat", server="imap.example.net",
+                             benutzer="ich@example.net")
+
+    def _uebernehmen(self, schluesselbund: dict[str, str]) -> str:
+        import argparse
+        import contextlib
+        import io
+
+        from mailburg import __main__ as cli
+
+        liste = accounts.Kontenliste()
+        liste.konten = [self.oauth, self.einfach]
+        liste.speichern()
+
+        aus = io.StringIO()
+        with mock.patch("keyring.get_password",
+                        side_effect=lambda _app, s: schluesselbund.get(s)), \
+                mock.patch.object(accounts, "schluesselbund_verfuegbar",
+                                  return_value=True), \
+                contextlib.redirect_stdout(aus):
+            cli.cmd_tresor(argparse.Namespace(was="uebernehmen"))
+        return aus.getvalue()
+
+    def test_die_oauth2_token_kommen_mit(self):
+        """Bis zum 2026-09-06 blieben sie auf dem Arbeitsplatz liegen."""
+        self._einrichten()
+
+        self._uebernehmen({self.oauth.token_schluessel: '{"zugriff": "xyz"}'})
+
+        self.assertEqual(tresor.holen(self.oauth.token_schluessel),
+                         '{"zugriff": "xyz"}')
+
+    def test_ein_oauth2_konto_gilt_nicht_als_ohne_anmeldung(self):
+        """Es hat eine – die Ansage »neu eingeben« ginge dort ins Leere."""
+        self._einrichten()
+
+        ausgabe = self._uebernehmen(
+            {self.oauth.token_schluessel: '{"zugriff": "xyz"}'}
+        )
+
+        self.assertNotIn("Firma", ausgabe.split("Ohne hinterlegte")[-1])
+
+    def test_passwoerter_kommen_weiterhin_mit(self):
+        self._einrichten()
+
+        self._uebernehmen({self.einfach.schluessel: "geheim"})
+
+        self.assertEqual(tresor.holen(self.einfach.schluessel), "geheim")
+
+    def test_ein_konto_ganz_ohne_anmeldung_wird_gemeldet(self):
+        self._einrichten()
+
+        ausgabe = self._uebernehmen({})
+
+        self.assertIn("Ohne hinterlegte Anmeldung", ausgabe)
+        self.assertIn("Firma", ausgabe)
+        self.assertIn("Privat", ausgabe)
+
+    def test_ohne_oauth2_wird_der_tokenschluessel_nicht_angefasst(self):
+        """Sonst wanderte ein Rest aus einer früheren Anmeldeart mit."""
+        self._einrichten()
+
+        self._uebernehmen({self.einfach.schluessel: "geheim",
+                           self.einfach.token_schluessel: "liegt-noch-da"})
+
+        self.assertIsNone(tresor.holen(self.einfach.token_schluessel))
+
+
 class OhneKryptoTest(Umgebung):
     """Fehlt ``cryptography``, gibt es keinen Rückfall auf Klartext."""
 

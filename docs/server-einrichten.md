@@ -99,6 +99,15 @@ Die entstandene Datei (`~/.config/mailburg/tresor.json`) gehört dann auf
 den Server. **Sie und der Schlüssel nicht denselben Weg schicken** – wer
 beides zusammen abfängt, hat die Postfächer.
 
+**Für Postfächer mit OAuth2 ist das der einzige Weg.** Eine
+OAuth2-Anmeldung führt über einen Browser auf demselben Rechner, den es
+auf einem Server nicht gibt. `uebernehmen` nimmt diese Anmeldungen
+deshalb mit – seit dem 2026-09-06, davor blieben sie liegen. Läuft eine
+davon später ab, wird sie am Arbeitsplatz erneuert und der Tresor
+erneut übertragen; für ein Postfach, das dauerhaft hier archiviert
+wird, ist ein App-Passwort der ruhigere Weg. Siehe
+[oauth2.md](oauth2.md).
+
 Zum Schluss die Probe:
 
 ```bash
@@ -147,12 +156,49 @@ Erst von Hand, um die Einstellungen zu prüfen:
 MAILBURG_ARCHIV=/var/lib/mailburg/Archiv mailburg server
 ```
 
-Dann im Browser `http://127.0.0.1:8383/`. Unter `/zustand` steht, was
-der Dienst über sich weiß – und was ihm fehlt.
+**In der Vorgabe lauscht er nur auf dem eigenen Rechner** – auf
+`127.0.0.1`, Anschluss 8383. Das ist Absicht: Ein Archivdienst, der beim
+ersten Start ungefragt im ganzen Netz steht, wäre eine böse
+Überraschung.
 
-**In der Vorgabe lauscht er nur auf dem eigenen Rechner.** Das ist
-Absicht: Ein Archivdienst, der beim ersten Start ungefragt im ganzen
-Netz steht, wäre eine böse Überraschung.
+### Und wie sieht man ihn dann?
+
+Auf einem Server ohne Bildschirm gibt es weder Arbeitsumgebung noch
+Browser. `127.0.0.1` ist dort zwar erreichbar – nur eben von niemandem.
+
+**Der SSH-Tunnel ist der Weg.** Der Befehl läuft auf dem *eigenen*
+Rechner, nicht auf dem Server:
+
+```bash
+ssh -L 8383:127.0.0.1:8383 benutzer@server
+```
+
+Solange diese Verbindung offen ist, führt `http://127.0.0.1:8383/` im
+eigenen Browser auf den Dienst des Servers. Unter `/zustand` steht, was
+er über sich weiß – und was ihm fehlt.
+
+Das ist nicht nur ein Notbehelf für den ersten Start: Es ist verschlüsselt,
+es braucht kein Zertifikat, und **auf dem Server bleibt nichts offen.** Ist
+die SSH-Sitzung beendet, ist auch der Zugang wieder zu. Wer den Dienst nur
+selten und allein braucht, kommt damit dauerhaft aus und kann Abschnitt 6
+überspringen.
+
+**Ganz ohne Browser** beantwortet auch der Server selbst die Frage, ob
+etwas läuft:
+
+```bash
+curl -s http://127.0.0.1:8383/zustand.json
+```
+
+Dieselben Angaben, maschinenlesbar – für ein Überwachungssystem ist das
+die richtige Adresse. Was es nicht beantwortet: ob die Anmeldeseite
+aussieht wie gedacht.
+
+> **Nicht als erste Probe:** `MAILBURG_ADRESSE=0.0.0.0`. Damit lauscht
+> der Dienst auf allen Netzwerkadressen und ist ohne Tunnel erreichbar –
+> aber er spricht HTTP. Anmeldename und Passwort gingen im Klartext
+> übers Netz. Das ist der Weg aus Abschnitt 6, und dort gehört ein
+> Reverse Proxy mit TLS davor.
 
 ## 5. Als Dienst einrichten
 
@@ -197,18 +243,20 @@ startet.
 ## 6. Erreichbar machen
 
 Bis hierher lauscht der Dienst nur auf dem Rechner, auf dem er läuft.
-Wer ihn von woanders erreichen will, hat vier Wege – und welcher richtig
-ist, hängt davon ab, woher »woanders« ist.
+Wer ihn von woanders erreichen will, hat fünf Wege – und welcher richtig
+ist, hängt davon ab, woher »woanders« ist und für wie viele Menschen.
 
 | Weg | Wofür | Dagegen spricht |
 |---|---|---|
+| **SSH-Tunnel** | eine Person, die ohnehin SSH hat | für jeden Zugriff erst eine Sitzung aufbauen; für ein Team untauglich |
 | **Reverse Proxy im Firmennetz** | alle sitzen im selben Netz | von außerhalb nicht erreichbar |
 | **Vorhandenes Firmen-VPN** | es gibt schon eines | MailBurg ändert nichts daran – aber jemand muss es betreuen |
 | **Tailscale** | in einer Minute eingerichtet, auch von unterwegs | hängt an einem Anbieter; ab etwa fünf Zugängen kostenpflichtig |
 | **Öffentlich im Internet** | von überall, ohne Zutun der Nutzer | jede Lücke ist weltweit erreichbar |
 
-**Die kurze Antwort:** Im Firmennetz der Reverse Proxy. Von unterwegs
-ein VPN – das vorhandene, sonst Tailscale. Öffentlich nur, wenn beides
+**Die kurze Antwort:** Für sich allein der SSH-Tunnel aus Abschnitt 4 –
+er ist schon da. Im Firmennetz der Reverse Proxy. Von unterwegs ein VPN
+– das vorhandene, sonst Tailscale. Öffentlich nur, wenn alles andere
 ausscheidet.
 
 ### Im Firmennetz
@@ -339,6 +387,14 @@ Einzige zwischen einem Fremden und dem Archiv.
 
 **»Auf 127.0.0.1:8383 lauscht schon etwas«** – ein zweiter Server läuft
 noch. `ss -ltnp | grep :8383` zeigt, welcher.
+
+**»Verbindung abgelehnt«, obwohl der Dienst läuft** – der Browser sitzt
+auf einem anderen Rechner als der Dienst. In der Vorgabe nimmt der
+Dienst nur Anfragen vom eigenen Rechner an; dafür ist der SSH-Tunnel aus
+Abschnitt 4 da. Läuft der Tunnel und es klemmt trotzdem, sehen Sie **auf
+dem Server** mit `ss -ltnp | grep mailburg` nach, auf welchem Anschluss
+er wirklich lauscht – steht `MAILBURG_PORT` auf etwas anderem als 8383,
+muss die rechte Hälfte des `-L` dieselbe Nummer nennen.
 
 **»In … liegt kein MailBurg-Archiv«** – der Pfad zeigt auf einen Ordner
 ohne `archive.json`. Häufig eine Ebene zu hoch oder zu tief.

@@ -7,6 +7,47 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **`mailburg tresor uebernehmen` hat noch nie ein Passwort übernommen.**
+  In `__main__.py` war `APP_ID` nirgends importiert; ein blankes
+  `except Exception` verschluckte den daraus folgenden NameError bei
+  jedem einzelnen Konto. Der Befehl meldete »0 Passwörter übernommen«,
+  als wäre der Schlüsselbund leer – und traf damit genau den Weg, den
+  die Server-Anleitung für den Umzug auf einen Server empfiehlt. Gleich
+  daneben fehlte `paths`, weshalb die Schlussmeldung danach im Traceback
+  endete. Einen Test dafür gab es bis heute nicht.
+
+- **Die OAuth2-Anmeldungen kommen beim Übernehmen mit.** Vorher blieben
+  sie auf dem Arbeitsplatz liegen. Das traf ausgerechnet die Konten, die
+  sich auf einem Server nicht nachholen lassen: Eine OAuth2-Anmeldung
+  braucht einen Browser auf demselben Rechner.
+
+- **Der Warnhinweis beim Lauschen über den eigenen Rechner hinaus war
+  überholt.** Er nannte die fehlende Anmeldung – die gibt es seit dem
+  31.08. Genannt wird jetzt der Grund, der geblieben ist: Der Dienst
+  spricht HTTP, ohne TLS davor gehen Anmeldename und Passwort im
+  Klartext über das Netz.
+
+### Geändert
+
+- **Die Startmeldung von `mailburg server` zeigt den Weg zum Fenster.**
+  Sie nannte `http://127.0.0.1:8383/` als erreichbar – auf einem Server
+  ohne Bildschirm stimmt das und hilft niemandem. Darunter steht jetzt
+  der fertige `ssh -L`-Befehl für den eigenen Rechner.
+
+- **[docs/server-einrichten.md](docs/server-einrichten.md) setzt keinen
+  Browser mehr auf dem Server voraus.** Neuer Abschnitt »Und wie sieht
+  man ihn dann?« mit dem SSH-Tunnel und `curl …/zustand.json`; der
+  Tunnel steht zusätzlich als eigener Weg in der Übersicht, wie der
+  Dienst erreichbar wird. Aus einer Rückmeldung vom 06.09.2026.
+
+- **[docs/oauth2.md](docs/oauth2.md) sagt, wie ein Server an eine
+  OAuth2-Anmeldung kommt** – nämlich nicht selbst, sondern über den
+  Arbeitsplatz und den Tresor.
+
 ## [1.3.0] – 2026-09-04
 
 ### Hinzugefügt

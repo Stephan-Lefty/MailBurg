@@ -17,7 +17,7 @@ import sys
 import time
 from pathlib import Path
 
-from mailburg import APP_NAME, __version__
+from mailburg import APP_ID, APP_NAME, __version__
 from mailburg.core import accounts, sprache
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
@@ -2191,9 +2191,25 @@ def cmd_server(args: argparse.Namespace) -> int:
     if lage.oeffentlich:
         print(
             "\n  Achtung: Dieser Dienst lauscht über den eigenen Rechner\n"
-            "  hinaus. Solange es keine Anmeldung gibt, gehört er hinter\n"
-            "  ein VPN oder eine Firewall.",
+            "  hinaus und spricht HTTP. Ohne TLS davor gehen Anmeldename\n"
+            "  und Passwort im Klartext über das Netz – er gehört hinter\n"
+            "  einen Reverse Proxy, ein VPN oder eine Firewall.",
             file=sys.stderr,
+        )
+    else:
+        # **Auf einem Server gibt es keinen Browser.** Die Zeile darüber
+        # nennt sonst eine Adresse, die zwar stimmt, aber von niemandem
+        # aufgerufen werden kann – ein Rückmelder ist am 2026-09-06
+        # genau darüber gestolpert.
+        print("              – und zwar nur auf diesem Rechner hier.")
+        # Eine IPv6-Adresse gehört im -L in eckige Klammern, sonst liest
+        # ssh ihre Doppelpunkte als eigene Trennzeichen.
+        ziel = f"[{lage.adresse}]" if ":" in lage.adresse else lage.adresse
+        print(
+            "\n  Sitzen Sie woanders, legen Sie von dort einen Tunnel und\n"
+            "  öffnen dann dieselbe Adresse im eigenen Browser:\n\n"
+            f"      ssh -L {lage.anschluss}:{ziel}:{lage.anschluss} "
+            f"benutzer@dieser-rechner"
         )
     print()
     return starten(lage)
@@ -2201,7 +2217,11 @@ def cmd_server(args: argparse.Namespace) -> int:
 
 def cmd_tresor(args: argparse.Namespace) -> int:
     """Passwörter auf einem Rechner ohne Schlüsselbund."""
-    from mailburg.core import accounts, tresor
+    # ``paths`` fehlte hier bis zum 2026-09-06: Die Schlussmeldung von
+    # »uebernehmen« nennt den Ort der Tresordatei und endete deshalb im
+    # NameError – nach getaner Arbeit, aber ohne den Satz, der sagt, was
+    # damit zu tun ist. Ohne Test fällt so etwas niemandem auf.
+    from mailburg.core import accounts, paths, tresor
 
     if args.was == "schluessel":
         try:
@@ -2283,24 +2303,50 @@ def cmd_tresor(args: argparse.Namespace) -> int:
     # Tresor, weil der ja gerade eingerichtet ist - und übernähme dessen
     # eigene Einträge auf sich selbst.
     import keyring
+    import keyring.errors
+
+    def _holen(schluessel: str) -> str | None:
+        # **Eng gefasst, und das aus Erfahrung.** Bis zum 2026-09-06 stand
+        # hier ein blankes ``except Exception`` – und weil ``APP_ID`` in
+        # dieser Datei nie importiert war, verschluckte es bei *jedem*
+        # Konto einen NameError. Der Befehl meldete seither »0 Passwörter
+        # übernommen«, als wäre der Schlüsselbund leer. Ein Auffangnetz,
+        # das auch Programmierfehler fängt, macht aus einem Absturz eine
+        # falsche Auskunft – und die fällt niemandem auf.
+        try:
+            return keyring.get_password(APP_ID, schluessel)
+        except keyring.errors.KeyringError:
+            return None
 
     liste = accounts.Kontenliste()
-    uebernommen, ohne = 0, []
+    uebernommen, marken, ohne = 0, 0, []
     for konto in liste.konten:
-        try:
-            wort = keyring.get_password(APP_ID, konto.schluessel)
-        except Exception:  # noqa: BLE001 – ein gesperrter Schlüsselbund wirft
-            wort = None
+        wort = _holen(konto.schluessel)
         if wort:
             tresor.setzen(konto.schluessel, wort)
             uebernommen += 1
-        else:
+
+        # **Die Token gehören mit.** Bis zum 2026-09-06 blieben sie hier
+        # liegen, und das traf genau die Konten, die auf dem Server nicht
+        # nachzuholen sind: Eine OAuth2-Anmeldung braucht einen Browser
+        # auf demselben Rechner – auf einem Server gibt es keinen.
+        token = _holen(konto.token_schluessel) if konto.per_oauth2 else None
+        if token:
+            tresor.setzen(konto.token_schluessel, token)
+            marken += 1
+
+        if not wort and not token:
             ohne.append(konto.name)
 
     print(f"{sprache.anzahl(uebernommen, 'Passwort', 'Passwörter')} übernommen.")
+    if marken:
+        print(
+            f"Dazu {sprache.anzahl(marken, 'OAuth2-Anmeldung', 'OAuth2-Anmeldungen')}"
+            f" – die lassen sich auf einem Server ohne Browser nicht erneuern."
+        )
     if ohne:
         print(
-            f"Ohne hinterlegtes Passwort: {', '.join(ohne)}. "
+            f"Ohne hinterlegte Anmeldung: {', '.join(ohne)}. "
             f"Diese müssen auf dem Server neu eingegeben werden."
         )
     print(

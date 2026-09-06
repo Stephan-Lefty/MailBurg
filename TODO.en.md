@@ -7,6 +7,74 @@ down, with the date they were completed.
 
 ## Open
 
+### From the fourth user feedback (2026-09-06) — the server variant
+
+The same user who prompted JMAP and asked for the restore. This time he
+looked at the server variant — **the first person other than Stephan to
+do so** — and found a contradiction that had been sitting in the guide
+since 31 August.
+
+In his words: "You write *no interface, that's a hundred and fifty
+megabytes of Qt for a window nobody opens on a server*. But then you're
+supposed to open the web UI on localhost:8383. Except I can't call
+localhost at all, because I'm sitting at a headless server."
+
+- [x] **The guide sent you to a browser on a machine that has none.**
+  (2026-09-06) He is right, and the answer was in his own question: an
+  SSH tunnel. Section 4 of
+  [docs/server-einrichten.md](docs/server-einrichten.md) (German) is now
+  called "And how do you see it, then?" and shows both routes — the
+  tunnel to look at it, `curl …/zustand.json` to ask whether anything is
+  running at all. The tunnel is now the fifth row in the table of ways
+  in: for one person on their own it is the whole answer.
+
+  **And the startup message says so itself now.** It announced
+  `http://127.0.0.1:8383/` as "reachable" — on a server that is true and
+  helps nobody. The ready-made `ssh -L` sits underneath it.
+
+- [x] **`mailburg tresor uebernehmen` had never taken anything over.**
+  (2026-09-06) Found only while writing the first test for it: `APP_ID`
+  was never imported in `__main__.py`, and a bare `except Exception`
+  swallowed the resulting NameError for *every* account. The command
+  reported "0 passwords taken over", as if the keyring were empty.
+
+  **That hit exactly the path the server guide recommends** — and it did
+  not look like a fault, it looked like an empty keyring. A safety net
+  that also catches programming errors turns a crash into a wrong
+  answer.
+
+  Right next to it, `paths` was missing too, so the closing message ran
+  into a traceback. **That proves nobody has ever run the command** — a
+  traceback would have been reported.
+
+- [x] **And the OAuth2 tokens were left behind.** (2026-09-06) Only
+  passwords were carried over. That hit precisely the accounts that
+  cannot be re-established on a server: an OAuth2 sign-in needs a
+  browser on the same machine. Now covered in
+  [docs/oauth2.md](docs/oauth2.md) (German) under "On a server without a
+  screen".
+
+- [x] **The warning about listening on the network was out of date.**
+  (2026-09-06) "As long as there is no sign-in" — there has been one
+  since 31 August. Today's reason is a different one and weighs more:
+  the service speaks HTTP, and without TLS in front the password crosses
+  the network in the clear. A test now holds both texts (startup message
+  and `/zustand`) together.
+
+- [ ] **`pyflakes` or `ruff` belong in CI.** The APP_ID fault had been in
+  the code since 31 August and would have surfaced in a second —
+  `pyflakes mailburg/` reports undefined names. Checked: it was the only
+  one of its kind, the rest are unused imports. To decide: clean up the
+  existing findings first, or start by checking `F821` (undefined name)
+  only — that is the class that actually hurts.
+
+- [ ] **Go through the remaining guides for the same blind spot.** Where
+  do they assume a desktop that a server does not have? Two cases found
+  and fixed (web interface, OAuth2); the third is what we are looking
+  for. **Whoever writes a guide has in mind the environment they wrote
+  it in** — and is blind to exactly the precondition that is obvious
+  there.
+
 ### From the third user feedback (2026-09-03)
 
 The same user who had asked for JMAP — he tried it against a **Stalwart**

@@ -126,10 +126,18 @@ def _zustand(lage) -> dict[str, Any]:
         bericht["sorgen"].append(f"Der Tresor ließ sich nicht öffnen: {fehler}")
 
     if lage.oeffentlich:
+        # **Der Grund hat sich geändert, der Hinweis bleibt.** Bis zum
+        # 2026-08-31 stand hier »solange es keine Anmeldung gibt« – die
+        # gibt es seither. Geblieben ist der zweite Grund, und der wiegt
+        # schwerer: Der Dienst spricht HTTP. Ohne TLS davor wandert genau
+        # das Passwort im Klartext durchs Netz, das die Anmeldung
+        # schützen soll.
         bericht["sorgen"].append(
-            "Dieser Dienst lauscht über den eigenen Rechner hinaus. Solange "
-            "es keine Anmeldung gibt, gehört er hinter ein VPN oder eine "
-            "Firewall – nicht ins offene Netz."
+            "Dieser Dienst lauscht über den eigenen Rechner hinaus und "
+            "spricht HTTP. Ohne einen Reverse Proxy mit TLS davor gehen "
+            "Anmeldename und Passwort im Klartext über das Netz. Er "
+            "gehört hinter ein VPN oder eine Firewall – nicht ins offene "
+            "Netz."
         )
 
     return bericht

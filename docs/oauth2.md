@@ -148,6 +148,37 @@ Das entfernt die Token von Ihrem Rechner. **Beim Anbieter besteht die
 Erlaubnis weiter** — widerrufen lässt sie sich nur dort, bei Microsoft
 unter *Mein Konto → Apps und Dienste*.
 
+### Auf einem Server ohne Bildschirm
+
+**Dort lässt sich diese Anmeldung nicht durchführen.** Sie führt über
+einen Browser, der auf demselben Rechner laufen muss — auf einem Server
+gibt es keinen.
+
+Der Weg führt deshalb über den Arbeitsplatz:
+
+1. Dort ganz normal anmelden (`mailburg konten anmelden Arbeit`).
+2. Dort einen Tresor einrichten und die Anmeldungen hineinholen:
+
+```bash
+mailburg tresor schluessel
+mailburg tresor uebernehmen
+```
+
+3. Die entstandene `tresor.json` und den Hauptschlüssel auf den Server
+   bringen – **nicht denselben Weg**, wer beides zusammen abfängt, hat
+   die Postfächer.
+
+`uebernehmen` nimmt die OAuth2-Token seit dem 2026-09-06 mit; davor
+blieben sie liegen, und auf dem Server fehlte ausgerechnet das, was sich
+dort nicht nachholen lässt. Mehr dazu in
+[server-einrichten.md](server-einrichten.md).
+
+**Was dabei bleibt:** Läuft die Anmeldung einmal wirklich ab – nach
+einem Passwortwechsel, einem Entzug beim Anbieter oder 90 Tagen ohne
+Abruf –, muss sie am Arbeitsplatz erneuert und der Tresor erneut
+übertragen werden. Für ein Postfach, das dauerhaft auf einem Server
+archiviert wird, ist ein App-Passwort deshalb der ruhigere Weg.
+
 ## Warum Google schwieriger ist
 
 Technisch ist es derselbe Ablauf. Die Hürde liegt davor:
