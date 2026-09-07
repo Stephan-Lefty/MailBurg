@@ -22,6 +22,34 @@ from PySide6.QtCore import QEvent, QObject, QTimer
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
+#: Wie viele Zeichen ein Eingabefeld mindestens zeigen soll, bevor
+#: gekürzt wird. **Kein geratener Pixelwert:** Gerechnet wird in
+#: Zeichenbreiten der eingestellten Schrift, sonst sitzt die Zahl
+#: falsch, sobald jemand die Schrift ändert – und das lässt sich in
+#: MailBurg einstellen.
+#:
+#: Der Deckel muss sein: Ein Pfadfeld darf nicht so breit werden wie der
+#: längste denkbare Pfad, sonst sprengt ein Dialog den Bildschirm. Ab
+#: hier hilft Rollen im Feld.
+#:
+#: **Steht hier und nicht in der Klasse darunter**, weil
+#: ``werkzeuge/lesbarkeit.py`` dieselbe Zahl braucht: Es prüft ja, ob
+#: eingehalten wurde, was hier zugesagt ist. Zwei Zahlen an zwei Orten
+#: liefen auseinander, und dann meldet das Prüfwerkzeug etwas, das gar
+#: kein Fehler ist – am 2026-09-07 genau so in der CI passiert.
+FELDBREITE_ZEICHEN = 45
+
+
+def feldbreite(masse, text: str) -> int:
+    """Wie breit ein Eingabefeld für diesen Text sein soll.
+
+    ``masse`` ist die ``QFontMetrics`` des Feldes. Gemeinsame Stelle für
+    die Oberfläche und das Prüfwerkzeug.
+    """
+    # Rand und Einzug des Stils dazu, sonst klebt der Text am Rahmen.
+    noetig = masse.horizontalAdvance(text) + 12
+    return min(noetig, masse.averageCharWidth() * FELDBREITE_ZEICHEN)
+
 #: Für helle Themen. Nachgerechnet auf Weiß: 5,1 und 5,6.
 _HELL = {"gut": "#2e7d32", "schlecht": "#c62828"}
 
@@ -312,17 +340,6 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             if sichtbar:
                 cls._dialog_weiten(dialog)
 
-        #: Wie viele Zeichen ein Eingabefeld mindestens zeigen soll,
-        #: bevor gekürzt wird. **Kein geratener Pixelwert:** Gerechnet
-        #: wird in Zeichenbreiten der eingestellten Schrift, sonst sitzt
-        #: die Zahl falsch, sobald jemand die Schrift ändert – und das
-        #: lässt sich in MailBurg einstellen.
-        #:
-        #: Der Deckel muss sein: Ein Pfadfeld darf nicht so breit werden
-        #: wie der längste denkbare Pfad, sonst sprengt ein Dialog den
-        #: Bildschirm. Ab hier hilft Rollen im Feld.
-        ZEICHEN = 45
-
         @classmethod
         def _fenster_nachrechnen(cls, bauteil) -> None:
             """Lässt den Dialog seine Größe neu bestimmen.
@@ -363,12 +380,7 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             text = feld.text() or feld.placeholderText()
             if not text:
                 return False
-            masse = feld.fontMetrics()
-            # Rand und Einzug des Stils dazu, sonst klebt der Text am
-            # Rahmen.
-            noetig = masse.horizontalAdvance(text) + 12
-            deckel = masse.averageCharWidth() * _Anpasser.ZEICHEN
-            gewuenscht = min(noetig, deckel)
+            gewuenscht = feldbreite(feld.fontMetrics(), text)
             if feld.minimumWidth() >= gewuenscht:
                 return False
             feld.setMinimumWidth(gewuenscht)

@@ -55,6 +55,8 @@ def _bezeichner(bauteil) -> str:
 def _befunde(fenster, name: str) -> list[str]:
     from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit
 
+    from mailburg.ui import farben
+
     gefunden: list[str] = []
 
     for box in fenster.findChildren(QComboBox):
@@ -104,8 +106,13 @@ def _befunde(fenster, name: str) -> list[str]:
         text = feld.text() or feld.placeholderText()
         if not text:
             continue
-        # Rand und Einzug des Stils dazu, sonst klebt der Text am Rahmen.
-        gebraucht = feld.fontMetrics().horizontalAdvance(text) + 12
+        # **Dieselbe Zahl wie die Oberfläche, nicht eine zweite.**
+        # ``farben.feldbreite`` deckelt bei 45 Zeichen – ein Pfadfeld
+        # darf nicht so breit werden wie der längste denkbare Pfad. Wer
+        # hier den vollen Text verlangt, meldet als Fehler, was Absicht
+        # ist: Am 2026-09-07 stand die CI deswegen auf Rot, mit neun
+        # Befunden, von denen keiner einer war.
+        gebraucht = farben.feldbreite(feld.fontMetrics(), text)
         vorhanden = feld.width()
         if vorhanden and gebraucht - vorhanden > TOLERANZ:
             gefunden.append(
