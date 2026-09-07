@@ -61,13 +61,22 @@ localhost at all, because I'm sitting at a headless server."
   the network in the clear. A test now holds both texts (startup message
   and `/zustand`) together.
 
-- [ ] **`werkzeuge/lesbarkeit.py` reads the machine's real accounts.**
-  The run on 6 September therefore printed a real company address and
-  mail server. It never reaches the repository, but that output is
-  exactly what one pastes into a bug report. The tool should run against
-  a made-up account list, the way `werkzeuge/vorfuehrarchiv.py` runs on
-  made-up mail — where a test watches that every address ends in
-  `.example`.
+- [x] **`werkzeuge/lesbarkeit.py` read the machine's real accounts.**
+  (2026-09-07) The run on 6 September therefore printed a real company
+  address and mail server — it never reaches the repository, but that
+  output is exactly what one pastes into a bug report.
+
+  **The cause was half a patch:** the tool redirected
+  `paths.data_dir()` but not `config_dir()`, and the account list lives
+  in the latter. Now both, with three invented mailboxes on `.example`
+  — one of them deliberately long-winded, or the combo-box measurement
+  would prove nothing.
+
+  **And a risk that only surfaced while building it:** a `Kontenliste()`
+  without a path takes `config_dir()`. Were the patch ever to fall away,
+  a measuring tool would overwrite the user's real mailboxes. The target
+  is therefore passed in, and a test holds that nothing appears beside
+  it. **A measuring tool may measure, not modify.**
 
 - [x] **And it reported something that never happens in use.**
   (2026-09-06) A combo box hidden at opening time carries the width the

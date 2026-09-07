@@ -63,13 +63,23 @@ Server sitze.«
   spricht HTTP, ohne TLS davor geht das Passwort im Klartext übers Netz.
   Ein Test hält beide Texte (Startmeldung und `/zustand`) zusammen.
 
-- [ ] **`werkzeuge/lesbarkeit.py` liest die echten Konten des Rechners.**
-  Beim Lauf vom 06.09. stand deshalb eine echte Firmenadresse samt
-  Mailserver in der Ausgabe. Im Repo landet sie nicht, aber die Ausgabe
-  ist genau das, was man in einen Fehlerbericht kopiert. Das Werkzeug
-  sollte mit einer erfundenen Kontenliste laufen, so wie
-  `werkzeuge/vorfuehrarchiv.py` mit erfundener Post – dort wacht ein
-  Test darüber, dass jede Adresse auf `.example` endet.
+- [x] **`werkzeuge/lesbarkeit.py` las die echten Konten des Rechners.**
+  (2026-09-07) Beim Lauf vom 06.09. stand deshalb eine echte
+  Firmenadresse samt Mailserver in der Ausgabe – im Repo landet sie
+  nicht, aber die Ausgabe ist genau das, was man in einen Fehlerbericht
+  kopiert.
+
+  **Die Ursache war ein halber Patch:** Das Werkzeug lenkte
+  `paths.data_dir()` um, aber nicht `config_dir()`, und dort liegt die
+  Kontenliste. Jetzt beides, mit drei erfundenen Postfächern auf
+  `.example` – eines davon absichtlich mit langer Adresse, sonst
+  bewiese die Messung der Auswahlfelder nichts.
+
+  **Und ein Risiko, das erst beim Bauen auffiel:** Ein `Kontenliste()`
+  ohne Pfad nähme `config_dir()`. Fiele der Patch je weg, überschriebe
+  das Messwerkzeug die echten Postfächer. Das Ziel wird deshalb
+  übergeben, und ein Test hält fest, dass daneben nichts entsteht.
+  **Ein Messwerkzeug darf messen, nicht ändern.**
 
 - [x] **Und es meldete etwas, das im Betrieb nicht auftritt.**
   (2026-09-06) Ein Auswahlfeld, das beim Öffnen versteckt ist, trägt die

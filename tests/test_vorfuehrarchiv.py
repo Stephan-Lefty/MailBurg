@@ -135,5 +135,62 @@ class LoeschschutzTest(unittest.TestCase):
             self.assertEqual(code, 1)
 
 
+class LesbarkeitsWerkzeugTest(unittest.TestCase):
+    """`werkzeuge/lesbarkeit.py` – dieselbe Frage, anderes Werkzeug.
+
+    Es misst die Fenster nach und schreibt einen Bericht. Bis zum
+    2026-09-06 las es dabei die **echten** Postfächer des Rechners, und
+    deren Adressen standen samt Mailserver in der Ausgabe – also in
+    genau dem Text, den man in einen Fehlerbericht kopiert.
+    """
+
+    def setUp(self):
+        laden = util.spec_from_file_location(
+            "lesbarkeit", WURZEL / "werkzeuge" / "lesbarkeit.py"
+        )
+        self.werkzeug = util.module_from_spec(laden)
+        laden.loader.exec_module(self.werkzeug)
+
+    def test_jede_adresse_endet_auf_example(self):
+        for konto in self.werkzeug.PROBEKONTEN:
+            for feld in ("server", "benutzer"):
+                with self.subTest(konto=konto["name"], feld=feld):
+                    self.assertTrue(
+                        konto[feld].endswith(".example"),
+                        f"{konto[feld]} ist keine reservierte Beispieladresse",
+                    )
+
+    def test_geschrieben_wird_nur_in_die_uebergebene_datei(self):
+        """**Der Schutz der echten Kontenliste.**
+
+        Ein ``Kontenliste()`` ohne Pfad nähme ``config_dir()`` – fiele
+        der Patch darüber je weg, überschriebe ein Messwerkzeug die
+        Postfächer des Anwenders. Deshalb wird das Ziel übergeben.
+        """
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        with tempfile.TemporaryDirectory() as ordner:
+            ziel = Path(ordner) / "einstellungen" / "konten.json"
+            echt = Path(ordner) / "echt"
+            with mock.patch.object(paths, "config_dir", return_value=echt):
+                self.werkzeug._konten_erfinden(ziel)
+
+            self.assertTrue(ziel.is_file())
+            self.assertFalse(echt.exists(), "Es hat woanders hin geschrieben")
+
+    def test_ein_langer_eintrag_ist_dabei(self):
+        """Sonst bewiese die Messung der Auswahlfelder nichts.
+
+        Geprüft wird dort, ob ein Feld seinen längsten Eintrag zeigen
+        kann. Mit drei kurzen Namen liefe die Prüfung durch, ohne je
+        einen engen Fall gesehen zu haben.
+        """
+        laengen = [len(k["benutzer"]) for k in self.werkzeug.PROBEKONTEN]
+
+        self.assertGreater(max(laengen), 40)
+
+
 if __name__ == "__main__":
     unittest.main()

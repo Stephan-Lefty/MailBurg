@@ -30,6 +30,13 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - **Die Vergleichslinks in diesem Protokoll hörten bei 0.12.0 auf.**
   Alle Fassungen ab 1.0.0 waren tote Klammern.
 
+- **`werkzeuge/lesbarkeit.py` zeigt keine echten Postfächer mehr.** Es
+  lenkte `data_dir()` um, aber nicht `config_dir()` – und dort liegt
+  die Kontenliste, weshalb echte Adressen samt Mailserver im Bericht
+  standen. Jetzt laufen drei erfundene Postfächer auf `.example` mit,
+  und das Ziel der Datei wird übergeben statt erfragt: Ein
+  Messwerkzeug darf messen, nicht ändern.
+
 ### Hinzugefügt
 
 - **Die CI sucht undefinierte Namen** (`pyflakes`, gefiltert auf genau

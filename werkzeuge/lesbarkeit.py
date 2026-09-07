@@ -180,8 +180,20 @@ def pruefen() -> list[str]:
 
     with tempfile.TemporaryDirectory() as ordner:
         basis = Path(ordner)
-        with mock.patch.object(paths, "data_dir", return_value=basis / "daten"):
+        # **Auch die Einstellungen umlenken, nicht nur die Daten.** Die
+        # Kontenliste liegt unter ``config_dir()``; ohne diesen Patch
+        # zeigten die Dialoge die *echten* Postfächer dieses Rechners –
+        # und ihre Adressen standen samt Mailserver im Bericht. Der ist
+        # genau das, was man in einen Fehlerbericht kopiert.
+        #
+        # Am 2026-09-06 aufgefallen, als eine echte Firmenadresse in der
+        # Ausgabe stand.
+        with mock.patch.object(paths, "data_dir", return_value=basis / "daten"), \
+                mock.patch.object(
+                    paths, "config_dir", return_value=basis / "einstellungen"
+                ):
             (basis / "daten").mkdir(parents=True, exist_ok=True)
+            _konten_erfinden(basis / "einstellungen" / "konten.json")
             archiv = Archive.create(
                 basis / "Archiv", mode=Mode.GESCHAEFTLICH, name="Probe"
             )
@@ -191,6 +203,36 @@ def pruefen() -> list[str]:
                 archiv.close()
 
     return befunde
+
+
+#: Erfundene Postfächer für die Messung. **Der längste Name ist
+#: Absicht:** Gemessen wird, ob ein Auswahlfeld seinen längsten Eintrag
+#: zeigen kann – mit drei kurzen Namen bewiese der Lauf nichts. Alle
+#: Adressen enden auf ``.example``; das ist nach RFC 2606 dafür
+#: reserviert und kann niemandem gehören.
+PROBEKONTEN = [
+    {"name": "Firma", "server": "imap.firma.example",
+     "benutzer": "post@firma.example"},
+    {"name": "Buchhaltung", "server": "mail.ein-langer-anbietername.example",
+     "benutzer": "buchhaltung@ein-langer-anbietername.example"},
+    {"name": "Privat", "server": "imap.privat.example",
+     "benutzer": "ich@privat.example"},
+]
+
+
+def _konten_erfinden(datei: Path) -> None:
+    """Legt die Postfächer an, die in den Auswahlfeldern stehen sollen.
+
+    **Das Ziel wird übergeben, nicht erfragt.** Ein ``Kontenliste()``
+    ohne Pfad nähme ``config_dir()`` – und wenn der Patch darüber je
+    wegfiele, überschriebe dieses Werkzeug die echte Kontenliste des
+    Rechners. Ein Messwerkzeug darf messen, nicht ändern.
+    """
+    from mailburg.core.accounts import Konto, Kontenliste
+
+    liste = Kontenliste(datei)
+    liste.konten = [Konto(**angaben) for angaben in PROBEKONTEN]
+    liste.speichern()
 
 
 def _dialoge(anwendung, archiv) -> list[str]:
