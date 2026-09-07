@@ -213,5 +213,113 @@ class AbrufImArchivTest(unittest.TestCase):
         self.assertTrue(self.archive.verify()["ok"])
 
 
+class AltbestandInsLaufendeKontoTest(AbrufImArchivTest):
+    """Alte Mails aus einem Export in ein Postfach, das weiterläuft.
+
+    **Der Regelfall beim Umstieg**, und Stephans Lage am 2026-09-07: Ein
+    Postfach wird längst abgerufen, und daneben liegt ein Export aus
+    MailStore mit Post, die es online nicht mehr gibt. Beides gehört
+    unter denselben Namen, sonst steht dieselbe Adresse zweimal im
+    Postfachbaum.
+
+    Die Frage, an der es hängt: **Bringt der Import den nächsten Abruf
+    durcheinander?** Die Hochwassermarke kommt aus dem Index
+    (``max_uid``), und eingelesene Dateien haben keine UID – wenn die
+    als 0 zählten oder gar als »höchste«, holte der nächste Lauf
+    entweder alles noch einmal oder gar nichts mehr.
+    """
+
+    def _einlesen(self, ordnername: str, betreffs: list[str]) -> None:
+        """Legt einen eml-Ordner an und liest ihn in dasselbe Konto ein."""
+        from mailburg.sources.local import EmlOrdnerSource
+
+        wurzel = self.base / "export" / ordnername
+        wurzel.mkdir(parents=True, exist_ok=True)
+        for nummer, betreff in enumerate(betreffs):
+            (wurzel / f"{nummer}.eml").write_bytes(mail(betreff))
+
+        quelle = EmlOrdnerSource(self.base / "export", account="Firma")
+        importieren(self.archive, quelle, mit_anhangstext=False)
+
+    def test_der_naechste_abruf_holt_trotzdem_nur_das_neue(self):
+        server = FakeImap([FakeOrdner("INBOX", {1: mail("eins"), 2: mail("zwei")})])
+        self.abrufen(server)
+
+        self._einlesen("Alt-2015", ["ganz alt", "auch alt"])
+
+        server.ordner["INBOX"].mails[3] = mail("frisch")
+        stat, _ = self.abrufen(server)
+
+        self.assertEqual(stat.neu, 1, "Der Abruf ist aus dem Tritt geraten")
+
+    def test_die_hochwassermarke_bleibt_unberuehrt(self):
+        """Eingelesene Dateien haben keine UID – sie dürfen nicht zählen."""
+        server = FakeImap([FakeOrdner("INBOX", {1: mail("eins"), 2: mail("zwei")})])
+        self.abrufen(server)
+
+        self._einlesen("Alt-2015", ["ganz alt"])
+
+        self.assertEqual(self.archive.index.max_uid("Firma", "INBOX"), 2)
+
+    def test_beides_steht_unter_demselben_konto(self):
+        """Sonst stünde dieselbe Adresse zweimal im Postfachbaum."""
+        server = FakeImap([FakeOrdner("INBOX", {1: mail("eins")})])
+        self.abrufen(server)
+
+        self._einlesen("Alt-2015", ["ganz alt"])
+
+        konten = {konto for konto, _, _ in self.archive.index.accounts()}
+        self.assertEqual(konten, {"Firma"})
+
+    def test_der_alte_ordner_steht_neben_dem_laufenden(self):
+        """Die Herkunft bleibt sichtbar – Export hier, Postfach dort."""
+        server = FakeImap([FakeOrdner("INBOX", {1: mail("eins")})])
+        self.abrufen(server)
+
+        self._einlesen("Alt-2015", ["ganz alt"])
+
+        ordner = {o for _, o, _ in self.archive.index.accounts()}
+        self.assertEqual(ordner, {"INBOX", "Alt-2015"})
+
+    def test_eine_mail_die_es_in_beiden_gibt_liegt_einmal_auf_der_platte(self):
+        """Der Export überschneidet sich fast immer mit dem Postfach."""
+        server = FakeImap([FakeOrdner("INBOX", {1: mail("dieselbe")})])
+        self.abrufen(server)
+        vorher = len(list((self.archive.root / "mail").rglob("*.eml*")))
+
+        self._einlesen("Alt-2015", ["dieselbe"])
+
+        nachher = len(list((self.archive.root / "mail").rglob("*.eml*")))
+        self.assertEqual(vorher, nachher)
+
+    def test_und_der_zweite_fundort_steht_trotzdem_im_journal(self):
+        """Sonst ginge beim Neuaufbau verloren, dass sie im Export lag."""
+        server = FakeImap([FakeOrdner("INBOX", {1: mail("dieselbe")})])
+        self.abrufen(server)
+
+        self._einlesen("Alt-2015", ["dieselbe"])
+
+        ordner = {o for _, o, _ in self.archive.index.accounts()}
+        self.assertIn("Alt-2015", ordner)
+
+    def test_zweimal_einlesen_legt_nichts_doppelt_an(self):
+        """Ein Export wird selten beim ersten Versuch vollständig."""
+        self._einlesen("Alt-2015", ["ganz alt", "auch alt"])
+        vorher = len(list((self.archive.root / "mail").rglob("*.eml*")))
+
+        self._einlesen("Alt-2015", ["ganz alt", "auch alt"])
+
+        nachher = len(list((self.archive.root / "mail").rglob("*.eml*")))
+        self.assertEqual(vorher, nachher)
+
+    def test_die_hash_kette_ueberlebt_die_mischung(self):
+        server = FakeImap([FakeOrdner("INBOX", {1: mail("eins")})])
+        self.abrufen(server)
+        self._einlesen("Alt-2015", ["ganz alt"])
+        self.abrufen(server)
+
+        self.assertTrue(self.archive.verify()["ok"])
+
+
 if __name__ == "__main__":
     unittest.main()
