@@ -295,6 +295,12 @@ Trefferzahl, aus der er auf sie schließen könnte.
 bleiben der Kommandozeile und dem Fenster vorbehalten – das sind die Vorgänge,
 die ins Journal schreiben.
 
+**In der Vorgabe lauscht der Dienst nur auf dem eigenen Rechner.** Auf einem
+Server ohne Bildschirm sieht man ihn deshalb über einen SSH-Tunnel
+(`ssh -L 8383:127.0.0.1:8383 benutzer@server`), im Firmennetz über einen
+Reverse Proxy mit TLS. Ein Archivdienst, der beim ersten Start ungefragt im
+ganzen Netz steht, wäre eine böse Überraschung.
+
 Der Weg vom leeren Rechner bis dahin steht in
 [docs/server-einrichten.md](docs/server-einrichten.md), die Überlegungen
 dahinter in [docs/server.md](docs/server.md). Für Debian ist er durchgespielt;

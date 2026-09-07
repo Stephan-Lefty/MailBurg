@@ -262,6 +262,12 @@ count they could infer from.
 command line and the desktop window — those are the operations that write to the
 journal.
 
+**By default the service listens on the local machine only.** On a server
+without a screen you therefore reach it through an SSH tunnel
+(`ssh -L 8383:127.0.0.1:8383 user@server`), and on a company network through a
+reverse proxy with TLS. An archive service that stands on the whole network
+unasked at first start would be a nasty surprise.
+
 The path from a bare machine is in
 [docs/server-einrichten.md](docs/server-einrichten.md) (German), the reasoning
 in [docs/server.md](docs/server.md) (German). It has been walked through on
