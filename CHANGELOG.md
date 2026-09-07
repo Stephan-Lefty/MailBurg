@@ -30,6 +30,15 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - **Die Vergleichslinks in diesem Protokoll hörten bei 0.12.0 auf.**
   Alle Fassungen ab 1.0.0 waren tote Klammern.
 
+### Hinzugefügt
+
+- **Die CI sucht undefinierte Namen** (`pyflakes`, gefiltert auf genau
+  diese Klasse). Der Schritt daneben hieß »Syntax prüfen« und lief
+  `compileall` – das findet einen Aufruf von etwas, das es nicht gibt,
+  gerade nicht: Er ist syntaktisch tadellos und fliegt erst zur
+  Laufzeit. Genau so blieb der Fehler in `mailburg tresor uebernehmen`
+  fünf Fassungen lang unentdeckt.
+
 ## [1.3.1] – 2026-09-06
 
 Eine Fassung aus einer einzigen Rückmeldung – der ersten zur

@@ -58,6 +58,30 @@ jobs:
       - name: Syntax prüfen
         run: python -m compileall -q mailburg tests
 
+      # **compileall prüft die Syntax, nicht die Namen.** Ein Aufruf von
+      # etwas, das es nicht gibt, ist syntaktisch tadellos und fliegt
+      # erst zur Laufzeit - also in dem Zweig, den keiner ausführt.
+      #
+      # Am 2026-09-06 gefunden: ``APP_ID`` war in ``__main__.py`` nie
+      # importiert, und ein ``except Exception`` daneben verschluckte
+      # den NameError. »mailburg tresor uebernehmen« meldete deshalb
+      # seit dem 31.08. »0 Passwörter übernommen«, als wäre der
+      # Schlüsselbund leer. Dieser Schritt hätte das in einer Sekunde
+      # gesagt.
+      #
+      # **Nur undefinierte Namen.** pyflakes meldet auch unbenutzte
+      # Importe; die sind Kosmetik und dürfen keinen Bau anhalten. Wer
+      # hier mehr prüfen will, räumt vorher auf - sonst ist die CI rot,
+      # ohne dass etwas kaputt ist, und das gewöhnt man sich an.
+      - name: Undefinierte Namen finden
+        run: |
+          pip install --quiet pyflakes
+          if python -m pyflakes mailburg tests werkzeuge \
+               | grep -E "undefined name"; then
+            echo "::error::Undefinierte Namen - siehe oben"
+            exit 1
+          fi
+
       - name: Tests
         run: python -m unittest discover -s tests
 

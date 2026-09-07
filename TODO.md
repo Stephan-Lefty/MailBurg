@@ -80,13 +80,19 @@ Server sitze.«
   Felder werden jetzt übersprungen und am Ende des Berichts genannt,
   damit das Auslassen nicht still geschieht.
 
-- [ ] **`pyflakes` oder `ruff` gehören in die CI.** Der APP_ID-Fehler
-  stand seit dem 31.08. im Code und wäre in einer Sekunde aufgefallen –
-  `pyflakes mailburg/` meldet undefinierte Namen. Nachgesehen: Es war
-  der einzige seiner Art, der Rest sind unbenutzte Importe. Zu klären
-  ist, ob die vorhandenen Befunde erst aufgeräumt oder zunächst nur
-  `F821` (undefinierter Name) geprüft wird – das ist die Klasse, die
-  wirklich weh tut.
+- [x] **`pyflakes` gehört in die CI.** (2026-09-07) Steht jetzt als
+  Schritt »Undefinierte Namen finden« neben »Syntax prüfen« – und der
+  Name des alten Schritts war das eigentliche Ärgernis: `compileall`
+  prüft die Syntax, nicht die Namen. **Ein Aufruf von etwas, das es
+  nicht gibt, ist syntaktisch tadellos** und fliegt erst zur Laufzeit,
+  also in dem Zweig, den keiner ausführt.
+
+  **Gefiltert auf undefinierte Namen.** Unbenutzte Importe meldet
+  pyflakes auch; die sind Kosmetik und dürfen keinen Bau anhalten –
+  eine CI, die rot ist, ohne dass etwas kaputt ist, gewöhnt man sich
+  an. Beide Richtungen sind nachgestellt: Über das heutige Repo läuft
+  der Block durch, über eine Datei mit einem erfundenen Namen bricht er
+  ab.
 
 - [x] **Die übrigen Anleitungen auf denselben blinden Fleck durchgehen.**
   (2026-09-07) Alle fünfzehn Dateien in `docs/` durchgesehen; zwölf

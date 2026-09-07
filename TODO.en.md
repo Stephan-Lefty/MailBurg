@@ -77,12 +77,18 @@ localhost at all, because I'm sitting at a headless server."
   devalues its other findings.** Hidden fields are now skipped and named
   at the end of the report, so the omission is not silent.
 
-- [ ] **`pyflakes` or `ruff` belong in CI.** The APP_ID fault had been in
-  the code since 31 August and would have surfaced in a second —
-  `pyflakes mailburg/` reports undefined names. Checked: it was the only
-  one of its kind, the rest are unused imports. To decide: clean up the
-  existing findings first, or start by checking `F821` (undefined name)
-  only — that is the class that actually hurts.
+- [x] **`pyflakes` belongs in CI.** (2026-09-07) It is now a step called
+  "Undefinierte Namen finden", right next to "Syntax prüfen" — and the
+  name of that older step was the real annoyance: `compileall` checks
+  syntax, not names. **A call to something that does not exist is
+  syntactically perfect** and only blows up at run time, in the branch
+  nobody exercises.
+
+  **Filtered to undefined names.** pyflakes also reports unused imports;
+  those are cosmetics and must not stop a build — a CI that is red
+  without anything being broken is a CI people learn to ignore. Both
+  directions were rehearsed: over today's repository the block passes,
+  over a file with an invented name it fails.
 
 - [x] **Go through the remaining guides for the same blind spot.**
   (2026-09-07) All fifteen files under `docs/` reviewed; twelve were
