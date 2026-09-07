@@ -737,8 +737,23 @@ class ZusaetzeTest(unittest.TestCase):
         self.assertIn("keyring", zeile)
 
 
+try:
+    import keyring  # noqa: F401
+
+    HAT_KEYRING = True
+except ImportError:  # pragma: no cover
+    HAT_KEYRING = False
+
+
+@unittest.skipUnless(HAT_KEYRING, "keyring fehlt")
 class GesperrterSchluesselbundTest(unittest.TestCase):
     """Ein Schlüsselbund, der nicht antwortet, ist kein leerer.
+
+    **Übersprungen, wenn ``keyring`` fehlt.** Der erste CI-Job
+    installiert bewusst nichts außer dem Kern – dort gibt es das Modul
+    nicht, und ``mock.patch("keyring.get_password")`` scheitert schon
+    beim Importieren. Genau daran ist dieser Test am 2026-09-07 in der
+    CI hängengeblieben.
 
     **Am 2026-09-07 an Stephans Firmenarchiv aufgefallen.** Nach einem
     Systemupdate mit über 300 Paketen meldete MailBurg für *alle sieben*
