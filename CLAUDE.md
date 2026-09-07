@@ -65,6 +65,28 @@ Nebenbei: Der `.eml`-Ordner-Import gibt es seit jeher und stand
 nirgends – weder im README noch in `docs/oberflaeche.md`, wo der ganze
 Dialog *Lokale Mailordner einlesen …* fehlte.
 
+### Altbestand in ein laufendes Konto
+
+Stephan exportiert ein Postfach aus MailStore, das im Archiv
+weiterläuft, und fragte, wie die `.eml`-Dateien sauber zugeordnet
+werden. Die Antwort ist `--konto` mit demselben Namen – **die Frage
+dahinter war, ob das den laufenden Abruf zerschießt.**
+
+Tut es nicht, und das steht jetzt in `tests/test_abruf.py` statt in
+einer Zusage: `max_uid()` zählt nur echte Nachrichtennummern,
+eingelesene Dateien haben keine. Mitgeprüft: Der Export-Ordner steht
+neben `INBOX`, Überschneidungen liegen einmal auf der Platte, der zweite
+Fundort steht trotzdem im Journal, zweimal einlesen legt nichts doppelt
+an, die Hash-Kette bleibt heil.
+
+**Die Lücke war die Eingabe, nicht der Kern.** Der Kontoname war ein
+freies Textfeld – ein »Firma « mit Leerzeichen ergibt einen zweiten
+Zweig, der im Baum genauso aussieht wie der erste. Jetzt stehen die
+vorhandenen Postfächer zur Auswahl (aus `index.accounts()` **und** der
+Kontenliste, denn ein eingerichtetes Postfach kann noch nie abgerufen
+worden sein), und ein Name, der einem vorhandenen bis auf Groß- und
+Kleinschreibung gleicht, wird gemeldet.
+
 ## Hier war Schluss (Stand 2026-09-07, Montag früh)
 
 **1.3.1 ist veröffentlicht**, samt `MailBurg.exe` (165 MB) am Release.

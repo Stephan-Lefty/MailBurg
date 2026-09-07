@@ -5655,6 +5655,68 @@ class EinlesedialogTest(OberflaechenTest):
 
         self.assertIn("gibt es nicht", dialog.befund.text())
 
+    def _mail_ins_archiv(self, konto: str, ordner: str = "INBOX") -> None:
+        """Legt eine Mail unter diesem Konto ab – wie ein Abruf es täte."""
+        roh = (
+            b"From: a@example.org\r\nTo: b@example.org\r\n"
+            b"Subject: vorhanden\r\n"
+            b"Date: Wed, 3 Sep 2026 09:00:00 +0200\r\n\r\nText\r\n"
+        )
+        self.archiv.add(roh, account=konto, folder=ordner)
+        self.archiv.index.commit()
+
+    def test_vorhandene_postfaecher_stehen_zur_auswahl(self):
+        """**Damit man den Namen nicht abtippen muss.**
+
+        Stephans Lage am 2026-09-07: Ein Postfach wird längst abgerufen,
+        daneben liegt ein Export aus MailStore mit alter Post. Beides
+        gehört unter denselben Namen.
+        """
+        self._mail_ins_archiv("Firma")
+
+        dialog = self._dialog()
+
+        auswahl = [dialog.konto.itemText(i) for i in range(dialog.konto.count())]
+        self.assertIn("Firma", auswahl)
+
+    def test_das_feld_bleibt_frei_beschreibbar(self):
+        """Der häufigere Fall ist ein Bestand ohne laufendes Postfach."""
+        dialog = self._dialog()
+        dialog.konto.setCurrentText("Alt-Thunderbird")
+
+        self.assertEqual(dialog.konto.currentText(), "Alt-Thunderbird")
+
+    def test_ein_fast_gleicher_name_wird_gemeldet(self):
+        """»firma« und »Firma« sehen im Baum gleich aus und sind es nicht.
+
+        Ohne diesen Hinweis merkt man den zweiten Zweig erst, wenn man
+        die alte Post beim laufenden Postfach sucht und nicht findet.
+        """
+        self._mail_ins_archiv("Firma")
+        dialog = self._dialog()
+
+        dialog.konto.setCurrentText("firma ")
+
+        self.assertIn("Firma", dialog.befund.text())
+        self.assertIn("zweiter Eintrag", dialog.befund.text())
+
+    def test_der_richtige_name_wird_nicht_bemaengelt(self):
+        self._mail_ins_archiv("Firma")
+        dialog = self._dialog()
+
+        dialog.konto.setCurrentText("Firma")
+
+        self.assertNotIn("Achtung", dialog.befund.text())
+
+    def test_ein_ganz_neuer_name_wird_nicht_bemaengelt(self):
+        """Sonst stünde bei jedem neuen Bestand eine Warnung."""
+        self._mail_ins_archiv("Firma")
+        dialog = self._dialog()
+
+        dialog.konto.setCurrentText("Alt-Thunderbird")
+
+        self.assertNotIn("Achtung", dialog.befund.text())
+
     def test_der_kontoname_faellt_auf_den_ordnernamen_zurueck(self):
         # Sonst müsste man ihn eintippen, obwohl der Ordner schon einen
         # brauchbaren Namen trägt.

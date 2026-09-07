@@ -169,9 +169,29 @@ Der Dialog schlägt vor, was er auf dem Rechner findet, und sagt **vor** dem
 Start, was er dort erkannt hat. Passt nichts davon, nennt er den Grund statt
 nur »geht nicht«.
 
-Der Kontoname ist frei wählbar; unter ihm erscheint die Post später im
-Postfachbaum. »Alt-Thunderbird« ist eine bessere Wahl als »Import«, denn in
-zehn Jahren will jemand wissen, woher diese Mails stammen.
+**Der Kontoname entscheidet, wo die Post landet.** Zur Auswahl stehen die
+Postfächer, die es in diesem Archiv schon gibt; eintippen lässt sich trotzdem,
+was man will.
+
+- **Alte Post zu einem laufenden Postfach** – etwa ein Export aus MailStore zu
+  einem Postfach, das MailBurg weiterhin abruft: **dasselbe Konto auswählen.**
+  Dann steht alles zusammen. Der Abruf gerät dabei nicht aus dem Tritt; er
+  merkt sich seinen Stand an den Nachrichtennummern des Servers, und
+  eingelesene Dateien haben keine.
+- **Ein Bestand, der zu keinem Postfach mehr gehört:** einen eigenen Namen
+  vergeben. »Alt-Thunderbird« ist eine bessere Wahl als »Import« – in zehn
+  Jahren will jemand wissen, woher diese Mails stammen.
+
+Bleibt das Feld leer, nimmt MailBurg den Namen des Ordners.
+
+**Vorsicht bei fast gleichen Namen:** »firma« und »Firma« sind zwei Postfächer,
+sehen im Baum aber gleich aus. MailBurg warnt, wenn der eingetippte Name einem
+vorhandenen bis auf Groß- und Kleinschreibung gleicht.
+
+Die Ordner des Exports erscheinen **neben** denen des Postfachs, nicht darin –
+der Verzeichnisname wird zum Ordnernamen. Eine Mail, die es in beiden gibt,
+liegt einmal auf der Platte; dass sie an zwei Stellen lag, steht trotzdem im
+Journal.
 
 Auf der Kommandozeile ist das `mailburg importieren ARCHIV QUELLE --konto NAME`.
 

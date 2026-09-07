@@ -23,6 +23,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
@@ -98,13 +99,32 @@ class Einlesedialog(QDialog):
         zeile.addWidget(waehlen)
         zeile.addWidget(datei)
 
-        self.konto = QLineEdit()
-        self.konto.setPlaceholderText("z. B. Alt-Thunderbird")
+        # **Zur Auswahl, nicht zum Abtippen.** Wer alte Post zu einem
+        # Postfach einliest, das längst abgerufen wird, muss denselben
+        # Namen treffen – ein »Firma « mit Leerzeichen oder ein kleines
+        # »firma« ergibt stillschweigend einen zweiten Zweig im
+        # Postfachbaum, und dieselbe Adresse steht zweimal da.
+        #
+        # Am 2026-09-07 aus Stephans Lage: Er exportiert ein Postfach
+        # aus MailStore, das im Archiv weiterläuft.
+        #
+        # **Editierbar bleibt es trotzdem**, denn der häufigere Fall ist
+        # ein Bestand, der zu keinem laufenden Postfach gehört.
+        self.konto = QComboBox()
+        self.konto.setEditable(True)
+        self.konto.lineEdit().setPlaceholderText("z. B. Alt-Thunderbird")
+        self.konto.addItem("")
+        for name in self._vorhandene_konten():
+            self.konto.addItem(name)
         self.konto.setToolTip(
             "Unter diesem Namen erscheinen die Mails später im "
             "Postfachbaum. Bleibt das Feld leer, nimmt MailBurg den "
-            "Namen des Ordners."
+            "Namen des Ordners.\n\n"
+            "Zur Auswahl stehen die Postfächer, die es hier schon gibt: "
+            "Wer alte Post zu einem davon einliest, wählt es aus – dann "
+            "steht alles zusammen."
         )
+        self.konto.currentTextChanged.connect(self._pruefen)
 
         self.befund = QLabel()
         self.befund.setWordWrap(True)
@@ -176,6 +196,51 @@ class Einlesedialog(QDialog):
 
     # ------------------------------------------------------------ Prüfen
 
+    def _vorhandene_konten(self) -> list[str]:
+        """Postfächer, die es in diesem Archiv schon gibt.
+
+        **Aus dem Archiv, nicht aus der Kontenliste.** Gefragt ist, unter
+        welchem Namen hier bereits Post liegt – dazu zählen auch früher
+        eingelesene Bestände, die nie ein IMAP-Konto hatten. Die
+        eingerichteten Postfächer kommen dazu, denn eines davon kann
+        eingerichtet, aber noch nie abgerufen worden sein.
+        """
+        namen = set()
+        try:
+            namen |= {konto for konto, _, _ in self.archiv.index.accounts()}
+        except Exception:  # noqa: BLE001 – die Liste darf nie den Dialog kosten
+            pass
+        try:
+            from mailburg.core.accounts import Kontenliste
+
+            namen |= {k.name for k in Kontenliste().konten}
+        except Exception:  # noqa: BLE001
+            pass
+        return sorted(namen)
+
+    def _kontowarnung(self) -> str:
+        """Warnt vor einem Namen, der einem vorhandenen fast gleicht.
+
+        **Fast ist hier das Gefährliche.** »firma« und »Firma « sehen im
+        Postfachbaum aus wie derselbe Eintrag, sind aber zwei – und wer
+        alte Post zu einem laufenden Postfach einliest, merkt es erst,
+        wenn er sie dort sucht und nicht findet.
+        """
+        getippt = self.konto.currentText().strip()
+        if not getippt:
+            return ""
+        vorhanden = self._vorhandene_konten()
+        if getippt in vorhanden:
+            return ""
+        for name in vorhanden:
+            if name.casefold() == getippt.casefold():
+                return (
+                    f"<br><b>Achtung:</b> Es gibt hier schon »{name}«. "
+                    f"Mit »{getippt}« entsteht ein zweiter Eintrag im "
+                    f"Postfachbaum, der genauso aussieht."
+                )
+        return ""
+
     def _pruefen(self) -> None:
         """Sagt vor dem Start, was MailBurg dort erkannt hat.
 
@@ -186,11 +251,13 @@ class Einlesedialog(QDialog):
         text = self.pfad.text().strip()
         gut = False
         if not text:
-            self.befund.setText("")
+            self.befund.setText(self._kontowarnung())
         else:
             gut, meldung = self._befund(Path(text))
             farbe = "" if gut else " color:palette(mid);"
-            self.befund.setText(f"<span style='{farbe}'>{meldung}</span>")
+            self.befund.setText(
+                f"<span style='{farbe}'>{meldung}</span>{self._kontowarnung()}"
+            )
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(gut)
 
     @staticmethod
@@ -223,7 +290,7 @@ class Einlesedialog(QDialog):
 
     def _starten(self) -> None:
         ort = Path(self.pfad.text().strip())
-        name = self.konto.text().strip() or ort.name
+        name = self.konto.currentText().strip() or ort.name
 
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
         self.knoepfe.button(QDialogButtonBox.Cancel).setText("Abbrechen")

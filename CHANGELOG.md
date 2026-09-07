@@ -75,6 +75,19 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   gemeldeten Fenster. Ein Prüfwerkzeug mit einer Lücke sagt »alles
   lesbar« und meint »alles, wonach ich gesucht habe«.
 
+- **Der Kontoname beim Einlesen steht zur Auswahl**, statt abgetippt zu
+  werden. Wer alte Post zu einem Postfach einliest, das weiterläuft,
+  muss dessen Namen genau treffen – ein »Firma « mit Leerzeichen oder
+  ein kleingeschriebenes »firma« ergäbe stillschweigend einen zweiten
+  Zweig im Postfachbaum, der genauso aussieht. Angeboten werden die
+  Postfächer, die es im Archiv schon gibt; frei eintippen geht
+  weiterhin, und bei einem fast gleichen Namen warnt der Dialog.
+
+  **Der laufende Abruf gerät dabei nicht aus dem Tritt**, und das ist
+  jetzt in Tests festgehalten statt bloß zugesagt: Die Hochwassermarke
+  kommt aus den Nachrichtennummern des Servers, eingelesene Dateien
+  haben keine.
+
 - **Der `.eml`-Import steht endlich in der Anleitung.** Ein Ordner
   voller einzelner Mails – auch verschachtelt, `.emlx` von Apple Mail
   eingeschlossen – lässt sich seit jeher einlesen. Im README stand es

@@ -298,6 +298,23 @@ Erkannt werden:</p>
 unter dem Pfad, was er dort erkannt hat – mitsamt den Ordnernamen. So
 sehen Sie vor dem Start, ob Sie das Richtige gewählt haben.</p>
 
+<p><b>Der Kontoname entscheidet, wo die Post landet.</b> Zur Auswahl
+stehen die Postfächer, die es in diesem Archiv schon gibt.</p>
+
+<ul>
+<li><b>Alte Post zu einem laufenden Postfach</b> – etwa ein Export aus
+    einem anderen Archivprogramm zu einem Postfach, das MailBurg
+    weiterhin abruft: <b>dasselbe Konto auswählen.</b> Dann steht alles
+    zusammen. Der laufende Abruf gerät dabei nicht aus dem Tritt.</li>
+<li><b>Ein Bestand ohne zugehöriges Postfach:</b> einen eigenen Namen
+    vergeben. »Alt-Thunderbird« ist besser als »Import« – in zehn Jahren
+    will jemand wissen, woher diese Mails stammen.</li>
+</ul>
+
+<p>»firma« und »Firma« wären zwei Postfächer, sähen im Postfachbaum aber
+gleich aus. MailBurg warnt deshalb, wenn Ihr Name einem vorhandenen bis
+auf Groß- und Kleinschreibung gleicht.</p>
+
 <p><b>Gelesen wird nur.</b> An Ihren Dateien ändert MailBurg nichts, und
 zweimal einlesen erzeugt keine zweite Kopie: Der Name jeder Mail im
 Archiv ist der Hash ihres Inhalts.</p>
