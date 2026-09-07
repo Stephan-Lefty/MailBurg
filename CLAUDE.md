@@ -37,6 +37,28 @@ Fassungen ab 1.0.0 waren tote Klammern. Und die Datumsangaben zum
 Tresor-Fix heißen jetzt »mindestens Fassung 1.3.1« – **ein Anwender
 kennt seine Fassungsnummer, nicht unser Commit-Datum.**
 
+### Zwei Werkzeugpunkte hinterher erledigt
+
+**Die CI sucht jetzt undefinierte Namen.** Der Schritt daneben heißt
+»Syntax prüfen« und läuft `compileall` – und findet genau diese Klasse
+nicht: Ein Aufruf von etwas, das es nicht gibt, ist syntaktisch
+tadellos. Gefiltert auf `undefined name`, weil unbenutzte Importe
+Kosmetik sind: **Eine CI, die rot ist, ohne dass etwas kaputt ist,
+gewöhnt man sich an.** Beide Richtungen sind nachgestellt.
+
+**`werkzeuge/lesbarkeit.py` zeigt keine echten Postfächer mehr.** Die
+Ursache war ein halber Patch: `data_dir()` umgelenkt, `config_dir()`
+nicht – und dort liegt die Kontenliste. Beim Bauen fiel ein zweites
+Risiko auf: Ein `Kontenliste()` ohne Pfad nähme `config_dir()`; fiele
+der Patch weg, überschriebe das Messwerkzeug die echten Postfächer. Das
+Ziel wird jetzt übergeben. **Ein Messwerkzeug darf messen, nicht
+ändern.**
+
+Der Beleg dafür war nicht der Testlauf, sondern eine Gegenprobe im
+Scratchpad: `_befunde` durch einen Spion ersetzt, der jeden Eintrag
+jedes Auswahlfelds mitschreibt – 52 Einträge, drei Postfächer, alle auf
+`.example`.
+
 ## Hier war Schluss (Stand 2026-09-06, Sonntag)
 
 **Das vierte Nutzer-Feedback, und diesmal zur Server-Variante.**
