@@ -8,6 +8,33 @@ wurde.
 
 ## Offen
 
+### Fenster vor jeder Veröffentlichung prüfen (2026-09-07)
+
+Stephans Regel, aus zwei Bildschirmfotos entstanden: »Es sollten immer
+vor der Veröffentlichung einer Version alle Fenster auf Lesbarkeit, Text
+und Felder überprüft werden. **Mit jedem dieser Fenster machen wir
+unsere Arbeit beim User kaputt.**«
+
+- [x] **Die Prüfung läuft jetzt in der CI**, bei 9, 12, 16, 20 und
+  24 pt. (2026-09-07) Drei Sekunden Laufzeit. Vorher lief
+  `werkzeuge/lesbarkeit.py` von Hand und nur bei der Vorgabeschrift –
+  ein Vorsatz hält so lange, bis einmal Eile ist.
+
+- [x] **Und es misst endlich Eingabefelder.** (2026-09-07) Es kannte nur
+  Auswahlfelder und Fließtexte. In dieser Lücke saßen vier Fenster, zwei
+  davon hatte niemand gemeldet. Die Suchmaske fiel erst ab 16 pt auf.
+
+- [ ] **Das Hauptfenster ist noch nicht dabei.** Geprüft werden die
+  Dialoge und der Assistent. Das Fenster, in dem der Anwender die
+  meiste Zeit verbringt, prüft niemand – es lässt sich schlecht
+  offscreen bemessen, aber das ist ein Grund, es zu versuchen, kein
+  Grund, es zu lassen.
+
+- [ ] **Und die Grenze des Werkzeugs bleibt bestehen:** Offscreen meldet
+  Qt »does not support propagateSizeHints«. Was es findet, ist echt; was
+  es nicht findet, ist damit nicht erledigt. Am echten Bildschirm
+  nachsehen bleibt nötig – siehe den Punkt weiter unten.
+
 ### Aus dem vierten Nutzer-Feedback (2026-09-06) – die Server-Variante
 
 Derselbe Anwender, der JMAP angestoßen und den Restore gewünscht hatte.

@@ -152,6 +152,29 @@ Sicherung sinnvoll.
 **Jetzt abrufen (F5)** – holt sofort, was neu ist. Am Ende steht, ob alle
 Postfächer erreichbar waren. **Räumen Sie nicht auf, solange dort eines fehlt.**
 
+**Lokale Mailordner einlesen …**
+
+Post, die schon auf der Platte liegt – aus Postfächern, die es online längst
+nicht mehr gibt, oder aus einem Programm, das Sie nicht mehr benutzen. Vier
+Quellen kennt MailBurg, und es erkennt selbst, welche vor ihm liegt:
+
+- **Thunderbird-Profil** – mit allen Konten und der ganzen Ordnerstruktur.
+- **Maildir-Verzeichnis** – so legt Evolution seine lokalen Ordner ab.
+- **MBOX-Datei** – das Format von Thunderbirds lokalen Ordnern.
+- **Ordner mit `.eml`-Dateien**, auch verschachtelt. Das ist der Weg für
+  alles, was ein anderes Programm einmal einzeln exportiert hat – Apple Mails
+  `.emlx` zählt mit.
+
+Der Dialog schlägt vor, was er auf dem Rechner findet, und sagt **vor** dem
+Start, was er dort erkannt hat. Passt nichts davon, nennt er den Grund statt
+nur »geht nicht«.
+
+Der Kontoname ist frei wählbar; unter ihm erscheint die Post später im
+Postfachbaum. »Alt-Thunderbird« ist eine bessere Wahl als »Import«, denn in
+zehn Jahren will jemand wissen, woher diese Mails stammen.
+
+Auf der Kommandozeile ist das `mailburg importieren ARCHIV QUELLE --konto NAME`.
+
 **Eingescannte PDF lesen …**
 
 ![Der Dialog für die Texterkennung. Er meldet, dass keine eingescannten PDF warten, und lässt einstellen, wie viele Prozessorkerne die Erkennung gleichzeitig verwenden darf.](bilder/texterkennung.png)

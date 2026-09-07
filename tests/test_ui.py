@@ -321,6 +321,42 @@ class VorschauTest(OberflaechenTest):
             self.assertNotIn("..", str(ziel))
             self.assertNotIn("/", ziel.name)
 
+    def test_ein_klick_oeffnet_genau_einmal(self):
+        """Am 2026-09-07 von Stephan gemeldet: »wird aber 2x geöffnet«.
+
+        **Der Weg durch die Oberfläche war nie geprüft.** Getestet wurde
+        ``rueckgabe.anhang_oeffnen`` unmittelbar, und dort stimmte alles.
+        Dass der Knopf darüber die Datei ein zweites Mal aufmachte, sah
+        deshalb niemand.
+        """
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths, rueckgabe
+        from mailburg.extract.message import Attachment
+        from mailburg.ui.vorschau import Anhangszeile
+
+        zeile = Anhangszeile(
+            Attachment(filename="rechnung.pdf", mime_type="application/pdf",
+                       size=8, payload=b"%PDF-1.4")
+        )
+
+        # **Beide Wege zählen, nicht nur einer.** Qt bringt mit
+        # ``QDesktopServices.openUrl`` einen zweiten mit; ihn zusätzlich
+        # zu rufen war genau der Fehler. Ein Test, der nur den einen
+        # Aufruf zählt, ließe ihn wieder hereinkommen.
+        with tempfile.TemporaryDirectory() as ort:
+            with mock.patch.object(
+                paths, "geoeffnet_dir", return_value=pathlib.Path(ort)
+            ), mock.patch.object(
+                rueckgabe, "_dem_system_uebergeben"
+            ) as uebergeben, mock.patch(
+                "PySide6.QtGui.QDesktopServices.openUrl", return_value=True
+            ) as ueber_qt:
+                zeile._oeffnen()
+
+        self.assertEqual(uebergeben.call_count + ueber_qt.call_count, 1)
+
 
 class OrteTest(unittest.TestCase):
     """Welche Ablageorte vorgeschlagen werden."""

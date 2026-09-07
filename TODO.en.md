@@ -7,6 +7,31 @@ down, with the date they were completed.
 
 ## Open
 
+### Check every window before every release (2026-09-07)
+
+Stephan's rule, born from two screenshots: "Before releasing a version,
+every window should be checked for readability, text and fields. **With
+every one of these windows we undo our work for the user.**"
+
+- [x] **The check now runs in CI**, at 9, 12, 16, 20 and 24 pt.
+  (2026-09-07) Three seconds. Until now `werkzeuge/lesbarkeit.py` ran by
+  hand and only at the default font size — an intention holds until the
+  first time someone is in a hurry.
+
+- [x] **And it finally measures text fields.** (2026-09-07) It only knew
+  combo boxes and wrapped labels. Four windows sat in that gap, two of
+  them never reported. The search mask only breaks from 16 pt upwards.
+
+- [ ] **The main window is not covered yet.** The dialogs and the wizard
+  are. The window the user spends most of their time in is checked by
+  nobody — it is hard to measure offscreen, but that is a reason to try,
+  not a reason to skip it.
+
+- [ ] **And the tool's limit stands:** offscreen, Qt reports "does not
+  support propagateSizeHints". What it finds is real; what it does not
+  find is not thereby settled. Looking at a real screen is still needed
+  — see the item further down.
+
 ### From the fourth user feedback (2026-09-06) — the server variant
 
 The same user who prompted JMAP and asked for the restore. This time he

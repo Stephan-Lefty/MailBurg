@@ -9,6 +9,29 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Behoben
+
+- **Ein Anhang öffnete sich zweimal.** `rueckgabe.anhang_oeffnen` legt
+  die Datei nicht nur ab, es übergibt sie auch dem System – und die
+  Oberfläche rief danach trotzdem noch `QDesktopServices.openUrl`.
+  Entstanden beim Umzug am 03.09.: Das Öffnen wanderte in den Kern,
+  **der alte Aufruf blieb stehen**. Kein Test lief je durch diese
+  Methode; geprüft wurde die Kernfunktion direkt, und dort war alles in
+  Ordnung.
+
+- **Eingabefelder zeigten ihren Inhalt nicht.** In einer Zeile mit
+  einem Knopf daneben schrumpft ein Textfeld bis zur Unkenntlichkeit:
+  Das Pfadfeld beim Einlesen war 108 px breit und zeigte »erbird« statt
+  `/home/…/.thunderbird`, im Rückspieldialog stand »Noch ke…«. Betroffen
+  waren vier Fenster. Sie bekommen ihre Breite jetzt aus der
+  eingestellten Schrift, gedeckelt bei 45 Zeichen – **und das Fenster
+  wächst mit, statt dem Nachbarn den Platz zu nehmen.**
+
+- **Fenster mit Rollbereich blieben zu schmal.** Ein Rollbereich meldet
+  nach außen nur, dass er rollen kann; die Breite seines Inhalts
+  verschluckt er. Für die Höhe ist das richtig – **waagerecht gerollt
+  wird nie.**
+
 ### Geändert
 
 - **»Microsoft-Konten gehen derzeit nicht« stimmte seit der 1.0 nicht
@@ -38,6 +61,25 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Messwerkzeug darf messen, nicht ändern.
 
 ### Hinzugefügt
+
+- **Die CI prüft jedes Fenster auf Lesbarkeit** – bei 9, 12, 16, 20 und
+  24 pt, also über die ganze Spanne, die sich in den Einstellungen
+  einstellen lässt. Vorher lief `werkzeuge/lesbarkeit.py` von Hand und
+  nur bei der Vorgabeschrift; die drei Befunde in der Suchmaske traten
+  erst ab 16 pt auf. Stephans Regel dazu: Vor jeder Veröffentlichung
+  gehören alle Fenster geprüft – **und das gehört in die Maschine, nicht
+  auf eine Merkliste.** Drei Sekunden Laufzeit.
+
+- **Das Werkzeug misst jetzt auch Eingabefelder.** Es kannte nur
+  Auswahlfelder und Fließtexte – und genau in dieser Lücke saßen die
+  gemeldeten Fenster. Ein Prüfwerkzeug mit einer Lücke sagt »alles
+  lesbar« und meint »alles, wonach ich gesucht habe«.
+
+- **Der `.eml`-Import steht endlich in der Anleitung.** Ein Ordner
+  voller einzelner Mails – auch verschachtelt, `.emlx` von Apple Mail
+  eingeschlossen – lässt sich seit jeher einlesen. Im README stand es
+  nicht, in [docs/oberflaeche.md](docs/oberflaeche.md) war der ganze
+  Dialog *Lokale Mailordner einlesen …* nicht beschrieben.
 
 - **Die CI sucht undefinierte Namen** (`pyflakes`, gefiltert auf genau
   diese Klasse). Der Schritt daneben hieß »Syntax prüfen« und lief

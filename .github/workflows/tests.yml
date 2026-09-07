@@ -112,6 +112,25 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m unittest discover -s tests
 
+      # **Jedes Fenster, jede einstellbare Schriftgröße.** Stephans
+      # Regel vom 2026-09-07, und sie kam aus zwei Bildschirmfotos:
+      # »Mit jedem dieser Fenster machen wir unsere Arbeit beim User
+      # kaputt.« Ein Archiv, dem man zwanzig Jahre Post anvertraut,
+      # darf nicht an einem abgeschnittenen Satz scheitern.
+      #
+      # **Als Schritt und nicht als Vorsatz.** Vor jeder Veröffentlichung
+      # daran zu denken, hält so lange, bis einmal Eile ist. Drei
+      # Sekunden Laufzeit sind der Preis dafür, dass daran nie wieder
+      # jemand denken muss.
+      #
+      # Was es nicht kann: Fenstergrößen offscreen zuverlässig messen
+      # (Qt meldet »does not support propagateSizeHints«). Was es
+      # findet, ist echt; was es nicht findet, ist damit nicht erledigt.
+      - name: Fenster auf Lesbarkeit prüfen
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python werkzeuge/lesbarkeit.py
+
       - name: Testmails erzeugen
         run: |
           python - <<'PY'

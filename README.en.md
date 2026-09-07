@@ -131,10 +131,12 @@ too, for when the umlaut is hard to type.
 ### Where the mail comes from
 
 From **IMAP mailboxes** — almost everywhere —, from Thunderbird profiles,
-Maildir directories (which is how **Evolution** stores its local folders) and
-MBOX files. Everything on disk goes through *Post → Lokale Mailordner
-einlesen …*; the dialog suggests what it finds on the machine and shows what
-it recognised before you start. And recently over
+Maildir directories (which is how **Evolution** stores its local folders),
+MBOX files and **folders full of `.eml` files** — nested ones included, and
+Apple Mail's `.emlx` counts too. That is the route for anything another
+program once exported one message at a time. Everything on disk goes through
+*Post → Lokale Mailordner einlesen …*; the dialog suggests what it finds on
+the machine and shows what it recognised before you start. And recently over
 **[JMAP](docs/jmap.md)** (German), the successor to IMAP: it answers in one
 request what has arrived since the last run, rather than inferring it from
 message numbers. Supported so far by Fastmail, Stalwart and Cyrus — not by

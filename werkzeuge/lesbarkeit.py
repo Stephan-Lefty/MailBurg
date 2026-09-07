@@ -53,7 +53,7 @@ def _bezeichner(bauteil) -> str:
 
 
 def _befunde(fenster, name: str) -> list[str]:
-    from PySide6.QtWidgets import QComboBox, QLabel
+    from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit
 
     gefunden: list[str] = []
 
@@ -85,6 +85,33 @@ def _befunde(fenster, name: str) -> list[str]:
                 f"{name}: Auswahlfeld »{box.accessibleName() or box.objectName()}« "
                 f"ist {vorhanden} px breit, braucht {gebraucht} px "
                 f"(längster Eintrag: »{laengster}«)"
+            )
+
+    # **Eingabefelder wurden bis zum 2026-09-07 gar nicht gemessen** –
+    # und genau darin saßen die zwei Fenster, die Stephan gemeldet hat:
+    # Das Pfadfeld war 108 px breit und zeigte »erbird« statt
+    # ``/home/…/.thunderbird``. Ein Prüfwerkzeug mit einer Lücke ist
+    # gefährlicher als keines: Es sagt »alles lesbar« und meint »alles,
+    # wonach ich gesucht habe«.
+    #
+    # Gemessen wird gegen den Inhalt, ersatzweise gegen den
+    # Platzhaltertext. Der steht ja gerade dann da, wenn der Anwender
+    # das Feld zum ersten Mal sieht.
+    for feld in fenster.findChildren(QLineEdit):
+        if feld.isHidden():
+            UEBERSPRUNGEN.append(f"{name}: Eingabefeld »{_bezeichner(feld)}«")
+            continue
+        text = feld.text() or feld.placeholderText()
+        if not text:
+            continue
+        # Rand und Einzug des Stils dazu, sonst klebt der Text am Rahmen.
+        gebraucht = feld.fontMetrics().horizontalAdvance(text) + 12
+        vorhanden = feld.width()
+        if vorhanden and gebraucht - vorhanden > TOLERANZ:
+            gefunden.append(
+                f"{name}: Eingabefeld »{_bezeichner(feld)}« ist "
+                f"{vorhanden} px breit, braucht {gebraucht} px "
+                f"(Inhalt: »{text[:50]}«)"
             )
 
     for schild in fenster.findChildren(QLabel):
@@ -314,6 +341,8 @@ def _ausgelassenes_melden() -> None:
     """Sagt, was nicht gemessen wurde – und warum das in Ordnung ist."""
     if not UEBERSPRUNGEN:
         return
+    # Bei fünf Schriftgrößen steht sonst jedes Feld fünfmal da.
+    UEBERSPRUNGEN[:] = sorted(set(UEBERSPRUNGEN))
     print(
         f"\nNicht gemessen, weil beim Öffnen versteckt "
         f"({len(UEBERSPRUNGEN)}):"
@@ -326,10 +355,45 @@ def _ausgelassenes_melden() -> None:
     )
 
 
+#: Bei welchen Schriftgrößen geprüft wird. **Eine Größe genügt nicht:**
+#: Ein Fenster, das bei 9 pt sitzt, kann bei 16 pt auseinanderfallen –
+#: und die Schriftgröße lässt sich in MailBurg einstellen, gerade von
+#: denen, die sonst schlecht lesen. Genau bei ihnen darf die Oberfläche
+#: nicht schlechter werden.
+#:
+#: 9 ist die Vorgabe von Breeze, 24 das Ende der Fahnenstange in den
+#: Einstellungen.
+SCHRIFTGROESSEN = (9, 12, 16, 20, 24)
+
+
+def alle_groessen() -> list[str]:
+    """Prüft jede Fenstergröße bei jeder einstellbaren Schriftgröße."""
+    from PySide6.QtWidgets import QApplication
+
+    anwendung = QApplication.instance() or QApplication([])
+    ursprung = anwendung.font().pointSize()
+
+    gesammelt: list[str] = []
+    try:
+        for punkte in SCHRIFTGROESSEN:
+            schrift = anwendung.font()
+            schrift.setPointSize(punkte)
+            anwendung.setFont(schrift)
+            gesammelt += [f"{punkte} pt – {zeile}" for zeile in pruefen()]
+    finally:
+        schrift = anwendung.font()
+        schrift.setPointSize(ursprung)
+        anwendung.setFont(schrift)
+    return gesammelt
+
+
 def main() -> int:
-    befunde = pruefen()
+    befunde = alle_groessen()
     if not befunde:
-        print("Nichts abgeschnitten – alle geprüften Fenster sind lesbar.")
+        print(
+            f"Nichts abgeschnitten – alle geprüften Fenster sind lesbar, "
+            f"bei {SCHRIFTGROESSEN[0]} bis {SCHRIFTGROESSEN[-1]} pt."
+        )
         _ausgelassenes_melden()
         return 0
 

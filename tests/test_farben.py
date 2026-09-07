@@ -242,5 +242,85 @@ class BereichsrahmenTest(unittest.TestCase):
         )
 
 
+class EingabefeldTest(unittest.TestCase):
+    """Dass ein Eingabefeld zeigt, was darin steht.
+
+    **Aus zwei Bildschirmfotos vom 2026-09-07.** Das Pfadfeld im
+    Einlesedialog war 108 px breit und zeigte »erbird« statt
+    ``/home/…/.thunderbird``; im Rückspieldialog stand »Noch ke…« für
+    »Noch kein Ordner gewählt«. In einer Zeile mit einem Knopf daneben
+    schrumpft ein ``QLineEdit`` bis zur Unkenntlichkeit – seine
+    Mindestgröße kennt keinen Inhalt.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            from PySide6.QtWidgets import QApplication
+        except ImportError:  # pragma: no cover
+            raise unittest.SkipTest("PySide6 fehlt")
+        cls.app = QApplication.instance() or QApplication([])
+        cls.app.setStyle("Fusion")
+
+        from mailburg.ui import farben
+
+        farben.auswahlfelder_verbreitern(cls.app)
+
+    def _dialog(self, text: str, platzhalter: str = ""):
+        from PySide6.QtWidgets import (
+            QDialog, QHBoxLayout, QLineEdit, QPushButton,
+        )
+
+        dialog = QDialog()
+        zeile = QHBoxLayout(dialog)
+        feld = QLineEdit(text)
+        feld.setPlaceholderText(platzhalter)
+        zeile.addWidget(feld, 1)
+        zeile.addWidget(QPushButton("Ordner auswählen …"))
+        dialog.show()
+        self.app.processEvents()
+        self.addCleanup(dialog.close)
+        return dialog, feld
+
+    def test_der_inhalt_passt_hinein(self):
+        _, feld = self._dialog("/home/jemand/.thunderbird")
+
+        noetig = feld.fontMetrics().horizontalAdvance(feld.text())
+
+        self.assertGreaterEqual(feld.width(), noetig)
+
+    def test_auch_der_platzhalter_zaehlt(self):
+        """Er steht da, wenn jemand das Fenster zum ersten Mal sieht."""
+        _, feld = self._dialog("", "Noch kein Ordner gewählt")
+
+        noetig = feld.fontMetrics().horizontalAdvance(feld.placeholderText())
+
+        self.assertGreaterEqual(feld.width(), noetig)
+
+    def test_ein_langer_pfad_sprengt_das_fenster_nicht(self):
+        """Ab einer gewissen Länge hilft Rollen im Feld.
+
+        Ohne Deckel würde ein Dialog so breit wie der längste denkbare
+        Pfad – und damit breiter als der Bildschirm.
+        """
+        _, feld = self._dialog("/" + "sehr-langer-ordnername/" * 20)
+
+        zeichen = feld.fontMetrics().averageCharWidth()
+
+        self.assertLess(feld.width(), zeichen * 60)
+
+    def test_das_fenster_waechst_mit_statt_den_nachbarn_zu_druecken(self):
+        """Sonst holt sich das Feld den Platz beim Text daneben.
+
+        Genau das passierte beim ersten Anlauf im Zeitplan: Der
+        Fließtext neben dem Pfadfeld verlor eine Zeile und brach mitten
+        im Satz ab.
+        """
+        dialog, feld = self._dialog("/home/jemand/ein/langer/pfad/zum/ordner")
+
+        self.assertGreaterEqual(dialog.width(), feld.width())
+        self.assertGreaterEqual(dialog.width(), dialog.sizeHint().width())
+
+
 if __name__ == "__main__":
     unittest.main()

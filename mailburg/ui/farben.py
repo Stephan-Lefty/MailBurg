@@ -16,7 +16,9 @@ im dunklen Thema also die am schlechtesten lesbare Zeile im Fenster.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QObject
+from functools import partial
+
+from PySide6.QtCore import QEvent, QObject, QTimer
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
@@ -245,7 +247,9 @@ def auswahlfelder_verbreitern(anwendung) -> None:
     """
     from PySide6.QtWidgets import QComboBox
 
-    from PySide6.QtWidgets import QDialog, QLabel, QLayout, QScrollArea
+    from PySide6.QtWidgets import (
+        QDialog, QLabel, QLayout, QLineEdit, QScrollArea,
+    )
 
     class _Anpasser(QObject):
         def eventFilter(self, gegenstand, ereignis):
@@ -261,13 +265,114 @@ def auswahlfelder_verbreitern(anwendung) -> None:
                 gegenstand.setSizeAdjustPolicy(QComboBox.AdjustToContents)
                 gegenstand.adjustSize()
                 self._liste_weiten(gegenstand)
+                # Aus demselben Grund wie beim Eingabefeld: Der Dialog
+                # hat seine Größe beim eigenen Show bestimmt, bevor
+                # dieses Feld auf seinen Inhalt gewachsen ist. Der
+                # Beleg dafür sind die Suchmaske bei 16 pt (774 statt
+                # 795 px) und dieselbe bei 20 und 24 pt.
+                self._fenster_nachrechnen(gegenstand)
+
+            elif isinstance(gegenstand, QLineEdit):
+                if self._feld_weiten(gegenstand):
+                    self._fenster_nachrechnen(gegenstand)
 
             elif isinstance(gegenstand, QLabel) and gegenstand.wordWrap():
                 self._umbruch_hoehe(gegenstand)
 
             elif isinstance(gegenstand, QDialog):
                 self._dialog_weiten(gegenstand)
+                # **Und gleich noch einmal, wenn alle drin sind.** Der
+                # Aufruf oben rechnet mit dem Stand von jetzt; die
+                # Kinder wachsen erst danach. Ein ``singleShot(0)``
+                # landet hinter allen Show-Ereignissen dieses Durchlaufs
+                # und sieht das fertige Fenster.
+                #
+                # Ohne ihn blieb die Suchmaske bei 16 pt 774 px breit,
+                # während ihr Inhalt 795 verlangte – rechts fehlte das
+                # Ende jeder Zeile. Bei 20 und 24 pt dasselbe, und
+                # gerade dort sitzt jemand, der die Schrift vergrößert
+                # hat, um besser zu lesen.
+                QTimer.singleShot(
+                    0, partial(self._nachtraeglich, gegenstand)
+                )
             return False
+
+        @classmethod
+        def _nachtraeglich(cls, dialog) -> None:
+            """Rechnet nach, sofern es den Dialog noch gibt.
+
+            Zwischen Anmeldung und Ablauf des Zeitgebers kann er
+            geschlossen worden sein – dann zeigt der Verweis auf ein
+            abgeräumtes Qt-Objekt.
+            """
+            try:
+                sichtbar = dialog.isVisible()
+            except RuntimeError:  # schon weggeräumt
+                return
+            if sichtbar:
+                cls._dialog_weiten(dialog)
+
+        #: Wie viele Zeichen ein Eingabefeld mindestens zeigen soll,
+        #: bevor gekürzt wird. **Kein geratener Pixelwert:** Gerechnet
+        #: wird in Zeichenbreiten der eingestellten Schrift, sonst sitzt
+        #: die Zahl falsch, sobald jemand die Schrift ändert – und das
+        #: lässt sich in MailBurg einstellen.
+        #:
+        #: Der Deckel muss sein: Ein Pfadfeld darf nicht so breit werden
+        #: wie der längste denkbare Pfad, sonst sprengt ein Dialog den
+        #: Bildschirm. Ab hier hilft Rollen im Feld.
+        ZEICHEN = 45
+
+        @classmethod
+        def _fenster_nachrechnen(cls, bauteil) -> None:
+            """Lässt den Dialog seine Größe neu bestimmen.
+
+            **Der Dialog ist zuerst dran.** Qt schickt das Show-Ereignis
+            an das Fenster, bevor die Kinder darin ihres bekommen – die
+            Größe steht also fest, ehe ein Auswahlfeld auf seinen Inhalt
+            gewachsen ist oder ein Eingabefeld seine Mindestbreite
+            bekommen hat. Ohne dieses Nachrechnen bleibt das Fenster,
+            wie es war, und der Zugewinn geht zulasten des Nachbarn.
+
+            Zwei Belege vom 2026-09-07: Im Zeitplan verlor der Fließtext
+            neben dem breiter gewordenen Pfadfeld eine Zeile und brach
+            mitten im Satz ab. Und die Suchmaske war bei 16 pt 774 px
+            breit, während ihr Inhalt 795 verlangte – bei 20 und 24 pt
+            dasselbe.
+            """
+            fenster = bauteil.window()
+            if isinstance(fenster, QDialog):
+                cls._dialog_weiten(fenster)
+
+        @staticmethod
+        def _feld_weiten(feld) -> bool:
+            """Gibt einem Eingabefeld Platz für das, was darin steht.
+
+            **Bis zum 2026-09-07 gab es das nicht**, und die Folge stand
+            in zwei Bildschirmfotos von Stephan: Das Pfadfeld im
+            Einlesedialog war 108 px breit und zeigte »erbird« statt
+            ``/home/…/.thunderbird``. In einer Zeile mit einem Knopf
+            daneben schrumpft ein ``QLineEdit`` bis zur Unkenntlichkeit –
+            seine Mindestgröße kennt keinen Inhalt.
+
+            **Auch der Platzhalter zählt.** Er steht genau dann da, wenn
+            jemand das Fenster zum ersten Mal sieht: »Noch kein Ordner
+            gewählt«, abgeschnitten zu »Noch ke…«, ist die erste
+            Begegnung mit dem Dialog.
+            """
+            text = feld.text() or feld.placeholderText()
+            if not text:
+                return False
+            masse = feld.fontMetrics()
+            # Rand und Einzug des Stils dazu, sonst klebt der Text am
+            # Rahmen.
+            noetig = masse.horizontalAdvance(text) + 12
+            deckel = masse.averageCharWidth() * _Anpasser.ZEICHEN
+            gewuenscht = min(noetig, deckel)
+            if feld.minimumWidth() >= gewuenscht:
+                return False
+            feld.setMinimumWidth(gewuenscht)
+            return True
 
         @staticmethod
         def _liste_weiten(box) -> None:
@@ -319,12 +424,39 @@ def auswahlfelder_verbreitern(anwendung) -> None:
         def _dialog_weiten(dialog) -> None:
             """Macht einen Dialog so groß, wie sein Inhalt es braucht.
 
-            **Ein Rollbereich bleibt unangetastet.** Der ist genau dafür
-            da, kleiner zu sein als sein Inhalt; ihn aufzublasen ergäbe
-            ein Fenster über den ganzen Bildschirm.
+            **Bei einem Rollbereich nur die Breite.** Er ist genau dafür
+            da, kleiner zu sein als sein Inhalt – aber das gilt nach
+            unten, nicht zur Seite. **Waagerecht gerollt wird nie**: Wer
+            eine Zeile lesen will, soll sie lesen können, ohne den
+            Balken zu schieben. Ein Dialog in die Höhe aufzublasen ergäbe
+            dagegen ein Fenster über den ganzen Bildschirm.
+
+            Am 2026-09-07 aufgefallen: Der Zeitplan hat einen
+            Rollbereich, also blieb er unangetastet – und als die
+            Eingabefelder ihre Mindestbreite bekamen, holten sie sich
+            den Platz beim Fließtext daneben, der daraufhin mitten im
+            Satz abbrach.
             """
-            if dialog.findChildren(QScrollArea):
-                return
+            rollbereiche = dialog.findChildren(QScrollArea)
+            hat_rollbereich = bool(rollbereiche)
+
+            # **Ein Rollbereich verschluckt die Breite seines Inhalts.**
+            # Nach außen meldet er nur, dass er rollen kann – der Dialog
+            # erfährt nie, dass drinnen etwas 310 px breit sein möchte.
+            # Für die Höhe ist das richtig, für die Breite nicht: Sonst
+            # bleibt das Fenster schmal und der Inhalt wird gequetscht,
+            # obwohl er nur zur Seite hin Platz bräuchte.
+            for bereich in rollbereiche:
+                inhalt = bereich.widget()
+                if inhalt is None:
+                    continue
+                noetig = inhalt.minimumSizeHint().width()
+                if noetig <= 0:
+                    continue
+                balken = bereich.verticalScrollBar()
+                zugabe = (balken.sizeHint().width() if balken else 0) + 4
+                if bereich.minimumWidth() < noetig + zugabe:
+                    bereich.setMinimumWidth(noetig + zugabe)
 
             # **Qt soll es erzwingen, nicht wir es einmal einstellen.**
             # Ein ``resize`` beim Öffnen hält nur bis zur nächsten
@@ -336,7 +468,7 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             # das Layout. Wächst der Text, wächst das Fenster mit; der
             # Anwender kann es nicht kleiner ziehen, als lesbar ist.
             aufbau = dialog.layout()
-            if aufbau is not None:
+            if aufbau is not None and not hat_rollbereich:
                 aufbau.setSizeConstraint(QLayout.SetMinimumSize)
 
             # **Auch die Mindestgröße zählt.** ``sizeHint`` ist der
@@ -348,10 +480,11 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             # der Inhalt 645 brauchte, und rechts fehlte das Satzende.
             gebraucht = dialog.sizeHint()
             untergrenze = dialog.minimumSizeHint()
-            dialog.resize(
-                max(dialog.width(), gebraucht.width(), untergrenze.width()),
-                max(dialog.height(), gebraucht.height(), untergrenze.height()),
+            breite = max(dialog.width(), gebraucht.width(), untergrenze.width())
+            hoehe = dialog.height() if hat_rollbereich else max(
+                dialog.height(), gebraucht.height(), untergrenze.height()
             )
+            dialog.resize(breite, hoehe)
 
     # Am Anwendungsobjekt festhalten: Ein Filter, auf den niemand mehr
     # zeigt, wird weggeraeumt - und dann sind die Felder wieder schmal.

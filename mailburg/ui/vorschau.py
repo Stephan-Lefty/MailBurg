@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -87,36 +87,40 @@ class Anhangszeile(QFrame):
     def _oeffnen(self) -> None:
         """Übergibt den Anhang dem Programm, das dafür eingerichtet ist.
 
-        **Ein Fehlschlag muss auffallen.** Bis zum 2026-09-03 stand hier
-        ein nacktes ``QDesktopServices.openUrl(...)``, dessen Rückgabewert
-        niemand ansah: Fand das System kein Programm für die Datei,
-        passierte einfach nichts. Ein Anwender hat genau das gemeldet – er
-        klickte auf ein PDF, und es öffnete sich ein Browser mit einer
-        fremden Seite. Er lief in einem Container, in dem es keinen
-        PDF-Betrachter gab; dass MailBurg dazu schwieg, machte aus einer
-        erklärbaren Lage ein Rätsel.
+        **Genau einmal.** ``anhang_oeffnen`` legt die Datei nicht nur ab,
+        es übergibt sie auch dem System – der Name sagt es. Hier stand
+        danach trotzdem noch ein ``QDesktopServices.openUrl(...)``, und
+        die Folge war der Befund vom 2026-09-07: Ein Klick auf ein PDF
+        öffnete den Betrachter zweimal.
+
+        Entstanden ist das beim Umzug am 2026-09-03. Das Öffnen wanderte
+        von hier nach ``core/rueckgabe.py``, **und der alte Aufruf blieb
+        stehen** – er wurde bei der Gelegenheit sogar noch um eine
+        Fehlerbehandlung erweitert. Kein Test lief je durch diese
+        Methode; geprüft wurde ``anhang_oeffnen`` direkt, und dort war
+        alles in Ordnung.
+
+        **Ein Fehlschlag muss trotzdem auffallen.** Fehlt ``xdg-open``
+        ganz, wirft ``rueckgabe`` – das ist der Fall, den sich verlässlich
+        erkennen lässt. Ob am anderen Ende wirklich ein Betrachter
+        aufgeht, weiß hier niemand: ``xdg-open`` läuft als eigener
+        Prozess weiter, und in einem Container sieht er den Ordner
+        womöglich gar nicht. Deshalb nennt die Meldung den Pfad.
         """
         from PySide6.QtWidgets import QMessageBox
 
         from mailburg.core import rueckgabe
 
         try:
-            ziel = rueckgabe.anhang_oeffnen(
+            rueckgabe.anhang_oeffnen(
                 self.anhang.payload or b"", self.anhang.filename
             )
         except (OSError, rueckgabe.RueckgabeFehler) as exc:
-            QMessageBox.warning(self, "Anhang lässt sich nicht öffnen", str(exc))
-            return
-
-        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(ziel))):
-            QMessageBox.information(
+            QMessageBox.warning(
                 self,
-                "Kein Programm dafür",
-                f"Für »{self.anhang.filename}« ist auf diesem Rechner kein "
-                f"Programm eingerichtet.\n\n"
-                f"Die Datei liegt bereit unter:\n{ziel}\n\n"
-                f"Wenn Sie MailBurg in einem Container betreiben – etwa "
-                f"einer Toolbox oder einem Flatpak –, sieht ein Programm "
+                "Anhang lässt sich nicht öffnen",
+                f"{exc}\n\nWenn Sie MailBurg in einem Container betreiben – "
+                f"etwa einer Toolbox oder einem Flatpak –, sieht ein Programm "
                 f"außerhalb diesen Ordner unter Umständen gar nicht. Dann "
                 f"hilft »Als Datei speichern …« daneben.",
             )

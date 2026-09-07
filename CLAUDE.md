@@ -3,6 +3,68 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-07, Montag)
+
+**Stephans Regel des Tages, und sie steht ab jetzt in der CI:**
+
+> »Es sollten immer vor der Veröffentlichung einer Version alle Fenster
+> auf Lesbarkeit, Text und Felder überprüft werden. Mit jedem dieser
+> Fenster machen wir unsere Arbeit beim User kaputt.«
+
+Anlass waren zwei Bildschirmfotos: das Pfadfeld im Einlesedialog 108 px
+breit mit »erbird« statt `/home/…/.thunderbird`, und »Noch ke…« im
+Rückspieldialog.
+
+### Warum das Prüfwerkzeug geschwiegen hat
+
+**Es maß Eingabefelder gar nicht** – nur Auswahlfelder und Fließtexte.
+Vier Fenster waren betroffen, zwei davon hatte niemand gemeldet
+(Zeitplan, Einstufungsregeln). Und es lief **nur bei der
+Vorgabeschrift**: Die drei Befunde in der Suchmaske treten erst ab 16 pt
+auf – also genau bei denen, die die Schrift vergrößert haben, weil sie
+sonst schlecht lesen.
+
+**Ein Prüfwerkzeug mit einer Lücke sagt »alles lesbar« und meint »alles,
+wonach ich gesucht habe«.** Deshalb prüft `lesbarkeit.py` jetzt
+QLineEdit mit, spielt 9/12/16/20/24 pt durch – und läuft in der CI
+(3 Sekunden), statt darauf zu warten, dass jemand daran denkt.
+
+### Drei Dinge über Qt, die dabei zu lernen waren
+
+**Der Dialog ist vor seinen Kindern dran.** Qt schickt das Show-Ereignis
+erst an das Fenster, dann an den Inhalt – die Größe steht fest, bevor
+ein Feld auf seinen Inhalt gewachsen ist. Wer danach eine Mindestbreite
+setzt, nimmt sie dem Nachbarn weg: Im Zeitplan verlor der Fließtext eine
+Zeile und brach mitten im Satz ab. Ein `QTimer.singleShot(0, …)` landet
+hinter allen Show-Ereignissen und sieht das fertige Fenster.
+
+**Ein Rollbereich verschluckt die Breite seines Inhalts.** Nach außen
+meldet er nur, dass er rollen kann. Für die Höhe ist das sein Zweck, für
+die Breite ein Fehler – **waagerecht gerollt wird nie.** `_dialog_weiten`
+unterscheidet das jetzt.
+
+**Ein `QLineEdit` kennt seinen Inhalt nicht.** Seine Mindestgröße ist
+eine Konstante; in einer Zeile mit einem Knopf schrumpft es auf 108 px,
+egal was drinsteht. Die Breite kommt jetzt aus der Schrift (45 Zeichen
+Deckel, sonst sprengt ein langer Pfad das Fenster).
+
+### Und der Anhang, der sich zweimal öffnete
+
+Derselbe Befund wie beim Wappen und beim Archivpasswort, nur andersherum:
+**Nicht etwas Neues wurde nicht abgeholt, sondern das Alte blieb
+stehen.** Am 03.09. wanderte das Öffnen aus `ui/vorschau.py` nach
+`core/rueckgabe.py` – und der alte `QDesktopServices.openUrl`-Aufruf
+blieb daneben liegen, wurde bei der Gelegenheit sogar noch um eine
+Fehlerbehandlung erweitert.
+
+**Kein Test lief je durch diese Methode.** Geprüft wurde
+`anhang_oeffnen` unmittelbar, und dort war alles in Ordnung. Der neue
+Test zählt deshalb *beide* Wege zusammen und verlangt genau eins.
+
+Nebenbei: Der `.eml`-Ordner-Import gibt es seit jeher und stand
+nirgends – weder im README noch in `docs/oberflaeche.md`, wo der ganze
+Dialog *Lokale Mailordner einlesen …* fehlte.
+
 ## Hier war Schluss (Stand 2026-09-07, Montag früh)
 
 **1.3.1 ist veröffentlicht**, samt `MailBurg.exe` (165 MB) am Release.
