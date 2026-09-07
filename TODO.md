@@ -14,7 +14,7 @@ wurde.
 MailStore-Export ist durch – das Vierfache des bisherigen
 Alltagsbestands und die erste Zahl in dieser Größenordnung.
 
-- [x] **Papierkorb und Spam beim Einlesen übergehen.** (2026-09-07)
+- [x] **Papierkorb und Spam beim Einlesen übergehen.** (2026-09-07, in der 1.3.3)
   Stephans Frage dazu: »Werden Mails aus dem Spam-Ordner oder mit
   [SPAM] im Betreff rausgefiltert?« Beim Abruf ja, beim Einlesen von der
   Platte nein – die Liste hing am Konto. Jetzt gilt sie für beides,

@@ -5,6 +5,11 @@ Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 
 ## Hier war Schluss (Stand 2026-09-07, Montagabend)
 
+**1.3.3 ist veröffentlicht**, samt `MailBurg.exe` (165 MB). Der dritte
+Release an einem Tag, und alle drei kamen aus dem Betrieb: 1.3.1 aus
+einer Rückmeldung zur Server-Variante, 1.3.2 aus zwei Bildschirmfotos,
+1.3.3 aus einer Frage nach dem Einlesen.
+
 **Das Firmenarchiv steht bei rund 68.000 Mails und läuft sauber** – der
 MailStore-Export von Stephans Firmenpostfach ist durch. Das Vierfache
 des bisherigen Alltagsbestands und die erste Zahl in dieser

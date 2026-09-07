@@ -13,7 +13,7 @@ down, with the date they were completed.
 The MailStore export is done — four times the previous everyday corpus
 and the first figure in this order of magnitude.
 
-- [x] **Skip trash and spam when reading from disk.** (2026-09-07)
+- [x] **Skip trash and spam when reading from disk.** (2026-09-07, in 1.3.3)
   Stephan's question: "Are messages from the spam folder or with [SPAM]
   in the subject filtered out?" On retrieval yes, on reading from disk
   no — the list was attached to the account. It now applies to both,

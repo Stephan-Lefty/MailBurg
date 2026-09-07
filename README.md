@@ -229,9 +229,13 @@ mailburg pruefen ~/Archiv
 
 `mailburg suchhilfe` erklärt die Suchsprache.
 
-Als Quelle taugt ein Thunderbird-Profil, ein Maildir-Verzeichnis oder eine
-einzelne MBOX-Datei. Bei einem Thunderbird-Profil werden alle Konten und Ordner
-mitsamt ihrer Verschachtelung übernommen.
+Als Quelle taugt ein Thunderbird-Profil, ein Maildir-Verzeichnis, eine einzelne
+MBOX-Datei oder ein Ordner voller `.eml`-Dateien. Bei einem Thunderbird-Profil
+werden alle Konten und Ordner mitsamt ihrer Verschachtelung übernommen.
+
+**Papierkorb, Spamverdacht und Entwürfe bleiben dabei draußen** – wie beim
+Abruf aus einem Postfach. Was übergangen wurde, steht am Ende des Laufs;
+`--alles` nimmt es mit.
 
 ## Postfächer abrufen
 

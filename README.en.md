@@ -198,9 +198,13 @@ mailburg info ~/Archive
 mailburg pruefen ~/Archive
 ```
 
-Sources can be a Thunderbird profile, a Maildir directory or a single MBOX
-file. Thunderbird profiles are imported with all accounts and their nested
-folder structure.
+Sources can be a Thunderbird profile, a Maildir directory, a single MBOX file
+or a folder full of `.eml` files. Thunderbird profiles are imported with all
+accounts and their nested folder structure.
+
+**Trash, suspected spam and drafts stay out** — as they do when fetching from
+a mailbox. What was skipped is named at the end of the run; `--alles` takes it
+along.
 
 ## Fetching from mailboxes
 
