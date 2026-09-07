@@ -815,3 +815,82 @@ class GesperrterSchluesselbundTest(unittest.TestCase):
             self.assertIsNone(
                 accounts.passwort_holen(self.konto, streng=True)
             )
+
+
+class ZweiSchluesselbuendeTest(unittest.TestCase):
+    """Wenn mehrere Schlüsselbünde um dieselbe Rolle streiten.
+
+    **Stephans Rechner am 2026-09-07.** Nach einem Systemupdate hielt
+    ``gnome-keyring`` den Namen ``org.freedesktop.secrets``, während
+    ``ksecretd`` und ``kwalletd6`` danebenliefen. Alle sieben Postfächer
+    meldeten »kein Passwort im Schlüsselbund« – die Passwörter lagen im
+    KDE-Tresor, gefragt wurde der GNOME-Tresor.
+
+    Von außen sieht das aus wie ein leerer Schlüsselbund. Wer darauf
+    hereinfällt, tippt seine Passwörter neu ein – in den falschen
+    Tresor, und beim nächsten Wechsel steht er wieder da.
+    """
+
+    #: So sieht die Lage auf Stephans Rechner aus (gekürzt auf das,
+    #: worauf es ankommt: Name, PID, Prozess).
+    STEPHAN = [
+        "org.freedesktop.secrets    1246 gnome-keyring-d stephan :1.7  -",
+        "org.kde.ksecretd           1317 ksecretd        stephan :1.38 -",
+        "org.kde.kwalletd6          2102 kwalletd6       stephan :1.91 -",
+        "org.freedesktop.impl.portal.Secret  - -         -       -     -",
+    ]
+
+    def _meldung(self, zeilen: list[str]) -> str:
+        from unittest import mock
+
+        from mailburg.core import accounts
+
+        with mock.patch.object(accounts, "_busnamen", return_value=zeilen):
+            return accounts.schluesselbund_konkurrenz()
+
+    def test_der_fall_von_stephans_rechner(self):
+        text = self._meldung(self.STEPHAN)
+
+        self.assertIn("GNOME-Schlüsselbund", text)
+        self.assertIn("KDE-Brieftasche", text)
+        # Und der Satz, auf den es ankommt: Neu eintragen hilft nicht.
+        self.assertIn("kein Neueintragen", text)
+
+    def test_andersherum_ebenso(self):
+        zeilen = [
+            "org.freedesktop.secrets  1317 ksecretd    stephan :1.38 -",
+            "org.gnome.keyring.SystemPrompter 1246 gnome-keyring-d x :1.7 -",
+        ]
+
+        text = self._meldung(zeilen)
+
+        self.assertIn("KDE-Brieftasche", text)
+        self.assertIn("GNOME-Schlüsselbund", text)
+
+    def test_ein_einziger_schluesselbund_schweigt(self):
+        """Ein Hinweis ohne Anlass ist Rauschen."""
+        zeilen = ["org.freedesktop.secrets  1246 gnome-keyring-d x :1.7 -"]
+
+        self.assertEqual(self._meldung(zeilen), "")
+
+    def test_ein_nur_startbarer_dienst_zaehlt_nicht(self):
+        """``busctl`` führt auch Namen auf, hinter denen nichts läuft.
+
+        Ein Dienst, der sich bei Bedarf starten ließe, ist kein zweiter
+        Tresor voller Passwörter – er hat noch nie einen gesehen.
+        """
+        zeilen = [
+            "org.freedesktop.secrets  1246 gnome-keyring-d x :1.7 -",
+            "org.kde.kwalletd6        - -               - (activatable) -",
+        ]
+
+        self.assertEqual(self._meldung(zeilen), "")
+
+    def test_ohne_sitzungsbus_gibt_es_keine_meldung(self):
+        """Unter Windows, macOS und auf einem Server ist das der Normalfall."""
+        self.assertEqual(self._meldung([]), "")
+
+    def test_ohne_aktiven_anbieter_ebenfalls(self):
+        zeilen = ["org.kde.kwalletd6  2102 kwalletd6  x :1.91 -"]
+
+        self.assertEqual(self._meldung(zeilen), "")

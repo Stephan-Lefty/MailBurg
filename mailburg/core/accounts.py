@@ -427,29 +427,109 @@ def schluesselbund_name() -> str:
     return "Schlüsselbund"
 
 
-def _secretservice_anbieter() -> str:
-    """Fragt nach, welches Programm org.freedesktop.secrets bedient."""
+def _busnamen() -> list[str]:
+    """Alle Namen auf dem Sitzungsbus, jeweils mit dem Dienst dahinter.
+
+    Leer, wenn es keinen Sitzungsbus gibt – unter Windows, unter macOS
+    und auf einem Server ohne Arbeitsumgebung ist das der Normalfall
+    und kein Fehler.
+    """
     import shutil
     import subprocess
 
-    if shutil.which("busctl"):
-        try:
-            ergebnis = subprocess.run(
-                ["busctl", "--user", "list", "--no-legend"],
-                capture_output=True, text=True, timeout=5,
-                **werkzeuge.konsolenkodierung(),
-                **werkzeuge.lautlos(),
-            )
-            for zeile in ergebnis.stdout.splitlines():
-                if zeile.startswith("org.freedesktop.secrets"):
-                    dienst = zeile.split()[2] if len(zeile.split()) > 2 else ""
-                    if "ksecret" in dienst or "kwallet" in dienst:
-                        return "KDE-Brieftasche"
-                    if "gnome" in dienst:
-                        return "GNOME-Schlüsselbund"
-        except (OSError, subprocess.TimeoutExpired, IndexError):
-            pass
+    if not shutil.which("busctl"):
+        return []
+    try:
+        ergebnis = subprocess.run(
+            ["busctl", "--user", "list", "--no-legend"],
+            capture_output=True, text=True, timeout=5,
+            **werkzeuge.konsolenkodierung(),
+            **werkzeuge.lautlos(),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    return ergebnis.stdout.splitlines()
+
+
+def _secretservice_anbieter() -> str:
+    """Fragt nach, welches Programm org.freedesktop.secrets bedient."""
+    for zeile in _busnamen():
+        if zeile.startswith("org.freedesktop.secrets"):
+            teile = zeile.split()
+            dienst = teile[2] if len(teile) > 2 else ""
+            if "ksecret" in dienst or "kwallet" in dienst:
+                return "KDE-Brieftasche"
+            if "gnome" in dienst:
+                return "GNOME-Schlüsselbund"
     return "Schlüsselbund"
+
+
+def schluesselbund_konkurrenz() -> str:
+    """Warnt, wenn mehrere Schlüsselbünde um dieselbe Rolle streiten.
+
+    **Der Fall, für den es diese Auskunft gibt.** Unter Linux fragen
+    Programme über ``org.freedesktop.secrets`` nach Passwörtern. Diesen
+    Namen kann nur ein Dienst halten – wer zuerst da ist, gewinnt.
+    Laufen daneben weitere Schlüsselbünde, liegen die Passwörter
+    womöglich in einem davon, und der antwortende ist schlicht leer.
+
+    Von außen sieht das aus wie »kein Passwort hinterlegt«, und der
+    Anwender tippt seine Passwörter neu ein – in den falschen Tresor,
+    denn beim nächsten Wechsel steht er wieder da.
+
+    Am 2026-09-07 an Stephans Rechner: Nach einem Systemupdate hielt
+    ``gnome-keyring`` den Namen, während ``ksecretd`` und ``kwalletd6``
+    danebenliefen. Alle sieben Postfächer meldeten »kein Passwort«.
+
+    Gibt einen leeren Text zurück, wenn die Lage eindeutig ist – dann
+    steht in der Meldung nichts Überflüssiges.
+    """
+    zeilen = _busnamen()
+    if not zeilen:
+        return ""
+
+    aktiv = ""
+    kde = False
+    gnome = False
+    for zeile in zeilen:
+        teile = zeile.split()
+        name = teile[0] if teile else ""
+        # **Nur laufende Dienste zählen.** ``busctl`` führt auch Namen
+        # auf, die sich bei Bedarf starten ließen – die sind kein
+        # Hinweis auf einen zweiten Tresor voller Passwörter, sie haben
+        # noch nie einen gesehen. Als Prozess steht dort ein Strich,
+        # kein leeres Feld; ein Strich ist eine Zeichenkette und damit
+        # wahr, wenn man nicht hinsieht.
+        dienst = teile[2] if len(teile) > 2 else ""
+        if dienst == "-":
+            dienst = ""
+        if name == "org.freedesktop.secrets":
+            aktiv = dienst
+        if name.startswith(("org.kde.kwalletd", "org.kde.ksecretd")) and dienst:
+            kde = True
+        if name.startswith("org.gnome.keyring") and dienst:
+            gnome = True
+
+    if not aktiv:
+        return ""
+    aktiv_ist_kde = "ksecret" in aktiv or "kwallet" in aktiv
+    aktiv_ist_gnome = "gnome" in aktiv
+
+    if aktiv_ist_gnome and kde:
+        anderer, jetziger = "KDE-Brieftasche", "GNOME-Schlüsselbund"
+    elif aktiv_ist_kde and gnome:
+        anderer, jetziger = "GNOME-Schlüsselbund", "KDE-Brieftasche"
+    else:
+        return ""
+
+    return (
+        f"Auf diesem Rechner laufen zwei Schlüsselbünde nebeneinander. "
+        f"Die Passwortanfragen beantwortet gerade der {jetziger}, "
+        f"daneben läuft die {anderer}. Liegen Ihre Passwörter dort, "
+        f"findet MailBurg sie nicht – dann hilft kein Neueintragen, "
+        f"sondern nur, dass wieder derselbe Dienst antwortet wie beim "
+        f"Speichern."
+    )
 
 
 class SchluesselbundZu(RuntimeError):

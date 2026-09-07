@@ -7,6 +7,41 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **Ein gesperrter Schlüsselbund galt als leerer.** In
+  `accounts.passwort_holen` fing ein `except Exception` jeden Fehler ab
+  und gab `None` zurück – der Kommentar daneben benannte den Fall sogar
+  (»ein gesperrter Schlüsselbund wirft«) und lebte damit. Nach einem
+  Systemupdate meldete MailBurg daraufhin für **alle sieben** Postfächer
+  »liegt kein Passwort im Schlüsselbund«.
+
+  Der Unterschied entscheidet, was der Anwender tut: Bei »nichts
+  hinterlegt« tippt er sieben Passwörter neu ein, bei »Schlüsselbund
+  gesperrt« entsperrt er einmal. `passwort_holen(…, streng=True)` wirft
+  jetzt `SchluesselbundZu`; Fenster und Kommandozeile fragen so und
+  melden den Unterschied – die Kommandozeile fragt insbesondere nicht
+  mehr nach einem Passwort, das längst hinterlegt ist.
+
+### Hinzugefügt
+
+- **MailBurg erkennt zwei Schlüsselbünde nebeneinander.** Unter Linux
+  beantwortet nur *ein* Dienst die Passwortanfragen (`org.freedesktop.secrets`);
+  wer zuerst da ist, gewinnt. Läuft daneben ein zweiter, liegen die
+  Passwörter womöglich dort – und der antwortende ist schlicht leer.
+
+  Genau das ist am 07.09.2026 auf einem Arbeitsrechner passiert: Nach
+  einem Systemupdate hielt `gnome-keyring` den Namen, während `ksecretd`
+  und `kwalletd6` danebenliefen. Von außen sah es aus wie ein leerer
+  Schlüsselbund. Wer darauf hereinfällt, trägt seine Passwörter neu ein
+  – in den falschen Tresor.
+
+  Fehlt ein Passwort und laufen zwei Schlüsselbünde, sagt MailBurg das
+  jetzt dazu, samt dem Satz, auf den es ankommt: **Neu eintragen hilft
+  nicht.**
+
 ## [1.3.3] – 2026-09-07
 
 Aus einer einzigen Frage, gestellt nach 68.000 eingelesenen Mails:

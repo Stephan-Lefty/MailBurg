@@ -8,6 +8,41 @@ wurde.
 
 ## Offen
 
+### Zwei Schlüsselbünde auf einem Rechner (2026-09-07)
+
+Nach einem Manjaro-Update mit über 300 Paketen meldete MailBurg für alle
+sieben Postfächer »kein Passwort im Schlüsselbund«. Ursache: `gnome-keyring`
+hielt `org.freedesktop.secrets`, während `ksecretd` und `kwalletd6`
+danebenliefen – die Passwörter liegen im KDE-Tresor, gefragt wurde der
+GNOME-Tresor.
+
+- [x] **MailBurg sagt es jetzt selbst.** (2026-09-07)
+  `accounts.schluesselbund_konkurrenz()` erkennt die Lage über die
+  laufenden D-Bus-Namen und hängt den Hinweis an die Meldung – samt dem
+  Satz, auf den es ankommt: Neu eintragen hilft nicht.
+
+- [x] **Und ein gesperrter Schlüsselbund gilt nicht mehr als leerer.**
+  (2026-09-07) `passwort_holen(…, streng=True)` wirft statt zu schweigen.
+
+- [ ] **Die Passwörter liegen noch im falschen Tresor.** Stephans Lage
+  ist damit erklärt, aber nicht behoben: Entweder `gnome-keyring` den
+  Secret-Service abnehmen (dann übernimmt `ksecretd` wieder und alle
+  sieben sind da), oder die Passwörter einmal neu eintragen. Der erste
+  Weg ist der richtige, der zweite der schnellere. **Systemkonfiguration
+  – gehört Stephan.**
+
+- [ ] **Eine kopierte Vorgabe veraltet still.** Die Ausschlussliste wird
+  beim Anlegen eines Kontos in `konten.json` hineinkopiert; neue
+  Standardnamen erreichen bestehende Konten nie. Stephans Konten tragen
+  die Liste von vor Wochen. Zu entscheiden: automatisch ergänzen (dann
+  kommt ein bewusst gestrichener Eintrag zurück) oder die Lücke melden
+  und mit einem Befehl nachziehen lassen.
+
+- [ ] **Bei Arch und Manjaro überlebt eine venv keinen Python-Sprung.**
+  3.13 → 3.14 hätte MailBurg unbenutzbar gemacht – hier ging es nur gut,
+  weil `install.sh` an dem Tag ohnehin lief. Der Startbefehl sollte das
+  erkennen und sagen, statt mit einem kryptischen Fehler abzubrechen.
+
 ### Der große Bestand (2026-09-07)
 
 **Das Firmenarchiv steht bei rund 68.000 Mails und läuft sauber.** Der

@@ -3,6 +3,65 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-07, Montag spätabends)
+
+**Der Abend gehörte einer Meldung, die etwas Falsches behauptete.** Nach
+Stephans Manjaro-Update mit über 300 Paketen sagte MailBurg für **alle
+sieben** Postfächer: »liegt kein Passwort im Schlüsselbund«.
+
+Sieben Passwörter verschwinden nicht gemeinsam. Was gleichzeitig
+passiert, ist etwas anderes – und die Diagnose ging über zwei Stufen,
+von denen die erste falsch war.
+
+### Erste Stufe: das Auffangnetz
+
+`accounts.passwort_holen` hatte:
+
+```python
+except Exception:  # noqa: BLE001 – ein gesperrter Schlüsselbund wirft
+    return None
+```
+
+**Der Kommentar benannte den Fehler und lebte damit.** Dritte Instanz
+derselben Klasse an einem Tag – nach `APP_ID` im Tresor und dem doppelt
+geöffneten Anhang. Die Regel steht jetzt unten bei den Gepflogenheiten.
+
+### Zweite Stufe: es war gar nicht gesperrt
+
+`busctl --user status org.freedesktop.secrets` zeigte: Den Namen hält
+**gnome-keyring**, während **ksecretd** und **kwalletd6** danebenlaufen.
+Unter Linux beantwortet nur *ein* Dienst die Passwortanfragen; wer
+zuerst da ist, gewinnt. Stephans Passwörter liegen im KDE-Tresor,
+gefragt wurde der GNOME-Tresor.
+
+**Von außen sieht das aus wie ein leerer Schlüsselbund** – und wer
+darauf hereinfällt, trägt sieben Passwörter neu ein, in den falschen
+Tresor, und steht beim nächsten Wechsel wieder da.
+
+`accounts.schluesselbund_konkurrenz()` erkennt das jetzt und sagt es,
+wenn ein Passwort fehlt. Geprüft wird allein über die laufenden
+D-Bus-Namen – **nicht** durch einen Blick in fremde Tresore; zweimal hat
+die Freigabe genau das zu Recht verhindert.
+
+**Ein Detail, das ein Test gefunden hat:** `busctl` schreibt in leere
+Spalten einen Strich. Ein Strich ist eine Zeichenkette und damit wahr,
+wenn man nicht hinsieht – ein nur startbarer Dienst galt so als
+laufender.
+
+### Was dabei sonst noch auffiel
+
+**Die Ausschlussliste wird beim Anlegen ins Konto kopiert.** Stephans
+Konten tragen die Liste von vor Wochen; die drei Namen, die heute
+dazukamen, fehlen dort. Für `Junk-E-Mail` folgenlos, weil die neue
+Normalisierung Bindestriche ignoriert – für einen Ordner namens
+»Spamverdacht« nicht. **Eine kopierte Vorgabe veraltet still**, und was
+daraus folgt, steht als Frage in der TODO.
+
+**Bei Arch und Manjaro überlebt eine venv keinen Python-Sprung.**
+3.13 → 3.14 hätte MailBurg unbenutzbar gemacht; hier ging es gut, weil
+`install.sh` an diesem Tag ohnehin dreimal lief. Auch das steht in der
+TODO.
+
 ## Hier war Schluss (Stand 2026-09-07, Montagabend)
 
 **1.3.3 ist veröffentlicht**, samt `MailBurg.exe` (165 MB). Der dritte
@@ -1208,6 +1267,26 @@ docs/                      Anleitungen für Anwender
 ```
 
 ## Regeln, die aus Fehlern stammen
+
+**Ein Auffangnetz darf keine Auskunft erfinden.** Wer jeden Fehler in
+ein leeres Ergebnis verwandelt, macht aus einer Störung eine falsche
+Aussage – und die fällt niemandem auf, weil sie aussieht wie ein
+Ergebnis. Am 2026-09-07 dreimal an einem Tag:
+
+- `except Exception` um `keyring.get_password` verwandelte einen
+  gesperrten Schlüsselbund in »kein Passwort hinterlegt« (sieben
+  Postfächer auf einmal).
+- Dasselbe Muster verschluckte in `tresor uebernehmen` einen
+  NameError – der Befehl meldete fünf Fassungen lang »0 Passwörter
+  übernommen«, als wäre der Schlüsselbund leer.
+- Und ein `except Exception` in einem Prüfwerkzeug ließ es melden, was
+  im Betrieb gar nicht auftrat.
+
+**Die Faustregel:** Ein Traceback sieht aus wie ein Fehler und wird
+gemeldet. »Nichts gefunden« sieht aus wie ein Ergebnis und wird
+geglaubt. Deshalb eng fangen (`keyring.errors.KeyringError`,
+`OSError`), und wo ein Aufrufer dem Anwender etwas schreibt, den Grund
+mitgeben statt ihn wegzuwerfen.
 
 **Das Journal ist die Wahrheit, der Index ist Beiwerk.** Jede Information, die
 zum Wiederaufbau nötig ist, muss im Journal stehen. Beim ersten Entwurf bekam

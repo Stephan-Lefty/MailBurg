@@ -7,6 +7,40 @@ down, with the date they were completed.
 
 ## Open
 
+### Two keyrings on one machine (2026-09-07)
+
+After a Manjaro update with over 300 packages, MailBurg reported "no
+password in the keyring" for all seven mailboxes. Cause: `gnome-keyring`
+held `org.freedesktop.secrets` while `ksecretd` and `kwalletd6` ran
+alongside — the passwords live in the KDE vault, the GNOME vault was
+being asked.
+
+- [x] **MailBurg now says so itself.** (2026-09-07)
+  `accounts.schluesselbund_konkurrenz()` detects it from the running
+  D-Bus names and appends the hint to the message — including the
+  sentence that matters: re-entering them will not help.
+
+- [x] **And a locked keyring no longer passes as an empty one.**
+  (2026-09-07) `passwort_holen(…, streng=True)` raises instead of
+  staying silent.
+
+- [ ] **The passwords are still in the wrong vault.** Stephan's case is
+  explained, not fixed: either take the secret service away from
+  `gnome-keyring` (then `ksecretd` takes over again and all seven are
+  back), or enter the passwords once more. The first is right, the
+  second is faster. **System configuration — Stephan's call.**
+
+- [ ] **A copied default goes stale in silence.** The exclusion list is
+  copied into `konten.json` when an account is created; new default
+  names never reach existing accounts. To decide: top them up
+  automatically (a deliberately removed entry would return) or report
+  the gap and let a command fill it.
+
+- [ ] **On Arch and Manjaro a venv does not survive a Python jump.**
+  3.13 → 3.14 would have left MailBurg unusable — it only went well
+  because `install.sh` happened to run that day. The launcher should
+  detect and say so instead of failing cryptically.
+
 ### The large corpus (2026-09-07)
 
 **The company archive holds around 68,000 messages and runs cleanly.**

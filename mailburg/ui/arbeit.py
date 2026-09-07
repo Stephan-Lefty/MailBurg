@@ -244,9 +244,14 @@ class Abruflauf(Auftrag):
                     self.konto_fertig.emit(konto.name, ergebnisse[konto.name])
                     continue
                 if not passwort:
+                    # **Der zweite Schlüsselbund ist der häufigere
+                    # Grund**, wenn mehrere Postfächer auf einmal ohne
+                    # Passwort dastehen – siehe
+                    # ``accounts.schluesselbund_konkurrenz``.
+                    dazu = accounts.schluesselbund_konkurrenz()
                     ergebnisse[konto.name] = ImapFehler(
                         f"Für '{konto.name}' liegt kein Passwort im "
-                        f"Schlüsselbund."
+                        f"Schlüsselbund." + (f"\n\n{dazu}" if dazu else "")
                     )
                     self.konto_fertig.emit(konto.name, ergebnisse[konto.name])
                     continue

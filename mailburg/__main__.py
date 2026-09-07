@@ -284,12 +284,23 @@ def cmd_konten_liste(args: argparse.Namespace) -> int:
     if not geht:
         print(f"Hinweis: {grund}\n", file=sys.stderr)
 
+    ohne = 0
     for konto in liste.konten:
         zustand = "aktiv" if konto.aktiv else "stillgelegt"
-        gemerkt = "Passwort gemerkt" if accounts.passwort_holen(konto) else "kein Passwort"
+        hat = bool(accounts.passwort_holen(konto))
+        ohne += not hat
+        gemerkt = "Passwort gemerkt" if hat else "kein Passwort"
         print(f"  {konto.beschreibung()}  [{zustand}, {gemerkt}]")
         if args.ausführlich and konto.ausschluss:
             print(f"      übergangen: {', '.join(konto.ausschluss)}")
+
+    # **Erst wenn wirklich etwas fehlt.** Zwei Schlüsselbünde
+    # nebeneinander sind kein Fehler, solange der antwortende die
+    # Passwörter hat; ein Hinweis ohne Anlass wäre nur Rauschen.
+    if ohne:
+        dazu = accounts.schluesselbund_konkurrenz()
+        if dazu:
+            print(f"\n{dazu}", file=sys.stderr)
     return 0
 
 
