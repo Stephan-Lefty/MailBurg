@@ -3,7 +3,7 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
-## Hier war Schluss (Stand 2026-09-07, Montag)
+## Hier war Schluss (Stand 2026-09-07, Montag) – 1.3.2 ist draußen
 
 **Stephans Regel des Tages, und sie steht ab jetzt in der CI:**
 
