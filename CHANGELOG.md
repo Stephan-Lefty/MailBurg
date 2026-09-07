@@ -7,7 +7,11 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.3.3] – 2026-09-07
+
+Aus einer einzigen Frage, gestellt nach 68.000 eingelesenen Mails:
+»Werden Mails aus dem Spam-Ordner oder mit [SPAM] im Betreff
+rausgefiltert?«
 
 ### Geändert
 
@@ -1617,6 +1621,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.3.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.2.1...v1.3.0
