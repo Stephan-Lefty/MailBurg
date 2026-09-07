@@ -3,6 +3,40 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-07, Montag früh)
+
+**1.3.1 ist veröffentlicht**, samt `MailBurg.exe` (165 MB) am Release.
+Danach alle fünfzehn Dateien in `docs/` durchgesehen – die Frage war,
+wo sonst noch eine Umgebung vorausgesetzt wird, die auf einem Server
+fehlt. Zwölf waren in Ordnung, drei nicht:
+
+**»Microsoft-Konten gehen derzeit nicht«** stand seit der 0.10 in
+`postfaecher-einrichten.md`. Seit der 1.0 stimmt das nicht mehr – sie
+gehen über OAuth2, und drei Absätze weiter unten stand das sogar, als
+»seit dem 2026-08-29 vorbereitet«. **Der Anwender liest die Überschrift
+und hört auf zu lesen.**
+
+**Ein Wächtertest hielt genau diesen falschen Satz fest:**
+`assertIn("gehen derzeit nicht", doku)`. Daraus folgt eine Regel, die
+noch nirgends stand: **Ein Wächtertest, der auf einen Wortlaut zeigt,
+hält den Wortlaut fest, nicht seinen Sinn** – und wird damit zum
+Bremsklotz gegen die Korrektur. Er prüft jetzt, dass der Abschnitt auf
+`oauth2.md` verweist und App-Kennwörter ausschließt.
+
+**Und wieder: etwas ist da und wird nirgends abgeholt.** Der Dienst
+reicht seit dem 31.08. ein Archivpasswort durch (`dienst.py:67`,
+`lesen.py:42`), `/zustand` warnt sogar ausdrücklich, wenn es fehlt – in
+`server-einrichten.md` kam verschlüsselt betriebenes Archiv nicht vor.
+Jetzt steht dort »Wenn das Archiv verschlüsselt ist«, mit
+`mailburg passwort hinterlegen` und `MAILBURG_ARCHIVPASSWORTDATEI`.
+`docs/server.md` sagte außerdem noch »vier der fünf Brocken sind
+gebaut« – es sind fünf.
+
+Nebenbei: Die Vergleichslinks im CHANGELOG hörten bei 0.12.0 auf, alle
+Fassungen ab 1.0.0 waren tote Klammern. Und die Datumsangaben zum
+Tresor-Fix heißen jetzt »mindestens Fassung 1.3.1« – **ein Anwender
+kennt seine Fassungsnummer, nicht unser Commit-Datum.**
+
 ## Hier war Schluss (Stand 2026-09-06, Sonntag)
 
 **Das vierte Nutzer-Feedback, und diesmal zur Server-Variante.**

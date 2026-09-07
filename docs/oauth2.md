@@ -168,10 +168,10 @@ mailburg tresor uebernehmen
    bringen – **nicht denselben Weg**, wer beides zusammen abfängt, hat
    die Postfächer.
 
-`uebernehmen` nimmt die OAuth2-Token seit dem 2026-09-06 mit; davor
-blieben sie liegen, und auf dem Server fehlte ausgerechnet das, was sich
-dort nicht nachholen lässt. Mehr dazu in
-[server-einrichten.md](server-einrichten.md).
+**Dafür brauchen Sie mindestens Fassung 1.3.1** (`mailburg --version`).
+Ältere nehmen die Token nicht mit – und ließen auf dem Server
+ausgerechnet das fehlen, was sich dort nicht nachholen lässt. Mehr dazu
+in [server-einrichten.md](server-einrichten.md).
 
 **Was dabei bleibt:** Läuft die Anmeldung einmal wirklich ab – nach
 einem Passwortwechsel, einem Entzug beim Anbieter oder 90 Tagen ohne

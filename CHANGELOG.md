@@ -7,6 +7,29 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Geändert
+
+- **»Microsoft-Konten gehen derzeit nicht« stimmte seit der 1.0 nicht
+  mehr.** Sie gehen über OAuth2 – drei Absätze weiter unten stand das
+  auch, als »vorbereitet«. Wer die Überschrift liest, hört dort auf.
+  `docs/postfaecher-einrichten.md` sagt jetzt, was gilt: kein Passwort
+  und kein App-Kennwort, dafür OAuth2 mit eigener Anwendungskennung –
+  und der geprüfte Umweg über Thunderbird, solange sich damit an einem
+  echten Microsoft-Konto noch niemand angemeldet hat.
+
+- **Der Dienst kann verschlüsselte Archive; die Anleitung sagte es
+  nicht.** [docs/server-einrichten.md](docs/server-einrichten.md) hat
+  jetzt den Abschnitt »Wenn das Archiv verschlüsselt ist« mit
+  `mailburg passwort hinterlegen` und
+  `MAILBURG_ARCHIVPASSWORTDATEI`. Ohne hinterlegtes Passwort läuft der
+  Dienst und liefert nichts aus – auf einem Server sitzt niemand, den
+  er fragen könnte.
+
+- **Die Vergleichslinks in diesem Protokoll hörten bei 0.12.0 auf.**
+  Alle Fassungen ab 1.0.0 waren tote Klammern.
+
 ## [1.3.1] – 2026-09-06
 
 Eine Fassung aus einer einzigen Rückmeldung – der ersten zur

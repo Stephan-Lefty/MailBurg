@@ -95,36 +95,36 @@ diesen einen Zweck gilt und sich einzeln widerrufen lässt.
 | mailbox.org | `imap.mailbox.org` | Das gewöhnliche Passwort genügt |
 | IONOS | `imap.ionos.de` | Das gewöhnliche Passwort genügt |
 
-## Microsoft-Konten gehen derzeit nicht
+## Microsoft-Konten gehen nur über OAuth2
 
-**Outlook.com, Hotmail, Live und Exchange Online lassen sich mit MailBurg
-zurzeit nicht abrufen.** Das liegt nicht an MailBurg, aber es hilft Ihnen
-nicht weiter, und deshalb steht es hier deutlich.
-
-Microsoft hat die einfache Anmeldung mit Benutzername und Passwort
+**Outlook.com, Hotmail, Live und Exchange Online nehmen kein Passwort mehr
+an** – auch kein App-Kennwort. Microsoft hat die einfache Anmeldung
 abgeschaltet: für Geschäftskonten (Exchange Online) am 1. Oktober 2022, für
-private Konten am 16. September 2024. Seither verlangt Microsoft
-ausschließlich OAuth2 – auch App-Kennwörter funktionieren nicht mehr. Wer es
-dennoch versucht, bekommt eine Anmeldefehlermeldung, die den wahren Grund
-nicht nennt.
+private Konten am 16. September 2024. Wer es dennoch versucht, bekommt eine
+Anmeldefehlermeldung, die den wahren Grund nicht nennt.
 
-**Was heute geht:** Das Konto zusätzlich in Thunderbird einrichten und
-MailBurg das Thunderbird-Profil einlesen lassen. Thunderbird beherrscht
-OAuth2. Das ist ein Umweg, aber ein gangbarer – und die Mails landen
+**MailBurg beherrscht OAuth2** – seit Fassung 1.0, die Anleitung dazu ist
+[Anmeldung per OAuth2](oauth2.md). Sie müssen sich dafür eine eigene
+Anwendung bei Microsoft registrieren; das ist kostenlos, dauert zehn
+Minuten und ist dort Schritt für Schritt beschrieben.
+
+> **Ungeprüft an einem echten Konto.** Der Ablauf ist gegen einen
+> nachgebauten Anbieter getestet, nicht gegen Microsoft selbst – hier hat
+> sich damit noch niemand angemeldet. Wenn Sie es ausprobieren, ist eine
+> Rückmeldung viel wert.
+
+**Der sichere Umweg, solange das so ist:** Das Konto zusätzlich in
+Thunderbird einrichten und MailBurg das Thunderbird-Profil einlesen lassen.
+Thunderbird beherrscht OAuth2 seit Jahren. Die Mails landen dabei genauso
 bytegenau im Archiv wie über IMAP.
 
-**Was seit dem 2026-08-29 vorbereitet ist:** OAuth2 in MailBurg selbst.
-Der Ablauf steht, die Anleitung dazu ist
-[Anmeldung per OAuth2](oauth2.md). Ungeprüft an einem echten Konto —
-wenn Sie es ausprobieren, ist eine Rückmeldung viel wert.
-
-**Warum es nicht einfach eingebaut ist:** Der Aufwand steckt nicht im
-Programm, sondern davor: Google verlangt für den vollen IMAP-Zugriff ein
-jährlich zu wiederholendes Sicherheitsaudit durch ein zugelassenes Labor,
-das für ein quelloffenes Programm ohne Einnahmen nicht tragbar ist. Der Weg
-wird deshalb sein, dass Sie sich eine eigene Anwendung registrieren – bei
-Microsoft kostenlos und ohne Prüfverfahren – und MailBurg deren Kennung
-mitgeben. Siehe [TODO.md](../TODO.md).
+**Warum Sie sich selbst eine Anwendung registrieren müssen** und MailBurg
+nicht einfach eine eigene mitbringt: Google verlangt für den vollen
+IMAP-Zugriff ein jährlich zu wiederholendes Sicherheitsaudit durch ein
+zugelassenes Labor, das für ein quelloffenes Programm ohne Einnahmen nicht
+tragbar ist. Bei Microsoft ist die Registrierung kostenlos und ohne
+Prüfverfahren – deshalb geht dieser Weg dort ohne Weiteres, bei Gmail
+bleibt vorerst das App-Passwort die bessere Wahl.
 
 ## Welche Ordner archiviert werden
 

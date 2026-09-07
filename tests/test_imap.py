@@ -396,5 +396,14 @@ class MicrosoftTest(unittest.TestCase):
         tabelle = doku[doku.index("| Anbieter |"):doku.index("## Microsoft")]
         self.assertNotIn("Outlook", tabelle)
         self.assertNotIn("office365", tabelle)
-        # Und stattdessen der Abschnitt, der es erklärt.
-        self.assertIn("gehen derzeit nicht", doku)
+
+        # Und stattdessen der Abschnitt, der es erklärt. **Geprüft wird
+        # die Aussage, nicht der Wortlaut** – die Überschrift hieß bis
+        # zum 2026-09-07 »Microsoft-Konten gehen derzeit nicht«, und das
+        # stimmte seit der 1.0 nicht mehr: Sie gehen, nur eben über
+        # OAuth2. Ein Wächtertest, der auf einen Satz zeigt, hält den
+        # Satz fest, nicht seinen Sinn.
+        abschnitt = doku[doku.index("## Microsoft"):]
+        abschnitt = abschnitt[:abschnitt.index("\n## ", 1)]
+        self.assertIn("oauth2.md", abschnitt)
+        self.assertIn("kein App-Kennwort", abschnitt)

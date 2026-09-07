@@ -13,19 +13,25 @@
 [Das Archiv im Browser einrichten](server-einrichten.md). Dieses Dokument
 ist die Begründung dahinter, nicht die Anleitung.
 
-**Stand 2026-08-31: Vier der fünf Brocken sind gebaut** – Benutzer und
+**Stand 2026-09-07: Alle fünf Brocken sind gebaut** – Benutzer und
 Rechte, die Rechteprüfung in der Suche, die Passwörter ohne
-Schlüsselbund und der Dienst samt lesendem Zugriff im Browser. Offen
-bleiben die Archivverschlüsselung und der Windows-Dienst, der zwar
-geschrieben, aber nie gelaufen ist.
+Schlüsselbund, der Dienst samt lesendem Zugriff im Browser und die
+verschlüsselten Archive (das Archivpasswort kommt aus dem Tresor oder
+aus `MAILBURG_ARCHIVPASSWORTDATEI`).
+
+**Offen bleibt der Betrieb selbst.** Für Debian ist der Ablauf
+durchgespielt; der Windows-Dienst ist geschrieben und nie gelaufen. Und
+außer Stephan hatte bis zum 06.09. niemand den Dienst aufgesetzt – die
+erste fremde Rückmeldung dazu brachte prompt einen Widerspruch in der
+Anleitung ans Licht und drei Fehler im Weg auf einen Server.
 
 Was ursprünglich hier stand: Dieses Dokument hält fest, was ein
 MailBurg-Server können muss, was dafür fehlt und in welcher Reihenfolge
 es entstehen sollte. Es ist die Grundlage für die Entscheidung, nicht
-ihr Ergebnis.
+ihr Ergebnis. Der Entwurf ist vom 2026-08-31; was seither daraus wurde,
+steht oben.
 
-Stand: 2026-08-31. Zielsysteme: **Debian Server** und **Windows Server
-2025** oder jünger.
+Zielsysteme: **Debian Server** und **Windows Server 2025** oder jünger.
 
 ## Wozu überhaupt
 

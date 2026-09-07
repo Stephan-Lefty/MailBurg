@@ -102,17 +102,40 @@ beides zusammen abfängt, hat die Postfächer.
 **Für Postfächer mit OAuth2 ist das der einzige Weg.** Eine
 OAuth2-Anmeldung führt über einen Browser auf demselben Rechner, den es
 auf einem Server nicht gibt. `uebernehmen` nimmt diese Anmeldungen
-deshalb mit – seit dem 2026-09-06, davor blieben sie liegen. Läuft eine
-davon später ab, wird sie am Arbeitsplatz erneuert und der Tresor
-erneut übertragen; für ein Postfach, das dauerhaft hier archiviert
-wird, ist ein App-Passwort der ruhigere Weg. Siehe
-[oauth2.md](oauth2.md).
+deshalb mit – **dafür braucht der Arbeitsplatz mindestens Fassung
+1.3.1**, ältere lassen sie liegen. Läuft eine Anmeldung später ab, wird
+sie am Arbeitsplatz erneuert und der Tresor erneut übertragen; für ein
+Postfach, das dauerhaft hier archiviert wird, ist ein App-Passwort der
+ruhigere Weg. Siehe [oauth2.md](oauth2.md).
 
 Zum Schluss die Probe:
 
 ```bash
 mailburg tresor pruefen
 ```
+
+### Wenn das Archiv verschlüsselt ist
+
+Dann braucht der Dienst außerdem das Archivpasswort – **sonst läuft er
+und liefert nichts aus.** Auf einem Server sitzt niemand, den er fragen
+könnte.
+
+Als der Benutzer, unter dem der Dienst läuft:
+
+```bash
+mailburg passwort hinterlegen /var/lib/mailburg/Archiv
+```
+
+Das legt es in denselben Tresor. Wo das nicht passt – etwa unter systemd
+mit `LoadCredential=` –, geht es auch über eine Datei:
+
+```bash
+MAILBURG_ARCHIVPASSWORTDATEI=/etc/mailburg/archivpasswort
+```
+
+**Nachsehen lässt sich das später unter `/zustand`**: Ist das Archiv
+verschlüsselt und kein Passwort hinterlegt, steht dort die deutlichste
+Sorge, die diese Seite kennt.
 
 ## 3. Zugänge anlegen
 

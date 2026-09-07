@@ -84,12 +84,32 @@ localhost at all, because I'm sitting at a headless server."
   existing findings first, or start by checking `F821` (undefined name)
   only — that is the class that actually hurts.
 
-- [ ] **Go through the remaining guides for the same blind spot.** Where
-  do they assume a desktop that a server does not have? Two cases found
-  and fixed (web interface, OAuth2); the third is what we are looking
-  for. **Whoever writes a guide has in mind the environment they wrote
-  it in** — and is blind to exactly the precondition that is obvious
-  there.
+- [x] **Go through the remaining guides for the same blind spot.**
+  (2026-09-07) All fifteen files under `docs/` reviewed; twelve were
+  fine. **Whoever writes a guide has in mind the environment they wrote
+  it in.** Three findings:
+
+  **"Microsoft accounts do not work at present"** had been sitting in
+  `postfaecher-einrichten.md` since 0.10 — and stopped being true with
+  1.0. They do work, over OAuth2. Three paragraphs further down the
+  guide said so itself, as "prepared since 2026-08-29". A reader stops
+  at the heading.
+
+  **A guard test held that very wrong sentence in place**
+  (`assertIn("gehen derzeit nicht", doku)`). It now checks the statement
+  rather than the wording — a test that points at a sentence preserves
+  the sentence, not its meaning.
+
+  **The service handles encrypted archives; the guide never said so.**
+  `dienst.py` has passed an archive passphrase through since 31 August
+  and `/zustand` even warns when it is missing — none of it appeared in
+  `server-einrichten.md`. The same finding again: something is fully
+  built and nothing picks it up. There is now a section "Wenn das
+  Archiv verschlüsselt ist".
+
+  Also: two places dated the vault fix to 6 September. A user knows
+  their version number, not our commit date — both now say "version
+  1.3.1 or newer".
 
 ### From the third user feedback (2026-09-03)
 

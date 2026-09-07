@@ -88,12 +88,32 @@ Server sitze.«
   `F821` (undefinierter Name) geprüft wird – das ist die Klasse, die
   wirklich weh tut.
 
-- [ ] **Die übrigen Anleitungen auf denselben blinden Fleck durchgehen.**
-  Wo wird eine Arbeitsumgebung vorausgesetzt, die auf einem Server
-  fehlt? Zwei Fälle sind gefunden und behoben (Weboberfläche, OAuth2);
-  gesucht ist der dritte. **Wer eine Anleitung schreibt, hat die
-  Umgebung im Kopf, in der er sie geschrieben hat** – und sieht
-  ausgerechnet die Voraussetzung nicht, die dort selbstverständlich ist.
+- [x] **Die übrigen Anleitungen auf denselben blinden Fleck durchgehen.**
+  (2026-09-07) Alle fünfzehn Dateien in `docs/` durchgesehen; zwölf
+  waren in Ordnung. **Wer eine Anleitung schreibt, hat die Umgebung im
+  Kopf, in der er sie geschrieben hat.** Drei Befunde:
+
+  **»Microsoft-Konten gehen derzeit nicht«** stand seit der 0.10 in
+  `postfaecher-einrichten.md` – und stimmte seit der 1.0 nicht mehr. Sie
+  gehen, nur eben über OAuth2. Drei Absätze weiter stand das auch, als
+  »seit dem 2026-08-29 vorbereitet«. Ein Anwender liest die Überschrift
+  und hört auf zu lesen.
+
+  **Ein Wächtertest hielt genau diesen falschen Satz fest**
+  (`assertIn("gehen derzeit nicht", doku)`). Er prüft jetzt die Aussage
+  statt des Wortlauts – ein Test, der auf einen Satz zeigt, hält den
+  Satz fest, nicht seinen Sinn.
+
+  **Der Dienst kann verschlüsselte Archive, die Anleitung sagte es
+  nicht.** `dienst.py` reicht seit dem 31.08. ein Archivpasswort durch,
+  `/zustand` warnt sogar ausdrücklich, wenn es fehlt – in
+  `server-einrichten.md` kam es nicht vor. Wieder derselbe Befund:
+  etwas ist vollständig da und wird nirgends abgeholt. Jetzt steht dort
+  der Abschnitt »Wenn das Archiv verschlüsselt ist«.
+
+  Nebenbei: Zwei Stellen datierten den Tresor-Fix auf den 06.09. Ein
+  Anwender kennt seine Fassungsnummer, nicht unser Commit-Datum – dort
+  steht jetzt »mindestens Fassung 1.3.1«.
 
 ### Aus dem dritten Nutzer-Feedback (2026-09-03)
 
