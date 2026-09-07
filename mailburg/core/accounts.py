@@ -452,8 +452,32 @@ def _secretservice_anbieter() -> str:
     return "Schlüsselbund"
 
 
-def passwort_holen(konto: Konto) -> str | None:
-    """Holt das Passwort – aus dem Tresor oder dem Schlüsselbund."""
+class SchluesselbundZu(RuntimeError):
+    """Der Schlüsselbund war da, hat aber nicht geantwortet.
+
+    **Das ist nicht dasselbe wie »kein Passwort hinterlegt«**, und der
+    Unterschied entscheidet, was der Anwender tut: Bei »nichts
+    hinterlegt« tippt er sein Passwort neu ein – bei sieben Postfächern
+    siebenmal. Bei »Schlüsselbund gesperrt« entsperrt er ihn einmal und
+    ist fertig.
+
+    Aufgefallen am 2026-09-07 an Stephans Firmenarchiv: Nach einem
+    Systemupdate mit über 300 Paketen meldete MailBurg für **alle
+    sieben** Postfächer »liegt kein Passwort im Schlüsselbund«. Sieben
+    Passwörter verschwinden nicht gemeinsam; der Schlüsselbund war
+    schlicht noch zu.
+    """
+
+
+def passwort_holen(konto: Konto, *, streng: bool = False) -> str | None:
+    """Holt das Passwort – aus dem Tresor oder dem Schlüsselbund.
+
+    Mit ``streng=True`` wirft ein nicht antwortender Schlüsselbund
+    :class:`SchluesselbundZu`, statt sich als »nichts hinterlegt« zu
+    tarnen. Wer dem Anwender eine Meldung schreibt, sollte das nutzen –
+    **ein Auffangnetz, das jeden Fehler in ein leeres Ergebnis
+    verwandelt, macht aus einer Störung eine falsche Auskunft.**
+    """
     if tresor.verfuegbar():
         return tresor.holen(konto.schluessel)
 
@@ -463,7 +487,13 @@ def passwort_holen(konto: Konto) -> str | None:
 
     try:
         return keyring.get_password(APP_ID, konto.schluessel)
-    except Exception:  # noqa: BLE001 – ein gesperrter Schlüsselbund wirft
+    except Exception as fehler:  # noqa: BLE001 – ein gesperrter wirft
+        if streng:
+            raise SchluesselbundZu(
+                f"Der Schlüsselbund antwortet nicht ({fehler}). Ob für "
+                f"»{konto.name}« ein Passwort hinterlegt ist, lässt sich "
+                f"deshalb nicht sagen."
+            ) from fehler
         return None
 
 

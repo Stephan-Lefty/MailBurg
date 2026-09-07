@@ -735,3 +735,68 @@ class ZusaetzeTest(unittest.TestCase):
             z for z in text.splitlines() if z.startswith("oberflaeche = ")
         )
         self.assertIn("keyring", zeile)
+
+
+class GesperrterSchluesselbundTest(unittest.TestCase):
+    """Ein Schlüsselbund, der nicht antwortet, ist kein leerer.
+
+    **Am 2026-09-07 an Stephans Firmenarchiv aufgefallen.** Nach einem
+    Systemupdate mit über 300 Paketen meldete MailBurg für *alle sieben*
+    Postfächer »liegt kein Passwort im Schlüsselbund«. Sieben Passwörter
+    verschwinden nicht gemeinsam – der Schlüsselbund war noch zu.
+
+    Der Unterschied entscheidet, was der Anwender tut: siebenmal ein
+    Passwort neu eintippen oder einmal entsperren.
+    """
+
+    def setUp(self):
+        from mailburg.core.accounts import Konto
+
+        self.konto = Konto(
+            name="Firma", server="imap.example.org", benutzer="post@example.org"
+        )
+
+    def _mit_sperre(self, streng: bool):
+        from unittest import mock
+
+        from mailburg.core import accounts, tresor
+
+        with mock.patch.object(tresor, "verfuegbar", return_value=False), \
+             mock.patch.object(
+                 accounts, "schluesselbund_verfuegbar", return_value=True
+             ), \
+             mock.patch(
+                 "keyring.get_password",
+                 side_effect=RuntimeError("Der Schlüsselbund ist gesperrt"),
+             ):
+            return accounts.passwort_holen(self.konto, streng=streng)
+
+    def test_streng_gefragt_wirft_es(self):
+        from mailburg.core import accounts
+
+        with self.assertRaises(accounts.SchluesselbundZu) as gefangen:
+            self._mit_sperre(streng=True)
+
+        # Die Meldung muss den Unterschied benennen, sonst ist sie so
+        # wertlos wie die alte.
+        self.assertIn("antwortet nicht", str(gefangen.exception))
+        self.assertIn("Firma", str(gefangen.exception))
+
+    def test_ohne_streng_bleibt_es_beim_alten_verhalten(self):
+        """Aufrufer, die nur »habe ich eins?« fragen, sollen nicht fliegen."""
+        self.assertIsNone(self._mit_sperre(streng=False))
+
+    def test_ein_wirklich_leerer_schluesselbund_wirft_nicht(self):
+        """Nur die Störung wirft – »nichts hinterlegt« ist keine."""
+        from unittest import mock
+
+        from mailburg.core import accounts, tresor
+
+        with mock.patch.object(tresor, "verfuegbar", return_value=False), \
+             mock.patch.object(
+                 accounts, "schluesselbund_verfuegbar", return_value=True
+             ), \
+             mock.patch("keyring.get_password", return_value=None):
+            self.assertIsNone(
+                accounts.passwort_holen(self.konto, streng=True)
+            )

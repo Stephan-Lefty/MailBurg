@@ -229,7 +229,20 @@ class Abruflauf(Auftrag):
                     break
                 self.konto_beginnt.emit(konto.name)
 
-                passwort = accounts.passwort_holen(konto)
+                # **Streng fragen, damit die Meldung stimmt.** Ein
+                # gesperrter Schlüsselbund sah bis zum 2026-09-07 aus wie
+                # »kein Passwort hinterlegt« – und schickte den Anwender
+                # dazu, sieben Passwörter neu einzutippen, obwohl einmal
+                # Entsperren gereicht hätte.
+                try:
+                    passwort = accounts.passwort_holen(konto, streng=True)
+                except accounts.SchluesselbundZu as zu:
+                    ergebnisse[konto.name] = ImapFehler(
+                        f"{zu} Entsperren Sie ihn und rufen Sie erneut ab; "
+                        f"neu eingeben müssen Sie nichts."
+                    )
+                    self.konto_fertig.emit(konto.name, ergebnisse[konto.name])
+                    continue
                 if not passwort:
                     ergebnisse[konto.name] = ImapFehler(
                         f"Für '{konto.name}' liegt kein Passwort im "

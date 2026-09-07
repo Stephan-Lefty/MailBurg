@@ -250,8 +250,22 @@ def cmd_importieren(args: argparse.Namespace) -> int:
 
 
 def _passwort_besorgen(konto: Konto, *, fragen: bool = True) -> str:
-    """Holt das Passwort aus dem Schlüsselbund oder fragt danach."""
-    passwort = accounts.passwort_holen(konto)
+    """Holt das Passwort aus dem Schlüsselbund oder fragt danach.
+
+    **Ein gesperrter Schlüsselbund wird nicht als »nichts hinterlegt«
+    behandelt.** Sonst fragt die Kommandozeile nach einem Passwort, das
+    längst hinterlegt ist – und bei einem nächtlichen Abruf ohne
+    Terminal käme gar nichts.
+    """
+    try:
+        passwort = accounts.passwort_holen(konto, streng=True)
+    except accounts.SchluesselbundZu as zu:
+        print(
+            f"{zu}\nEntsperren Sie ihn und versuchen Sie es erneut – neu "
+            f"eingeben müssen Sie nichts.",
+            file=sys.stderr,
+        )
+        return ""
     if passwort:
         return passwort
     if not fragen:
