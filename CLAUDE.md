@@ -3,6 +3,50 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-07, Montagabend)
+
+**Das Firmenarchiv steht bei rund 68.000 Mails und läuft sauber** – der
+MailStore-Export von Stephans Firmenpostfach ist durch. Das Vierfache
+des bisherigen Alltagsbestands und die erste Zahl in dieser
+Größenordnung überhaupt.
+
+### Die Frage, die dabei aufkam
+
+»Werden Mails aus dem Spam-Ordner oder mit [SPAM] im Betreff
+rausgefiltert?« Antwort: **beim Abruf ja, beim Einlesen von der Platte
+nein.** Die Ausschlussliste hing am *Konto* – IMAP und JMAP kannten sie,
+`mailburg importieren` nie. Ein Export bringt aber die Ordnerstruktur
+mit, aus der er stammt, samt Papierkorb und Spamverdacht.
+
+Dieselbe Klasse wie so oft in diesen Tagen: **Etwas ist an einer Stelle
+gelöst und an der anderen nicht** – und niemand hatte die Frage
+gestellt, weil beide Wege bis dahin nie nebeneinander lagen.
+
+**Als Hülle gebaut, nicht fünfmal einzeln.** `local.OhnePapierkorb`
+umschließt jede lokale Quelle; `open_path()` hüllt sie ein, sofern nicht
+`alles=True`. Damit bekommt es auch die sechste Quelle, die später
+dazukommt. Zwei Tests mussten mitziehen, weil `open_path` jetzt eine
+Hülle liefert – dafür gibt es `.roh`.
+
+**Zwei Entscheidungen, die nicht ohne Grund aufgemacht werden sollten:**
+
+*Was übergangen wurde, wird genannt* – im Dialog vor dem Start, auf der
+Kommandozeile danach. Eine stille Auslassung wäre schlimmer als keine.
+
+*Eine ausdrücklich gewählte Datei wird nicht gefiltert.* Wer im Dialog
+»MBOX-Datei …« anklickt und dort »Junk« auswählt, hat entschieden.
+
+**Und ein Fehler, der dabei auffiel und älter ist:** Der Vergleich lief
+über `casefold()` allein. Outlook schreibt »Junk-E-Mail«, in der Liste
+stand »Junk E-Mail« – der Bindestrich ging daran vorbei, und der Ordner
+wurde **auch beim IMAP-Abruf** archiviert. `_vergleichsform()` wirft
+jetzt alles weg, was nicht Buchstabe oder Ziffer ist.
+
+**Nicht gebaut: ein Filter auf `[SPAM]` im Betreff.** Der Marker steht
+auch auf falsch-positiven Mails, und was einmal nicht archiviert wurde,
+fällt erst Jahre später auf. Ein Ordner ist eine Entscheidung des
+Anwenders, ein Betreffmarker die Vermutung eines Filters.
+
 ## Hier war Schluss (Stand 2026-09-07, Montag) – 1.3.2 ist draußen
 
 **Stephans Regel des Tages, und sie steht ab jetzt in der CI:**
@@ -1266,7 +1310,11 @@ wer das behauptet, macht sich angreifbar. Die Belege dafür stehen in
   (1.000 Mails, Hash-Kette unversehrt), die Meldung war ein nackter
   Traceback und ist behoben.
 - Zusammenspiel mit einem laufenden Nextcloud-Client.
-- Große Bestände: gemessen wurde an 5.187 Mails, nicht an einer halben Million.
+- Große Bestände: **Am 2026-09-07 lief der MailStore-Export von Stephans
+  Firmenpostfach durch – das Archiv steht bei rund 68.000 Mails, sauber.**
+  Das ist das Vierfache des bisherigen Alltagsbestands und die erste Zahl
+  in dieser Größenordnung überhaupt (vorher: 5.187 beim Messen, 16.000 im
+  Alltag). Offen bleibt die Größenordnung darüber: eine halbe Million.
 - **Gmail und Exchange.** Der Abruf gegen echte Server läuft seit dem
   26.08.2026 im Alltag – acht Postfächer, darunter Proton über die Bridge,
   und am 28.08. auch unter Windows. Alle liegen aber bei denselben zwei

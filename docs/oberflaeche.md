@@ -193,6 +193,32 @@ der Verzeichnisname wird zum Ordnernamen. Eine Mail, die es in beiden gibt,
 liegt einmal auf der Platte; dass sie an zwei Stellen lag, steht trotzdem im
 Journal.
 
+### Papierkorb und Spam bleiben draußen
+
+Wie beim Abruf aus einem Postfach werden diese Ordner übergangen:
+
+```
+Papierkorb, Trash, Deleted Items, Gelöschte Elemente, Gelöschte Objekte
+Spam, Junk, Junk-E-Mail, Bulk Mail, Werbung, Unerwünschte E-Mail
+Entwürfe, Drafts
+```
+
+Diese Post hat der Anwender schon einmal aussortiert. Groß- und
+Kleinschreibung, Bindestriche und Leerzeichen sind dabei egal – »Junk-E-Mail«,
+»Junk E-Mail« und »junk email« meinen denselben Ordner. Ein Ordner, der nur
+so *ähnlich* heißt, bleibt drin: »Werbung 2024« ist ein eigener Name.
+
+**Welche Ordner es trifft, steht vor dem Start unter dem Pfad** – eine stille
+Auslassung wäre schlimmer als keine.
+
+Das Häkchen *Papierkorb, Spamverdacht und Entwürfe mitnehmen* schaltet es ab,
+auf der Kommandozeile `--alles`. Für ein Geschäftsarchiv kann das richtig
+sein: Wer belegen muss, was ihn erreicht hat, will auch den Spamordner – dort
+landet regelmäßig Post, die dorthin nicht gehört.
+
+Wählen Sie dagegen mit *MBOX-Datei …* ausdrücklich eine einzelne Datei aus,
+wird nicht gefiltert. Wer »Junk« von Hand anklickt, hat entschieden.
+
 Auf der Kommandozeile ist das `mailburg importieren ARCHIV QUELLE --konto NAME`.
 
 **Eingescannte PDF lesen …**

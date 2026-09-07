@@ -50,7 +50,10 @@ class EmlOrdnerTest(unittest.TestCase):
 
         quelle = open_path(self.wo)
 
-        self.assertIsInstance(quelle, EmlOrdnerSource)
+        # ``open_path`` gibt seit dem 2026-09-07 eine Hülle zurück, die
+        # Papierkorb und Spamverdacht draußen lässt. *Erkannt* wurde
+        # trotzdem ein eml-Verzeichnis – das steht darunter.
+        self.assertIsInstance(quelle.roh, EmlOrdnerSource)
 
     def test_ein_leeres_verzeichnis_wird_abgelehnt(self) -> None:
         """Lieber eine klare Absage als eine Quelle, die nichts liefert."""
@@ -65,7 +68,7 @@ class EmlOrdnerTest(unittest.TestCase):
         """Bei einem Export liegen die Mails selten ganz oben."""
         self._ablegen("a/b/c/d/tief.eml", mail("Tief"))
 
-        self.assertIsInstance(open_path(self.wo), EmlOrdnerSource)
+        self.assertIsInstance(open_path(self.wo).roh, EmlOrdnerSource)
 
     # -------------------------------------------------------------- Ordner
 
@@ -364,3 +367,116 @@ class MaildirZustandTest(unittest.TestCase):
 
         self.assertEqual(nach_betreff["Gelesen"], "S")
         self.assertEqual(nach_betreff["Ungelesen"], "")
+
+
+class PapierkorbUndSpamTest(unittest.TestCase):
+    """Was von der Platte hereinkommt – und was nicht.
+
+    **Beim Abruf aus einem Postfach übergeht MailBurg diese Ordner seit
+    jeher**; die Liste hängt am Konto. Von der Platte gelesen wurde
+    dagegen alles, und niemand hatte die Frage gestellt – bis Stephan am
+    2026-09-07 sein Firmenpostfach aus MailStore einlas, 68.000 Mails.
+
+    Der Anwender soll sich darum nicht kümmern müssen: Papierkorb und
+    Spamverdacht hat er schon einmal aussortiert.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name)
+
+    def _ablegen(self, pfad: str) -> None:
+        ziel = self.wo / pfad
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        ziel.write_bytes(mail(pfad))
+
+    def _ordner(self, **kwargs) -> tuple[list[str], set[str]]:
+        quelle = open_path(self.wo, **kwargs)
+        self.addCleanup(quelle.close)
+        aus_nachrichten = {n.folder for n in quelle.iter_messages()}
+        return quelle.folders(), aus_nachrichten
+
+    def test_der_papierkorb_bleibt_draussen(self):
+        self._ablegen("Posteingang/eine.eml")
+        self._ablegen("Papierkorb/weg.eml")
+
+        ordner, gelesen = self._ordner()
+
+        self.assertEqual(ordner, ["Posteingang"])
+        self.assertEqual(gelesen, {"Posteingang"})
+
+    def test_spam_ebenfalls(self):
+        self._ablegen("Posteingang/eine.eml")
+        self._ablegen("Spam/werbung.eml")
+
+        _, gelesen = self._ordner()
+
+        self.assertEqual(gelesen, {"Posteingang"})
+
+    def test_auch_outlooks_schreibweise_mit_bindestrich(self):
+        """»Junk-E-Mail« stand bis heute in keiner Liste."""
+        self._ablegen("Posteingang/eine.eml")
+        self._ablegen("Junk-E-Mail/werbung.eml")
+
+        _, gelesen = self._ordner()
+
+        self.assertEqual(gelesen, {"Posteingang"})
+
+    def test_und_ein_unterordner_des_papierkorbs(self):
+        self._ablegen("Posteingang/eine.eml")
+        self._ablegen("Papierkorb/2019/alt.eml")
+
+        _, gelesen = self._ordner()
+
+        self.assertEqual(gelesen, {"Posteingang"})
+
+    def test_ein_ordner_der_nur_so_aehnlich_heisst_bleibt_drin(self):
+        """»Werbung 2024« ist ein eigener Name, kein Spamordner."""
+        self._ablegen("Werbung 2024/kampagne.eml")
+        self._ablegen("Spam-Archiv/beweis.eml")
+
+        _, gelesen = self._ordner()
+
+        self.assertEqual(gelesen, {"Werbung 2024", "Spam-Archiv"})
+
+    def test_mit_alles_kommt_alles(self):
+        """Für ein Geschäftsarchiv kann genau das richtig sein."""
+        self._ablegen("Posteingang/eine.eml")
+        self._ablegen("Papierkorb/weg.eml")
+
+        _, gelesen = self._ordner(alles=True)
+
+        self.assertEqual(gelesen, {"Posteingang", "Papierkorb"})
+
+    def test_was_uebergangen_wurde_laesst_sich_erfragen(self):
+        """**Eine stille Auslassung wäre schlimmer als keine.**
+
+        Wer später eine Mail sucht, die nie angekommen ist, hält das
+        Archiv für unvollständig – ohne je zu erfahren, dass es eine
+        Entscheidung war.
+        """
+        self._ablegen("Posteingang/eine.eml")
+        self._ablegen("Papierkorb/weg.eml")
+        self._ablegen("Entwürfe/halb.eml")
+
+        quelle = open_path(self.wo)
+        self.addCleanup(quelle.close)
+        list(quelle.iter_messages())
+
+        self.assertEqual(quelle.uebergangen, {"Papierkorb", "Entwürfe"})
+
+    def test_eine_ausdruecklich_gewaehlte_datei_wird_nicht_gefiltert(self):
+        """Wer »Junk« von Hand auswählt, hat entschieden."""
+        import mailbox
+
+        datei = self.wo / "Junk"
+        kasten = mailbox.mbox(str(datei), create=True)
+        kasten.add(mail("drin"))
+        kasten.flush()
+        kasten.close()
+
+        quelle = open_path(datei)
+        self.addCleanup(quelle.close)
+
+        self.assertEqual(len(list(quelle.iter_messages())), 1)

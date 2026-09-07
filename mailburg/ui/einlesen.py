@@ -130,6 +130,24 @@ class Einlesedialog(QDialog):
         self.befund.setWordWrap(True)
         self.befund.setTextFormat(Qt.RichText)
 
+        # **In der Vorgabe aus.** Papierkorb und Spamverdacht hat der
+        # Anwender schon einmal aussortiert; sie ins Archiv zu holen,
+        # macht diese Entscheidung rückgängig. Beim Abruf aus einem
+        # Postfach ist das seit jeher so – von der Platte kam bis zum
+        # 2026-09-07 alles herein.
+        self.alles = QCheckBox(
+            "Papierkorb, Spamverdacht und Entwürfe mitnehmen"
+        )
+        self.alles.setToolTip(
+            "In der Vorgabe bleiben diese Ordner draußen, wie beim Abruf "
+            "aus einem Postfach.\n\n"
+            "Für ein Geschäftsarchiv kann das Gegenteil richtig sein: Wer "
+            "belegen muss, was ihn erreicht hat, will auch den "
+            "Spamordner – dort landet regelmäßig Post, die dorthin nicht "
+            "gehört."
+        )
+        self.alles.toggled.connect(self._pruefen)
+
         self.anhangstext = QCheckBox(
             "Text aus Anhängen mitlesen (PDF, Word, Tabellen)"
         )
@@ -159,6 +177,7 @@ class Einlesedialog(QDialog):
         aufbau.addWidget(erklaerung)
         aufbau.addLayout(felder)
         aufbau.addWidget(self.befund)
+        aufbau.addWidget(self.alles)
         aufbau.addWidget(self.anhangstext)
         aufbau.addWidget(self.balken)
         aufbau.addStretch(1)
@@ -260,14 +279,13 @@ class Einlesedialog(QDialog):
             )
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(gut)
 
-    @staticmethod
-    def _befund(ort: Path) -> tuple[bool, str]:
+    def _befund(self, ort: Path) -> tuple[bool, str]:
         from mailburg.sources import local
 
         if not ort.exists():
             return False, "Diesen Ordner gibt es nicht."
         try:
-            quelle = local.open_path(ort)
+            quelle = local.open_path(ort, alles=self.alles.isChecked())
         except (ValueError, FileNotFoundError) as exc:
             return False, str(exc)
         try:
@@ -277,13 +295,25 @@ class Einlesedialog(QDialog):
         finally:
             quelle.close()
 
+        # **Was draußen bleibt, steht daneben.** Eine stille Auslassung
+        # wäre schlimmer als keine: Wer später eine Mail sucht, die nie
+        # angekommen ist, hält das Archiv für unvollständig, ohne je zu
+        # erfahren, dass es eine Entscheidung war.
+        weg = sorted(getattr(quelle, "uebergangen", ()) or ())
+        nachsatz = (
+            f"<br><span style='color:palette(mid)'>Übergangen: "
+            f"{', '.join(weg)} – Papierkorb, Spamverdacht und Entwürfe "
+            f"bleiben draußen.</span>"
+            if weg else ""
+        )
+
         if not ordner:
-            return True, f"Erkannt: {quelle.describe()}"
+            return True, f"Erkannt: {quelle.describe()}{nachsatz}"
         gezeigt = ", ".join(ordner[:6])
         rest = f" und {len(ordner) - 6} weitere" if len(ordner) > 6 else ""
         return True, (
             f"<b>Erkannt:</b> {quelle.describe()}<br>"
-            f"{len(ordner)} Ordner: {gezeigt}{rest}"
+            f"{len(ordner)} Ordner: {gezeigt}{rest}{nachsatz}"
         )
 
     # ------------------------------------------------------------ Laufen
@@ -299,6 +329,7 @@ class Einlesedialog(QDialog):
         auftrag = Einleselauf(
             self.archiv.root, ort, name,
             mit_anhangstext=self.anhangstext.isChecked(),
+            alles=self.alles.isChecked(),
         )
         auftrag.meldung.connect(self.befund.setText)
         auftrag.fertig.connect(self._fertig)

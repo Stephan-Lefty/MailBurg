@@ -141,6 +141,16 @@ Was übergangen wird, lässt sich je Konto einstellen. Die Liste steht in
 `konten.json` unter `ausschluss`; nachsehen lässt sie sich mit
 `mailburg -v konten liste`.
 
+Groß- und Kleinschreibung, Bindestriche und Leerzeichen spielen dabei keine
+Rolle: »Junk-E-Mail«, »Junk E-Mail« und »junk email« meinen denselben Ordner.
+Ein Ordner, der nur so *ähnlich* heißt, bleibt drin – »Werbung 2024« ist ein
+eigener Name, kein Spamordner.
+
+**Dieselbe Liste gilt beim Einlesen von der Platte** (`mailburg importieren`,
+*Post → Lokale Mailordner einlesen …*). Ein Export aus einem anderen
+Archivprogramm bringt die Ordnerstruktur mit, aus der er stammt – samt
+Papierkorb. Mit `--alles` kommt alles mit.
+
 Für den umgekehrten Fall – einzelne Ordner *ausschließlich* archivieren – gibt
 es beim Abruf `--ordner`:
 

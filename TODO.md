@@ -8,6 +8,34 @@ wurde.
 
 ## Offen
 
+### Der große Bestand (2026-09-07)
+
+**Das Firmenarchiv steht bei rund 68.000 Mails und läuft sauber.** Der
+MailStore-Export ist durch – das Vierfache des bisherigen
+Alltagsbestands und die erste Zahl in dieser Größenordnung.
+
+- [x] **Papierkorb und Spam beim Einlesen übergehen.** (2026-09-07)
+  Stephans Frage dazu: »Werden Mails aus dem Spam-Ordner oder mit
+  [SPAM] im Betreff rausgefiltert?« Beim Abruf ja, beim Einlesen von der
+  Platte nein – die Liste hing am Konto. Jetzt gilt sie für beides,
+  abschaltbar mit `--alles`.
+
+- [ ] **Sein Bestand ist damit noch nicht bereinigt.** Die 68.000 sind
+  vor dieser Änderung eingelesen worden. Nachsehen mit
+  `mailburg suchen ARCHIV "ordner:Spam"` und den Ordnernamen aus dem
+  Postfachbaum; herausnehmen ließe sich das mit `mailburg loeschen`.
+
+- [ ] **Wie schnell ist die Suche bei 68.000 Mails?** Bisher gemessen an
+  5.187. Die Zahl fehlt, und sie wäre die erste belastbare Auskunft zu
+  einem Bestand dieser Größe.
+
+- [ ] **Kein Filter auf `[SPAM]` im Betreff.** Bewusst nicht gebaut: Der
+  Marker steht auch auf falsch-positiven Mails, und was einmal nicht
+  archiviert wurde, fällt erst Jahre später auf. Ein Ordner ist eine
+  Entscheidung des Anwenders, ein Betreffmarker die Vermutung eines
+  Filters. Wer es doch will, kann die Mails hinterher über die Suche
+  löschen – dieser Weg ist umkehrbar, der andere nicht.
+
 ### Fenster vor jeder Veröffentlichung prüfen (2026-09-07)
 
 Stephans Regel, aus zwei Bildschirmfotos entstanden: »Es sollten immer

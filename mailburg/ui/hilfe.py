@@ -315,6 +315,17 @@ stehen die Postfächer, die es in diesem Archiv schon gibt.</p>
 gleich aus. MailBurg warnt deshalb, wenn Ihr Name einem vorhandenen bis
 auf Groß- und Kleinschreibung gleicht.</p>
 
+<p><b>Papierkorb, Spamverdacht und Entwürfe bleiben draußen</b> – wie
+beim Abruf aus einem Postfach. Diese Post haben Sie schon einmal
+aussortiert; sie ins Archiv zu holen, machte diese Entscheidung
+rückgängig. Welche Ordner das im gewählten Ordner betrifft, steht vor
+dem Start unter dem Pfad.</p>
+
+<p>Das Häkchen <i>Papierkorb, Spamverdacht und Entwürfe mitnehmen</i>
+schaltet es ab. Für ein Geschäftsarchiv kann genau das richtig sein: Wer
+belegen muss, was ihn erreicht hat, will auch den Spamordner – dort
+landet regelmäßig Post, die dorthin nicht gehört.</p>
+
 <p><b>Gelesen wird nur.</b> An Ihren Dateien ändert MailBurg nichts, und
 zweimal einlesen erzeugt keine zweite Kopie: Der Name jeder Mail im
 Archiv ist der Hash ihres Inhalts.</p>

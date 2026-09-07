@@ -549,9 +549,17 @@ class ImapSource(Source):
         Damit trifft »Trash« auch ``INBOX/Trash`` und alles darunter – ein
         Unterordner des Papierkorbs ist genauso wenig archivierungswürdig
         wie dieser selbst.
+
+        **Seit dem 2026-09-07 dieselbe Prüfung wie beim Einlesen von der
+        Platte** (``accounts.ist_ausgeschlossen``). Sie ist zugleich
+        etwas nachsichtiger geworden: Bindestriche und Leerzeichen zählen
+        nicht mehr, weshalb Outlooks »Junk-E-Mail« endlich erkannt wird.
+        Vorher stand in der Liste »Junk E-Mail« mit Leerzeichen – und
+        genau daran ging es vorbei.
         """
-        aus = {name.casefold() for name in self.konto.ausschluss}
-        return any(teil.casefold() in aus for teil in anzeige.split("/"))
+        from mailburg.core.accounts import ist_ausgeschlossen
+
+        return ist_ausgeschlossen(anzeige, self.konto.ausschluss)
 
     def folders(self) -> list[str]:
         return [anzeige for _, anzeige in self._alle_ordner()]

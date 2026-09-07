@@ -55,8 +55,8 @@ MailBurg does the opposite:
 
 **Version 1.3.2, in daily use.** Archive format, IMAP retrieval, search, the
 graphical interface, text recognition for scanned PDFs, backups and scheduled
-retrieval are all in place and used every day — on Linux with a corpus of more
-than 16,000 messages, on Windows with the ready-made `MailBurg.exe`.
+retrieval are all in place and used every day — on Linux with a corpus of
+around 68,000 messages, on Windows with the ready-made `MailBurg.exe`.
 
 OAuth2 is implemented, but only tested against a mock provider: nobody has yet
 signed in with a real Microsoft or Google account. For those, an app password

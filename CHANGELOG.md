@@ -7,6 +7,36 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Geändert
+
+- **Beim Einlesen von der Platte bleiben Papierkorb, Spamverdacht und
+  Entwürfe jetzt draußen** – wie beim Abruf aus einem Postfach. Die
+  Ausschlussliste hing bisher am Konto und galt deshalb nur für IMAP und
+  JMAP; von der Platte kam alles herein. Ein Export aus einem anderen
+  Archivprogramm bringt aber die Ordnerstruktur mit, aus der er stammt,
+  samt Papierkorb.
+
+  **Was übergangen wurde, steht danach da** – im Dialog schon vor dem
+  Start, auf der Kommandozeile am Ende des Laufs. Eine stille Auslassung
+  wäre schlimmer als keine: Wer später eine Mail sucht, die nie
+  angekommen ist, hält sein Archiv für unvollständig, ohne je zu
+  erfahren, dass es eine Entscheidung war.
+
+  Abschaltbar mit `--alles` beziehungsweise dem Häkchen im Dialog. Für
+  ein Geschäftsarchiv kann das richtig sein: Wer belegen muss, was ihn
+  erreicht hat, will auch den Spamordner. Und wer mit *MBOX-Datei …*
+  ausdrücklich eine einzelne Datei auswählt, bekommt sie ungefiltert –
+  eine ausdrückliche Wahl schlägt den Ausschluss.
+
+- **Der Ordnervergleich sieht über Bindestriche und Leerzeichen hinweg.**
+  Outlook schreibt »Junk-E-Mail«, Exchange »Junk E-Mail« – in der Liste
+  stand nur die zweite Schreibweise, und genau daran ging der Abruf
+  vorbei. Dazu neu: »Gelöschte Objekte« und »Unerwünschte E-Mail«. Ein
+  Ordner, der nur so *ähnlich* heißt, bleibt drin: »Werbung 2024« ist
+  ein eigener Name.
+
 ## [1.3.2] – 2026-09-07
 
 Eine Fassung über die Oberfläche – aus zwei Bildschirmfotos und einer

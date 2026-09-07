@@ -7,6 +7,34 @@ down, with the date they were completed.
 
 ## Open
 
+### The large corpus (2026-09-07)
+
+**The company archive holds around 68,000 messages and runs cleanly.**
+The MailStore export is done — four times the previous everyday corpus
+and the first figure in this order of magnitude.
+
+- [x] **Skip trash and spam when reading from disk.** (2026-09-07)
+  Stephan's question: "Are messages from the spam folder or with [SPAM]
+  in the subject filtered out?" On retrieval yes, on reading from disk
+  no — the list was attached to the account. It now applies to both,
+  switchable off with `--alles`.
+
+- [ ] **His corpus is not cleaned up by this.** The 68,000 were read in
+  before the change. Check with
+  `mailburg suchen ARCHIVE "ordner:Spam"` plus the folder names from the
+  mailbox tree; removal would be `mailburg loeschen`.
+
+- [ ] **How fast is search over 68,000 messages?** Measured so far
+  against 5,187. The figure is missing, and it would be the first solid
+  answer for a corpus of this size.
+
+- [ ] **No filter on `[SPAM]` in the subject.** Deliberately not built:
+  the marker also sits on false positives, and what was never archived
+  only surfaces years later. A folder is a decision by the user, a
+  subject marker is a filter's guess. Anyone who wants it anyway can
+  delete those messages afterwards via search — that route is
+  reversible, the other is not.
+
 ### Check every window before every release (2026-09-07)
 
 Stephan's rule, born from two screenshots: "Before releasing a version,

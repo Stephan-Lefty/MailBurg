@@ -464,28 +464,99 @@ def _emlx_auspacken(roh: bytes) -> bytes:
     return rest[:laenge]
 
 
-def open_path(path: Path, account: str = "") -> Source:
-    """Errät, was für eine Mailquelle unter ``path`` liegt, und öffnet sie."""
+class OhnePapierkorb(Source):
+    """Legt einen Filter um eine Quelle: Papierkorb, Spam, Entwürfe raus.
+
+    **Warum das nicht in jeder Quelle einzeln steht.** Beim Abruf aus
+    einem Postfach übergeht MailBurg diese Ordner seit jeher – die Liste
+    hängt am Konto. Von der Platte gelesen wurde dagegen alles: Ein
+    Export bringt die Ordnerstruktur mit, aus der er stammt, samt
+    Papierkorb und Spamverdacht.
+
+    Am 2026-09-07 aufgefallen, als Stephan sein Firmenpostfach aus
+    MailStore einlas – 68.000 Mails, und niemand hatte die Frage
+    gestellt. **Hier als Hülle und nicht fünfmal einzeln**, damit auch
+    die sechste Quelle es bekommt, die später dazukommt.
+
+    **Was übergangen wurde, merkt sich die Hülle.** Eine stille
+    Auslassung wäre schlimmer als keine: Wer sein Archiv später
+    durchsucht und etwas nicht findet, muss erfahren können, warum.
+    """
+
+    def __init__(self, quelle: Source, ausschluss=None) -> None:
+        from mailburg.core.accounts import STANDARD_AUSSCHLUSS
+
+        self.quelle = quelle
+        self.ausschluss = tuple(
+            STANDARD_AUSSCHLUSS if ausschluss is None else ausschluss
+        )
+        self.uebergangen: set[str] = set()
+
+    @property
+    def account(self) -> str:  # type: ignore[override]
+        return self.quelle.account
+
+    @property
+    def roh(self) -> Source:
+        """Die Quelle darunter – für Tests und Fehlersuche.
+
+        Wer wissen will, *was* erkannt wurde, fragt hiernach: Von außen
+        sieht man sonst nur die Hülle.
+        """
+        return self.quelle
+
+    def _raus(self, ordner: str) -> bool:
+        from mailburg.core.accounts import ist_ausgeschlossen
+
+        if ist_ausgeschlossen(ordner, self.ausschluss):
+            self.uebergangen.add(ordner)
+            return True
+        return False
+
+    def folders(self) -> list[str]:
+        return [o for o in self.quelle.folders() if not self._raus(o)]
+
+    def iter_messages(self) -> Iterator[RawMessage]:
+        for nachricht in self.quelle.iter_messages():
+            if not self._raus(nachricht.folder):
+                yield nachricht
+
+    def describe(self) -> str:
+        return self.quelle.describe()
+
+    def close(self) -> None:
+        self.quelle.close()
+
+
+def open_path(path: Path, account: str = "", *, alles: bool = False) -> Source:
+    """Errät, was für eine Mailquelle unter ``path`` liegt, und öffnet sie.
+
+    ``alles=True`` nimmt auch Papierkorb, Spamverdacht und Entwürfe mit.
+    Die Vorgabe lässt sie draußen – wie beim Abruf aus einem Postfach.
+    """
     path = Path(path).expanduser().resolve()
     if not path.exists():
         raise FileNotFoundError(f"{path} gibt es nicht.")
 
+    def gefiltert(quelle: Source) -> Source:
+        return quelle if alles else OhnePapierkorb(quelle)
+
     if path.is_dir():
         if (path / "Mail").is_dir() or (path / "ImapMail").is_dir():
-            return ThunderbirdSource(path, account)
+            return gefiltert(ThunderbirdSource(path, account))
         if (path / "cur").is_dir():
-            return MaildirSource(path, account)
+            return gefiltert(MaildirSource(path, account))
         if ThunderbirdSource._enthaelt_ordnerdateien(path):
             # Ein Verzeichnis voller Ordnerdateien, etwa "Local Folders".
-            return ThunderbirdSource(path, account)
+            return gefiltert(ThunderbirdSource(path, account))
         if MaildirSammlungSource.enthaelt_maildirs(path):
             # Evolution und jede andere Maildir++-Ablage: Die Wurzel hat
             # kein cur/, die Ordner darunter schon.
-            return MaildirSammlungSource(path, account)
+            return gefiltert(MaildirSammlungSource(path, account))
         if EmlOrdnerSource._enthaelt_eml(path):
             # Zuletzt geprüft, weil am unspezifischsten: Eine einzelne
             # .eml kann auch in einem Thunderbird-Profil liegen.
-            return EmlOrdnerSource(path, account)
+            return gefiltert(EmlOrdnerSource(path, account))
         raise ValueError(
             f"{path} ist weder Thunderbird-Profil noch Maildir noch ein "
             f"Verzeichnis mit Ordnerdateien oder .eml-Dateien. Erwartet "
@@ -496,4 +567,9 @@ def open_path(path: Path, account: str = "") -> Source:
             f"Mails als .eml liegen."
         )
 
+    # **Eine ausdrücklich gewählte Datei wird nicht gefiltert.** Wer im
+    # Dialog »MBOX-Datei …« anklickt und dort »Junk« auswählt, hat
+    # entschieden – ihm dann nichts einzulesen und es nur in einer
+    # Nebenzeile zu erwähnen, wäre die schlechtere von zwei
+    # Überraschungen.
     return MboxSource(path, account)

@@ -168,13 +168,17 @@ def cmd_anlegen(args: argparse.Namespace) -> int:
 def cmd_importieren(args: argparse.Namespace) -> int:
     """Liest eine Mailquelle ins Archiv ein."""
     try:
-        source = local.open_path(Path(args.quelle), args.konto or "")
+        source = local.open_path(
+            Path(args.quelle), args.konto or "", alles=args.alles
+        )
     except (ValueError, FileNotFoundError) as exc:
         print(f"Fehler: {exc}", file=sys.stderr)
         return 2
 
     print(f"Quelle: {source.describe()}")
     print(f"Konto:  {source.account}")
+    if args.alles:
+        print("Papierkorb, Spamverdacht und Entwürfe: werden mit eingelesen")
 
     mit_text = not args.ohne_anhangstext
     if mit_text:
@@ -215,6 +219,20 @@ def cmd_importieren(args: argparse.Namespace) -> int:
         rate = stat.gelesen / seconds if seconds else 0
         print(f"Fertig: {stat}")
         print(f"Dauer: {seconds:.1f} s ({rate:.0f} Mails/s)")
+
+        # **Was ausgelassen wurde, gehört gesagt.** Sonst sucht jemand
+        # Jahre später eine Mail, die nie hier angekommen ist, und hält
+        # das Archiv für unvollständig – ohne je zu erfahren, dass es
+        # eine Entscheidung war.
+        uebergangen = getattr(source, "uebergangen", None)
+        if uebergangen:
+            namen = ", ".join(sorted(uebergangen))
+            print(
+                f"\nÜbergangen ({len(uebergangen)} Ordner): {namen}\n"
+                f"Papierkorb, Spamverdacht und Entwürfe bleiben draußen – "
+                f"wie beim Abruf\naus einem Postfach. Mit --alles kommen "
+                f"sie mit."
+            )
 
         if mit_text:
             print(f"Mit Anhangstext: {sprache.mails(stat.mit_anhangstext)}")
@@ -2651,6 +2669,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Anhänge nicht im Volltext erfassen (deutlich schneller, "
              "dafür sind PDF und Office-Dateien nicht durchsuchbar)",
+    )
+    p.add_argument(
+        "--alles",
+        action="store_true",
+        help="auch Papierkorb, Spamverdacht und Entwürfe einlesen; "
+             "in der Vorgabe bleiben sie draußen, wie beim Abruf aus "
+             "einem Postfach",
     )
     p.set_defaults(func=cmd_importieren)
 

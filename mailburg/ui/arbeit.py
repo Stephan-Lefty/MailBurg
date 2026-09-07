@@ -336,19 +336,23 @@ class Einleselauf(Auftrag):
     """
 
     def __init__(self, archiv_pfad, quellpfad, konto: str, *,
-                 mit_anhangstext: bool = True) -> None:
+                 mit_anhangstext: bool = True, alles: bool = False) -> None:
         super().__init__()
         self.archiv_pfad = archiv_pfad
         self.quellpfad = quellpfad
         self.konto = konto
         self.mit_anhangstext = mit_anhangstext
+        self.alles = alles
+        """Auch Papierkorb, Spamverdacht und Entwürfe einlesen."""
 
     def ausfuehren(self):
         from mailburg.core.archive import Archive
         from mailburg.core.importer import importieren
         from mailburg.sources import local
 
-        quelle = local.open_path(Path(self.quellpfad), self.konto)
+        quelle = local.open_path(
+            Path(self.quellpfad), self.konto, alles=self.alles
+        )
         self.meldung.emit(f"Lese {quelle.describe()} …")
 
         try:

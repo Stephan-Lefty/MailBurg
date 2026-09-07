@@ -50,9 +50,38 @@ BRUECKEN_PORTS = frozenset({1143, 1025, 1100})
 
 STANDARD_AUSSCHLUSS = (
     "Trash", "Papierkorb", "Deleted Items", "Gelöschte Elemente", "Deleted Messages",
-    "Junk", "Spam", "Junk E-Mail", "Bulk Mail", "Werbung",
+    "Gelöschte Objekte",
+    "Junk", "Spam", "Junk E-Mail", "Junk-E-Mail", "Bulk Mail", "Werbung",
+    "Unerwünschte E-Mail",
     "Drafts", "Entwürfe",
 )
+
+
+def _vergleichsform(name: str) -> str:
+    """Wie ein Ordnername verglichen wird.
+
+    **Groß- und Kleinschreibung, Bindestriche und Leerzeichen sind
+    egal.** Outlook schreibt »Junk-E-Mail«, Exchange »Junk E-Mail«,
+    manche Server »junk email« – gemeint ist dreimal derselbe Ordner.
+    Ohne diese Angleichung stünde in der Liste je Schreibweise ein
+    eigener Eintrag, und der nächste Anbieter erfindet eine vierte.
+    """
+    return "".join(z for z in name.casefold() if z.isalnum())
+
+
+def ist_ausgeschlossen(anzeige: str, ausschluss=STANDARD_AUSSCHLUSS) -> bool:
+    """Ob dieser Ordner übergangen wird – samt allem darunter.
+
+    Geprüft wird jeder Teil des Pfades: »Trash« trifft damit auch
+    ``INBOX/Trash`` und alles darunter. Ein Unterordner des Papierkorbs
+    ist genauso wenig archivierungswürdig wie dieser selbst.
+
+    **Ein Ordner, der nur so ähnlich heißt, bleibt drin.** »Werbung
+    2024« oder »Spam-Archiv« sind eigene Namen – wer sie anlegt, meint
+    etwas anderes als den Spamordner seines Anbieters.
+    """
+    aus = {_vergleichsform(name) for name in ausschluss}
+    return any(_vergleichsform(teil) in aus for teil in anzeige.split("/"))
 
 
 @dataclass

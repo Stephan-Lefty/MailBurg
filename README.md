@@ -57,7 +57,7 @@ MailBurg macht es andersherum:
 **Fassung 1.3.2, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
 Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
 Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
-Bestand von über 16.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
+Bestand von rund 68.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
 
 OAuth2 ist gebaut, aber nur gegen einen nachgebauten Anbieter geprüft: Bei
 einem echten Microsoft- oder Google-Konto hat sich damit noch niemand
