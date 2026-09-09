@@ -179,7 +179,7 @@ liegt. Siehe [docs/zurueckspielen.md](docs/zurueckspielen.md).
 
 ## Loslegen
 
-**Debian, Ubuntu, GuideOS und Verwandte:** Das fertige Paket hängt an jedem
+**Debian 13, GuideOS und Verwandte:** Das fertige Paket hängt an jedem
 [Release](https://github.com/Stephan-Lefty/MailBurg/releases).
 
 ```bash
@@ -190,6 +190,12 @@ Es zieht die Oberfläche, den Schlüsselbund und die PDF-Werkzeuge aus der
 Distribution nach – MailBurg bringt kein eigenes Qt mit, damit
 Sicherheitsupdates über `apt` ankommen. Danach steht MailBurg im
 Anwendungsmenü und `mailburg` in der Eingabeaufforderung.
+
+> **Unter Ubuntu nicht.** Ubuntu führt PySide6 nicht in seinen Paketquellen –
+> `apt` installiert MailBurg dort zwar, aber ohne Oberfläche, und meldet das
+> nur beiläufig als nicht erfüllte Empfehlung. Nehmen Sie dort den Weg
+> darunter. Dasselbe gilt für alles, was auf Ubuntu aufbaut, etwa Linux Mint
+> und Pop!\_OS.
 
 **Alle anderen Systeme.** Voraussetzung ist Python 3.11 oder neuer; weitere
 Pakete braucht der Kern nicht.

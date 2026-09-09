@@ -196,8 +196,18 @@ gehört zum einzelnen Postfach, nicht zum Programm.</p>
 <p>Manche Server sortieren Spamverdacht nicht in einen Ordner, sondern
 setzen dem Betreff eine Marke voran: <tt>[SPAM] Gewinnbenachrichtigung</tt>.
 Solche Post landet im Posteingang, und kein Ordnerausschluss hält sie
-auf. Auf Wunsch nimmt MailBurg sie gar nicht erst auf – auf der
-Kommandozeile mit <tt>mailburg konten spamfilter NAME --ein</tt>.</p>
+auf. Auf Wunsch nimmt MailBurg sie gar nicht erst auf.</p>
+
+<p><b>Ein- und ausschalten für alle Postfächer zugleich:</b> unter
+<i>Einstellungen → Was von selbst laufen soll …</i>. Dort steht der
+Schalter, weil der Filter bei jedem Abruf wirkt – auch bei dem, der von
+selbst läuft. Zeigt das Kästchen einen Strich statt eines Hakens, ist er
+nur bei einem Teil der Postfächer an; wer ihn so stehen lässt, ändert
+nichts daran.</p>
+
+<p>Für einzelne Postfächer gibt es die Kommandozeile:
+<tt>mailburg konten spamfilter NAME --ein</tt>, <tt>--aus</tt>, oder
+ohne Schalter zum Nachsehen.</p>
 
 <p><b>Nur wenn der Betreff mit der Marke beginnt.</b> Darauf kommt es
 an, und die Regel stammt aus einem echten Archiv: Von 312 Nachrichten

@@ -349,6 +349,18 @@ Ordner Ihrer Wahl. Am besten einen, den Ihre Cloud abgleicht. **Nicht auf
 dieselbe Platte wie das Archiv:** Eine Sicherung, die neben dem Original liegt,
 geht mit ihm zusammen verloren.
 
+Dazu ein dritter Schalter, der zu keinem Zeitplan gehört, aber bei jedem Abruf
+wirkt – auch bei dem, der von selbst läuft:
+
+*Post mit Spam-Marke im Betreff gar nicht erst aufnehmen* – gilt für **alle**
+Postfächer auf einmal. Zeigt das Kästchen einen Strich statt eines Hakens, ist
+der Filter nur bei einem Teil an; wer ihn so stehen lässt, ändert daran nichts.
+Für einzelne Postfächer gibt es `mailburg konten spamfilter NAME --ein`.
+
+**Sehen Sie vorher nach, was das bei Ihnen träfe** – der Verweis daneben führt
+ins Handbuch, wo steht, warum das wichtig ist. Kurz gefasst: Ein Spamfilter
+irrt, und in einem echten Archiv standen unter den Treffern sieben Rechnungen.
+
 ## Menü Hilfe
 
 ![Das eingebaute Handbuch: links das Verzeichnis mit Kapiteln von »Überblick« bis »Tipps«, rechts der Text des gewählten Kapitels mit Verweisen auf verwandte Stellen.](bilder/handbuch.png)

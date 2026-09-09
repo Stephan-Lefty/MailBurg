@@ -170,7 +170,7 @@ the `Message-ID` against what is already there. See
 
 ## Getting started
 
-**Debian, Ubuntu and relatives:** the ready-made package is attached to every
+**Debian 13 and relatives:** the ready-made package is attached to every
 [release](https://github.com/Stephan-Lefty/MailBurg/releases).
 
 ```bash
@@ -180,6 +180,11 @@ sudo apt install ./mailburg_*_all.deb
 It pulls the interface, the keyring and the PDF tools from the distribution —
 MailBurg ships no Qt of its own, so that security updates arrive through
 `apt`.
+
+> **Not on Ubuntu.** Ubuntu does not carry PySide6 in its archives — `apt`
+> will install MailBurg there, but without the interface, and mentions it
+> only in passing as an unmet recommendation. Use the route below instead.
+> The same goes for anything built on Ubuntu, such as Linux Mint.
 
 **Everywhere else.** Requires Python 3.11 or newer; the core needs no further
 packages.

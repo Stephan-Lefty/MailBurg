@@ -15,6 +15,47 @@ from mailburg import APP_NAME, __version__
 from mailburg.core.einstellungen import merken, zuletzt_gemerkt
 
 
+def aus_systempaket() -> bool:
+    """Ob MailBurg aus einem Distributionspaket läuft.
+
+    ``dist-packages`` ist der Ort, an den Debian und seine Verwandten
+    Python-Module legen; ``site-packages`` heißt es bei pip und in jeder
+    virtuellen Umgebung. Das ist der einzige verlässliche Unterschied,
+    den es ohne Rückfrage beim Paketverwalter gibt.
+    """
+    return "/dist-packages/" in (__file__ or "").replace("\\", "/")
+
+
+def _qt_fehlt() -> str:
+    """Sagt, wie *hier* nachzurüsten ist – nicht, wie es anderswo ginge.
+
+    **Ein Hinweis auf den falschen Weg ist schlimmer als keiner.** Wer
+    MailBurg als Debian-Paket installiert hat und ``pip install`` liest,
+    tut entweder nichts oder etwas, das seine Systempakete durcheinander
+    bringt. Derselbe Fehler wie am 2026-09-03, als der Suchpfad-Hinweis
+    auf ``~/.bashrc`` zeigte, während der Anwender fish benutzte.
+
+    Aufgefallen am 2026-09-09 beim Bau des Debian-Pakets: Unter Debian 13
+    liegt PySide6 bereit, unter Ubuntu 24.04 gibt es es gar nicht als
+    Paket. Genau dort läuft dieser Text also auf.
+    """
+    if aus_systempaket():
+        return (
+            "Für die grafische Oberfläche fehlt PySide6.\n\n"
+            "Unter Debian und GuideOS:\n"
+            "  sudo apt install python3-pyside6.qtwidgets\n\n"
+            "Bringt Ihre Distribution PySide6 nicht mit – unter Ubuntu "
+            "ist das so –,\nhilft die Einrichtung im Benutzerordner: "
+            "siehe install.sh unter\nhttps://github.com/Stephan-Lefty/MailBurg\n\n"
+            "Die Kommandozeile läuft auch ohne:  mailburg --help"
+        )
+    return (
+        "Für die grafische Oberfläche fehlt PySide6.\n"
+        "Nachrüsten mit:  pip install 'mailburg[oberflaeche]'\n"
+        "Die Kommandozeile läuft auch ohne:  mailburg --help"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv if argv is None else argv)
 
@@ -25,12 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from PySide6.QtWidgets import QApplication
     except ImportError:
-        print(
-            "Für die grafische Oberfläche fehlt PySide6.\n"
-            "Nachrüsten mit:  pip install 'mailburg[oberflaeche]'\n"
-            "Die Kommandozeile läuft auch ohne:  mailburg --help",
-            file=sys.stderr,
-        )
+        print(_qt_fehlt(), file=sys.stderr)
         return 2
 
     _fehler_zeigen_statt_sterben()

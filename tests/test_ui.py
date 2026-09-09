@@ -6270,3 +6270,149 @@ class RueckspielenInsPostfachTest(RueckspieldialogTest):
         self.assertTrue(frage.called)
         self.assertIn("Message-ID", frage.call_args[0][2])
         self.assertIsNone(konto)
+
+
+class SpamfilterImZeitplanTest(OberflaechenTest):
+    """Der Betrefffilter für alle Postfächer, im Fenster.
+
+    **Gewünscht am 2026-09-09.** Bis dahin ging das Ein- und Ausschalten
+    nur je Postfach auf der Kommandozeile – bei fünfzehn Konten eine
+    Schleife in der Shell. Er steht bei »Was von selbst laufen soll«,
+    weil er bei jedem Abruf wirkt, auch bei dem, der von selbst läuft.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.basis = pathlib.Path(self._tmp.name)
+        for name in ("data_dir", "config_dir"):
+            patcher = mock.patch.object(
+                paths, name, return_value=self.basis / name
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
+            (self.basis / name).mkdir(parents=True, exist_ok=True)
+
+    def _konten(self, *mit_filter: bool):
+        from mailburg.core.accounts import (
+            STANDARD_BETREFFMARKEN, Konto, Kontenliste,
+        )
+
+        liste = Kontenliste()
+        liste.konten = [
+            Konto(
+                name=f"Konto{i}", server="imap.example.org",
+                benutzer=f"post{i}@example.org",
+                betreffmarken=list(STANDARD_BETREFFMARKEN) if an else [],
+            )
+            for i, an in enumerate(mit_filter)
+        ]
+        liste.speichern()
+
+    def _wahl(self):
+        from mailburg.ui.zeitplan import Spamfilterwahl
+
+        wahl = Spamfilterwahl()
+        self.addCleanup(wahl.deleteLater)
+        return wahl
+
+    def _wie_viele_mit_filter(self) -> int:
+        from mailburg.core.accounts import Kontenliste
+
+        return sum(1 for k in Kontenliste().konten if k.betreffmarken)
+
+    def test_ohne_postfaecher_gibt_es_nichts_zu_schalten(self):
+        """Eine Einstellung, die nirgends ankommt, wäre eine Zusage ins Leere."""
+        self._konten()
+
+        wahl = self._wahl()
+
+        self.assertFalse(wahl.an.isEnabled())
+
+    def test_alle_aus_zeigt_ein_leeres_kaestchen(self):
+        self._konten(False, False, False)
+
+        from PySide6.QtCore import Qt
+
+        self.assertEqual(self._wahl().an.checkState(), Qt.Unchecked)
+
+    def test_alle_an_zeigt_ein_volles(self):
+        self._konten(True, True, True)
+
+        from PySide6.QtCore import Qt
+
+        self.assertEqual(self._wahl().an.checkState(), Qt.Checked)
+
+    def test_teilweise_ist_ein_eigener_zustand(self):
+        """**Sonst schließt man aus einem leeren Kästchen auf »überall aus«.**
+
+        Wer den Filter auf zwölf von fünfzehn Postfächern hat, muss das
+        sehen – sonst schaltet er ihn versehentlich überall ab.
+        """
+        self._konten(True, True, False)
+
+        from PySide6.QtCore import Qt
+
+        self.assertEqual(self._wahl().an.checkState(), Qt.PartiallyChecked)
+
+    def test_einschalten_trifft_alle(self):
+        from PySide6.QtCore import Qt
+
+        self._konten(False, False, False)
+        wahl = self._wahl()
+        wahl.an.setCheckState(Qt.Checked)
+
+        geklappt, text = wahl.anwenden()
+
+        self.assertTrue(geklappt)
+        self.assertEqual(self._wie_viele_mit_filter(), 3)
+        self.assertIn("3 Postfächer", text)
+
+    def test_ausschalten_ebenso(self):
+        from PySide6.QtCore import Qt
+
+        self._konten(True, True, True)
+        wahl = self._wahl()
+        wahl.an.setCheckState(Qt.Unchecked)
+
+        wahl.anwenden()
+
+        self.assertEqual(self._wie_viele_mit_filter(), 0)
+
+    def test_der_mischzustand_bleibt_unangetastet(self):
+        """Wer ihn stehen lässt, meint genau das."""
+        self._konten(True, True, False)
+        wahl = self._wahl()
+
+        geklappt, _ = wahl.anwenden()
+
+        self.assertTrue(geklappt)
+        self.assertEqual(self._wie_viele_mit_filter(), 2)
+
+    def test_der_hinweis_fuehrt_ins_handbuch(self):
+        """**Die Entscheidung braucht mehr Text, als ins Fenster passt.**
+
+        Ein Spamfilter irrt; was das im eigenen Bestand bedeutet, steht
+        im Handbuch. Ohne den Weg dorthin bliebe die Warnung eine
+        Behauptung.
+        """
+        self._konten(False)
+        wahl = self._wahl()
+
+        self.assertIn("<a href=", wahl.hinweis.text())
+        self.assertFalse(wahl.hinweis.openExternalLinks())
+
+    def test_der_dialog_zeigt_ihn(self):
+        from mailburg.ui.zeitplan import Zeitplandialog
+
+        self._konten(False)
+        dialog = Zeitplandialog()
+        self.addCleanup(dialog.close)
+
+        self.assertTrue(hasattr(dialog, "spamfilter"))
+        self.assertIn("Spam-Marke", dialog.spamfilter.an.text())

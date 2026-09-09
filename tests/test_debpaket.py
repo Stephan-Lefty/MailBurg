@@ -162,5 +162,65 @@ class GebautesPaketTest(unittest.TestCase):
             )
 
 
+
+class HinweisBeiFehlendemQtTest(unittest.TestCase):
+    """Was MailBurg rät, wenn die Oberfläche fehlt.
+
+    **Ein Hinweis auf den falschen Weg ist schlimmer als keiner.** Wer
+    MailBurg als Debian-Paket installiert hat und ``pip install`` liest,
+    tut entweder nichts oder bringt seine Systempakete durcheinander.
+    Derselbe Fehler wie am 2026-09-03, als der Suchpfad-Hinweis auf
+    ``~/.bashrc`` zeigte, während der Anwender fish benutzte.
+
+    Der Fall ist nicht ausgedacht: Unter Debian 13 liegt PySide6 bereit,
+    unter Ubuntu 24.04 gibt es es gar nicht als Paket – dort läuft
+    dieser Text also wirklich auf.
+    """
+
+    def _hinweis(self, aus_paket: bool) -> str:
+        from unittest import mock
+
+        from mailburg.ui import app
+
+        with mock.patch.object(app, "aus_systempaket", return_value=aus_paket):
+            return app._qt_fehlt()
+
+    def test_im_systempaket_wird_apt_genannt(self):
+        text = self._hinweis(True)
+
+        self.assertIn("apt install python3-pyside6", text)
+        self.assertNotIn("pip install", text)
+
+    def test_und_die_luecke_bei_ubuntu_steht_dabei(self):
+        """Sonst sucht jemand ein Paket, das es dort nicht gibt."""
+        self.assertIn("Ubuntu", self._hinweis(True))
+
+    def test_sonst_bleibt_es_bei_pip(self):
+        text = self._hinweis(False)
+
+        self.assertIn("pip install", text)
+        self.assertNotIn("apt install", text)
+
+    def test_beide_wege_nennen_die_kommandozeile_als_ausweg(self):
+        """Ohne Oberfläche ist MailBurg nicht unbenutzbar."""
+        for aus_paket in (True, False):
+            with self.subTest(systempaket=aus_paket):
+                self.assertIn("mailburg --help", self._hinweis(aus_paket))
+
+    def test_die_erkennung_haengt_am_ablageort(self):
+        """``dist-packages`` ist Debian, ``site-packages`` ist pip."""
+        from unittest import mock
+
+        from mailburg.ui import app
+
+        for ort, erwartet in (
+            ("/usr/lib/python3/dist-packages/mailburg/ui/app.py", True),
+            ("/home/wer/.local/share/mailburg/venv/lib/python3.13/"
+             "site-packages/mailburg/ui/app.py", False),
+        ):
+            with self.subTest(ort=ort):
+                with mock.patch.object(app, "__file__", ort):
+                    self.assertEqual(app.aus_systempaket(), erwartet)
+
 if __name__ == "__main__":
     unittest.main()

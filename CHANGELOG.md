@@ -7,6 +7,37 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **Der Betrefffilter lässt sich im Fenster schalten**, für alle
+  Postfächer auf einmal: *Einstellungen → Was von selbst laufen soll …*.
+  Dort steht er, weil er bei jedem Abruf wirkt – auch bei dem, der von
+  selbst läuft. Bisher ging es nur je Postfach auf der Kommandozeile;
+  bei fünfzehn Konten war das eine Schleife in der Shell.
+
+  **Teilweise eingeschaltet ist ein eigener Zustand.** Wer den Filter
+  auf zwölf von fünfzehn Postfächern hat, sieht einen Strich statt eines
+  Hakens – und wer ihn so stehen lässt, ändert nichts daran. Ein leeres
+  Kästchen hätte behauptet, er sei überall aus.
+
+  Daneben führt ein Verweis ins Handbuch. Die Entscheidung braucht mehr
+  Text, als in ein Fenster passt: Ein Spamfilter irrt, und was nie
+  archiviert wurde, fällt erst Jahre später auf.
+
+### Behoben
+
+- **Der Hinweis auf fehlendes Qt nannte den falschen Weg.** Wer MailBurg
+  aus dem Debian-Paket betreibt, las `pip install` – und tut damit
+  entweder nichts oder bringt seine Systempakete durcheinander. Jetzt
+  steht dort `apt install python3-pyside6.qtwidgets`, samt dem Hinweis,
+  dass Ubuntu PySide6 gar nicht führt.
+
+  Derselbe Fehler wie am 03.09., als der Suchpfad-Hinweis auf
+  `~/.bashrc` zeigte, während der Anwender fish benutzte: **Ein Hinweis
+  auf den falschen Weg ist schlimmer als keiner.**
+
 ## [1.4.1] – 2026-09-09
 
 Die Fassung für den Start in den Alltag: ein Debian-Paket, damit

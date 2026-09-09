@@ -9,7 +9,34 @@ Alle Bilder in dieser Anleitung zeigen erfundene Postfächer.
 
 ## 1. Installieren
 
-### Linux
+### Debian 13 und GuideOS: das fertige Paket
+
+Eine Datei herunterladen, ein Befehl, fertig. Das `.deb` hängt an der
+[jüngsten Veröffentlichung](https://github.com/Stephan-Lefty/MailBurg/releases/latest).
+
+```bash
+sudo apt install ./mailburg_1.4.1_all.deb
+```
+
+`apt` holt sich dabei die Oberfläche, den Schlüsselbund und die PDF-Werkzeuge
+aus Ihrer Distribution. **MailBurg bringt kein eigenes Qt mit** – sonst bekäme
+es dessen Sicherheitsupdates nie. Deshalb wiegt das Paket zwei Megabyte statt
+zweihundert.
+
+Danach steht `mailburg` in der Eingabeaufforderung bereit und **MailBurg** im
+Anwendungsmenü. Zum Aktualisieren dasselbe mit der neuen Datei; Ihr Archiv
+bleibt unangetastet.
+
+> **Unter Ubuntu funktioniert dieser Weg nicht.** Ubuntu führt PySide6 nicht
+> in seinen Paketquellen. `apt` installiert MailBurg dort zwar, aber ohne
+> Oberfläche – und sagt es nur beiläufig, als nicht erfüllte *Empfehlung*.
+> Nehmen Sie dort den Weg im nächsten Abschnitt. Dasselbe gilt für alles, was
+> auf Ubuntu aufbaut: Linux Mint, Pop!\_OS, Zorin.
+>
+> Woran Sie es merken, falls Sie es doch versucht haben: `mailburg-gui` sagt
+> Ihnen dann selbst, was fehlt und wie es zu beheben ist.
+
+### Alle anderen: die Einrichtung im Benutzerordner
 
 ```bash
 git clone https://github.com/Stephan-Lefty/MailBurg.git

@@ -56,6 +56,13 @@ HALTUNGEN: list[tuple[str, int]] = [
 ]
 
 
+def _trennlinie() -> QFrame:
+    """Eine waagerechte Linie zwischen zwei Abschnitten des Dialogs."""
+    strich = QFrame()
+    strich.setFrameShape(QFrame.HLine)
+    return strich
+
+
 def _erster_vorhandener(pfad: str | None) -> str:
     """Ein Startordner, den es wirklich gibt.
 
@@ -179,6 +186,106 @@ class Zeitplanwahl(QWidget):
         if archiv is None:
             return False, "Es ist kein Archiv eingerichtet."
         return zeitplan.einrichten(archiv, self.takt.currentData())
+
+
+class Spamfilterwahl(QWidget):
+    """Der Betrefffilter, für alle Postfächer auf einmal.
+
+    **Warum er hier steht und nicht bei den Konten.** Er wirkt bei jedem
+    Abruf, auch bei dem, der von selbst läuft – und genau darum geht es
+    in diesem Fenster. Auf der Kommandozeile lässt er sich je Postfach
+    setzen; wer fünfzehn davon hat, will ihn in einem Zug schalten.
+
+    Gewünscht am 2026-09-09, nachdem das Ein- und Ausschalten für alle
+    Konten nur über eine Schleife auf der Kommandozeile ging.
+    """
+
+    def __init__(self, eltern=None) -> None:
+        super().__init__(eltern)
+
+        from mailburg.core.accounts import Kontenliste
+
+        self.konten = Kontenliste()
+        mit = [k for k in self.konten.konten if k.betreffmarken]
+
+        self.an = QCheckBox(
+            "Post mit Spam-Marke im Betreff gar nicht erst aufnehmen"
+        )
+        self.an.setChecked(bool(mit) and len(mit) == len(self.konten.konten))
+        # **Teilweise eingeschaltet ist ein eigener Zustand.** Wer ihn
+        # auf zwölf von fünfzehn Postfächern hat, soll das sehen und
+        # nicht aus einem leeren Kästchen schließen, es sei überall aus.
+        if mit and len(mit) != len(self.konten.konten):
+            self.an.setTristate(True)
+            self.an.setCheckState(Qt.PartiallyChecked)
+
+        self.hinweis = QLabel()
+        self.hinweis.setWordWrap(True)
+        self.hinweis.setTextFormat(Qt.RichText)
+        self.hinweis.setOpenExternalLinks(False)
+        self.hinweis.linkActivated.connect(self._handbuch)
+        self.hinweis.setText(
+            "<p style='margin-left:24px'>Manche Server stellen dem Betreff "
+            "eine Marke voran – <tt>[SPAM] Gewinnbenachrichtigung</tt>. "
+            "Solche Post landet im Posteingang, und kein Ordnerausschluss "
+            "hält sie auf. Übergangen wird nur, was mit der Marke "
+            "<i>beginnt</i>: Eine Antwort wie »AW: [SPAM] Ihr Auftrag« "
+            "bleibt im Archiv.</p>"
+            "<p style='margin-left:24px'><b>Sehen Sie vorher nach, was das "
+            "bei Ihnen träfe.</b> Ein Spamfilter irrt, und was nie "
+            "archiviert wurde, fällt erst Jahre später auf – wenn "
+            "überhaupt. "
+            # Über ``farben.verweis``, nicht als rohes <a>: Qts
+            # Standardblau erreicht auf dunklem Grund ein
+            # Kontrastverhältnis von 2,4 – ein Link, den nur findet, wer
+            # weiß, dass er da ist. Ein Wächtertest hält das fest, und
+            # er hat hier prompt zugeschlagen.
+            + farben.verweis("#abrufen", "Was dazu zu wissen ist")
+            + "</p>"
+        )
+
+        aufbau = QVBoxLayout(self)
+        aufbau.setContentsMargins(0, 0, 0, 0)
+        aufbau.addWidget(self.an)
+        aufbau.addWidget(self.hinweis)
+
+        # **Ohne Postfächer gibt es nichts zu schalten.** Dann bleibt das
+        # Feld abgeschaltet, statt eine Einstellung anzubieten, die
+        # nirgends ankommt.
+        if not self.konten.konten:
+            self.an.setEnabled(False)
+            self.hinweis.setText(
+                "<p style='margin-left:24px'>Noch kein Postfach "
+                "eingerichtet – es gibt nichts zu filtern.</p>"
+            )
+
+    def _handbuch(self, *_) -> None:
+        from mailburg.ui.hilfe import oeffnen
+
+        oeffnen(self, "abrufen")
+
+    def anwenden(self) -> tuple[bool, str]:
+        """Setzt oder löscht die Marken bei *allen* Postfächern."""
+        if not self.an.isEnabled():
+            return True, ""
+        zustand = self.an.checkState()
+        if zustand == Qt.PartiallyChecked:
+            # Unangetastet gelassen: Wer den Mischzustand stehen lässt,
+            # meint genau das – einzelne Postfächer sind absichtlich
+            # anders eingestellt.
+            return True, ""
+
+        from mailburg.core.accounts import STANDARD_BETREFFMARKEN
+
+        marken = list(STANDARD_BETREFFMARKEN) if zustand == Qt.Checked else []
+        for konto in self.konten.konten:
+            konto.betreffmarken = list(marken)
+        self.konten.speichern()
+
+        anzahl = len(self.konten.konten)
+        if marken:
+            return True, f"Betrefffilter für {anzahl} Postfächer eingeschaltet."
+        return True, f"Betrefffilter für {anzahl} Postfächer ausgeschaltet."
 
 
 class Sicherungswahl(QWidget):
@@ -339,6 +446,7 @@ class Zeitplandialog(QDialog):
 
         self.wahl = Zeitplanwahl(archiv=archiv)
         self.sicherung = Sicherungswahl(archiv=archiv)
+        self.spamfilter = Spamfilterwahl()
         self.meldung = QLabel()
         self.meldung.setWordWrap(True)
 
@@ -373,6 +481,8 @@ class Zeitplandialog(QDialog):
         innen.addWidget(self.wahl)
         innen.addWidget(trenner)
         innen.addWidget(self.sicherung)
+        innen.addWidget(_trennlinie())
+        innen.addWidget(self.spamfilter)
         innen.addWidget(self.meldung)
         innen.addStretch()
 
@@ -432,6 +542,8 @@ class Zeitplandialog(QDialog):
         geklappt, text = self.wahl.anwenden()
         if geklappt:
             geklappt, text = self.sicherung.anwenden()
+        if geklappt:
+            geklappt, text = self.spamfilter.anwenden()
         if geklappt:
             self.accept()
             return
