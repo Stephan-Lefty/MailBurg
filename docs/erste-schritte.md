@@ -15,7 +15,7 @@ Eine Datei herunterladen, ein Befehl, fertig. Das `.deb` hängt an der
 [jüngsten Veröffentlichung](https://github.com/Stephan-Lefty/MailBurg/releases/latest).
 
 ```bash
-sudo apt install ./mailburg_1.4.1_all.deb
+sudo apt install ./mailburg_1.4.2_all.deb
 ```
 
 `apt` holt sich dabei die Oberfläche, den Schlüsselbund und die PDF-Werkzeuge
