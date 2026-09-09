@@ -178,7 +178,20 @@ liegt. Siehe [docs/zurueckspielen.md](docs/zurueckspielen.md).
 
 ## Loslegen
 
-Voraussetzung ist Python 3.11 oder neuer. Weitere Pakete braucht der Kern nicht.
+**Debian, Ubuntu, GuideOS und Verwandte:** Das fertige Paket hängt an jedem
+[Release](https://github.com/Stephan-Lefty/MailBurg/releases).
+
+```bash
+sudo apt install ./mailburg_*_all.deb
+```
+
+Es zieht die Oberfläche, den Schlüsselbund und die PDF-Werkzeuge aus der
+Distribution nach – MailBurg bringt kein eigenes Qt mit, damit
+Sicherheitsupdates über `apt` ankommen. Danach steht MailBurg im
+Anwendungsmenü und `mailburg` in der Eingabeaufforderung.
+
+**Alle anderen Systeme.** Voraussetzung ist Python 3.11 oder neuer; weitere
+Pakete braucht der Kern nicht.
 
 ```bash
 git clone https://github.com/Stephan-Lefty/MailBurg.git

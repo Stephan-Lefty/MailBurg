@@ -9,6 +9,35 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- **Ein Debian-Paket hängt jetzt an jedem Release**, neben der
+  `MailBurg.exe`:
+
+  ```
+  sudo apt install ./mailburg_1.4.1_all.deb
+  ```
+
+  **Ein natives Paket, keine gepackte Datei.** Unter Windows liefert
+  MailBurg eine einzelne `.exe` mit allem darin – dort gibt es keine
+  Paketverwaltung, die Qt beistellen könnte. Unter Debian gibt es sie,
+  und ein Paket mit eigenem Qt bekäme dessen Sicherheitsupdates nie.
+  Deshalb kommen Oberfläche, Schlüsselbund und PDF-Werkzeuge aus der
+  Distribution.
+
+  Der Kern hängt weiterhin an nichts außer Python: Wer nur die
+  Kommandozeile braucht – etwa auf einem Server –, kann die Empfehlungen
+  abwählen.
+
+  **Der Bau ist nicht der Beweis, die Probe ist es.** Der Workflow
+  installiert das gebaute Paket auf einem Debian-System, legt ein Archiv
+  an, liest Mails ein, sucht darin und prüft die Hash-Kette. Ein Paket,
+  das sich bauen, aber nicht benutzen lässt, wäre schlimmer als keines.
+
+  Zwei Bauläufe aus demselben Stand ergeben dieselbe Datei, Byte für
+  Byte – wer sie herunterlädt, kann sie selbst nachbauen und die
+  Prüfsummen vergleichen.
+
 ### Behoben
 
 - **Das Fenster behauptete »Alle Mails sind im Archiv«, auch wenn der

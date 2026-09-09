@@ -509,6 +509,10 @@ The first report from outside. Four points, three fixed straight away.
 
 - [ ] **More mail sources.** Outlook PST/OST via `libpff`, Apple Mail `.emlx`.
 
+- [x] **Packages: the `.deb` is done.** (2026-09-09) It is attached to
+  every release and really installed and exercised on a Debian system
+  before it is uploaded. AppImage and `.dmg` remain open.
+
 - [ ] **Packages for all three systems.** `.deb` and AppImage for Linux,
   PyInstaller with Inno Setup for Windows, `.app` and `.dmg` for macOS. For macOS
   it remains to be settled how to deal with Gatekeeper as long as there is no

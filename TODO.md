@@ -565,6 +565,10 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
 - [ ] **Weitere Mailquellen.** Outlook PST/OST über `libpff`, Apple Mail
   `.emlx`.
 
+- [x] **Pakete: das `.deb` steht.** (2026-09-09) Es hängt an jedem
+  Release und wird vor dem Anhängen auf einem Debian-System wirklich
+  installiert und benutzt. Offen bleiben AppImage und `.dmg`.
+
 - [ ] **Pakete für alle drei Systeme.** `.deb` und AppImage für Linux,
   PyInstaller mit Inno Setup für Windows, `.app` und `.dmg` für macOS. Für
   macOS ist zu klären, wie mit Gatekeeper umgegangen wird, solange keine

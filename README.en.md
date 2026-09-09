@@ -169,7 +169,19 @@ the `Message-ID` against what is already there. See
 
 ## Getting started
 
-Requires Python 3.11 or newer. The core needs no further packages.
+**Debian, Ubuntu and relatives:** the ready-made package is attached to every
+[release](https://github.com/Stephan-Lefty/MailBurg/releases).
+
+```bash
+sudo apt install ./mailburg_*_all.deb
+```
+
+It pulls the interface, the keyring and the PDF tools from the distribution —
+MailBurg ships no Qt of its own, so that security updates arrive through
+`apt`.
+
+**Everywhere else.** Requires Python 3.11 or newer; the core needs no further
+packages.
 
 ```bash
 git clone https://github.com/Stephan-Lefty/MailBurg.git

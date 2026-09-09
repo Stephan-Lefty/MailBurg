@@ -1,0 +1,155 @@
+# Baut das Debian-Paket und hängt es an das Release.
+#
+# **Warum nicht bei jedem Push.** Dasselbe Argument wie bei der
+# Windows-Fassung: Wer das Paket braucht, ruft es – über die
+# Actions-Oberfläche oder mit
+#
+#     gh workflow run deb.yml --ref main
+#
+# Bei diesem Weg landet es als Artefakt am Lauf, nicht an einem Release.
+#
+# **Der Bau ist nicht der Punkt, die Probe ist es.** Ein .deb entsteht
+# aus jedem Verzeichnis; ob die angegebenen Abhängigkeiten existieren und
+# ob MailBurg nach der Installation startet, zeigt sich erst, wenn man es
+# wirklich installiert. Genau das tun die Schritte unten – auf einem
+# System, das dem der Anwender entspricht, und nicht auf Manjaro, wo
+# entwickelt wird.
+name: Debian-Paket
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deb:
+    name: mailburg.deb bauen und ausprobieren
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bauen
+        run: python3 werkzeuge/deb_bauen.py dist
+
+      - name: Was steht drin?
+        # Im Protokoll soll nachlesbar sein, was ausgeliefert wurde -
+        # besonders die Abhängigkeiten. Wer später fragt, warum auf
+        # seinem Rechner etwas fehlt, findet die Antwort hier.
+        run: |
+          dpkg-deb --info dist/*.deb
+          echo "--- Inhalt ---"
+          dpkg-deb --contents dist/*.deb | grep -vE "dist-packages/mailburg/.*/" | head -40
+
+      - name: Lässt es sich installieren?
+        # **Der eigentliche Prüfschritt.** Hier zeigt sich, ob die
+        # Paketnamen unter Depends und Recommends überhaupt existieren.
+        # Sie sind aus der Debian-Paketliste abgeschrieben, und ein
+        # Tippfehler darin fiele sonst erst dem Anwender auf - mit einer
+        # Fehlermeldung von apt, die nach seinem Rechner aussieht.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ./dist/*.deb
+          echo "--- installierte Empfehlungen ---"
+          dpkg -l python3-pyside6.qtwidgets python3-keyring 2>&1 | tail -4
+
+      - name: Läuft die Kommandozeile?
+        run: |
+          ausgabe=$(mailburg --version)
+          echo "$ausgabe"
+          echo "$ausgabe" | grep -qE "MailBurg [0-9]+\.[0-9]+\.[0-9]+" || {
+            echo "::error::Die installierte Fassung meldet keine Version."
+            exit 1
+          }
+
+      - name: Findet sie ihre Bilder?
+        # Der Fehler vom 2026-09-04 in anderer Gestalt: Die Grafiken
+        # lagen vollständig da und wurden nicht gefunden, weil niemand
+        # am richtigen Ort nachsah. In einem Paket liegen sie woanders
+        # als im Quellbaum - das muss geprüft werden, nicht vermutet.
+        run: |
+          python3 - <<'PY'
+          import sys
+          from mailburg.bilder import finden
+          fehlt = [n for n in ("server/icon-64.png", "icon-256.png")
+                   if finden(n) is None]
+          if fehlt:
+              print(f"::error::Nicht gefunden: {fehlt}")
+              sys.exit(1)
+          print("Bilder gefunden.")
+          PY
+
+      - name: Startet die Oberfläche?
+        # Ohne Bildschirm lässt sich kein Fenster öffnen - aber der
+        # Import ist die Hürde, an der eine Paketierung scheitert: ein
+        # fehlendes Qt-Modul, ein vergessenes Unterverzeichnis.
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python3 - <<'PY'
+          from PySide6.QtWidgets import QApplication
+          from mailburg.ui.hauptfenster import Hauptfenster  # noqa: F401
+          from mailburg.ui.assistent import Einrichtungsassistent  # noqa: F401
+          app = QApplication([])
+          print("Oberfläche lädt.")
+          PY
+
+      - name: Und läuft ein Archiv durch?
+        # Anlegen, füllen, suchen, prüfen - mit dem installierten Paket,
+        # nicht mit dem Quellbaum. Sonst belegt der Lauf nur, dass das
+        # Repository funktioniert.
+        run: |
+          cd /tmp
+          mailburg anlegen /tmp/Probe --modus privat
+          python3 - <<'PY'
+          import mailbox, email.message, email.utils
+          from datetime import datetime, timezone
+          box = mailbox.mbox("/tmp/probe.mbox", create=True)
+          for i in range(5):
+              m = email.message.EmailMessage()
+              m["Subject"] = f"Schlussrechnung {i}"
+              m["From"] = email.utils.formataddr(("Josef Müller", "m@beispiel.example"))
+              m["To"] = "post@beispiel.example"
+              m["Date"] = email.utils.format_datetime(
+                  datetime(2025, 3, 14, tzinfo=timezone.utc))
+              m.set_content(f"Inhalt {i} mit Umlauten: äöüß")
+              box.add(m)
+          box.flush()
+          PY
+          mailburg importieren /tmp/Probe /tmp/probe.mbox --konto Probe
+          mailburg suchen /tmp/Probe betreff:rechnung | tee /tmp/treffer.txt
+          grep -q "Schlussrechnung" /tmp/treffer.txt || {
+            echo "::error::Die Suche findet nichts - der Index kommt nicht mit."
+            exit 1
+          }
+          mailburg pruefen /tmp/Probe
+
+      - name: Was lintian sagt
+        # Nicht blockierend: lintian ist streng, und manche seiner
+        # Regeln zielen auf Pakete in der Distribution, nicht auf ein
+        # Paket zum Herunterladen. Im Protokoll soll es trotzdem stehen.
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y -qq lintian
+          lintian --no-tag-display-limit dist/*.deb || true
+
+      - name: Prüfsumme
+        run: |
+          cd dist
+          sha256sum *.deb | tee "$(ls *.deb).sha256"
+
+      - name: Ans Release hängen
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/*.deb dist/*.sha256 --clobber
+
+      - name: Sonst als Artefakt behalten
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mailburg-deb
+          path: dist/*
