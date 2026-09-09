@@ -44,6 +44,20 @@ jobs:
           echo "--- Inhalt ---"
           dpkg-deb --contents dist/*.deb | grep -vE "dist-packages/mailburg/.*/" | head -40
 
+      - name: Wie heißt Qt hier?
+        # **Die Paketnamen sind das einzig Wackelige an einem .deb.**
+        # Sie stehen in werkzeuge/deb_bauen.py als Text, und ob sie in
+        # der Distribution wirklich so heißen, weiß nur die
+        # Distribution. Ein falscher Name unter Recommends fällt nicht
+        # einmal auf: apt übergeht ihn wortlos, und der Anwender hat ein
+        # MailBurg ohne Fenster.
+        run: |
+          sudo apt-get update -qq
+          echo "--- was es an PySide6 gibt ---"
+          apt-cache search --names-only pyside6 | sort | head -30
+          echo "--- gesuchtes Paket ---"
+          apt-cache policy python3-pyside6.qtwidgets || true
+
       - name: Lässt es sich installieren?
         # **Der eigentliche Prüfschritt.** Hier zeigt sich, ob die
         # Paketnamen unter Depends und Recommends überhaupt existieren.
