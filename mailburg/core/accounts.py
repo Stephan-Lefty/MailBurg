@@ -530,6 +530,30 @@ def schluesselbund_konkurrenz() -> str:
     Gibt einen leeren Text zurück, wenn die Lage eindeutig ist – dann
     steht in der Meldung nichts Überflüssiges.
     """
+    # **Der Vermerk schlägt die Vermutung.** Wenn festgehalten ist, wer
+    # das Passwort entgegengenommen hat, und heute ein anderer
+    # antwortet, ist das keine Mutmaßung mehr, sondern der Befund. Die
+    # Prüfung über den Sitzungsbus darunter bleibt für alle, bei denen
+    # noch nichts vermerkt ist – etwa nach einem Umzug der
+    # Einstellungen.
+    jetzt = schluesselbund_name()
+    frueher = gemerkter_schluesselbund()
+    if frueher and jetzt and frueher != jetzt and jetzt != "Schlüsselbund":
+        # **Ohne festen Artikel vor den Namen.** »KDE-Brieftasche« ist
+        # weiblich, »GNOME-Schlüsselbund« männlich – ein eingebautes
+        # »der« steht bei jedem zweiten Anbieter falsch, und der nächste
+        # heißt wieder anders.
+        return (
+            f"Abgelegt wurde Ihr Passwort seinerzeit hier: {frueher}. "
+            f"Heute beantwortet ein anderer Schlüsselbund die Anfragen: "
+            f"{jetzt}. Dort liegt es nicht, deshalb findet MailBurg es "
+            f"nicht.\n\n"
+            f"**Neu eintragen hilft nicht** – es landete wieder in "
+            f"»{jetzt}«, und beim nächsten Wechsel stünden Sie erneut "
+            f"hier. Sorgen Sie stattdessen dafür, dass wieder "
+            f"»{frueher}« antwortet."
+        )
+
     zeilen = _busnamen()
     if not zeilen:
         return ""
@@ -687,6 +711,44 @@ def token_loeschen(konto: Konto) -> None:
         pass
 
 
+#: Wo vermerkt ist, welcher Schlüsselbund zuletzt geantwortet hat.
+#: **Keine Kontoeigenschaft**, sondern eine des Rechners: Es gibt unter
+#: Linux nur *einen* Dienst, der Passwortanfragen beantwortet. Und es
+#: steht nicht in ``konten.json``, weil sonst jeder der fünf Aufrufer
+#: von ``passwort_setzen`` daran denken müsste, die Kontenliste zu
+#: speichern – der sechste vergäße es.
+MERKDATEI = "schluesselbund.json"
+
+
+def _schluesselbund_merken(name: str) -> None:
+    """Hält fest, welcher Schlüsselbund gerade zuständig war.
+
+    Fehler sind hier belanglos: Der Vermerk ist eine Hilfe für den
+    Ernstfall, keine Voraussetzung. Wer ihn nicht schreiben kann,
+    bekommt später eine unschärfere Meldung – aber nichts geht kaputt.
+    """
+    if not name or name == "Schlüsselbund":
+        return
+    try:
+        ziel = paths.config_dir() / MERKDATEI
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        ziel.write_text(
+            json.dumps({"anbieter": name}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
+
+def gemerkter_schluesselbund() -> str:
+    """Welcher Schlüsselbund zuletzt ein Passwort entgegengenommen hat."""
+    try:
+        roh = (paths.config_dir() / MERKDATEI).read_text(encoding="utf-8")
+        return str(json.loads(roh).get("anbieter", ""))
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return ""
+
+
 def passwort_setzen(konto: Konto, passwort: str) -> bool:
     """Legt das Passwort ab. Gibt zurück, ob es geklappt hat."""
     if tresor.verfuegbar():
@@ -699,9 +761,14 @@ def passwort_setzen(konto: Konto, passwort: str) -> bool:
 
     try:
         keyring.set_password(APP_ID, konto.schluessel, passwort)
-        return True
     except Exception:  # noqa: BLE001
         return False
+
+    # **Erst nach dem Gelingen.** Ein Vermerk über einen Speicher, in dem
+    # nichts liegt, wäre schlimmer als keiner: Er brächte die Diagnose
+    # später auf die falsche Fährte.
+    _schluesselbund_merken(schluesselbund_name())
+    return True
 
 
 def passwort_loeschen(konto: Konto) -> None:

@@ -50,6 +50,18 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **MailBurg merkt sich, wo es das Passwort abgelegt hat**, und nennt
+  den Wechsel beim Namen: »Abgelegt wurde Ihr Passwort seinerzeit hier:
+  KDE-Brieftasche. Heute beantwortet ein anderer Schlüsselbund die
+  Anfragen: GNOME-Schlüsselbund.«
+
+  **Das ist der Befund statt der Vermutung.** Dass zwei Schlüsselbünde
+  laufen, heißt noch nicht, dass der falsche antwortet – steht dagegen
+  fest, wer das Passwort entgegengenommen hat, ist die Sache klar. Der
+  Vermerk liegt in `schluesselbund.json` neben der Kontenliste; er
+  entsteht beim Speichern eines Passworts und enthält nur den Namen des
+  Dienstes.
+
 - **MailBurg erkennt zwei Schlüsselbünde nebeneinander.** Unter Linux
   beantwortet nur *ein* Dienst die Passwortanfragen (`org.freedesktop.secrets`);
   wer zuerst da ist, gewinnt. Läuft daneben ein zweiter, liegen die

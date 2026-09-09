@@ -961,3 +961,85 @@ class BetreffmarkenTest(unittest.TestCase):
         """»[SPAMMER]« ist nicht »[SPAM]« – und »Spam« ohne Klammern auch nicht."""
         self.assertFalse(self.pruefen("Spam-Filter: Ihre Einstellungen"))
         self.assertFalse(self.pruefen("Spamverdacht bei Ihrer Adresse"))
+
+
+class GemerkterSchluesselbundTest(unittest.TestCase):
+    """Wo das Passwort abgelegt wurde – und wer heute antwortet.
+
+    **Der Vermerk macht aus der Vermutung einen Befund.** Dass zwei
+    Schlüsselbünde laufen, heißt noch nicht, dass der falsche antwortet.
+    Steht dagegen fest, wer das Passwort entgegengenommen hat, und
+    antwortet heute ein anderer, ist die Sache klar.
+
+    Aus dem Vorfall vom 2026-09-07: Nach einem Systemupdate übernahm
+    gnome-keyring die Passwortanfragen, während die Passwörter im
+    KDE-Tresor lagen. Sieben Postfächer meldeten »kein Passwort«.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.ordner = Path(self._tmp.name)
+
+        from unittest import mock
+
+        from mailburg.core import accounts, paths
+
+        patcher = mock.patch.object(
+            paths, "config_dir", return_value=self.ordner
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.accounts = accounts
+
+    def _mit(self, frueher: str, jetzt: str) -> str:
+        from unittest import mock
+
+        if frueher:
+            self.accounts._schluesselbund_merken(frueher)
+        with mock.patch.object(
+            self.accounts, "schluesselbund_name", return_value=jetzt
+        ):
+            return self.accounts.schluesselbund_konkurrenz()
+
+    def test_ein_anderer_anbieter_wird_benannt(self):
+        text = self._mit("KDE-Brieftasche", "GNOME-Schlüsselbund")
+
+        self.assertIn("KDE-Brieftasche", text)
+        self.assertIn("GNOME-Schlüsselbund", text)
+        # Der Satz, der den Anwender vor der falschen Abhilfe bewahrt.
+        self.assertIn("Neu eintragen hilft nicht", text)
+
+    def test_derselbe_anbieter_schweigt(self):
+        self.assertEqual(self._mit("KDE-Brieftasche", "KDE-Brieftasche"), "")
+
+    def test_ohne_vermerk_faellt_es_auf_die_busprüfung_zurueck(self):
+        """Nach einem Umzug der Einstellungen gibt es noch keinen."""
+        from unittest import mock
+
+        with mock.patch.object(self.accounts, "_busnamen", return_value=[]):
+            self.assertEqual(self._mit("", "GNOME-Schlüsselbund"), "")
+
+    def test_ein_unbestimmter_anbieter_wird_nicht_vermerkt(self):
+        """»Schlüsselbund« ist keine Auskunft, sondern deren Fehlen.
+
+        Ihn zu vermerken hieße, später einen Wechsel zu melden, der
+        vielleicht gar keiner war.
+        """
+        self.accounts._schluesselbund_merken("Schlüsselbund")
+
+        self.assertEqual(self.accounts.gemerkter_schluesselbund(), "")
+
+    def test_der_vermerk_uebersteht_einen_neustart(self):
+        self.accounts._schluesselbund_merken("KDE-Brieftasche")
+
+        self.assertEqual(
+            self.accounts.gemerkter_schluesselbund(), "KDE-Brieftasche"
+        )
+
+    def test_eine_kaputte_merkdatei_macht_keinen_aerger(self):
+        (self.ordner / self.accounts.MERKDATEI).write_text(
+            "{kein json", encoding="utf-8"
+        )
+
+        self.assertEqual(self.accounts.gemerkter_schluesselbund(), "")

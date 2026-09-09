@@ -240,6 +240,11 @@ Steht neben `org.freedesktop.secrets` ein anderer Dienst, als Sie erwarten,
 ist das die Ursache. **Neu eintragen hilft dann nicht** – die Passwörter
 landen im falschen Tresor, und beim nächsten Wechsel stehen Sie wieder da.
 
+MailBurg merkt sich beim Speichern, welcher Schlüsselbund geantwortet hat
+(in `schluesselbund.json` neben der Kontenliste, nur der Name des Dienstes).
+Wechselt er später, sagt MailBurg genau das – dann müssen Sie gar nicht erst
+selbst nachsehen.
+
 Am 07.09.2026 unter Manjaro mit KDE Plasma so passiert: Ein Systemupdate
 brachte `gnome-keyring` mit, dessen systemd-Einheit ab Werk eingeschaltet ist
 (`gnome-keyring-daemon.socket`). Sie startet den Dienst, sobald ein Programm

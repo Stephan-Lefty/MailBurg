@@ -43,6 +43,22 @@ wenn ein Passwort fehlt. Geprüft wird allein über die laufenden
 D-Bus-Namen – **nicht** durch einen Blick in fremde Tresore; zweimal hat
 die Freigabe genau das zu Recht verhindert.
 
+**Und seit dem 2026-09-08 merkt sich MailBurg, wo es abgelegt hat**
+(`schluesselbund.json`, nur der Name des Dienstes). Damit wird aus der
+Vermutung ein Befund: Dass zwei Schlüsselbünde laufen, heißt noch nicht,
+dass der falsche antwortet – steht dagegen fest, wer das Passwort
+entgegengenommen hat, ist die Sache klar.
+
+**Der Vermerk liegt nicht im Konto**, obwohl das naheläge. Es gibt unter
+Linux nur *einen* Dienst für alle Passwörter, und `passwort_setzen` hat
+fünf Aufrufer: Läge es dort, müsste jeder von ihnen die Kontenliste
+speichern, und der sechste vergäße es.
+
+**Ohne festen Artikel vor den Namen.** »KDE-Brieftasche« ist weiblich,
+»GNOME-Schlüsselbund« männlich; ein eingebautes »der« steht bei jedem
+zweiten falsch. Erst der Praxislauf zeigte es – im Test stand nur, dass
+beide Namen vorkommen.
+
 **Ein Detail, das ein Test gefunden hat:** `busctl` schreibt in leere
 Spalten einen Strich. Ein Strich ist eine Zeichenkette und damit wahr,
 wenn man nicht hinsieht – ein nur startbarer Dienst galt so als
