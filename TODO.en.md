@@ -24,11 +24,21 @@ being asked.
   (2026-09-07) `passwort_holen(…, streng=True)` raises instead of
   staying silent.
 
-- [ ] **The passwords are still in the wrong vault.** Stephan's case is
-  explained, not fixed: either take the secret service away from
-  `gnome-keyring` (then `ksecretd` takes over again and all seven are
-  back), or enter the passwords once more. The first is right, the
-  second is faster. **System configuration — Stephan's call.**
+- [x] **Fixed — and the source was not the one it appeared to be.**
+  (2026-09-07) The autostart entry in `~/.config/autostart` was not it:
+  after deleting it and logging back in, `gnome-keyring` was still
+  running with **the same PIDs**, while `ksecretd` had fresh ones.
+
+  The source was `gnome-keyring-daemon.socket`, a systemd unit the
+  package ships enabled by default. It starts the daemon on the first
+  password request, before KDE's own keyring is ready.
+  `systemctl --user mask --now` on it, log out and in once, all seven
+  passwords back.
+
+  **The lesson for debugging:** a process whose PID survives a logout is
+  not started by the session. That was visible before the first guess
+  was made. Now documented in
+  [docs/postfaecher-einrichten.md](docs/postfaecher-einrichten.md).
 
 - [ ] **A copied default goes stale in silence.** The exclusion list is
   copied into `konten.json` when an account is created; new default

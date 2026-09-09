@@ -757,6 +757,58 @@ def cmd_loeschen(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_konten_spamfilter(args: argparse.Namespace) -> int:
+    """Lässt Post mit Spam-Marke im Betreff gar nicht erst ins Archiv."""
+    liste = Kontenliste()
+    konto = liste.finden(args.konto)
+    if konto is None:
+        print(f"Ein Konto namens '{args.konto}' gibt es nicht.", file=sys.stderr)
+        return 2
+
+    if args.aus:
+        konto.betreffmarken = []
+        liste.speichern()
+        print(
+            f"'{konto.name}': Der Betrefffilter ist aus. Es kommt wieder "
+            f"alles ins Archiv."
+        )
+        return 0
+
+    if args.ein or args.marke:
+        konto.betreffmarken = list(args.marke) if args.marke else list(
+            accounts.STANDARD_BETREFFMARKEN
+        )
+        liste.speichern()
+        print(f"'{konto.name}': Übergangen wird künftig Post, deren Betreff")
+        print("mit einer dieser Marken beginnt:\n")
+        for marke in konto.betreffmarken:
+            print(f"  {marke}")
+        print(
+            "\n**Nur am Anfang des Betreffs.** Eine Antwort wie »AW: [SPAM] "
+            "Ihr Auftrag\nNr. 22761« bleibt damit im Archiv – dort steht die "
+            "Marke mittendrin,\nund solche Post ist fast immer echt."
+        )
+        print(
+            "\nWas übergangen wurde, steht nach jedem Abruf in der Bilanz. "
+            "Bedenken Sie:\nEin Spamfilter irrt, und was nie archiviert "
+            "wurde, fällt erst Jahre später auf."
+        )
+        return 0
+
+    # Ohne Schalter: nur berichten, was gilt.
+    if konto.betreffmarken:
+        print(f"'{konto.name}': Betrefffilter ist an. Übergangen wird:")
+        for marke in konto.betreffmarken:
+            print(f"  {marke}")
+    else:
+        print(
+            f"'{konto.name}': Betrefffilter ist aus – es kommt alles ins "
+            f"Archiv.\nEinschalten mit  mailburg konten spamfilter "
+            f"{konto.name} --ein"
+        )
+    return 0
+
+
 def cmd_konten_zuordnen(args: argparse.Namespace) -> int:
     """Weist ein Postfach einem Archiv zu – oder nimmt es wieder heraus."""
     liste = Kontenliste()
@@ -953,6 +1005,7 @@ def cmd_abrufen(args: argparse.Namespace) -> int:
                     mit_anhangstext=mit_text,
                     fortschritt=fortschritt,
                     auf_fehler=auf_fehler,
+                    betreffmarken=konto.betreffmarken,
                 )
             finally:
                 # Der Zustand muss auch dann auf die Platte, wenn der Lauf
@@ -2801,6 +2854,32 @@ def build_parser() -> argparse.ArgumentParser:
         "zuordnung", help="zeigen, welches Postfach in welches Archiv geht"
     )
     k.set_defaults(func=cmd_konten_zuordnung)
+
+    k = konten_befehle.add_parser(
+        "spamfilter",
+        help="Post mit Spam-Marke im Betreff gar nicht erst aufnehmen",
+        description=(
+            "Lässt Post draußen, deren Betreff mit einer Spam-Marke "
+            "beginnt – etwa »[SPAM]«. Nur am Anfang: Eine Antwort wie "
+            "»AW: [SPAM] Ihr Auftrag Nr. 22761« bleibt im Archiv, denn "
+            "dort steht die Marke mittendrin, und solche Post ist fast "
+            "immer echt. Ohne Schalter zeigt der Befehl, was gerade gilt."
+        ),
+    )
+    k.add_argument("konto", help="Name des Postfachs")
+    k.add_argument(
+        "--ein", action="store_true",
+        help="einschalten, mit den üblichen Marken",
+    )
+    k.add_argument(
+        "--aus", action="store_true",
+        help="ausschalten – es kommt wieder alles ins Archiv",
+    )
+    k.add_argument(
+        "--marke", action="append", metavar="TEXT",
+        help="eigene Marke statt der üblichen; mehrfach angebbar",
+    )
+    k.set_defaults(func=cmd_konten_spamfilter)
 
     k = konten_befehle.add_parser(
         "anmelden",

@@ -24,12 +24,21 @@ GNOME-Tresor.
 - [x] **Und ein gesperrter Schlüsselbund gilt nicht mehr als leerer.**
   (2026-09-07) `passwort_holen(…, streng=True)` wirft statt zu schweigen.
 
-- [ ] **Die Passwörter liegen noch im falschen Tresor.** Stephans Lage
-  ist damit erklärt, aber nicht behoben: Entweder `gnome-keyring` den
-  Secret-Service abnehmen (dann übernimmt `ksecretd` wieder und alle
-  sieben sind da), oder die Passwörter einmal neu eintragen. Der erste
-  Weg ist der richtige, der zweite der schnellere. **Systemkonfiguration
-  – gehört Stephan.**
+- [x] **Behoben – und die Quelle war nicht die, die es zu sein schien.**
+  (2026-09-07) Der Autostart-Eintrag in `~/.config/autostart` war es
+  nicht: Nach dem Löschen und einer Neuanmeldung lief `gnome-keyring`
+  mit **denselben PIDs** weiter, während `ksecretd` frische bekam.
+
+  Die Quelle war `gnome-keyring-daemon.socket` – eine systemd-Einheit,
+  die das Paket ab Werk eingeschaltet mitbringt. Sie startet den Dienst
+  bei der ersten Passwortanfrage, noch bevor KDEs Schlüsselbund so weit
+  ist. `systemctl --user mask --now` darauf, einmal neu anmelden, alle
+  sieben Passwörter wieder da.
+
+  **Die Lehre für die Fehlersuche:** Ein Prozess, dessen PID eine
+  Ab- und Anmeldung überlebt, wird nicht von der Sitzung gestartet. Das
+  war zu sehen, bevor die erste Vermutung geäußert wurde. Steht jetzt
+  in [docs/postfaecher-einrichten.md](docs/postfaecher-einrichten.md).
 
 - [ ] **Eine kopierte Vorgabe veraltet still.** Die Ausschlussliste wird
   beim Anlegen eines Kontos in `konten.json` hineinkopiert; neue

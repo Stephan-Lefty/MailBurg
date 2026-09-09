@@ -29,6 +29,8 @@ from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from mailburg.core import accounts
+
 #: Ab dieser Größe geht eine Mail in den Pool. Darunter lohnt der Aufwand
 #: für das Hin- und Herschicken nicht.
 SCHWELLE_PARALLEL = 24 * 1024
@@ -47,6 +49,13 @@ class Statistik:
     vorhanden: int = 0
     fehlgeschlagen: int = 0
     mit_anhangstext: int = 0
+    uebergangen: int = 0
+    """Wegen einer Betreffmarke nicht aufgenommen – etwa ``[SPAM]``.
+
+    **Eigener Zähler und nicht unter »gelesen« versteckt.** Post, die
+    das Archiv nie erreicht, muss in der Bilanz auftauchen; sonst
+    erklärt niemand später, warum die Zahlen nicht aufgehen.
+    """
     anhaenge: dict[str, int] = field(default_factory=dict)
     """Zählung der Anhänge nach Art – etwa wie viele PDF eingescannt waren."""
 
@@ -54,6 +63,8 @@ class Statistik:
         teile = [f"{self.gelesen} gelesen", f"{self.neu} neu aufgenommen"]
         if self.vorhanden:
             teile.append(f"{self.vorhanden} bereits vorhanden")
+        if self.uebergangen:
+            teile.append(f"{self.uebergangen} wegen Betreffmarke übergangen")
         if self.fehlgeschlagen:
             teile.append(f"{self.fehlgeschlagen} fehlgeschlagen")
         return ", ".join(teile)
@@ -143,6 +154,7 @@ def importieren(
     fortschritt=None,
     auf_fehler=None,
     weiter=None,
+    betreffmarken=(),
 ) -> Statistik:
     """Liest eine Quelle vollständig ins Archiv.
 
@@ -156,6 +168,11 @@ def importieren(
     Mail beim nächsten Lauf noch einmal anfordern. Ohne sie zöge der
     Höchststand an ihr vorbei, und sie fehlte für immer im Archiv – ohne
     dass es je jemand bemerkte.
+
+    ``betreffmarken`` lässt Post draußen, deren Betreff mit einer dieser
+    Marken **beginnt** – etwa ``[SPAM]``. Leer heißt: alles kommt
+    herein. Was übergangen wurde, steht in ``stat.uebergangen``;
+    **stillschweigend verschwindet nichts.**
 
     ``weiter`` wird vor jeder Nachricht gefragt; sagt es Nein, endet der
     Lauf geordnet – mit geschriebenem Journal und verdichtetem Index.
@@ -172,6 +189,15 @@ def importieren(
     _umbenennungen_nachziehen(archiv, quelle)
 
     def ablegen(nachricht, zerlegt, anhangstext: str) -> None:
+        # **Die eine Stelle, durch die jede Mail läuft.** Beide Wege –
+        # mit und ohne Prozesspool – enden hier; ein Filter davor müsste
+        # zweimal stehen und beim dritten Weg fehlen.
+        if betreffmarken and accounts.betreff_ausgeschlossen(
+            zerlegt.subject or "", betreffmarken
+        ):
+            stat.uebergangen += 1
+            return
+
         ergebnis = archiv.add(
             nachricht.raw,
             account=quelle.account,

@@ -288,6 +288,7 @@ class Abruflauf(Auftrag):
                         mit_anhangstext=self.mit_anhangstext,
                         fortschritt=melden,
                         auf_fehler=vormerken,
+                        betreffmarken=konto.betreffmarken,
                     )
                     ergebnisse[konto.name] = stat
                 finally:

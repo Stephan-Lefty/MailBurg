@@ -151,6 +151,47 @@ eigener Name, kein Spamordner.
 Archivprogramm bringt die Ordnerstruktur mit, aus der er stammt – samt
 Papierkorb. Mit `--alles` kommt alles mit.
 
+### Post mit Spam-Marke im Betreff
+
+Manche Server sortieren Spamverdacht nicht in einen Ordner, sondern setzen dem
+Betreff eine Marke voran: `[SPAM] Gewinnbenachrichtigung`. Solche Post landet
+im Posteingang, und kein Ordnerausschluss der Welt hält sie auf.
+
+Auf Wunsch nimmt MailBurg sie gar nicht erst auf:
+
+```bash
+mailburg konten spamfilter Firma --ein     # mit den üblichen Marken
+mailburg konten spamfilter Firma           # zeigen, was gilt
+mailburg konten spamfilter Firma --aus     # wieder alles aufnehmen
+mailburg konten spamfilter Firma --marke "***SPAM***"   # eigene Marke
+```
+
+**Nur wenn der Betreff mit der Marke beginnt.** Das ist die eine Entscheidung,
+auf die es hier ankommt, und sie stammt aus einem echten Bestand: In einem
+Archiv mit 68.000 Mails trugen 312 Nachrichten `[SPAM]` im Betreff – 304 am
+Anfang, 8 mittendrin. Diese 8 sahen so aus:
+
+```
+AW: [SPAM]  Ihr Auftrag Nr. 22761 – Fragen zu Ihrer Bestellung
+WG: [SPAM]  Teckentrup: Wöchentliches Update zur Lieferfähigkeit
+```
+
+Das ist Kundenkorrespondenz. Jemand hat auf eine markierte Mail geantwortet,
+und die Marke wanderte in den Betreff der Antwort. **Wer solche Post
+fernhält, verliert eine Bestellung.** Deshalb zählt ausschließlich der Anfang.
+
+**Von Haus aus ist der Filter aus**, und das hat einen Grund: Ein Spamfilter
+irrt, und was nie archiviert wurde, fällt erst Jahre später auf – wenn
+überhaupt. Diese Entscheidung trifft der Anwender für sein Archiv, nicht das
+Programm für ihn. Wer sie trifft, sollte wissen:
+
+- Was übergangen wurde, **steht in der Bilanz jedes Laufs** – stillschweigend
+  verschwindet nichts.
+- Ein Ordnerausschluss ist harmloser: Post im Papierkorb hat *jemand* dorthin
+  gelegt. Eine Betreffmarke ist die Vermutung eines Filters.
+- Für ein Geschäftsarchiv kann das Gegenteil richtig sein. Wer belegen muss,
+  was ihn erreicht hat, will auch die falsch markierte Rechnung.
+
 Für den umgekehrten Fall – einzelne Ordner *ausschließlich* archivieren – gibt
 es beim Abruf `--ordner`:
 
@@ -178,6 +219,40 @@ mailburg konten entfernen Firma    # Konto und Passwort weg, Mails bleiben
 ```
 
 ## Wenn etwas schiefgeht
+
+**„Für … liegt kein Passwort im Schlüsselbund" – und zwar bei allen Konten
+auf einmal.** Dann fehlen die Passwörter fast nie wirklich. Sieben Passwörter
+verschwinden nicht gemeinsam; was gleichzeitig passiert, ist etwas anderes.
+
+Unter Linux beantwortet **nur ein Dienst** die Passwortanfragen aller
+Programme – er hält den Namen `org.freedesktop.secrets`, und wer zuerst da
+ist, gewinnt. Laufen zwei Schlüsselbünde nebeneinander, liegen Ihre
+Passwörter womöglich im einen, während der andere antwortet und leer ist.
+MailBurg sagt es dazu, wenn es diese Lage erkennt.
+
+Nachsehen lässt sich das so:
+
+```bash
+busctl --user list | grep -E "secrets|kwallet|ksecret"
+```
+
+Steht neben `org.freedesktop.secrets` ein anderer Dienst, als Sie erwarten,
+ist das die Ursache. **Neu eintragen hilft dann nicht** – die Passwörter
+landen im falschen Tresor, und beim nächsten Wechsel stehen Sie wieder da.
+
+Am 07.09.2026 unter Manjaro mit KDE Plasma so passiert: Ein Systemupdate
+brachte `gnome-keyring` mit, dessen systemd-Einheit ab Werk eingeschaltet ist
+(`gnome-keyring-daemon.socket`). Sie startet den Dienst, sobald ein Programm
+nach einem Passwort fragt – noch bevor KDEs eigener Schlüsselbund so weit ist.
+Abhilfe war:
+
+```bash
+systemctl --user mask --now gnome-keyring-daemon.socket gnome-keyring-daemon.service
+```
+
+Danach einmal ab- und anmelden. **Bedenken Sie, was sonst noch in diesem
+Schlüsselbund liegt** – dort gespeicherte Zugänge anderer Programme sind
+danach ebenfalls im anderen Tresor zu suchen.
 
 **„Anmeldung abgelehnt"** – meist fehlt das App-Passwort, siehe oben. Bei GMX
 und Web.de muss der IMAP-Zugriff zusätzlich in den Einstellungen der

@@ -894,3 +894,70 @@ class ZweiSchluesselbuendeTest(unittest.TestCase):
         zeilen = ["org.kde.kwalletd6  2102 kwalletd6  x :1.91 -"]
 
         self.assertEqual(self._meldung(zeilen), "")
+
+
+class BetreffmarkenTest(unittest.TestCase):
+    """Post, die wegen ihres Betreffs gar nicht erst ins Archiv kommt.
+
+    **Am 2026-09-07 an einem echten Bestand entschieden.** Stephans
+    Firmenarchiv enthielt 312 Nachrichten mit `[SPAM]` im Betreff. Die
+    Frage war nicht, ob man sie fernhält, sondern *welche*: 304 trugen
+    die Marke am Anfang, 8 mittendrin – und diese 8 waren
+    Kundenkorrespondenz.
+
+    »AW: [SPAM] Ihr Auftrag Nr. 22761 – Fragen zu Ihrer Bestellung«
+    ist eine Antwort auf etwas, das der Filter einmal markiert hat.
+    Wer sie fernhält, verliert eine Bestellung.
+    """
+
+    def marken(self):
+        from mailburg.core.accounts import STANDARD_BETREFFMARKEN
+
+        return STANDARD_BETREFFMARKEN
+
+    def pruefen(self, betreff: str) -> bool:
+        from mailburg.core.accounts import betreff_ausgeschlossen
+
+        return betreff_ausgeschlossen(betreff, self.marken())
+
+    def test_am_anfang_wird_uebergangen(self):
+        self.assertTrue(self.pruefen("[SPAM] Gewinnbenachrichtigung"))
+
+    def test_mittendrin_bleibt_drin(self):
+        """Der Fall, der die ganze Entscheidung getragen hat."""
+        self.assertFalse(
+            self.pruefen("AW: [SPAM] Ihr Auftrag Nr. 22761 – Fragen zur Bestellung")
+        )
+        self.assertFalse(
+            self.pruefen("WG: [SPAM] Teckentrup: Update zur Lieferfähigkeit")
+        )
+
+    def test_grossschreibung_zaehlt_nicht(self):
+        for schreibweise in ("[spam] Werbung", "[SpAm] Werbung", "[SPAM] Werbung"):
+            with self.subTest(betreff=schreibweise):
+                self.assertTrue(self.pruefen(schreibweise))
+
+    def test_fuehrende_leerzeichen_stoeren_nicht(self):
+        self.assertTrue(self.pruefen("   [SPAM] Werbung"))
+
+    def test_ohne_marken_kommt_alles_herein(self):
+        """Leere Liste heißt aus – und das ist die Vorgabe."""
+        from mailburg.core.accounts import betreff_ausgeschlossen
+
+        self.assertFalse(betreff_ausgeschlossen("[SPAM] Werbung", []))
+
+    def test_ein_neues_konto_hat_den_filter_aus(self):
+        """**Vorgabe ist aus.** Ein Spamfilter irrt, und was nie
+        archiviert wurde, fällt erst Jahre später auf – wenn überhaupt.
+        Diese Entscheidung trifft der Anwender, nicht MailBurg."""
+        from mailburg.core.accounts import Konto
+
+        self.assertEqual(Konto(name="A", server="s", benutzer="b").betreffmarken, [])
+
+    def test_ein_leerer_betreff_ist_kein_spam(self):
+        self.assertFalse(self.pruefen(""))
+
+    def test_eine_aehnliche_marke_zaehlt_nicht(self):
+        """»[SPAMMER]« ist nicht »[SPAM]« – und »Spam« ohne Klammern auch nicht."""
+        self.assertFalse(self.pruefen("Spam-Filter: Ihre Einstellungen"))
+        self.assertFalse(self.pruefen("Spamverdacht bei Ihrer Adresse"))

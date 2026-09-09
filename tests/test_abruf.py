@@ -323,3 +323,89 @@ class AltbestandInsLaufendeKontoTest(AbrufImArchivTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BetreffmarkenImLaufTest(AbrufImArchivTest):
+    """Der Filter im echten Durchlauf, nicht nur in der Prüffunktion.
+
+    **Warum dieser Test nötig war.** Die Prüffunktion hatte acht Tests
+    und war grün – der Zweig im Importer lief trotzdem in keinem
+    einzigen, weil dort überall die Markenliste leer war. Ein
+    undefinierter Name blieb darin unbemerkt, bis `pyflakes` in der CI
+    ihn meldete.
+
+    Ein Zweig, den kein Test ausführt, ist ungeprüfter Code – auch wenn
+    die Funktion daneben acht grüne Tests hat.
+    """
+
+    MARKEN = ("[SPAM]",)
+
+    def _lauf(self, server, marken=MARKEN):
+        quelle = ImapSource(
+            self.konto, verbindung=server, zustand=self.zustand,
+            hoechststand=lambda ordner: self.archive.index.max_uid("Firma", ordner),
+        )
+        return importieren(
+            self.archive, quelle, mit_anhangstext=False, betreffmarken=marken
+        )
+
+    def test_was_mit_der_marke_beginnt_kommt_nicht_ins_archiv(self):
+        server = FakeImap([FakeOrdner("INBOX", {
+            1: mail("[SPAM] Gewinnbenachrichtigung"),
+            2: mail("Angebot 4711"),
+        })])
+
+        stat = self._lauf(server)
+
+        self.assertEqual(stat.neu, 1)
+        self.assertEqual(stat.uebergangen, 1)
+
+    def test_die_marke_mittendrin_kommt_herein(self):
+        """Der Fall, der die Entscheidung getragen hat."""
+        server = FakeImap([FakeOrdner("INBOX", {
+            1: mail("AW: [SPAM] Ihr Auftrag Nr. 22761"),
+        })])
+
+        stat = self._lauf(server)
+
+        self.assertEqual(stat.neu, 1)
+        self.assertEqual(stat.uebergangen, 0)
+
+    def test_ohne_marken_kommt_alles_herein(self):
+        """Die Vorgabe – der Filter ist aus."""
+        server = FakeImap([FakeOrdner("INBOX", {
+            1: mail("[SPAM] Gewinnbenachrichtigung"),
+        })])
+
+        stat = self._lauf(server, marken=())
+
+        self.assertEqual(stat.neu, 1)
+        self.assertEqual(stat.uebergangen, 0)
+
+    def test_uebergangene_stehen_in_der_bilanz(self):
+        """**Stillschweigend verschwindet nichts.**"""
+        server = FakeImap([FakeOrdner("INBOX", {1: mail("[SPAM] Werbung")})])
+
+        stat = self._lauf(server)
+
+        self.assertIn("übergangen", str(stat))
+
+    def test_der_hoechststand_zieht_trotzdem_mit(self):
+        """Sonst holte der nächste Lauf die Spam-Mail wieder und wieder.
+
+        Übergangene Post darf den Abruf nicht anhalten: Die
+        Hochwassermarke kommt aus dem Index, und dort steht die Mail
+        nicht. Was hier zählt, ist die Mail *danach*.
+        """
+        server = FakeImap([FakeOrdner("INBOX", {
+            1: mail("[SPAM] Werbung"),
+            2: mail("Echte Post"),
+        })])
+        self._lauf(server)
+
+        self.assertEqual(self.archive.index.max_uid("Firma", "INBOX"), 2)
+
+        server.ordner["INBOX"].mails[3] = mail("Noch mehr echte Post")
+        stat = self._lauf(server)
+
+        self.assertEqual(stat.neu, 1)

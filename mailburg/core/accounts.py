@@ -57,6 +57,44 @@ STANDARD_AUSSCHLUSS = (
 )
 
 
+#: Betreffmarken, die ein Spamfilter dem Betreff **voranstellt**. Wer
+#: sie einschaltet, lässt solche Post gar nicht erst ins Archiv.
+#:
+#: **Vorgabe ist aus, und das mit Bedacht.** Ein Spamfilter irrt, und was
+#: nie archiviert wurde, fällt erst Jahre später auf – wenn überhaupt.
+#: Bei Geschäftspost kann eine falsch markierte Rechnung darunter sein.
+#: Wer den Filter einschaltet, entscheidet das für sein Archiv; MailBurg
+#: entscheidet es nicht für ihn.
+STANDARD_BETREFFMARKEN = (
+    "[SPAM]",
+    "[Spam]",
+    "***SPAM***",
+    "[SPAM?]",
+    "[Spamverdacht]",
+    "[MÖGLICHER SPAM]",
+)
+
+
+def betreff_ausgeschlossen(betreff: str, marken) -> bool:
+    """Ob der Betreff mit einer der Marken **beginnt**.
+
+    **Nur am Anfang, nicht irgendwo.** Ein Spamfilter stellt seine Marke
+    voran; steht sie mitten im Betreff, ist es fast immer eine
+    Weiterleitung oder eine Rückfrage dazu – »Fwd: [SPAM] ist das echt?«
+    –, und die gehört ins Archiv. Am 2026-09-07 an einem echten Bestand
+    nachgesehen: Von 667 Fundstellen trugen nur 312 die Marke wirklich im
+    Betreff, und davon standen wieder einige am Anfang einer zitierten
+    Antwort.
+
+    Groß- und Kleinschreibung zählt nicht, führende Leerzeichen auch
+    nicht.
+    """
+    if not marken:
+        return False
+    anfang = (betreff or "").lstrip().casefold()
+    return any(anfang.startswith(m.casefold()) for m in marken if m)
+
+
 def _vergleichsform(name: str) -> str:
     """Wie ein Ordnername verglichen wird.
 
@@ -99,6 +137,14 @@ class Konto:
 
     ausschluss: list[str] = field(default_factory=lambda: list(STANDARD_AUSSCHLUSS))
     """Ordner, die übergangen werden."""
+
+    betreffmarken: list[str] = field(default_factory=list)
+    """Betreffanfänge, die gar nicht erst ins Archiv kommen.
+
+    **Leer heißt aus**, und das ist die Vorgabe. Siehe
+    :data:`STANDARD_BETREFFMARKEN` für den Grund und für die Marken, die
+    ``mailburg konten spamfilter`` einträgt.
+    """
 
     aktiv: bool = True
 

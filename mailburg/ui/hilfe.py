@@ -191,6 +191,30 @@ JMAP läuft immer über HTTPS.</p>
 <p><b>Beides zugleich ist ausdrücklich vorgesehen.</b> Der Abrufweg
 gehört zum einzelnen Postfach, nicht zum Programm.</p>
 
+<h3>Post mit Spam-Marke im Betreff</h3>
+
+<p>Manche Server sortieren Spamverdacht nicht in einen Ordner, sondern
+setzen dem Betreff eine Marke voran: <tt>[SPAM] Gewinnbenachrichtigung</tt>.
+Solche Post landet im Posteingang, und kein Ordnerausschluss hält sie
+auf. Auf Wunsch nimmt MailBurg sie gar nicht erst auf – auf der
+Kommandozeile mit <tt>mailburg konten spamfilter NAME --ein</tt>.</p>
+
+<p><b>Nur wenn der Betreff mit der Marke beginnt.</b> Darauf kommt es
+an, und die Regel stammt aus einem echten Archiv: Von 312 Nachrichten
+mit <tt>[SPAM]</tt> im Betreff trugen 8 die Marke mittendrin – und diese
+8 waren Kundenkorrespondenz:</p>
+
+<p><tt>AW: [SPAM] Ihr Auftrag Nr. 22761 – Fragen zu Ihrer Bestellung</tt></p>
+
+<p>Jemand hat auf eine markierte Mail geantwortet, und die Marke wanderte
+in den Betreff der Antwort. Wer solche Post fernhält, verliert eine
+Bestellung.</p>
+
+<p><b>Von Haus aus ist der Filter aus.</b> Ein Spamfilter irrt, und was
+nie archiviert wurde, fällt erst Jahre später auf – wenn überhaupt. Diese
+Entscheidung trifft der Anwender für sein Archiv, nicht das Programm für
+ihn. Was übergangen wurde, steht in der Bilanz jedes Abrufs.</p>
+
 <p><b>Wenn das Zertifikat abgelehnt wird.</b> Läuft Ihr Mailserver bei
 einem größeren Anbieter, weist er sich oft unter dessen Namen aus.
 MailBurg sieht dann nach, für welchen Namen das Zertifikat gilt, und

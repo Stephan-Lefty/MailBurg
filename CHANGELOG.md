@@ -9,6 +9,29 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- **Post mit Spam-Marke im Betreff lässt sich fernhalten.** Manche
+  Server sortieren Spamverdacht nicht in einen Ordner, sondern setzen
+  dem Betreff eine Marke voran – solche Post landet im Posteingang, und
+  kein Ordnerausschluss hält sie auf. `mailburg konten spamfilter NAME
+  --ein` schaltet es je Postfach ein.
+
+  **Nur wenn der Betreff mit der Marke beginnt**, und das ist die
+  Entscheidung, auf die es ankommt. Sie stammt aus einem echten
+  Bestand: Von 312 Nachrichten mit `[SPAM]` im Betreff trugen 8 die
+  Marke mittendrin – und diese 8 waren Kundenkorrespondenz
+  (»AW: [SPAM] Ihr Auftrag Nr. 22761 – Fragen zu Ihrer Bestellung«).
+  Jemand hatte auf eine markierte Mail geantwortet, und die Marke
+  wanderte in den Betreff der Antwort. Wer solche Post fernhält,
+  verliert eine Bestellung.
+
+  **Von Haus aus aus.** Ein Spamfilter irrt, und was nie archiviert
+  wurde, fällt erst Jahre später auf – wenn überhaupt. Diese
+  Entscheidung trifft der Anwender für sein Archiv, nicht das Programm
+  für ihn. Was übergangen wurde, zählt die Bilanz jedes Laufs
+  gesondert; stillschweigend verschwindet nichts.
+
 ### Behoben
 
 - **Ein gesperrter Schlüsselbund galt als leerer.** In
