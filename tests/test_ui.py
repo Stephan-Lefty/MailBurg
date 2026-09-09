@@ -1591,6 +1591,39 @@ class AbrufmeldungTest(OberflaechenTest):
         self.assertEqual(art, "gut")
         self.assertIn("nichts Neues", text)
 
+    def test_uebergangene_post_steht_in_der_meldung(self):
+        """**Sonst behauptet das Fenster etwas Unwahres.**
+
+        Bis zum 2026-09-09 meldete es »Alle Mails sind im Archiv«, auch
+        wenn der Betrefffilter Post ferngehalten hatte – auf der
+        Kommandozeile stand die Zahl, im Fenster verschwand sie. In
+        einem Archivprogramm ist die falsche Entwarnung der teuerste
+        Fehler; wer sie glaubt, räumt sein Postfach auf.
+        """
+        class Stat:
+            neu = 5
+            uebergangen = 2
+
+        art, text = self._melden({"a@example.org": Stat()})[0]
+
+        self.assertEqual(art, "gut")
+        self.assertNotIn("Alle Mails sind im Archiv", text)
+        self.assertIn("übergangen", text)
+        self.assertIn("2", text)
+        # Und der Satz, der vor blindem Vertrauen bewahrt.
+        self.assertIn("kann echte Post sein", text)
+
+    def test_ohne_filter_bleibt_die_entwarnung_wie_sie_war(self):
+        """Wer den Filter nicht nutzt, soll keine Einschränkung lesen."""
+        class Stat:
+            neu = 5
+            uebergangen = 0
+
+        _art, text = self._melden({"a@example.org": Stat()})[0]
+
+        self.assertIn("Alle Mails sind im Archiv", text)
+        self.assertNotIn("übergangen", text)
+
 
 class StandardTrotzTraegemFensterTest(FenstergroesseTest):
     """Die Aufteilung darf nicht davon abhängen, wann resize wirkt.

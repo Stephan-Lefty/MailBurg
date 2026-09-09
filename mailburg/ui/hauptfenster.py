@@ -1639,6 +1639,13 @@ class Hauptfenster(QMainWindow):
         self.abrufen_aktion.setEnabled(True)
 
         neu = sum(getattr(e, "neu", 0) for e in ergebnisse.values())
+        # **Was der Betrefffilter ferngehalten hat, gehört genannt.**
+        # Bis zum 2026-09-09 meldete dieses Fenster »Alle Mails sind im
+        # Archiv«, während Post übergangen wurde: Auf der Kommandozeile
+        # stand die Zahl, im Fenster verschwand sie. In einem
+        # Archivprogramm ist die falsche Entwarnung der teuerste Fehler
+        # – hier war sie sogar wörtlich unwahr.
+        uebergangen = sum(getattr(e, "uebergangen", 0) for e in ergebnisse.values())
         fehler = [f"{k}: {v}" for k, v in ergebnisse.items() if isinstance(v, Exception)]
 
         self.stand.setText(
@@ -1665,12 +1672,29 @@ class Hauptfenster(QMainWindow):
             )
             return
 
+        nachsatz = ""
+        if uebergangen:
+            from mailburg.core.sprache import mails
+
+            nachsatz = (
+                f"\n\n{mails(uebergangen)} wurden übergangen: Ihr Betreff "
+                f"beginnt mit einer Spam-Marke.\n\nDarunter kann echte "
+                f"Post sein – ein Spamfilter irrt. Abschalten lässt sich "
+                f"das mit\n  mailburg konten spamfilter NAME --aus"
+            )
+
         QMessageBox.information(
             self,
             "Abruf abgeschlossen",
-            "Alle Mails sind im Archiv."
+            # **Ohne den Betrefffilter ist alles im Archiv, mit ihm
+            # nicht.** Der Satz muss beides aushalten, sonst steht dort
+            # eine Zusage, die der Anwender selbst abbestellt hat – und
+            # die er glaubt, wenn er sein Postfach aufräumt.
+            ("Alle Mails sind im Archiv." if not uebergangen else
+             "Alles Abgerufene ist im Archiv.")
             + (f"\n\n{neu} neu hinzugekommen." if neu else
-               "\n\nEs war nichts Neues da."),
+               "\n\nEs war nichts Neues da.")
+            + nachsatz,
         )
 
     def _sperre_klaeren(self, pfad) -> bool | None:

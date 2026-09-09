@@ -7,6 +7,33 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **Das Fenster behauptete »Alle Mails sind im Archiv«, auch wenn der
+  Betrefffilter Post ferngehalten hatte.** Auf der Kommandozeile stand
+  die Zahl, im Fenster verschwand sie – in einem Archivprogramm ist die
+  falsche Entwarnung der teuerste Fehler, und hier war sie sogar
+  wörtlich unwahr. Der Satz heißt jetzt »Alles Abgerufene ist im
+  Archiv« und nennt die übergangenen Nachrichten, samt dem Hinweis,
+  dass echte Post darunter sein kann.
+
+### Geändert
+
+- **Die Anleitung rät, vor dem Einschalten des Betrefffilters
+  nachzusehen.** In dem Archiv, an dem er entstand, sah die Probe so
+  aus: sieben Rechnungen, Lastschriftankündigungen,
+  Auftragsbestätigungen – und kein einziger echter Spam. Bei diesem
+  Anbieter war die Marke im Betreff wertlos; verlässlich war allein der
+  Ordner, in den er einsortierte.
+
+  ```
+  mailburg suchen ~/Archiv 'betreff:"[SPAM]"'
+  ```
+
+  zeigt es vorher. Stehen dort Rechnungen, gehört der Filter aus.
+
 ## [1.4.0] – 2026-09-09
 
 Die Fassung, die aus einem einzigen Arbeitstag am echten Bestand

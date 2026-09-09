@@ -215,6 +215,13 @@ nie archiviert wurde, fällt erst Jahre später auf – wenn überhaupt. Diese
 Entscheidung trifft der Anwender für sein Archiv, nicht das Programm für
 ihn. Was übergangen wurde, steht in der Bilanz jedes Abrufs.</p>
 
+<p><b>Sehen Sie vorher nach, was der Filter treffen würde.</b> Suchen Sie
+nach <tt>betreff:"[SPAM]"</tt>. In dem Archiv, an dem diese Funktion
+entstand, standen dort sieben Rechnungen, Lastschriftankündigungen und
+Auftragsbestätigungen – und kein einziger echter Spam. Bei diesem
+Anbieter war die Marke im Betreff wertlos; verlässlich war allein der
+Ordner, in den er einsortierte.</p>
+
 <p><b>Wenn das Zertifikat abgelehnt wird.</b> Läuft Ihr Mailserver bei
 einem größeren Anbieter, weist er sich oft unter dessen Namen aus.
 MailBurg sieht dann nach, für welchen Namen das Zertifikat gilt, und

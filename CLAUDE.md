@@ -3,6 +3,48 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-09, Mittwoch)
+
+**1.4.0 ist veröffentlicht**, samt `MailBurg.exe`. Und gleich danach kam
+der lehrreichste Befund des Tages – aus einem Bildschirmfoto.
+
+### Der Betrefffilter hätte Rechnungen verschluckt
+
+Stephan hatte ihn auf allen fünfzehn Konten eingeschaltet. Der Blick auf
+das, was er künftig träfe, ergab dies:
+
+```
+[SPAM] Rechnung 13007 / 13150 / 13405 / 13470 / 13479
+[SPAM] Abbuchungs-Anzeige KdNr 600101
+[SPAM] Lastschriftankündigung
+[SPAM] RE: Bestellnr.: 30246, Rechnung Nr. 20423026
+[SPAM] VS Sonnenschutz Auftragsbestätigung Nr. 369012
+```
+
+**Kein einziger echter Spam unter dreißig.** Sein Anbieter markiert
+massenhaft falsch-positiv; die 261 gelöschten lagen im
+`Junk-E-Mail`-Ordner, und *das* war das verlässliche Signal – nicht die
+Marke im Betreff. Diese dreißig hatte ein Mensch aus dem Junk gefischt
+und einsortiert.
+
+**Die Lehre über die Funktion hinaus:** Ich hatte den Filter gebaut,
+weil die Zahl 263 überzeugend aussah, ohne zu prüfen, *was* darunter
+ist. Eine Zahl ist kein Befund. Der Rat, vor dem Einschalten
+nachzusehen, steht jetzt in der Anleitung und im Handbuch – mit genau
+dieser Liste als Beispiel.
+
+### Und das Fenster log
+
+`_abruf_fertig` meldete »Alle Mails sind im Archiv«, auch wenn der
+Filter Post ferngehalten hatte. Auf der Kommandozeile stand die Zahl –
+`Statistik.__str__` nennt sie –, aber das Hauptfenster baut seine
+Meldung selbst und summierte nur `neu`.
+
+**Derselbe Fehler wie beim Anhang, der sich zweimal öffnete:** Zwei
+Wege, einer wurde nachgezogen, der andere nicht. Und diesmal stand am
+Ende eine Zusage, die wörtlich unwahr war – in einem Archivprogramm die
+teuerste Sorte Fehler, denn wer sie glaubt, räumt sein Postfach auf.
+
 ## Hier war Schluss (Stand 2026-09-07, Montag spätabends)
 
 **Der Abend gehörte einer Meldung, die etwas Falsches behauptete.** Nach

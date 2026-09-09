@@ -180,6 +180,35 @@ Das ist Kundenkorrespondenz. Jemand hat auf eine markierte Mail geantwortet,
 und die Marke wanderte in den Betreff der Antwort. **Wer solche Post
 fernhält, verliert eine Bestellung.** Deshalb zählt ausschließlich der Anfang.
 
+### Sehen Sie vorher nach, was der Filter treffen würde
+
+**Der wichtigste Rat auf dieser Seite.** In demselben Archiv sah die Probe so
+aus – alle Nachrichten, deren Betreff mit `[SPAM]` beginnt:
+
+```
+[SPAM] Rechnung 13007 / 13150 / 13405 / 13470 / 13479
+[SPAM] Abbuchungs-Anzeige KdNr 600101
+[SPAM] Lastschriftankündigung
+[SPAM] RE: Bestellnr.: 30246, Rechnung Nr. 20423026
+[SPAM] VS Sonnenschutz Auftragsbestätigung Nr. 369012
+[SPAM] Teckentrup: Wöchentliches Update zur Lieferfähigkeit
+```
+
+**Kein einziger echter Spam.** Sieben Rechnungen, Lastschriften,
+Auftragsbestätigungen – alles Geschäftspost, die der Spamfilter des Anbieters
+falsch markiert hatte. Bei diesem Anbieter trägt die Marke im Betreff also
+keine Aussagekraft; verlässlich war allein der Ordner, in den er sortiert.
+
+Prüfen Sie das vor dem Einschalten an Ihrem eigenen Bestand:
+
+```bash
+mailburg suchen ~/Archiv 'betreff:"[SPAM]"'
+```
+
+Stehen dort Rechnungen und Bestellungen, lassen Sie den Filter aus. Der
+Ordnerausschluss oben erledigt die Arbeit dann ohnehin – und er ist die
+harmlosere Regel, weil eine Mail im Spamordner niemand gerettet hat.
+
 **Von Haus aus ist der Filter aus**, und das hat einen Grund: Ein Spamfilter
 irrt, und was nie archiviert wurde, fällt erst Jahre später auf – wenn
 überhaupt. Diese Entscheidung trifft der Anwender für sein Archiv, nicht das
