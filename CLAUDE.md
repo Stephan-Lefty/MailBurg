@@ -3,6 +3,62 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-09, Mittwochabend) – 1.4.1
+
+**Ab morgen ist MailBurg im Alltag von mehreren Menschen.** Stephan hat
+allen gesagt, sie sollen die aktuelle Fassung installieren; danach
+kommen nur noch Ideen und Rückmeldungen dazu. Deshalb die 1.4.1 noch am
+selben Abend – die 1.4.0 hätte zwei Dinge ausgeliefert, die nicht
+stimmten.
+
+### Das Debian-Paket
+
+`werkzeuge/deb_bauen.py`, `.github/workflows/deb.yml`. Ein natives
+Paket, 2,2 MB statt 165 – Qt kommt aus der Distribution und bekommt
+darüber seine Sicherheitsupdates. Gebraucht wird allein `dpkg-deb`, kein
+`fpm`, kein `debhelper`.
+
+**Der Befund, der den Aufbau bestimmt hat:** Der erste Prüflauf lief auf
+`ubuntu-latest`, und dort liefert `apt-cache search pyside6` **nichts**.
+Ubuntu 24.04 kennt PySide6 nicht als Paket, Debian 13 sehr wohl. Auf dem
+falschen System zu prüfen wäre schlimmer als gar nicht zu prüfen: Der
+Lauf wäre grün geworden, sobald man die Qt-Prüfung weglässt – und das
+Paket auf dem Zielsystem trotzdem ohne Fenster. Der Job läuft deshalb in
+einem `debian:trixie`-Container.
+
+**Geprüft wird das Paket, nicht der Bau:** installieren, Archiv anlegen,
+Mails einlesen, suchen, Hash-Kette prüfen, Oberfläche laden. Dazu die
+Frage, an der eine Paketierung sonst scheitert – findet MailBurg seine
+Bilder, wenn sie woanders liegen als im Quellbaum?
+
+**Byte-identisch reproduzierbar** (`SOURCE_DATE_EPOCH` aus dem letzten
+Commit, Zeitstempel normalisiert, alles `root/root`). Wer die Datei
+lädt, kann sie nachbauen und die Prüfsummen vergleichen.
+
+### Und wieder eine Meldung, die etwas Falsches sagte
+
+`_abruf_fertig` im Hauptfenster meldete »Alle Mails sind im Archiv«,
+auch wenn der Betrefffilter Post ferngehalten hatte. Die Bilanz kannte
+die Zahl (`Statistik.uebergangen`), das Fenster summierte nur `neu`.
+
+**Derselbe Fehler wie beim doppelt geöffneten Anhang:** zwei Wege, einer
+nachgezogen, der andere nicht.
+
+### Der Betrefffilter im Praxistest – Empfehlung umgekehrt
+
+An Stephans 68.000 Mails geprüft, was er künftig träfe: dreißig
+Nachrichten, darunter **sieben Rechnungen**, Lastschriftankündigungen
+und Auftragsbestätigungen. Kein einziger echter Spam. Sein Anbieter
+markiert massenhaft falsch-positiv; verlässlich war allein der Ordner.
+
+Der Filter bleibt, wie er ist – ab Werk aus, und wessen Anbieter
+zuverlässig markiert, dem nützt er. Aber Anleitung und Handbuch raten
+jetzt, **vorher nachzusehen**, mit genau dieser Liste als Beispiel.
+
+**Die Lehre über die Funktion hinaus:** Gebaut wurde sie, weil die Zahl
+263 überzeugend aussah – ohne zu prüfen, *was* darunter ist. Eine Zahl
+ist kein Befund.
+
 ## Hier war Schluss (Stand 2026-09-09, Mittwoch)
 
 **1.4.0 ist veröffentlicht**, samt `MailBurg.exe`. Und gleich danach kam

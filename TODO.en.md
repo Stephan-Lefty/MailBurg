@@ -7,6 +7,24 @@ down, with the date they were completed.
 
 ## Open
 
+### In everyday use from now on (2026-09-09)
+
+Stephan has told all users to install the current version; from here on
+only ideas and feedback get added. **That changes the standard:** what
+goes wrong now no longer hits the developer alone.
+
+- [x] **A Debian package on every release.** (2026-09-09, in 1.4.1)
+  `sudo apt install ./mailburg_*.deb` — installing is one command. It is
+  verified on a real Debian 13 before it is attached.
+
+- [ ] **The subject filter should go back off on Stephan's machine.** It
+  is active on all fifteen accounts and would hold back the invoices
+  that showed up in the sample on 9 September. The folder exclusion is
+  enough.
+
+- [ ] **AppImage and `.dmg` are still missing.** The AppImage would be
+  the route for everything that is not Debian — Fedora, Arch, openSUSE.
+
 ### Two keyrings on one machine (2026-09-07)
 
 After a Manjaro update with over 300 packages, MailBurg reported "no

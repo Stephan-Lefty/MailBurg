@@ -8,6 +8,24 @@ wurde.
 
 ## Offen
 
+### Ab jetzt im Alltag (2026-09-09)
+
+Stephan hat allen Nutzern gesagt, sie sollen die aktuelle Fassung
+installieren; danach kommen nur noch Ideen und Rückmeldungen dazu.
+**Damit ändert sich der Maßstab:** Was jetzt schiefgeht, trifft nicht
+mehr nur den Entwickler.
+
+- [x] **Ein Debian-Paket an jedem Release.** (2026-09-09, in der 1.4.1)
+  `sudo apt install ./mailburg_*.deb` – Installieren ist ein Befehl.
+  Geprüft wird es vor dem Anhängen auf einem echten Debian 13.
+
+- [ ] **Der Betrefffilter gehört bei Stephan wieder aus.** Er ist auf
+  allen fünfzehn Konten aktiv und würde die Rechnungen fernhalten, die
+  am 09.09. in der Probe standen. Der Ordnerausschluss reicht.
+
+- [ ] **AppImage und `.dmg` fehlen weiterhin.** Das AppImage wäre der
+  Weg für alles, was nicht Debian ist – Fedora, Arch, openSUSE.
+
 ### Zwei Schlüsselbünde auf einem Rechner (2026-09-07)
 
 Nach einem Manjaro-Update mit über 300 Paketen meldete MailBurg für alle
