@@ -54,7 +54,7 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 1.4.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
+**Fassung 1.4.1, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
 Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
 Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
 Bestand von rund 68.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
@@ -72,8 +72,9 @@ ersten Mal gegen einen echten Server gelaufen: rund 5.000 Nachrichten aus
 einem selbst betriebenen Stalwart, 200 davon in unter fünf Sekunden. Bei
 Fastmail hat es noch niemand ausprobiert.
 
-Was noch fehlt: Outlook-`.pst`, fertige Pakete (`.deb`, AppImage, `.dmg`)
-und der erprobte Betrieb unter macOS. Die vollständige Liste steht in
+Für Debian und GuideOS hängt ein fertiges `.deb` an jedem Release, für
+Windows die `MailBurg.exe`. Was noch fehlt: Outlook-`.pst`, AppImage und
+`.dmg` sowie der erprobte Betrieb unter macOS. Die vollständige Liste steht in
 [TODO.md](TODO.md).
 
 ## Wie es funktioniert

@@ -53,7 +53,7 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 1.4.0, in daily use.** Archive format, IMAP retrieval, search, the
+**Version 1.4.1, in daily use.** Archive format, IMAP retrieval, search, the
 graphical interface, text recognition for scanned PDFs, backups and scheduled
 retrieval are all in place and used every day — on Linux with a corpus of
 around 68,000 messages, on Windows with the ready-made `MailBurg.exe`.
@@ -70,8 +70,9 @@ but not yet exercised in daily use. See
 server on 2026-09-03: around 5,000 messages from a self-hosted Stalwart,
 200 of them in under five seconds. Nobody has tried it with Fastmail yet.
 
-Still missing: Outlook `.pst`, ready-made packages (`.deb`, AppImage, `.dmg`)
-and verified operation on macOS. Full list in [TODO.en.md](TODO.en.md).
+For Debian and relatives a ready-made `.deb` is attached to every release,
+for Windows the `MailBurg.exe`. Still missing: Outlook `.pst`, AppImage and
+`.dmg`, and verified operation on macOS. Full list in [TODO.en.md](TODO.en.md).
 
 ## How it works
 
