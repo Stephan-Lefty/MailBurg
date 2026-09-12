@@ -138,6 +138,15 @@ Auch die Schreibweise darf abweichen: `von:muller` und `von:mueller` finden
 beide „Müller", `bahnhofstrasse` findet „Bahnhofstraße". Groß- und
 Kleinschreibung spielt nirgends eine Rolle.
 
+**Wie schnell das ist, an einem echten Bestand gemessen:** 68.000 Mails,
+19,5 GB Rohdaten, knapp 1 GB Suchindex. Eine Suche aus dem Fenster – Treffer
+zählen *und* die erste Seite holen – braucht **2 bis 61 Millisekunden**, auch
+wenn 39.000 Nachrichten passen. Wer alle Treffer auf einmal anfordert, wartet
+im Höchstfall 0,4 Sekunden.
+
+Der Suchindex liegt dabei auf der internen Platte, das Archiv selbst auf einer
+externen: Gelesen wird von dort erst, wenn Sie eine Nachricht öffnen.
+
 ### Woher die Post kommt
 
 Aus **IMAP-Postfächern** – so gut wie überall –, aus Thunderbird-Profilen,

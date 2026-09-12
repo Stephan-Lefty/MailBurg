@@ -3,6 +3,37 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-10, Donnerstag)
+
+**1.4.2 ist veröffentlicht**, mit `.exe` *und* `.deb` am Release. Erster
+Tag im Alltag bei mehreren Anwendern: keine Rückmeldungen. Stephans
+Betrefffilter ist auf allen fünfzehn Konten wieder aus – die Rechnungen
+sind sicher.
+
+### Die Suche bei 68.000 Mails: gemessen statt vermutet
+
+Der Punkt stand seit Wochen offen; gemessen war bisher an 5.187 Mails.
+Jetzt an 68.003 (19,5 GB roh, 954 MB Index):
+
+| | |
+|---|---|
+| Suche aus dem Fenster | **2 – 61 ms** |
+| … bei 39.000 Treffern | 47 ms |
+| alle Treffer auf einmal | höchstens 404 ms |
+
+**Der Unterschied liegt im Aufbau, nicht in SQLite.** `ui/modelle.py`
+holt einen Block von 200 Treffern und zählt getrennt (`index.count`).
+Ein `search()` ohne Deckel dauert 284 ms statt 26 – wer eine
+Trefferliste füllt, indem er alles lädt, verschenkt den Faktor zehn.
+Das war schon richtig gebaut, bevor jemand es gemessen hat.
+
+**Der Index liegt lokal, das Archiv extern.** Von der USB-Platte wird
+erst gelesen, wenn jemand eine Nachricht öffnet – deshalb schlägt sie
+auf die Suchzeiten gar nicht durch.
+
+Offen bleibt die halbe Million. Der Index wächst etwa linear (14 KB je
+Mail), die Suche muss das nicht.
+
 ## Hier war Schluss (Stand 2026-09-09, Mittwochabend) – 1.4.1
 
 **Ab morgen ist MailBurg im Alltag von mehreren Menschen.** Stephan hat

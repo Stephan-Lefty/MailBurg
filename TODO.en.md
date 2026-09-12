@@ -17,9 +17,9 @@ goes wrong now no longer hits the developer alone.
   `sudo apt install ./mailburg_*.deb` — installing is one command. It is
   verified on a real Debian 13 before it is attached.
 
-- [ ] **The subject filter should go back off on Stephan's machine.** It
-  is active on all fifteen accounts and would hold back the invoices
-  that showed up in the sample on 9 September. The folder exclusion is
+- [x] **The subject filter is back off on Stephan's machine.**
+  (2026-09-10) On all fifteen accounts. It would have held back the
+  invoices from the 9 September sample; the folder exclusion is
   enough.
 
 - [ ] **AppImage and `.dmg` are still missing.** The AppImage would be
@@ -86,9 +86,17 @@ and the first figure in this order of magnitude.
   `mailburg suchen ARCHIVE "ordner:Spam"` plus the folder names from the
   mailbox tree; removal would be `mailburg loeschen`.
 
-- [ ] **How fast is search over 68,000 messages?** Measured so far
-  against 5,187. The figure is missing, and it would be the first solid
-  answer for a corpus of this size.
+- [x] **How fast is search over 68,000 messages?** (2026-09-10)
+  **2 to 61 milliseconds** for a search from the window — counting hits
+  and fetching the first page — even where 39,000 messages match. All
+  hits at once: 0.4 seconds at most. The corpus: 19.5 GB of raw mail,
+  954 MB of index.
+
+  **The window fetches one block and counts separately.** That is what
+  matters: a `search()` without a limit takes 284 ms instead of 26.
+
+  Half a million remains open. The index grows roughly linearly
+  (14 KB per message); search does not have to.
 
 - [ ] **No filter on `[SPAM]` in the subject.** Deliberately not built:
   the marker also sits on false positives, and what was never archived

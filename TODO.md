@@ -19,9 +19,9 @@ mehr nur den Entwickler.
   `sudo apt install ./mailburg_*.deb` – Installieren ist ein Befehl.
   Geprüft wird es vor dem Anhängen auf einem echten Debian 13.
 
-- [ ] **Der Betrefffilter gehört bei Stephan wieder aus.** Er ist auf
-  allen fünfzehn Konten aktiv und würde die Rechnungen fernhalten, die
-  am 09.09. in der Probe standen. Der Ordnerausschluss reicht.
+- [x] **Der Betrefffilter ist bei Stephan wieder aus.** (2026-09-10)
+  Auf allen fünfzehn Konten. Er hätte die Rechnungen ferngehalten, die
+  am 09.09. in der Probe standen; der Ordnerausschluss reicht.
 
 - [ ] **AppImage und `.dmg` fehlen weiterhin.** Das AppImage wäre der
   Weg für alles, was nicht Debian ist – Fedora, Arch, openSUSE.
@@ -87,9 +87,19 @@ Alltagsbestands und die erste Zahl in dieser Größenordnung.
   `mailburg suchen ARCHIV "ordner:Spam"` und den Ordnernamen aus dem
   Postfachbaum; herausnehmen ließe sich das mit `mailburg loeschen`.
 
-- [ ] **Wie schnell ist die Suche bei 68.000 Mails?** Bisher gemessen an
-  5.187. Die Zahl fehlt, und sie wäre die erste belastbare Auskunft zu
-  einem Bestand dieser Größe.
+- [x] **Wie schnell ist die Suche bei 68.000 Mails?** (2026-09-10)
+  **2 bis 61 Millisekunden** für eine Suche aus dem Fenster – Treffer
+  zählen und erste Seite holen –, auch wenn 39.000 Nachrichten passen.
+  Alle Treffer auf einmal: höchstens 0,4 Sekunden. Der Bestand: 19,5 GB
+  Rohdaten, 954 MB Suchindex.
+
+  **Das Fenster holt nur einen Block und zählt getrennt.** Genau darauf
+  kommt es an: Ein `search()` ohne Deckel dauert 284 ms statt 26 – wer
+  die Trefferliste füllt, indem er alles lädt, verschenkt den Faktor
+  zehn.
+
+  Offen bleibt die halbe Million. Der Index wächst etwa linear
+  (14 KB/Mail), die Suche tut das nicht zwingend.
 
 - [ ] **Kein Filter auf `[SPAM]` im Betreff.** Bewusst nicht gebaut: Der
   Marker steht auch auf falsch-positiven Mails, und was einmal nicht

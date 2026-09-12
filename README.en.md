@@ -129,6 +129,14 @@ special case but the norm — we run words together. Hence a second index over
 character trigrams alongside the word index. And `von:muller` finds "Müller"
 too, for when the umlaut is hard to type.
 
+**Measured on a real corpus:** 68,000 messages, 19.5 GB of raw mail, just
+under 1 GB of search index. A search from the window — counting the hits *and*
+fetching the first page — takes **2 to 61 milliseconds**, even where 39,000
+messages match. Asking for every hit at once costs at most 0.4 seconds.
+
+The index sits on the internal disk while the archive itself lives on an
+external one: that disk is only read when you open a message.
+
 ### Where the mail comes from
 
 From **IMAP mailboxes** — almost everywhere —, from Thunderbird profiles,
