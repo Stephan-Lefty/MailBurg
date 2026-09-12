@@ -164,6 +164,21 @@ unsere Arbeit beim User kaputt.**«
   denkt an das Fenster, nicht an die Liste – und niemand merkt es, weil
   das Werkzeug weiter grün meldet.
 
+- [ ] **Bei sehr großer Schrift und schmalem Fenster wird der Platz in
+  der Trefferliste wirklich knapp.** Fünf Spaltenköpfe und der
+  Postfachbaum passen bei 24 pt nicht mehr nebeneinander, wenn die
+  Schrift breit läuft – in der CI aufgetreten, auf Stephans Rechner
+  nicht, weil dort eine schmalere Schrift liegt. Die Betreff-Spalte
+  kürzt dann ihre Überschrift; sie ist die gedehnte und bekommt, was
+  übrig bleibt.
+
+  Das Werkzeug meldet gedehnte Spalten nicht mehr (es zeigte auf die
+  Spalte und meinte das Fenster), nennt sie aber im Bericht. **Zu
+  klären bleibt die Sache selbst:** Soll die Trefferliste bei Platzmangel
+  waagerecht rollen dürfen? Bei einer Tabelle mit fünf Spalten wäre das
+  der übliche Weg – im Gegensatz zu einem Dialog, in dem nicht gerollt
+  wird.
+
 - [ ] **Und die Grenze des Werkzeugs bleibt bestehen:** Offscreen meldet
   Qt »does not support propagateSizeHints«. Was es findet, ist echt; was
   es nicht findet, ist damit nicht erledigt. Am echten Bildschirm

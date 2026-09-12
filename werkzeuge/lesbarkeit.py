@@ -630,6 +630,22 @@ def _spaltenkoepfe(fenster, name: str) -> list[str]:
             ).strip()
             if not text:
                 continue
+            # **Eine gedehnte Spalte bekommt den Rest, nicht ein Maß.**
+            # Ihre Breite ist das, was nach allen anderen übrig bleibt.
+            # Wird sie schmal, liegt das am Platz im Fenster und nicht an
+            # dieser Spalte – ein Befund hier zeigte auf sie und meinte
+            # etwas anderes. So aufgelaufen am 2026-09-12: In der CI
+            # (breitere Schrift als hier) meldete »Betreff ⇅« bei 24 pt
+            # zu wenig Platz, bei mir dieselbe Fassung nichts.
+            #
+            # Dass der Platz bei sehr großer Schrift und schmalem Fenster
+            # wirklich knapp wird, steht als offener Punkt in der TODO.
+            # Es verschwindet also nicht, es wird nur nicht hier gemeldet.
+            if kopf.sectionResizeMode(spalte) == QHeaderView.Stretch:
+                UEBERSPRUNGEN.append(
+                    f"{name}: gedehnte Spalte »{text}«"
+                )
+                continue
             # **Qt fragen, nicht schätzen.** Hier stand
             # ``horizontalAdvance(text) + 24`` – eine geratene Zugabe für
             # Rand und Sortierpfeil. Am 2026-09-12 meldete sie zwanzig
@@ -656,21 +672,43 @@ def _spaltenkoepfe(fenster, name: str) -> list[str]:
 
 
 def _ausgelassenes_melden() -> None:
-    """Sagt, was nicht gemessen wurde – und warum das in Ordnung ist."""
+    """Sagt, was nicht gemessen wurde – und warum das in Ordnung ist.
+
+    **Zwei Gründe, zwei Überschriften.** Bis zum 2026-09-12 stand über
+    allem »weil beim Öffnen versteckt«. Als die gedehnten Spalten
+    dazukamen, hätte derselbe Satz über ihnen gestanden – und etwas
+    behauptet, das für sie nicht zutrifft. Ein Bericht, der eine
+    Auslassung mit dem falschen Grund erklärt, ist schlechter als einer,
+    der sie verschweigt: Man kann ihn nicht einmal nachprüfen.
+    """
     if not UEBERSPRUNGEN:
         return
     # Bei fünf Schriftgrößen steht sonst jedes Feld fünfmal da.
     UEBERSPRUNGEN[:] = sorted(set(UEBERSPRUNGEN))
-    print(
-        f"\nNicht gemessen, weil beim Öffnen versteckt "
-        f"({len(UEBERSPRUNGEN)}):"
-    )
-    for zeile in UEBERSPRUNGEN:
-        print(f"  {zeile}")
-    print(
-        "  Solche Felder wachsen beim Einblenden auf ihren Inhalt, das\n"
-        "  Fenster wächst mit. Gemessen wäre ihre Breite falsch."
-    )
+
+    gedehnt = [z for z in UEBERSPRUNGEN if "gedehnte Spalte" in z]
+    versteckt = [z for z in UEBERSPRUNGEN if "gedehnte Spalte" not in z]
+
+    if versteckt:
+        print(
+            f"\nNicht gemessen, weil beim Öffnen versteckt "
+            f"({len(versteckt)}):"
+        )
+        for zeile in versteckt:
+            print(f"  {zeile}")
+        print(
+            "  Solche Felder wachsen beim Einblenden auf ihren Inhalt, das\n"
+            "  Fenster wächst mit. Gemessen wäre ihre Breite falsch."
+        )
+
+    if gedehnt:
+        print(f"\nNicht gemessen, weil gedehnt ({len(gedehnt)}):")
+        for zeile in gedehnt:
+            print(f"  {zeile}")
+        print(
+            "  Eine gedehnte Spalte bekommt, was übrig bleibt. Ist das\n"
+            "  wenig, liegt es am Platz im Fenster und nicht an ihr."
+        )
 
 
 #: Bei welchen Schriftgrößen geprüft wird. **Eine Größe genügt nicht:**

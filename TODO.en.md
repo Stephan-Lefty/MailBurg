@@ -155,6 +155,20 @@ every one of these windows we undo our work for the user.**"
   thinks about the window, not about the list — and nobody notices,
   because the tool keeps reporting green.
 
+- [ ] **At very large font sizes in a narrow window, the hit list really
+  does run out of room.** Five column headers plus the mailbox tree no
+  longer fit side by side at 24 pt when the font runs wide — it showed up
+  in CI, not on Stephan's machine, where a narrower font is installed.
+  The subject column then truncates its header; it is the stretched one
+  and gets whatever is left.
+
+  The tool no longer reports stretched columns (the finding pointed at
+  the column and meant the window), but it names them in its report.
+  **What remains open is the thing itself:** should the hit list be
+  allowed to scroll horizontally when space runs short? For a five-column
+  table that would be the usual answer — unlike a dialog, where nothing
+  should ever need scrolling.
+
 - [ ] **And the tool's limit stands:** offscreen, Qt reports "does not
   support propagateSizeHints". What it finds is real; what it does not
   find is not thereby settled. Looking at a real screen is still needed
