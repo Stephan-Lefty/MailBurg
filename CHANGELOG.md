@@ -7,29 +7,54 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.4.3] – 2026-09-12
+
+Eine Fassung, die von außen fast gleich aussieht und innen eine Lücke
+schließt: **Von einunddreißig Fenstern wurden zehn auf Lesbarkeit
+geprüft.** Die anderen einundzwanzig sah niemand nach – und das Werkzeug
+meldete trotzdem »nichts abgeschnitten«.
 
 ### Behoben
 
-- **Die Überschrift »Postfächer« war bei großer Schrift abgeschnitten.**
-  Ab etwa 20 pt stand über dem Postfachbaum »Postfäch…«, und damit weiß
-  niemand mehr, wonach dort sortiert wird. Die Mindestbreite war eine
-  geratene Pixelzahl – bei der Vorgabeschrift passend, darüber nicht.
-  Sie kommt jetzt aus der Schrift und wird auch dann neu gerechnet, wenn
-  der Anwender die Schrift im laufenden Fenster vergrößert.
+- **Zwei Spaltenüberschriften waren bei großer Schrift abgeschnitten.**
+  Über dem Postfachbaum stand ab etwa 20 pt »Postfäch…« statt
+  »Postfächer«, in der Trefferliste »Absend…« statt »Absender«. Damit
+  weiß niemand mehr, wonach dort sortiert wird.
+
+  Dahinter standen zwei geratene Pixelzahlen – bei der Vorgabeschrift
+  passend, darüber nicht. Beide Breiten kommen jetzt aus der Schrift,
+  und die des Baums wird auch dann neu gerechnet, wenn der Anwender die
+  Schrift im laufenden Fenster vergrößert. Das war vorher selbst dann
+  nicht der Fall, wenn die Zahl richtig geraten war.
 
   Es trifft ausgerechnet die, die große Schrift brauchen, um überhaupt
   lesen zu können.
 
 ### Geändert
 
-- **Die Lesbarkeitsprüfung sieht sich jetzt auch das Hauptfenster an.**
-  Geprüft wurden bisher die Dialoge und der Assistent; das Fenster, das
-  den ganzen Tag offensteht, war ausgenommen, weil es sich außerhalb
-  eines Bildschirms schwerer bemessen lässt. Der erste Lauf fand den
-  Befund oben. Neu gemessen werden außerdem einzeilige Beschriftungen –
-  darunter die Statuszeile, die bis dahin durch jedes Raster fiel – und
-  Spaltenüberschriften, in allen fünf Schriftgrößen von 9 bis 24 pt.
+- **Die Lesbarkeitsprüfung sieht sich jetzt jedes Fenster an** – alle
+  einunddreißig statt zehn, in fünf Schriftgrößen von 9 bis 24 pt. Dazu
+  gehören das Hauptfenster, das Lesefenster, die Hilfe, die
+  Postfachverwaltung, die Fristen, die Auskunft nach DSGVO und alles
+  Übrige.
+
+  Die Liste der zu prüfenden Fenster steht jetzt als Tabelle im Werkzeug,
+  und **ein Test zählt die Fenster der Oberfläche selbst nach**: Wer ein
+  neues Fenster baut und es nicht einträgt, bekommt einen roten Test.
+  Ausnahmen sind erlaubt, aber nur mit einem Grund, der danebensteht.
+
+  Vorher war die Liste von Hand gepflegt. Das hält nicht: Wer ein Fenster
+  baut, denkt an das Fenster, nicht an die Liste.
+
+- **Zwei Messungen kamen dazu**, die jedem Fenster zugutekommen:
+  einzeilige Beschriftungen ohne Umbruch – darunter die Statuszeile, die
+  bis dahin durch jedes Raster fiel, weil umbrechende Texte auf die Höhe
+  geprüft werden und Eingabefelder auf die Breite – und
+  Spaltenüberschriften.
+
+- **In der Anleitung steht der `.deb`-Befehl jetzt mit Stern**
+  (`mailburg_*_all.deb`) statt mit einer Versionsnummer. So stimmt er
+  auch nach der nächsten Veröffentlichung noch.
 
 ## [1.4.2] – 2026-09-09
 
@@ -1812,6 +1837,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.4.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.0...v1.4.2
 [1.4.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.3.3...v1.4.0
 [1.3.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.3.2...v1.3.3

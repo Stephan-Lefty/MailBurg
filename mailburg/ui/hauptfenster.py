@@ -980,13 +980,14 @@ class Hauptfenster(QMainWindow):
         die Spaltenaufteilung mitzunehmen – wer eine Spalte von Hand
         breiter gezogen hat, soll sie behalten.
         """
-        masse = self.baum.fontMetrics()
-        kopf = self.baum.headerItem()
-        # Sortierpfeil, Rand und Einzug rechnet Qt in dieselbe Fläche.
-        zugabe = 28
-        koepfe = [
-            masse.horizontalAdvance(kopf.text(i)) + zugabe for i in range(2)
-        ]
+        # **Qt fragen, nicht schätzen.** Hier stand der Textbreite eine
+        # geratene Zugabe von 28 px für Rand und Sortierpfeil bei.
+        # ``sectionSizeHint`` ist dieselbe Auskunft aus erster Hand – mit
+        # dem Rand, den dieser Stil wirklich zeichnet. Dasselbe Maß
+        # benutzt das Prüfwerkzeug; wer zwei Rechnungen führt, bekommt
+        # irgendwann zwei Ergebnisse.
+        kopf = self.baum.header()
+        koepfe = [kopf.sectionSizeHint(i) for i in range(2)]
         # Die erste Spalte bekommt drei Viertel; ihre Überschrift muss
         # also in drei Viertel der Gesamtbreite passen.
         self.baum.setMinimumWidth(
@@ -1029,7 +1030,13 @@ class Hauptfenster(QMainWindow):
         # bei der jedes zusätzliche Zeichen zählt.
         kopf.setSectionResizeMode(3, QHeaderView.Stretch)
         kopf.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.tabelle.setColumnWidth(2, 220)
+        # **Auch hier stand eine geratene Zahl** (220 px). Die Spalte
+        # bleibt von Hand verstellbar – deshalb ``Interactive`` –, aber
+        # ihr Anfangswert darf nicht schmaler sein als ihre eigene
+        # Überschrift. Bei 24 pt war er das: »Absender ⇅« brauchte
+        # 242 px. Am 2026-09-12 gefunden, gleicher Tag, gleicher Fehler
+        # wie beim Postfachbaum.
+        self.tabelle.setColumnWidth(2, max(220, kopf.sectionSizeHint(2)))
 
     def _index_pruefen(self) -> None:
         """Merkt, wenn der Suchindex fehlt, obwohl Mails da sind.

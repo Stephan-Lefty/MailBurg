@@ -150,6 +150,20 @@ unsere Arbeit beim User kaputt.**«
   lassen.** Der einzige Befund saß genau in dem Fenster, das man
   ausgenommen hatte.
 
+- [x] **Und jetzt sind alle Fenster dabei, nicht bloß die bekannten.**
+  (2026-09-12) Stephans Zuruf: »Wir sollten das Tool immer auf den
+  aktuellen Stand halten!« Nachgezählt: Das Werkzeug kannte **zehn**
+  Fenster, die Oberfläche hatte **einunddreißig**. Es meldete »nichts
+  abgeschnitten« und meinte damit die zehn.
+
+  Die Liste ist jetzt eine Tabelle im Werkzeug, und ein Test zählt die
+  Fensterklassen selbst nach: Ein neues Fenster ohne Eintrag macht ihn
+  rot. Ausnahmen brauchen einen Grund, der danebensteht.
+
+  **Eine von Hand gepflegte Liste hält nicht.** Wer ein Fenster baut,
+  denkt an das Fenster, nicht an die Liste – und niemand merkt es, weil
+  das Werkzeug weiter grün meldet.
+
 - [ ] **Und die Grenze des Werkzeugs bleibt bestehen:** Offscreen meldet
   Qt »does not support propagateSizeHints«. Was es findet, ist echt; was
   es nicht findet, ist damit nicht erledigt. Am echten Bildschirm

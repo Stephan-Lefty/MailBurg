@@ -15,8 +15,11 @@ Eine Datei herunterladen, ein Befehl, fertig. Das `.deb` hängt an der
 [jüngsten Veröffentlichung](https://github.com/Stephan-Lefty/MailBurg/releases/latest).
 
 ```bash
-sudo apt install ./mailburg_1.4.2_all.deb
+sudo apt install ./mailburg_*_all.deb
 ```
+
+Der Stern steht dort statt einer Versionsnummer: So stimmt der Befehl
+auch nach der nächsten Veröffentlichung noch.
 
 `apt` holt sich dabei die Oberfläche, den Schlüsselbund und die PDF-Werkzeuge
 aus Ihrer Distribution. **MailBurg bringt kein eigenes Qt mit** – sonst bekäme

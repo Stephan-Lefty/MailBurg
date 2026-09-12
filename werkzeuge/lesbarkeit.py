@@ -124,6 +124,20 @@ def _befunde(fenster, name: str) -> list[str]:
     for schild in fenster.findChildren(QLabel):
         if not schild.wordWrap() or not schild.text().strip():
             continue
+        # **Auch Beschriftungen können versteckt sein**, und dann gilt
+        # für sie dasselbe wie für Auswahl- und Eingabefelder: Ihre Maße
+        # stammen aus einer Zuteilung, die ihr Platz gar nicht hatte. Der
+        # Auskunftsdialog blendet seinen Vorbehalt erst nach der Suche
+        # ein; gemessen meldete er am 2026-09-12 einen Befund, den beim
+        # Anwender niemand sieht.
+        #
+        # Bis dahin prüfte das Werkzeug hier ohne diese Frage – die
+        # beiden anderen Messungen stellten sie seit dem 2026-09-06.
+        # **Eine Regel, die nur an zwei von drei Stellen gilt, ist keine
+        # Regel, sondern ein Zufall.**
+        if schild.isHidden():
+            UEBERSPRUNGEN.append(f"{name}: Beschriftung »{_bezeichner(schild)}«")
+            continue
         breite = schild.width()
         if breite <= 0:
             continue
@@ -192,6 +206,24 @@ def _zeigen(fenster, anwendung, breite=0, hoehe=0):
     fenster.show()
     anwendung.processEvents()
     return fenster
+
+
+def _wegnehmen(fenster) -> None:
+    """Nimmt ein gemessenes Fenster weg – **ohne es zu schließen.**
+
+    Hier stand ``fenster.close()``, und daran blieb der Lauf am
+    2026-09-12 hängen: Der Notschlüsseldialog beantwortet das Schließen
+    mit einer Rückfrage (»Erst sichern«), weil der Schlüssel danach weg
+    ist. Beim Anwender ist das richtig. Ein Werkzeug, das nur nachmisst,
+    wartet dann ewig auf eine Antwort, die niemand gibt.
+
+    **Ein Messwerkzeug soll ein Fenster ansehen, nicht bedienen.**
+    Schließen ist eine Bedienhandlung, und ein Fenster darf sich
+    weigern. Verstecken kann es nicht ablehnen – ``hide()`` löst kein
+    ``closeEvent`` aus.
+    """
+    fenster.hide()
+    fenster.deleteLater()
 
 
 def pruefen() -> list[str]:
@@ -269,18 +301,214 @@ def _konten_erfinden(datei: Path) -> None:
     liste.speichern()
 
 
+#: **Die Liste aller Fenster, die geprüft werden – der Prüfauftrag.**
+#:
+#: Bis zum 2026-09-12 stand hier eine Reihe handgeschriebener Aufrufe.
+#: Wer ein Fenster baute und es nicht eintrug, hatte ein ungeprüftes
+#: Fenster, und es fiel niemandem auf: Das Werkzeug meldete »nichts
+#: abgeschnitten« und meinte damit die zehn, die es kannte. Von
+#: einunddreißig.
+#:
+#: Deshalb ist die Liste jetzt eine Tabelle und kein Programm. Ein
+#: Wächtertest liest sie, sucht alle Fensterklassen in ``mailburg/ui``
+#: und vergleicht: **Ein neues Fenster ohne Eintrag macht den Test rot.**
+#: Nicht Jahre später einen Anwender mit einem Bildschirmfoto.
+#:
+#: Die Klasse steht als Pfad da, nicht als Import – so lässt sich die
+#: Tabelle lesen, ohne Qt zu starten. Die Bauanleitung bekommt die Klasse
+#: und die Werkstatt (Archiv, Treffer, Probekonto).
+BAUPLAENE: list[tuple[str, str, object]] = [
+    ("mailburg.ui.zeitplan.Zeitplandialog",
+     "Zeitplan »Was von selbst laufen soll«",
+     lambda K, w: K(archiv=w.archiv.root)),
+    ("mailburg.ui.suchmaske.Suchmaske",
+     "Suchmaske",
+     lambda K, w: K(w.archiv)),
+    ("mailburg.ui.regeln.Regeldialog",
+     "Einstufungsregeln",
+     lambda K, w: K(archiv=w.archiv)),
+    ("mailburg.ui.sichern.Sicherungsdialog",
+     "Sichern",
+     lambda K, w: K(w.archiv)),
+    ("mailburg.ui.sichern.Rueckholdialog",
+     "Sicherung zurückholen",
+     lambda K, w: K()),
+    ("mailburg.ui.sichern.Uebernahmedialog",
+     "Sicherung übernehmen",
+     lambda K, w: K(w.archiv)),
+    ("mailburg.ui.einlesen.Einlesedialog",
+     "Lokale Mailordner einlesen",
+     lambda K, w: K(w.archiv)),
+    ("mailburg.ui.zurueckspielen.Rueckspieldialog",
+     "Ins Dateisystem zurückspielen",
+     lambda K, w: K(w.archiv)),
+    ("mailburg.ui.zurueck.Zurueckdialog",
+     "Ins Postfach zurückgeben",
+     lambda K, w: K(w.rohdaten, "Rechnung 2026-0815 vom 14. Januar")),
+    ("mailburg.ui.zugaenge.Zugangsdialog",
+     "Zugänge",
+     lambda K, w: K(archiv=w.archiv)),
+    ("mailburg.ui.konten.Kontenverwaltung",
+     "Postfächer verwalten",
+     lambda K, w: K()),
+    ("mailburg.ui.konten.ArchivZuordnung",
+     "Postfach einem Archiv zuordnen",
+     lambda K, w: K(w.konto)),
+    ("mailburg.ui.anmelden.Anmeldedialog",
+     "Anmelden (OAuth2)",
+     lambda K, w: K(w.konto)),
+    ("mailburg.ui.archivpasswort.NeuesPasswortFragen",
+     "Archiv verschlüsseln",
+     lambda K, w: K()),
+    ("mailburg.ui.archivpasswort.PasswortFragen",
+     "Archiv öffnen",
+     lambda K, w: K(archivname="Probe")),
+    ("mailburg.ui.archivpasswort.NotschluesselZeigen",
+     "Notschlüssel zeigen",
+     lambda K, w: K(NOTSCHLUESSEL)),
+    ("mailburg.ui.fristen.Fristendialog",
+     "Aufbewahrungsfristen",
+     lambda K, w: K(w.archiv, w.treffer)),
+    ("mailburg.ui.einstufen.Einstufungsdialog",
+     "Einstufen",
+     lambda K, w: K(w.archiv, "rechnung", w.treffer)),
+    ("mailburg.ui.texterkennung.Texterkennungsdialog",
+     "Texterkennung",
+     lambda K, w: K(w.archiv)),
+    ("mailburg.ui.auskunft.Auskunftsdialog",
+     "Auskunft nach DSGVO",
+     lambda K, w: K(w.archiv)),
+    ("mailburg.ui.info.Infofenster",
+     "Über MailBurg",
+     lambda K, w: K()),
+    ("mailburg.ui.hilfe.Hilfefenster",
+     "Hilfe",
+     lambda K, w: K()),
+    ("mailburg.ui.assistent.KontoDialog",
+     "Postfach anlegen (Assistent)",
+     lambda K, w: K()),
+    ("mailburg.ui.assistent.PasswortNachfrage",
+     "Passwort nachfragen (Assistent)",
+     lambda K, w: K(w.konto, "Der Schlüsselbund hat es nicht hergegeben.")),
+    ("mailburg.ui.lesefenster.Lesefenster",
+     "Mail lesen",
+     lambda K, w: K(w.treffer[0], w.archiv)),
+]
+
+#: Ein Notschlüssel ist so lang wie jeder andere, und **erfunden**: Er
+#: steht im Bericht, den man in einen Fehlerbericht kopiert.
+NOTSCHLUESSEL = "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF-GGGG-HHHH"
+
+#: Fenster mit eigenem Messweg – sie stehen weiter unten als Funktion,
+#: weil ein Aufmachen und Nachmessen bei ihnen nicht reicht.
+SONDERFAELLE: dict[str, str] = {
+    "mailburg.ui.assistent.Einrichtungsassistent":
+        "Jede Seite einzeln, siehe _assistent()",
+    "mailburg.ui.hauptfenster.Hauptfenster":
+        "Mit Suchtreffern, Statuszeile und Spaltenköpfen, siehe "
+        "_hauptfenster()",
+}
+
+#: **Was nicht geprüft wird, und warum.** Eine Ausnahme braucht einen
+#: Grund, der hier steht – sonst ist sie keine Entscheidung, sondern
+#: eine Lücke, die niemand mehr sieht.
+AUSGENOMMEN: dict[str, str] = {
+    "mailburg.ui.assistent.WillkommenSeite":
+        "Seite des Assistenten, dort gemessen",
+    "mailburg.ui.assistent.ArchivSeite":
+        "Seite des Assistenten, dort gemessen",
+    "mailburg.ui.assistent.KontenSeite":
+        "Seite des Assistenten, dort gemessen",
+    "mailburg.ui.assistent.AbschlussSeite":
+        "Seite des Assistenten, dort gemessen",
+}
+
+
+def _klasse(pfad: str):
+    """Holt eine Klasse aus ihrem Pfad, ohne sie vorher zu kennen."""
+    import importlib
+
+    modul, _, name = pfad.rpartition(".")
+    return getattr(importlib.import_module(modul), name)
+
+
+class _Werkstatt:
+    """Was die Fenster zum Aufmachen brauchen, an einer Stelle."""
+
+    def __init__(self, archiv, treffer, konto, rohdaten) -> None:
+        self.archiv = archiv
+        self.treffer = treffer
+        self.konto = konto
+        self.rohdaten = rohdaten
+
+
 def _dialoge(anwendung, archiv) -> list[str]:
-    """Jeden Dialog einmal aufmachen und nachmessen."""
+    """Jedes Fenster einmal aufmachen und nachmessen."""
     befunde: list[str] = []
+    werkstatt = _werkstatt_einrichten(archiv)
 
-    from mailburg.ui.zeitplan import Zeitplandialog
+    for pfad, name, bauen in BAUPLAENE:
+        try:
+            fenster = _zeigen(bauen(_klasse(pfad), werkstatt), anwendung)
+        except Exception as fehler:
+            # **Kein stilles Überspringen.** Ein Fenster, das sich hier
+            # nicht aufmachen lässt, ist ein Befund und keine Fußnote:
+            # Sonst meldet das Werkzeug »nichts abgeschnitten« über ein
+            # Fenster, das es nie gesehen hat.
+            befunde.append(f"{name}: lässt sich nicht öffnen – {fehler}")
+            continue
+        befunde += _befunde(fenster, name)
+        befunde += _einzeiler(fenster, name)
+        befunde += _spaltenkoepfe(fenster, name)
+        _wegnehmen(fenster)
 
-    fenster = _zeigen(Zeitplandialog(archiv=archiv.root), anwendung)
-    befunde += _befunde(fenster, "Zeitplan »Was von selbst laufen soll«")
-    fenster.close()
+    befunde += _assistent(anwendung)
+    befunde += _hauptfenster(anwendung, archiv)
 
+    return befunde
+
+
+def _werkstatt_einrichten(archiv) -> _Werkstatt:
+    """Legt eine Mail ins Archiv, damit die Fenster etwas zu zeigen haben.
+
+    **Ein leeres Archiv prüft die halbe Wahrheit.** Fenster, die Treffer
+    aufzählen, sind bei null Treffern schmal und kurz; abgeschnitten wird
+    Text erst, wenn welcher da ist. Betreff und Absender sind deshalb so
+    lang, wie sie im Alltag werden – und erfunden.
+    """
+    from mailburg.core.accounts import Konto
+
+    roh = (
+        "From: Rechnungsstelle der Lieferanten GmbH "
+        "<rechnungen@ein-langer-anbietername.example>\r\n"
+        "To: buchhaltung@firma.example\r\n"
+        "Subject: Rechnung 2026-0815 vom 14. Januar, "
+        "Zahlungsziel 30 Tage netto\r\n"
+        "Date: Tue, 14 Jan 2014 09:00:00 +0100\r\n"
+        "Message-ID: <probe@ein-langer-anbietername.example>\r\n"
+        "\r\n"
+        "Sehr geehrte Damen und Herren,\r\n\r\n"
+        "anbei die Rechnung zum Vorgang.\r\n"
+    ).encode()
+    # Das Datum liegt bewusst weit zurück: Nur dann hat die Mail ihre
+    # Aufbewahrungsfrist hinter sich, und nur dann hat der Fristendialog
+    # etwas aufzuzählen.
+    archiv.add(roh, account="Buchhaltung", folder="INBOX")
+    treffer = archiv.index.search("", limit=10)
+
+    return _Werkstatt(
+        archiv=archiv,
+        treffer=treffer,
+        konto=Konto(**PROBEKONTEN[1]),
+        rohdaten=roh,
+    )
+
+
+def _assistent(anwendung) -> list[str]:
+    """Der Einrichtungsassistent, Seite für Seite."""
     from mailburg.ui.assistent import Einrichtungsassistent
 
+    befunde: list[str] = []
     # Keine erfundene Größe: Der Assistent bemisst sich seit dem
     # 2026-08-31 selbst am Bildschirm. Ihn hier zu verkleinern hieße,
     # etwas anderes zu prüfen, als der Anwender zu sehen bekommt.
@@ -292,57 +520,11 @@ def _dialoge(anwendung, archiv) -> list[str]:
         assistent.restart()
         anwendung.processEvents()
         seite = assistent.page(kennung)
-        befunde += _befunde(seite, f"Assistent, Seite »{seite.title()}«")
-    assistent.close()
-
-    from mailburg.ui.suchmaske import Suchmaske
-
-    fenster = _zeigen(Suchmaske(archiv), anwendung)
-    befunde += _befunde(fenster, "Suchmaske")
-    fenster.close()
-
-    from mailburg.ui.regeln import Regeldialog
-
-    fenster = _zeigen(Regeldialog(archiv=archiv), anwendung)
-    befunde += _befunde(fenster, "Einstufungsregeln")
-    fenster.close()
-
-    from mailburg.ui.sichern import Sicherungsdialog
-
-    fenster = _zeigen(Sicherungsdialog(archiv), anwendung)
-    befunde += _befunde(fenster, "Sichern")
-    fenster.close()
-
-    from mailburg.ui.einlesen import Einlesedialog
-
-    fenster = _zeigen(Einlesedialog(archiv), anwendung)
-    befunde += _befunde(fenster, "Lokale Mailordner einlesen")
-    fenster.close()
-
-    from mailburg.ui.zurueckspielen import Rueckspieldialog
-
-    fenster = _zeigen(Rueckspieldialog(archiv), anwendung)
-    befunde += _befunde(fenster, "Ins Dateisystem zurückspielen")
-    fenster.close()
-
-    from mailburg.ui.zugaenge import Zugangsdialog
-
-    fenster = _zeigen(Zugangsdialog(archiv=archiv), anwendung)
-    befunde += _befunde(fenster, "Zugänge")
-    fenster.close()
-
-    from mailburg.ui.archivpasswort import NeuesPasswortFragen, PasswortFragen
-
-    fenster = _zeigen(NeuesPasswortFragen(), anwendung)
-    befunde += _befunde(fenster, "Archiv verschlüsseln")
-    fenster.close()
-
-    fenster = _zeigen(PasswortFragen(archivname="Probe"), anwendung)
-    befunde += _befunde(fenster, "Archiv öffnen")
-    fenster.close()
-
-    befunde += _hauptfenster(anwendung, archiv)
-
+        name = f"Assistent, Seite »{seite.title()}«"
+        befunde += _befunde(seite, name)
+        befunde += _einzeiler(seite, name)
+        befunde += _spaltenkoepfe(seite, name)
+    _wegnehmen(assistent)
     return befunde
 
 
@@ -359,10 +541,22 @@ def _hauptfenster(anwendung, archiv) -> list[str]:
     1280×800. Wer mehr hat, hat es leichter; wer weniger hat, sieht es
     zuerst.
     """
+    from unittest import mock
+
     from mailburg.ui.hauptfenster import Hauptfenster
 
     befunde: list[str] = []
-    fenster = _zeigen(Hauptfenster(archiv.root), anwendung, 1280, 800)
+    # **Die Fristenprüfung beim Start wird hier stillgelegt.** Sie macht
+    # einen modalen Dialog auf, sobald eine Mail ihre Aufbewahrungsfrist
+    # hinter sich hat – und die Probemail ist von 2014, damit der
+    # Fristendialog überhaupt etwas aufzuzählen hat. Modal heißt: Das
+    # Werkzeug wartet auf einen Klick, den niemand tut.
+    #
+    # Das ist kein Wegsehen: Der Fristendialog steht als eigener Eintrag
+    # in den Bauplänen und wird dort gemessen. Stillgelegt wird nur, dass
+    # er sich *ungefragt* vor das Fenster stellt, das gerade dran ist.
+    with mock.patch.object(Hauptfenster, "_fristen_pruefen"):
+        fenster = _zeigen(Hauptfenster(archiv.root), anwendung, 1280, 800)
 
     # Eine Suche mit Treffern: Erst dann steht in der Statuszeile und in
     # der Trefferliste etwas, das zu breit sein könnte.
@@ -372,7 +566,7 @@ def _hauptfenster(anwendung, archiv) -> list[str]:
     befunde += _befunde(fenster, "Hauptfenster")
     befunde += _einzeiler(fenster, "Hauptfenster")
     befunde += _spaltenkoepfe(fenster, "Hauptfenster")
-    fenster.close()
+    _wegnehmen(fenster)
     return befunde
 
 
@@ -436,9 +630,22 @@ def _spaltenkoepfe(fenster, name: str) -> list[str]:
             ).strip()
             if not text:
                 continue
-            # Sortierpfeil und Rand: Qt zeichnet beides in dieselbe
-            # Fläche, sonst meldet die aktive Spalte immer einen Befund.
-            gebraucht = kopf.fontMetrics().horizontalAdvance(text) + 24
+            # **Qt fragen, nicht schätzen.** Hier stand
+            # ``horizontalAdvance(text) + 24`` – eine geratene Zugabe für
+            # Rand und Sortierpfeil. Am 2026-09-12 meldete sie zwanzig
+            # Befunde, von denen keiner einer war: »Wenn« passte in seine
+            # 39 px, die Rechnung verlangte 57.
+            #
+            # ``sectionSizeHint`` ist die Breite, die Qt selbst für nötig
+            # hält – mit dem Rand und dem Pfeil, die dieser Stil wirklich
+            # zeichnet. Wer danach fragt, misst dasselbe, was der
+            # Anwender sieht.
+            #
+            # Dieselbe Lehre wie am 2026-09-07 bei den Eingabefeldern:
+            # **Ein Prüfwerkzeug, das anders rechnet als die Oberfläche,
+            # meldet seine eigene Rechnung als Fehler.** Und wer zweimal
+            # umsonst gesucht hat, sieht beim dritten Mal nicht mehr nach.
+            gebraucht = kopf.sectionSizeHint(spalte)
             vorhanden = kopf.sectionSize(spalte)
             if vorhanden and gebraucht - vorhanden > TOLERANZ:
                 gefunden.append(

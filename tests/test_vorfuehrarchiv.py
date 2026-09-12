@@ -217,6 +217,95 @@ class LesbarkeitsWerkzeugTest(unittest.TestCase):
             "_hauptfenster(", quelle, "Das Hauptfenster wird nicht geprüft"
         )
 
+    def test_jedes_fenster_der_oberflaeche_ist_eingetragen(self):
+        """**Der Wächter, der das Werkzeug auf dem Stand hält.**
+
+        Stephans Zuruf am 2026-09-12, und er hatte recht: Das Werkzeug
+        kannte zehn Fenster. Die Oberfläche hatte einunddreißig. Es
+        meldete »nichts abgeschnitten« und meinte damit die zehn – ein
+        Prüfwerkzeug, das schweigend an zwei Dritteln vorbeisieht, ist
+        schlimmer als keines, weil man ihm glaubt.
+
+        Der Nachbau von Hand hilft nicht: Wer ein Fenster baut, denkt an
+        das Fenster, nicht an die Liste. Deshalb zählt der Test die
+        Fenster selbst nach. **Ein neues Fenster ohne Eintrag macht ihn
+        rot** – einzutragen ist es entweder als Bauplan, als Sonderfall
+        oder als begründete Ausnahme. Nur nicht stillschweigend.
+
+        Gelesen wird der Quelltext (AST), nicht der Import: So läuft der
+        Test auch dort, wo kein Qt liegt.
+        """
+        import ast
+
+        fenstertypen = {"QDialog", "QMainWindow", "QWizard", "QWizardPage"}
+        bekannt = (
+            {pfad for pfad, _, _ in self.werkzeug.BAUPLAENE}
+            | set(self.werkzeug.SONDERFAELLE)
+            | set(self.werkzeug.AUSGENOMMEN)
+        )
+
+        fehlend = []
+        for datei in sorted((WURZEL / "mailburg" / "ui").glob("*.py")):
+            baum = ast.parse(datei.read_text(encoding="utf-8"))
+            for knoten in ast.walk(baum):
+                if not isinstance(knoten, ast.ClassDef):
+                    continue
+                basen = {
+                    b.id for b in knoten.bases if isinstance(b, ast.Name)
+                }
+                if not basen & fenstertypen:
+                    continue
+                pfad = f"mailburg.ui.{datei.stem}.{knoten.name}"
+                if pfad not in bekannt:
+                    fehlend.append(pfad)
+
+        self.assertEqual(
+            fehlend,
+            [],
+            "Diese Fenster prüft niemand auf Lesbarkeit. Trage sie in "
+            "werkzeuge/lesbarkeit.py ein – als BAUPLAENE, SONDERFAELLE "
+            "oder mit einem Grund in AUSGENOMMEN: " + ", ".join(fehlend),
+        )
+
+    def test_keine_ausnahme_ohne_grund(self):
+        """Eine Ausnahme ohne Grund ist keine Entscheidung, sondern eine
+        Lücke, die niemand mehr sieht."""
+        for pfad, grund in self.werkzeug.AUSGENOMMEN.items():
+            with self.subTest(fenster=pfad):
+                self.assertTrue(
+                    grund and grund.strip(), f"{pfad} ist ohne Grund ausgenommen"
+                )
+
+    def test_kein_eintrag_zeigt_ins_leere(self):
+        """**Ein Eintrag auf eine gelöschte Klasse prüft nichts mehr.**
+
+        Der Wächter oben findet neue Fenster. Diesen Weg braucht es für
+        die andere Richtung: Wer ein Fenster umbenennt, lässt sonst einen
+        Eintrag stehen, der auf nichts zeigt – und die Liste sieht
+        weiterhin vollständig aus.
+        """
+        import ast
+
+        vorhanden = set()
+        for datei in sorted((WURZEL / "mailburg" / "ui").glob("*.py")):
+            baum = ast.parse(datei.read_text(encoding="utf-8"))
+            for knoten in ast.walk(baum):
+                if isinstance(knoten, ast.ClassDef):
+                    vorhanden.add(f"mailburg.ui.{datei.stem}.{knoten.name}")
+
+        eingetragen = (
+            {pfad for pfad, _, _ in self.werkzeug.BAUPLAENE}
+            | set(self.werkzeug.SONDERFAELLE)
+            | set(self.werkzeug.AUSGENOMMEN)
+        )
+
+        self.assertEqual(
+            sorted(eingetragen - vorhanden),
+            [],
+            "Diese Einträge in werkzeuge/lesbarkeit.py zeigen auf Klassen, "
+            "die es nicht mehr gibt",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

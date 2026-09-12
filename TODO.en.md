@@ -142,6 +142,19 @@ every one of these windows we undo our work for the user.**"
   **Hard to measure is a reason to try, not a reason to skip it.** The
   one finding sat precisely in the window that had been exempted.
 
+- [x] **And now every window is covered, not just the known ones.**
+  (2026-09-12) Stephan's prompt: "We should always keep the tool up to
+  date!" Counted: the tool knew **ten** windows, the interface had
+  **thirty-one**. It reported "nothing cut off" and meant those ten.
+
+  The list is now a table inside the tool, and a test counts the window
+  classes itself: a new window without an entry turns it red. Exemptions
+  are allowed, but only with a reason next to them.
+
+  **A hand-maintained list does not hold.** Whoever builds a window
+  thinks about the window, not about the list — and nobody notices,
+  because the tool keeps reporting green.
+
 - [ ] **And the tool's limit stands:** offscreen, Qt reports "does not
   support propagateSizeHints". What it finds is real; what it does not
   find is not thereby settled. Looking at a real screen is still needed

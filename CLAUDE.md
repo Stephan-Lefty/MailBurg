@@ -3,9 +3,34 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
-## Hier war Schluss (Stand 2026-09-10, Donnerstag)
+## Hier war Schluss (Stand 2026-09-12, Samstag) – 1.4.3
 
-**1.4.2 ist veröffentlicht**, mit `.exe` *und* `.deb` am Release. Erster
+**Zehn von einunddreißig Fenstern waren geprüft.** Das ist der ganze
+Tag in einem Satz. Das Werkzeug meldete seit Wochen »nichts
+abgeschnitten« – über die zehn, die es kannte.
+
+Aufgefallen ist es durch Stephans Zuruf: »Wir sollten das Tool immer auf
+den aktuellen Stand halten!« Ich war gerade dabei, das Hauptfenster
+nachzutragen, und hätte danach elf gehabt statt zehn, ohne die Zahl je
+zu prüfen.
+
+Jetzt sind alle einunddreißig drin, die Liste ist eine Tabelle, und ein
+Test zählt die Fenster der Oberfläche selbst nach. Gefunden hat der erste
+vollständige Lauf zwei echte Befunde – beide dieselbe Sorte, beide bei
+großer Schrift: geratene Pixelzahlen als Spaltenbreite, »Postfäch…« im
+Baum und »Absend…« in der Trefferliste.
+
+**Das Muster des Tages, und es ist nicht neu:** Eine Prüfung, deren
+Umfang von Disziplin abhängt, prüft irgendwann etwas anderes als das, was
+sie zu prüfen vorgibt – und meldet dabei weiter grün. Dasselbe wie beim
+Auffangnetz, das Auskunft erfindet: Das Ergebnis sieht nicht aus wie ein
+Fehler, sondern wie ein Ergebnis.
+
+1778 Tests. 1.4.3 ist veröffentlicht, mit `.exe` und `.deb`.
+
+### Vorher (Stand 2026-09-10, Donnerstag)
+
+**1.4.2 veröffentlicht**, mit `.exe` *und* `.deb` am Release. Erster
 Tag im Alltag bei mehreren Anwendern: keine Rückmeldungen. Stephans
 Betrefffilter ist auf allen fünfzehn Konten wieder aus – die Rechnungen
 sind sicher.
@@ -922,9 +947,9 @@ aus wie ein falscher Wert und ist in Wahrheit ein fehlender Aufruf.
 QT_QPA_PLATFORM=offscreen python3 werkzeuge/lesbarkeit.py
 ```
 
-Öffnet zehn Fenster – neun Dialoge und **seit dem 2026-09-12 auch das
-Hauptfenster** –, misst nach, meldet abgeschnittenen Text und Rollbalken,
-die es nicht geben dürfte. Bei 9 bis 24 pt ohne Befund.
+Öffnet **jedes Fenster der Oberfläche** – seit dem 2026-09-12 alle
+einunddreißig statt zehn –, misst nach, meldet abgeschnittenen Text und
+Rollbalken, die es nicht geben dürfte. Bei 9 bis 24 pt ohne Befund.
 
 Gemessen werden Auswahlfelder, Eingabefelder, umbrechende Texte,
 einzeilige Beschriftungen und Spaltenüberschriften. Die letzten beiden
@@ -932,6 +957,33 @@ kamen mit dem Hauptfenster dazu: Die Statuszeile fiel bis dahin durch
 jedes Raster, weil umbrechende Texte auf die Höhe geprüft wurden und
 Eingabefelder auf die Breite – ein einzeiliges `QLabel` ist keins von
 beidem.
+
+**Die Liste der Fenster ist eine Tabelle, kein Programm** (`BAUPLAENE`,
+`SONDERFAELLE`, `AUSGENOMMEN` in `werkzeuge/lesbarkeit.py`). Ein Test in
+`tests/test_vorfuehrarchiv.py` liest die Oberfläche per AST und zählt
+nach: Ein neues Fenster ohne Eintrag macht ihn rot, eine Ausnahme ohne
+Grund auch, und ein Eintrag auf eine gelöschte Klasse ebenfalls.
+
+Vorher war die Liste von Hand gepflegt, und es kam, wie es kommen musste:
+zehn von einunddreißig. **Wer ein Fenster baut, denkt an das Fenster,
+nicht an die Liste.** Eine Vollständigkeit, die von Disziplin abhängt,
+ist keine.
+
+Drei Fallen beim Bauen an diesem Werkzeug, alle am 2026-09-12 aufgelaufen:
+
+1. **Nicht schätzen, wo Qt Auskunft gibt.** Der erste Lauf meldete
+   einundzwanzig Befunde; zwanzig davon waren keine. Die Spaltenköpfe
+   wurden gegen `horizontalAdvance(text) + 24` gehalten – eine geratene
+   Zugabe für Rand und Sortierpfeil. `sectionSizeHint()` ist dieselbe
+   Zahl aus erster Hand. Ein Prüfwerkzeug, das anders rechnet als die
+   Oberfläche, meldet seine eigene Rechnung als Fehler.
+2. **Ein Messwerkzeug sieht an, es bedient nicht.** `close()` blieb am
+   Notschlüsseldialog hängen, der das Schließen mit einer Rückfrage
+   beantwortet. `hide()` kann kein Fenster ablehnen.
+3. **Dieselbe Regel an allen Stellen.** Versteckte Felder wurden
+   übersprungen, versteckte Beschriftungen nicht – dritter Befund, den
+   niemand sehen konnte. Eine Regel, die an zwei von drei Stellen gilt,
+   ist keine Regel, sondern ein Zufall.
 
 **Aber Vorsicht, und das steht auch in der TODO:** Qt meldet offscreen
 »does not support propagateSizeHints«. Fenstergrößen sind dort nicht
