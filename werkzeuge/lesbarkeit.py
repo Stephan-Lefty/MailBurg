@@ -341,7 +341,111 @@ def _dialoge(anwendung, archiv) -> list[str]:
     befunde += _befunde(fenster, "Archiv öffnen")
     fenster.close()
 
+    befunde += _hauptfenster(anwendung, archiv)
+
     return befunde
+
+
+def _hauptfenster(anwendung, archiv) -> list[str]:
+    """Das Fenster, in dem der Anwender die meiste Zeit verbringt.
+
+    **Bis zum 2026-09-10 sah es hier niemand nach.** Geprüft wurden die
+    Dialoge und der Assistent – ausgerechnet das Fenster, das den ganzen
+    Tag offensteht, war ausgenommen. Der Grund war ein schlechter: Es
+    lässt sich offscreen schwerer bemessen als ein Dialog. Das ist ein
+    Grund, es zu versuchen, kein Grund, es zu lassen.
+
+    Gemessen wird an einer Größe, die ein kleiner Bildschirm hergibt –
+    1280×800. Wer mehr hat, hat es leichter; wer weniger hat, sieht es
+    zuerst.
+    """
+    from mailburg.ui.hauptfenster import Hauptfenster
+
+    befunde: list[str] = []
+    fenster = _zeigen(Hauptfenster(archiv.root), anwendung, 1280, 800)
+
+    # Eine Suche mit Treffern: Erst dann steht in der Statuszeile und in
+    # der Trefferliste etwas, das zu breit sein könnte.
+    fenster.suchfeld.setText("rechnung")
+    anwendung.processEvents()
+
+    befunde += _befunde(fenster, "Hauptfenster")
+    befunde += _einzeiler(fenster, "Hauptfenster")
+    befunde += _spaltenkoepfe(fenster, "Hauptfenster")
+    fenster.close()
+    return befunde
+
+
+def _einzeiler(fenster, name: str) -> list[str]:
+    """Beschriftungen ohne Umbruch, deren Text nicht hineinpasst.
+
+    **Die Lücke, die das Werkzeug bis zum 2026-09-10 hatte.** Geprüft
+    wurden umbrechende Texte auf ihre Höhe und Eingabefelder auf ihre
+    Breite – ein einzeiliges ``QLabel`` fiel durch beides. Genau so eines
+    trägt aber die Statuszeile: »67.793 Mails im Archiv · zuletzt
+    abgerufen: heute 10:31«.
+
+    **Elidierte Beschriftungen zählen nicht.** Wer ``ElideRight`` setzt,
+    hat sich für drei Punkte statt eines Abschnitts entschieden; das ist
+    kein Versehen.
+    """
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QLabel
+
+    gefunden: list[str] = []
+    for schild in fenster.findChildren(QLabel):
+        text = schild.text().strip()
+        if not text or schild.wordWrap() or schild.isHidden():
+            continue
+        if schild.textFormat() == Qt.RichText or "<" in text:
+            # Ausgezeichneter Text lässt sich nicht mit fontMetrics
+            # messen - dort stecken Tags, keine Buchstaben.
+            continue
+        gebraucht = schild.fontMetrics().horizontalAdvance(text)
+        vorhanden = schild.width()
+        if vorhanden and gebraucht - vorhanden > TOLERANZ:
+            gefunden.append(
+                f"{name}: Beschriftung ist {vorhanden} px breit, braucht "
+                f"{gebraucht} px: »{text[:60]}«"
+            )
+    return gefunden
+
+
+def _spaltenkoepfe(fenster, name: str) -> list[str]:
+    """Spaltenüberschriften, die ihren eigenen Text abschneiden.
+
+    Eine Spalte darf schmaler sein als ihr Inhalt – dafür gibt es die
+    Maus. Ihre **Überschrift** aber ist das, woran man die Spalte
+    erkennt: Steht dort »Abse…«, weiß niemand, wonach er sortiert.
+    """
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QHeaderView
+
+    gefunden: list[str] = []
+    for kopf in fenster.findChildren(QHeaderView):
+        if kopf.isHidden() or kopf.orientation() != Qt.Horizontal:
+            continue
+        modell = kopf.model()
+        if modell is None:
+            continue
+        for spalte in range(kopf.count()):
+            if kopf.isSectionHidden(spalte):
+                continue
+            text = str(
+                modell.headerData(spalte, Qt.Horizontal, Qt.DisplayRole) or ""
+            ).strip()
+            if not text:
+                continue
+            # Sortierpfeil und Rand: Qt zeichnet beides in dieselbe
+            # Fläche, sonst meldet die aktive Spalte immer einen Befund.
+            gebraucht = kopf.fontMetrics().horizontalAdvance(text) + 24
+            vorhanden = kopf.sectionSize(spalte)
+            if vorhanden and gebraucht - vorhanden > TOLERANZ:
+                gefunden.append(
+                    f"{name}: Spaltenkopf »{text}« ist {vorhanden} px breit, "
+                    f"braucht {gebraucht} px"
+                )
+    return gefunden
 
 
 def _ausgelassenes_melden() -> None:

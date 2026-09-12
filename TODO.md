@@ -101,12 +101,18 @@ Alltagsbestands und die erste Zahl in dieser Größenordnung.
   Offen bleibt die halbe Million. Der Index wächst etwa linear
   (14 KB/Mail), die Suche tut das nicht zwingend.
 
-- [ ] **Kein Filter auf `[SPAM]` im Betreff.** Bewusst nicht gebaut: Der
-  Marker steht auch auf falsch-positiven Mails, und was einmal nicht
-  archiviert wurde, fällt erst Jahre später auf. Ein Ordner ist eine
-  Entscheidung des Anwenders, ein Betreffmarker die Vermutung eines
-  Filters. Wer es doch will, kann die Mails hinterher über die Suche
-  löschen – dieser Weg ist umkehrbar, der andere nicht.
+- [x] **Der Filter auf `[SPAM]` im Betreff ist gebaut** – ab Werk aus.
+  (2026-09-11, Fassung 1.4.0) Hier stand »bewusst nicht gebaut«, mit
+  guten Gründen: Der Marker steht auch auf falsch-positiven Mails, und
+  was einmal nicht archiviert wurde, fällt erst Jahre später auf. Ein
+  Ordner ist eine Entscheidung des Anwenders, ein Betreffmarker die
+  Vermutung eines Filters.
+
+  Die Gründe gelten weiter – deshalb greift der Filter **nur, wenn der
+  Betreff mit der Marke beginnt**, nicht wenn sie irgendwo darin
+  vorkommt, und er ist einzuschalten, nicht auszuschalten. Der Schalter
+  steht seit 1.4.2 in »Was von selbst laufen soll« und gilt für alle
+  Postfächer zugleich.
 
 ### Fenster vor jeder Veröffentlichung prüfen (2026-09-07)
 
@@ -124,11 +130,25 @@ unsere Arbeit beim User kaputt.**«
   Auswahlfelder und Fließtexte. In dieser Lücke saßen vier Fenster, zwei
   davon hatte niemand gemeldet. Die Suchmaske fiel erst ab 16 pt auf.
 
-- [ ] **Das Hauptfenster ist noch nicht dabei.** Geprüft werden die
-  Dialoge und der Assistent. Das Fenster, in dem der Anwender die
-  meiste Zeit verbringt, prüft niemand – es lässt sich schlecht
-  offscreen bemessen, aber das ist ein Grund, es zu versuchen, kein
-  Grund, es zu lassen.
+- [x] **Das Hauptfenster ist jetzt dabei.** (2026-09-12) Geprüft wurden
+  die Dialoge und der Assistent; das Fenster, in dem der Anwender die
+  meiste Zeit verbringt, prüfte niemand – es lasse sich schlecht
+  offscreen bemessen. Der erste Lauf fand sofort einen Befund: Bei 24 pt
+  stand im Postfachbaum »Postfäch…« statt »Postfächer«, weil dort eine
+  geratene Pixelzahl als Mindestbreite hinterlegt war. Die Breite kommt
+  jetzt aus der Schrift – und wird beim Vergrößern neu gerechnet, was
+  sie vorher auch dann nicht wurde, wenn jemand die Zahl richtig
+  geraten hätte.
+
+  Mitgewachsen ist das Werkzeug um zwei Messungen, die jedem Fenster
+  zugutekommen: einzeilige Beschriftungen ohne Umbruch – die Statuszeile
+  fiel bis dahin durch jedes Raster, weil umbrechende Texte auf die Höhe
+  und Eingabefelder auf die Breite geprüft wurden – und
+  Spaltenüberschriften.
+
+  **Schlecht zu messen ist ein Grund, es zu versuchen, kein Grund, es zu
+  lassen.** Der einzige Befund saß genau in dem Fenster, das man
+  ausgenommen hatte.
 
 - [ ] **Und die Grenze des Werkzeugs bleibt bestehen:** Offscreen meldet
   Qt »does not support propagateSizeHints«. Was es findet, ist echt; was

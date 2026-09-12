@@ -904,8 +904,17 @@ Normalzustand. Mein erster Anlauf hat das verletzt und es dadurch
 *schlimmer* gemacht: Der Dialog ging winzig auf, man sah drei Zeilen.
 
 **Geratene Maße sitzen falsch, sobald jemand die Schrift ändert.** Und
-die lässt sich in MailBurg einstellen. Jede feste Pixelzahl in einem
-Dialog ist ein Fehler, der auf sein Auftreten wartet.
+die lässt sich in MailBurg einstellen. Jede feste Pixelzahl in einer
+Oberfläche, deren Schrift sich einstellen lässt, ist ein Fehler, der auf
+sein Auftreten wartet – im Hauptfenster genauso wie im Dialog. Am
+2026-09-12 hing an einer solchen Zahl (`setMinimumWidth(230)`) die
+Überschrift des Postfachbaums: ab 20 pt »Postfäch…«.
+
+**Und wer aus der Schrift rechnet, muss beim Schriftwechsel neu
+rechnen.** Ein Dialog wird jedes Mal frisch aufgebaut, ein Hauptfenster
+nicht – dort läuft die Rechnung genau einmal, beim Start. Wer die Schrift
+später vergrößert, behält die Maße der alten Größe. Der Fehler sieht dann
+aus wie ein falscher Wert und ist in Wahrheit ein fehlender Aufruf.
 
 ### Das Werkzeug dafür
 
@@ -913,8 +922,16 @@ Dialog ist ein Fehler, der auf sein Auftreten wartet.
 QT_QPA_PLATFORM=offscreen python3 werkzeuge/lesbarkeit.py
 ```
 
-Öffnet neun Fenster, misst nach, meldet abgeschnittenen Text und
-Rollbalken, die es nicht geben dürfte. Bei 9 bis 24 pt ohne Befund.
+Öffnet zehn Fenster – neun Dialoge und **seit dem 2026-09-12 auch das
+Hauptfenster** –, misst nach, meldet abgeschnittenen Text und Rollbalken,
+die es nicht geben dürfte. Bei 9 bis 24 pt ohne Befund.
+
+Gemessen werden Auswahlfelder, Eingabefelder, umbrechende Texte,
+einzeilige Beschriftungen und Spaltenüberschriften. Die letzten beiden
+kamen mit dem Hauptfenster dazu: Die Statuszeile fiel bis dahin durch
+jedes Raster, weil umbrechende Texte auf die Höhe geprüft wurden und
+Eingabefelder auf die Breite – ein einzeiliges `QLabel` ist keins von
+beidem.
 
 **Aber Vorsicht, und das steht auch in der TODO:** Qt meldet offscreen
 »does not support propagateSizeHints«. Fenstergrößen sind dort nicht
@@ -922,6 +939,10 @@ verlässlich zu messen. Was das Werkzeug findet, ist echt; was es *nicht*
 findet, ist damit nicht erledigt. Der letzte gemeldete Punkt – die
 Breite bei fünffach vergrößerter Schrift – konnte deshalb nicht
 abschließend geprüft werden.
+
+Dass das Hauptfenster so lange fehlte, hatte genau diesen Grund: Es lässt
+sich schlechter bemessen als ein Dialog. Beim ersten Lauf fand es sofort
+einen Befund. **Schlecht zu messen ist ein Grund, es zu versuchen.**
 
 ### Neu an diesem Abend
 

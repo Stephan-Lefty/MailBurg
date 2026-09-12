@@ -7,6 +7,30 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **Die Überschrift »Postfächer« war bei großer Schrift abgeschnitten.**
+  Ab etwa 20 pt stand über dem Postfachbaum »Postfäch…«, und damit weiß
+  niemand mehr, wonach dort sortiert wird. Die Mindestbreite war eine
+  geratene Pixelzahl – bei der Vorgabeschrift passend, darüber nicht.
+  Sie kommt jetzt aus der Schrift und wird auch dann neu gerechnet, wenn
+  der Anwender die Schrift im laufenden Fenster vergrößert.
+
+  Es trifft ausgerechnet die, die große Schrift brauchen, um überhaupt
+  lesen zu können.
+
+### Geändert
+
+- **Die Lesbarkeitsprüfung sieht sich jetzt auch das Hauptfenster an.**
+  Geprüft wurden bisher die Dialoge und der Assistent; das Fenster, das
+  den ganzen Tag offensteht, war ausgenommen, weil es sich außerhalb
+  eines Bildschirms schwerer bemessen lässt. Der erste Lauf fand den
+  Befund oben. Neu gemessen werden außerdem einzeilige Beschriftungen –
+  darunter die Statuszeile, die bis dahin durch jedes Raster fiel – und
+  Spaltenüberschriften, in allen fünf Schriftgrößen von 9 bis 24 pt.
+
 ## [1.4.2] – 2026-09-09
 
 Die Fassung für den Start in den Alltag: ein Debian-Paket, damit

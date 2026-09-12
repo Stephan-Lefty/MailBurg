@@ -98,12 +98,17 @@ and the first figure in this order of magnitude.
   Half a million remains open. The index grows roughly linearly
   (14 KB per message); search does not have to.
 
-- [ ] **No filter on `[SPAM]` in the subject.** Deliberately not built:
-  the marker also sits on false positives, and what was never archived
-  only surfaces years later. A folder is a decision by the user, a
-  subject marker is a filter's guess. Anyone who wants it anyway can
-  delete those messages afterwards via search — that route is
-  reversible, the other is not.
+- [x] **The filter on `[SPAM]` in the subject is built** — off by
+  default. (2026-09-11, version 1.4.0) This said "deliberately not
+  built", for good reasons: the marker also sits on false positives, and
+  what was never archived only surfaces years later. A folder is a
+  decision by the user, a subject marker is a filter's guess.
+
+  Those reasons still hold — which is why the filter only bites **when
+  the subject begins with the marker**, not when it appears somewhere
+  inside it, and why it has to be switched on rather than off. The
+  switch has been in "What should run by itself" since 1.4.2 and applies
+  to all mailboxes at once.
 
 ### Check every window before every release (2026-09-07)
 
@@ -120,10 +125,22 @@ every one of these windows we undo our work for the user.**"
   combo boxes and wrapped labels. Four windows sat in that gap, two of
   them never reported. The search mask only breaks from 16 pt upwards.
 
-- [ ] **The main window is not covered yet.** The dialogs and the wizard
-  are. The window the user spends most of their time in is checked by
-  nobody — it is hard to measure offscreen, but that is a reason to try,
-  not a reason to skip it.
+- [x] **The main window is covered now.** (2026-09-12) The dialogs and
+  the wizard were; the window the user spends most of their time in was
+  checked by nobody — supposedly hard to measure offscreen. The first
+  run found something immediately: at 24 pt the mailbox tree read
+  "Postfäch…" instead of "Postfächer", because a guessed pixel number
+  sat there as the minimum width. That width now comes from the font —
+  and is recalculated when the user enlarges it, which it was not before
+  even if someone had guessed the number correctly.
+
+  The tool grew two measurements that benefit every window: single-line
+  labels without wrapping — the status bar fell through every check
+  until then, because wrapped labels were measured for height and text
+  fields for width — and column headers.
+
+  **Hard to measure is a reason to try, not a reason to skip it.** The
+  one finding sat precisely in the window that had been exempted.
 
 - [ ] **And the tool's limit stands:** offscreen, Qt reports "does not
   support propagateSizeHints". What it finds is real; what it does not

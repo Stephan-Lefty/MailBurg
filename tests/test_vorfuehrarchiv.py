@@ -191,6 +191,32 @@ class LesbarkeitsWerkzeugTest(unittest.TestCase):
 
         self.assertGreater(max(laengen), 40)
 
+    def test_das_hauptfenster_wird_mitgeprueft(self):
+        """**Das Fenster, das den ganzen Tag offensteht, darf nicht fehlen.**
+
+        Bis zum 2026-09-10 prüfte das Werkzeug nur die Dialoge und den
+        Assistenten. Ausgenommen war ausgerechnet das Fenster, in dem
+        der Anwender die meiste Zeit verbringt – weil es sich offscreen
+        schwerer bemessen lässt. Beim ersten Lauf fand es sofort einen
+        abgeschnittenen Spaltenkopf.
+
+        Geprüft wird, dass der Dialoglauf das Hauptfenster wirklich
+        aufruft, nicht bloß, dass die Funktion existiert: **Eine
+        Funktion, die niemand ruft, ist keine Prüfung.**
+
+        Gelesen wird der Quelltext, nicht ein Lauf mit Attrappen. Ein
+        nachgestellter Lauf bräuchte Qt und einen Bildschirm; wo der
+        fehlt, überspränge sich der Test selbst – und ein Wächter, der
+        sich überspringen kann, hält nichts fest.
+        """
+        import inspect
+
+        quelle = inspect.getsource(self.werkzeug._dialoge)
+
+        self.assertIn(
+            "_hauptfenster(", quelle, "Das Hauptfenster wird nicht geprüft"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

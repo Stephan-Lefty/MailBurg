@@ -158,7 +158,7 @@ class Hauptfenster(QMainWindow):
         self.baum.reihenfolge_geaendert.connect(self._reihenfolge_merken)
         self.baum.setAccessibleName("Postfächer und Ordner")
         self.baum.itemClicked.connect(self._ordner_gewaehlt)
-        self.baum.setMinimumWidth(230)
+        self._baumbreite_richten()
 
         self.modell = Trefferliste()
         self.tabelle = QTableView()
@@ -884,6 +884,12 @@ class Hauptfenster(QMainWindow):
             teil.setFont(schrift)
         self.menuBar().setFont(schrift)
 
+        # **Mit der Schrift wächst auch die Überschrift des Baums.**
+        # Ohne diese Zeile behält er die Mindestbreite der alten Größe,
+        # und wer vergrößert, um besser zu lesen, bekommt ausgerechnet
+        # dort »Postfäch…« zu sehen.
+        self._baumbreite_richten()
+
         from mailburg.core.einstellungen import merken_unter
 
         merken_unter("schriftstufe", self.schriftstufe)
@@ -954,6 +960,39 @@ class Hauptfenster(QMainWindow):
             bytes(self.tabelle.horizontalHeader().saveState().toBase64()).decode(),
         )
 
+    def _baumbreite_richten(self) -> None:
+        """Sorgt dafür, dass der Postfachbaum seine Überschriften zeigt.
+
+        **Die Mindestbreite kommt aus der Schrift, nicht aus einer
+        Zahl.** Hier stand ``setMinimumWidth(230)`` – geraten, und bei
+        9 pt auch passend. Bei 24 pt reichten die 75 % für die erste
+        Spalte nicht mehr für ihre eigene Überschrift: Aus »Postfächer«
+        wurde »Postfäch…«, und damit weiß niemand mehr, wonach dort
+        sortiert wird.
+
+        Am 2026-09-10 gefunden, als das Hauptfenster zum ersten Mal in
+        die Lesbarkeitsprüfung kam. Dieselbe Regel wie am 2026-08-31:
+        **Jede feste Pixelzahl in einer Oberfläche, deren Schrift sich
+        einstellen lässt, ist ein Fehler, der auf sein Auftreten
+        wartet.**
+
+        Eigene Methode, damit der Schriftwechsel sie rufen kann, ohne
+        die Spaltenaufteilung mitzunehmen – wer eine Spalte von Hand
+        breiter gezogen hat, soll sie behalten.
+        """
+        masse = self.baum.fontMetrics()
+        kopf = self.baum.headerItem()
+        # Sortierpfeil, Rand und Einzug rechnet Qt in dieselbe Fläche.
+        zugabe = 28
+        koepfe = [
+            masse.horizontalAdvance(kopf.text(i)) + zugabe for i in range(2)
+        ]
+        # Die erste Spalte bekommt drei Viertel; ihre Überschrift muss
+        # also in drei Viertel der Gesamtbreite passen.
+        self.baum.setMinimumWidth(
+            max(230, int(koepfe[0] / 0.75), sum(koepfe))
+        )
+
     def _baumspalten_einrichten(self) -> None:
         """Drei Viertel für die Namen, ein Viertel für die Zahlen.
 
@@ -965,6 +1004,8 @@ class Hauptfenster(QMainWindow):
         kopf = self.baum.header()
         kopf.setSectionResizeMode(0, QHeaderView.Interactive)
         kopf.setSectionResizeMode(1, QHeaderView.Interactive)
+
+        self._baumbreite_richten()
         breite = max(self.baum.width(), self.baum.minimumWidth())
         self.baum.setColumnWidth(0, int(breite * 0.75))
         self.baum.setColumnWidth(1, breite - int(breite * 0.75))
