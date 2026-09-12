@@ -69,6 +69,12 @@ being asked.
   because `install.sh` happened to run that day. The launcher should
   detect and say so instead of failing cryptically.
 
+  **The silent half of this is covered since 2026-09-12:** the schedule
+  points into that same venv, and when it breaks, retrieval simply stops
+  — with nothing to show for it. MailBurg now notices on opening and
+  offers to put it right. What remains open is the case where someone
+  starts MailBurg itself and gets a traceback instead of a sentence.
+
 ### The large corpus (2026-09-07)
 
 **The company archive holds around 68,000 messages and runs cleanly.**

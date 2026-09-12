@@ -131,6 +131,25 @@ Alles andere wäre das Ende der Unveränderbarkeit und damit des Zwecks.
 
 ## Regelmäßig abrufen
 
+> **Vorher: Legen Sie die `MailBurg.exe` an ihren endgültigen Platz.**
+>
+> In die geplante Aufgabe schreibt MailBurg den **vollen Pfad** der Datei –
+> also genau den Ort, an dem sie gerade liegt. Wer sie danach verschiebt,
+> etwa aus *Downloads* in einen eigenen Ordner, stellt damit den Abruf ab:
+> Die Aufgabe zeigt auf eine Datei, die dort nicht mehr ist.
+>
+> Zu sehen ist davon nichts. Der Zeitplan steht weiter in der
+> Aufgabenplanung, das Fenster meldet weiter „alle 30 Minuten", und es
+> kommt trotzdem keine Post mehr. Auffallen würde es erst, wenn Sie eine
+> Mail suchen, die nie angekommen ist.
+>
+> Ein Ordner wie `C:\Users\IhrName\MailBurg\` ist ein guter Platz.
+> Dorthin gehört später auch jede neue Fassung – die alte Datei
+> ersetzen, den Namen lassen.
+>
+> Ist es doch passiert, sagt MailBurg es beim nächsten Öffnen und bietet
+> an, den Zeitplan geradezuziehen. Der Abstand bleibt dabei, wie er war.
+
 *Einstellungen → Was von selbst laufen soll (Automatisierung) …* → Häkchen bei
 „Neue Post regelmäßig im Hintergrund holen", Abstand wählen, Übernehmen. Zur
 Wahl stehen alle 15 Minuten, alle 30 Minuten, stündlich, alle 4 Stunden und

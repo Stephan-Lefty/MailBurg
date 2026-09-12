@@ -70,6 +70,13 @@ GNOME-Tresor.
   weil `install.sh` an dem Tag ohnehin lief. Der Startbefehl sollte das
   erkennen und sagen, statt mit einem kryptischen Fehler abzubrechen.
 
+  **Die stille Hälfte davon ist seit dem 2026-09-12 abgedeckt:** Der
+  Zeitplan zeigt in dieselbe venv, und wenn sie wegbricht, läuft der
+  Abruf nicht mehr – ohne dass irgendetwas darauf hinweist. Das merkt
+  MailBurg jetzt beim Öffnen und bietet an, es geradezuziehen. Offen
+  bleibt der Fall, dass jemand MailBurg selbst startet und einen
+  Traceback statt eines Satzes bekommt.
+
 ### Der große Bestand (2026-09-07)
 
 **Das Firmenarchiv steht bei rund 68.000 Mails und läuft sauber.** Der

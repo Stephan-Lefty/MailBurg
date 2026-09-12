@@ -7,6 +7,34 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **MailBurg merkt, wenn der selbsttätige Abruf ins Leere zeigt**, und
+  bietet an, ihn geradezuziehen. Der Abstand bleibt dabei, wie er war.
+
+  In den Zeitplan schreibt MailBurg beim Einrichten den **vollen Pfad**
+  des Programms. Wer die `MailBurg.exe` danach aus dem Download-Ordner an
+  ihren richtigen Platz legt – also das Vernünftige tut –, hat damit den
+  Abruf abgestellt. Unter Linux trifft es den Pfad in die virtuelle
+  Umgebung, sobald die Distribution Python anhebt.
+
+  **Zu sehen war davon nichts.** Der Zeitplan stand weiter in der
+  Aufgabenplanung, das Fenster meldete weiter »alle 30 Minuten«, und es
+  kam trotzdem keine Post. Aufgefallen wäre es erst beim Suchen einer
+  Mail, die nie angekommen ist – und dann wüsste niemand, seit wann.
+
+  Gefragt wird beim Öffnen des Archivs. Wer »Später« wählt, sieht den
+  Hinweis in der Statuszeile; weggeklickt ist nicht erledigt, denn der
+  Abruf läuft ja weiterhin nicht.
+
+- **Die Anleitungen sagen es jetzt vorher.** In der Windows-Anleitung
+  steht der Hinweis **vor** dem Einrichten: erst die `.exe` an ihren
+  endgültigen Platz, dann den Abruf anschalten. Die Zeitsteuerung nennt
+  denselben Fall für Linux – und dass das `.deb`-Paket ihn nicht hat,
+  weil es nach `/usr/bin/mailburg` installiert.
+
 ## [1.4.3] – 2026-09-12
 
 Eine Fassung, die von außen fast gleich aussieht und innen eine Lücke

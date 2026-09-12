@@ -129,5 +129,148 @@ class ZustandVollstaendigTest(unittest.TestCase):
         self.assertEqual(stand.behalten, 0)
 
 
+class ZeigtInsLeereTest(unittest.TestCase):
+    """**Ein Zeitplan, der ins Leere zeigt, sieht aus wie einer, der geht.**
+
+    Er steht in der Aufgabenplanung, er hat seine Uhrzeit, das Fenster
+    meldet »Abruf: alle 30 Minuten«. Nur das Programm, das er startet,
+    liegt nicht mehr dort. Der Abruf hört auf, ohne dass jemand etwas
+    sieht – und in einem Archiv fällt das erst auf, wenn die Post fehlt,
+    die man sucht.
+
+    Dahin kommt man, ohne etwas falsch zu machen: Unter Windows steht
+    der volle Pfad der ``MailBurg.exe`` in der Aufgabe, also stellt das
+    Verschieben aus dem Download-Ordner den Abruf ab. Unter Linux trifft
+    es den Pfad in der virtuellen Umgebung, sobald die Distribution
+    Python anhebt.
+
+    Am 2026-09-12 gebaut, nachdem Stephan gefragt hatte, warum die
+    ``.exe`` keine Versionsnummer im Namen trägt. Sie trägt keine, damit
+    genau das hier nicht bei jedem Update passiert – und dabei fiel auf,
+    dass es beim Verschieben trotzdem passieren kann.
+    """
+
+    def _einheit(self, dienste: Path, programm: str) -> None:
+        (dienste / "mailburg-abruf-probe.service").write_text(
+            "[Unit]\nDescription=Probe\n\n[Service]\nType=oneshot\n"
+            f'ExecStart={programm} abrufen --leise "/home/martha/Archiv"\n',
+            encoding="utf-8",
+        )
+
+    def _pruefen(self, dienste: Path, archiv="/home/martha/Archiv"):
+        with mock.patch.object(zeitplan, "DIENSTE", dienste), \
+             mock.patch.object(zeitplan, "_windows", lambda: False), \
+             mock.patch.object(
+                 zeitplan, "_abrufeinheit", lambda p: "mailburg-abruf-probe"):
+            return zeitplan.zeigt_ins_leere(archiv)
+
+    def test_ein_verschwundenes_programm_wird_gemeldet(self):
+        with tempfile.TemporaryDirectory() as ordner:
+            dienste = Path(ordner)
+            self._einheit(dienste, "/weg/damit/mailburg")
+
+            kaputt, meldung = self._pruefen(dienste)
+
+        self.assertTrue(kaputt)
+        self.assertIn("/weg/damit/mailburg", meldung)
+
+    def test_ein_vorhandenes_programm_ist_in_ordnung(self):
+        with tempfile.TemporaryDirectory() as ordner:
+            dienste = Path(ordner)
+            echt = dienste / "mailburg"
+            echt.write_text("#!/bin/sh\n", encoding="utf-8")
+            self._einheit(dienste, str(echt))
+
+            kaputt, meldung = self._pruefen(dienste)
+
+        self.assertFalse(kaputt)
+        self.assertEqual(meldung, "")
+
+    def test_ohne_eingerichteten_abruf_wird_nichts_behauptet(self):
+        """**Kein Zeitplan ist kein kaputter Zeitplan.**
+
+        Wer hier meldete, schickte jedem, der den Abruf gar nicht
+        eingerichtet hat, eine Warnung über einen Abruf, den es nicht
+        gibt.
+        """
+        with tempfile.TemporaryDirectory() as ordner:
+            kaputt, meldung = self._pruefen(Path(ordner))
+
+        self.assertFalse(kaputt)
+        self.assertEqual(meldung, "")
+
+    def test_ein_pfad_mit_leerzeichen_bleibt_ganz(self):
+        """Sonst gälte »/mit« als das Programm und »Leerzeichen/…« als
+        Argument – und die Prüfung meldete bei jedem Anwender mit einem
+        Leerzeichen im Pfad einen Fehler, den es nicht gibt. Unter
+        Windows wäre das jeder zweite (``C:\\Program Files``)."""
+        with tempfile.TemporaryDirectory() as ordner:
+            dienste = Path(ordner)
+            echt = dienste / "mit Leerzeichen" / "mailburg"
+            echt.parent.mkdir()
+            echt.write_text("#!/bin/sh\n", encoding="utf-8")
+            self._einheit(dienste, f'"{echt}"')
+
+            kaputt, meldung = self._pruefen(dienste)
+
+        self.assertFalse(kaputt, meldung)
+
+    def test_windows_fragt_die_aufgabenplanung(self):
+        """**Nicht die eigene Kopie lesen.** Unter der Ablage liegt
+        dieselbe Beschreibung, aber sie ist nur das, was MailBurg einmal
+        hingeschrieben hat. Wer die Aufgabe von Hand ändert – und in der
+        Aufgabenplanung kann man das –, ändert die echte."""
+        from mailburg.core import aufgabenplanung
+
+        xml = (
+            '<?xml version="1.0"?>\n<Task>\n  <Actions>\n    <Exec>\n'
+            '      <Command>C:\\weg\\MailBurg.exe</Command>\n'
+            '    </Exec>\n  </Actions>\n</Task>\n'
+        )
+        with mock.patch.object(
+            aufgabenplanung, "_schtasks",
+            lambda *a: mock.Mock(stdout=xml, returncode=0),
+        ):
+            programm = aufgabenplanung.eingetragenes_programm(
+                Path("/tmp/Archiv")
+            )
+
+        self.assertEqual(programm, "C:\\weg\\MailBurg.exe")
+
+    def test_ohne_aufgabe_kommt_nichts_zurueck(self):
+        """Und ``""`` heißt ausdrücklich nicht »in Ordnung« – der
+        Aufrufer behandelt es als fehlende Auskunft, nicht als Befund."""
+        from mailburg.core import aufgabenplanung
+
+        with mock.patch.object(
+            aufgabenplanung, "_schtasks",
+            lambda *a: mock.Mock(stdout="", returncode=1),
+        ):
+            programm = aufgabenplanung.eingetragenes_programm(
+                Path("/tmp/Archiv")
+            )
+
+        self.assertEqual(programm, "")
+
+    def test_geradeziehen_behaelt_den_takt(self):
+        """Wer alle 90 Minuten abruft, will das auch nach einem Umzug.
+        Den Takt hier auf die Vorgabe zu setzen, verwürfe stillschweigend
+        eine Entscheidung des Anwenders."""
+        gemerkt = {}
+
+        def merken(archiv, takt):
+            gemerkt["takt"] = takt
+            return True, ""
+
+        with mock.patch.object(
+                zeitplan, "zustand",
+                lambda a: zeitplan.Zustand(laeuft=True, takt=90)), \
+             mock.patch.object(zeitplan, "abschalten", lambda a: (True, "")), \
+             mock.patch.object(zeitplan, "einrichten", merken):
+            zeitplan.geradeziehen("/home/martha/Archiv")
+
+        self.assertEqual(gemerkt["takt"], 90)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -235,5 +235,60 @@ class WeicheTest(unittest.TestCase):
         self.assertNotIn("--behalten", quelle)
 
 
+class AnleitungWarntVorDemVerschiebenTest(unittest.TestCase):
+    """**Der volle Pfad in der Aufgabe ist eine Falle, und sie gehört benannt.**
+
+    MailBurg schreibt beim Einrichten den Ort der ``MailBurg.exe`` fest.
+    Wer sie danach aus dem Download-Ordner an ihren richtigen Platz
+    legt – also das Vernünftige tut –, stellt damit den Abruf ab, ohne
+    dass irgendetwas darauf hinweist.
+
+    Deshalb steht in der Anleitung ein Hinweis **vor** dem Schritt, nicht
+    danach. Geprüft wird die Aussage, nicht ihr Wortlaut: Ein Wächter,
+    der auf einen Satz zeigt, hält den Satz fest und nicht seinen Sinn
+    (gelernt am 2026-09-09).
+    """
+
+    def _anleitung(self) -> str:
+        return (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "docs" / "windows.md"
+        ).read_text(encoding="utf-8")
+
+    def test_der_hinweis_steht_vor_dem_einrichten(self) -> None:
+        text = self._anleitung()
+        ueberschrift = text.index("## Regelmäßig abrufen")
+        einstellungen = text.index("Was von selbst laufen soll", ueberschrift)
+        dazwischen = text[ueberschrift:einstellungen]
+
+        self.assertIn("verschieb", dazwischen.lower())
+        self.assertIn(
+            "pfad", dazwischen.lower(),
+            "Der Hinweis nennt nicht, woran der Abruf hängt",
+        )
+
+    def test_die_anleitung_sagt_dass_man_nichts_davon_sieht(self) -> None:
+        """Ohne diesen Satz liest es sich wie eine Ordnungsempfehlung.
+
+        Der Punkt ist nicht, dass etwas unaufgeräumt wäre, sondern dass
+        der Ausfall unsichtbar ist.
+        """
+        dazwischen = self._anleitung()
+
+        self.assertRegex(
+            dazwischen, r"(?s)Regelmäßig abrufen.{0,1500}(nichts|keine Post)"
+        )
+
+    def test_die_linuxanleitung_nennt_denselben_fall(self) -> None:
+        """Dort trifft es den Pfad in die virtuelle Umgebung, sobald die
+        Distribution Python anhebt – dieselbe Ursache, anderer Auslöser."""
+        text = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "docs" / "zeitsteuerung.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("ins Leere", text)
+
+
 if __name__ == "__main__":
     unittest.main()

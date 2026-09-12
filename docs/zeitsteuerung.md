@@ -98,6 +98,28 @@ systemctl --user daemon-reload
 systemctl --user restart mailburg-abruf.timer
 ```
 
+### Wenn der Timer ins Leere zeigt
+
+In der Einheit steht der **volle Pfad** zum Programm, nicht bloß sein Name –
+ein Dienst startet ohne die `PATH`-Ergänzungen einer Anmeldesitzung. Damit
+hängt der Abruf an genau diesem Pfad.
+
+Bei einer Installation über `install.sh` liegt er in einer virtuellen
+Umgebung, und die **übersteht keinen Python-Sprung der Distribution**: Hebt
+Arch oder Manjaro von 3.13 auf 3.14, findet die Umgebung ihre Bibliotheken
+nicht mehr. Der Timer läuft weiter an, das Programm startet nicht, und in
+`journalctl` steht es – nachsehen tut dort niemand von sich aus.
+
+MailBurg prüft das beim Öffnen und bietet an, den Zeitplan geradezuziehen.
+Von Hand geht es auch:
+
+```bash
+systemctl --user start mailburg-abruf.service   # läuft er überhaupt?
+```
+
+Das `.deb`-Paket ist davon nicht betroffen: Es installiert nach
+`/usr/bin/mailburg`, und dieser Pfad bleibt.
+
 ### Ohne systemd: cron
 
 ```cron

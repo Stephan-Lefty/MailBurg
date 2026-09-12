@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -207,6 +208,92 @@ WantedBy=timers.target
     if ergebnis.returncode != 0:
         return False, (ergebnis.stderr or "").strip() or "Der Zeitplan ließ sich nicht einschalten."
     return True, f"Abruf eingerichtet: alle {takt} Minuten, solange Sie angemeldet sind."
+
+
+def eingetragenes_programm(archiv: Path | str) -> str:
+    """Welches Programm der eingerichtete Abruf aufruft – oder ``""``.
+
+    Unter Windows steht der Pfad in der Aufgabe, unter Linux in der
+    ``ExecStart``-Zeile der Diensteinheit. Beides sind feste Pfade, die
+    beim Einrichten hineingeschrieben wurden.
+    """
+    archiv = Path(archiv).expanduser().resolve()
+
+    if _windows():
+        from mailburg.core import aufgabenplanung
+
+        return aufgabenplanung.eingetragenes_programm(archiv)
+
+    datei = DIENSTE / f"{_abrufeinheit(archiv)}.service"
+    if not datei.is_file():
+        return ""
+    try:
+        inhalt = datei.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    for zeile in inhalt.splitlines():
+        if zeile.startswith("ExecStart="):
+            # Der erste Teil ist das Programm, danach kommen die
+            # Argumente. Ein Pfad mit Leerzeichen stünde in
+            # Anführungszeichen - shlex trennt beides richtig.
+            teile = shlex.split(zeile[len("ExecStart="):].strip())
+            return teile[0] if teile else ""
+    return ""
+
+
+def zeigt_ins_leere(archiv: Path | str) -> tuple[bool, str]:
+    """Prüft, ob der eingerichtete Abruf noch auf ein Programm zeigt.
+
+    **Ein Zeitplan, der ins Leere zeigt, sagt nichts.** Er steht weiter
+    in der Aufgabenplanung, er hat seine Uhrzeit, er sieht eingerichtet
+    aus – und er startet ein Programm, das an dieser Stelle nicht mehr
+    liegt. Der Abruf hört auf, ohne dass jemand etwas sieht. In einem
+    Archiv ist das der schlimmste Fehler überhaupt: Er fällt erst auf,
+    wenn die Post fehlt, die man sucht.
+
+    Passiert von selbst und ohne Zutun:
+
+    * Unter Windows steht der volle Pfad der ``MailBurg.exe`` in der
+      Aufgabe. Wer sie aus dem Download-Ordner an ihren richtigen Platz
+      verschiebt – also das Vernünftige tut –, hat den Abruf abgestellt.
+    * Unter Linux steht dort der Pfad zum Programm in der virtuellen
+      Umgebung. Die übersteht keinen Python-Sprung der Distribution,
+      siehe TODO.
+
+    Rückgabe ``(True, Meldung)``, wenn etwas nicht stimmt. Kein
+    eingerichteter Abruf heißt ``(False, "")``: Was es nicht gibt, kann
+    nicht ins Leere zeigen.
+    """
+    programm = eingetragenes_programm(archiv)
+    if not programm:
+        # **Auch das ist keine Auskunft, sondern deren Fehlen.** Ob es
+        # keinen Abruf gibt oder ob die Abfrage misslang, lässt sich hier
+        # nicht unterscheiden - also wird nichts behauptet. Gemeldet wird
+        # nur, was belegt ist: ein Pfad, der nirgendwohin führt.
+        return False, ""
+
+    if Path(programm).is_file():
+        return False, ""
+
+    return True, (
+        f"Der selbsttätige Abruf zeigt auf ein Programm, das dort nicht "
+        f"mehr liegt:\n{programm}\n\n"
+        f"Bis das geradegezogen ist, holt MailBurg keine neue Post – "
+        f"auch wenn der Zeitplan weiterhin eingerichtet aussieht."
+    )
+
+
+def geradeziehen(archiv: Path | str) -> tuple[bool, str]:
+    """Richtet den Abruf mit dem laufenden Programm neu ein.
+
+    Der Takt bleibt, was er war. Wer alle 30 Minuten abruft, will das
+    auch nach einem Umzug – ihn hier auf den Standardwert zu setzen,
+    hieße, eine Entscheidung des Anwenders stillschweigend zu verwerfen.
+    """
+    stand = zustand(archiv)
+    takt = stand.takt or STANDARDTAKT
+    abschalten(archiv)
+    return einrichten(archiv, takt)
 
 
 def abschalten(archiv: Path | str | None = None) -> tuple[bool, str]:

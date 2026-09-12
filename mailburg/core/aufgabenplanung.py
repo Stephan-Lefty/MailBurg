@@ -270,6 +270,30 @@ def _laeuft(name: str) -> bool:
     return _schtasks("/Query", "/TN", name).returncode == 0
 
 
+def eingetragenes_programm(archiv: Path, art: str = "Abruf") -> str:
+    """Das Programm, das die eingetragene Aufgabe wirklich aufruft.
+
+    **Gefragt wird die Aufgabenplanung, nicht die eigene Kopie.** Unter
+    ``_ablage()`` liegt zwar dieselbe Beschreibung, aber sie ist nur das,
+    was MailBurg einmal hingeschrieben hat. Wer die Aufgabe von Hand
+    ändert – und in der Aufgabenplanung kann man das –, ändert die echte,
+    nicht die Kopie. Eine Prüfung, die die Kopie liest, prüft die eigene
+    Erinnerung.
+
+    Leer, wenn es die Aufgabe nicht gibt oder ``schtasks`` nichts
+    hergibt. **Das heißt ausdrücklich nicht »in Ordnung«** – wer das
+    verwechselt, baut ein Auffangnetz, das Auskunft erfindet.
+    """
+    name = _aufgabenname(art, archiv)
+    ergebnis = _schtasks("/Query", "/TN", name, "/XML")
+    if ergebnis.returncode != 0:
+        return ""
+    for zeile in (ergebnis.stdout or "").splitlines():
+        if "<Command>" in zeile:
+            return zeile.split("<Command>")[1].split("<")[0].strip().strip('"')
+    return ""
+
+
 def _gelesen(name: str) -> str:
     """Die weggeschriebene Beschreibung, sofern noch vorhanden."""
     datei = _ablage() / f"{name.replace(chr(92), '_')}.xml"

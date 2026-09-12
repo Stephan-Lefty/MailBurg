@@ -596,6 +596,10 @@ class Hauptfenster(QMainWindow):
         self._suchen()
         # Zuletzt: erst soll das Fenster stehen, dann die Frage kommen.
         QTimer.singleShot(0, self._fristen_pruefen)
+        # Nach den Fristen, nicht davor: Der Abruf betrifft die Post von
+        # morgen, die Fristen die von gestern. Wer zwei Fragen bekommt,
+        # soll die dringendere zuerst sehen.
+        QTimer.singleShot(0, self._zeitplan_pruefen)
         if hasattr(self, "zuletzt_menue"):
             # Das gerade geöffnete Archiv gehört nicht in die Liste der
             # anderen - man wechselt nicht dorthin, wo man schon ist.
@@ -1082,6 +1086,59 @@ class Hauptfenster(QMainWindow):
         )
         if antwort == QMessageBox.Yes:
             self._neuaufbau()
+
+    def _zeitplan_pruefen(self) -> None:
+        """Merkt, wenn der selbsttätige Abruf ins Leere zeigt.
+
+        **Ein Zeitplan, der nicht mehr funktioniert, sieht aus wie
+        einer, der funktioniert.** Er steht in der Aufgabenplanung, er
+        hat seine Uhrzeit, das Fenster meldet »Abruf: alle 30 Minuten«.
+        Nur das Programm, das er startet, liegt nicht mehr dort.
+
+        Dahin kommt man, ohne etwas falsch zu machen: Unter Windows
+        steht der volle Pfad der ``MailBurg.exe`` in der Aufgabe. Wer
+        sie aus dem Download-Ordner an ihren richtigen Platz verschiebt,
+        hat den Abruf abgestellt. Unter Linux trifft es den Pfad in der
+        virtuellen Umgebung, sobald die Distribution Python anhebt.
+
+        Gefragt wird beim Öffnen, nicht gemahnt: Wer gerade etwas
+        anderes vorhat, drückt »Später« und bekommt die Frage beim
+        nächsten Mal wieder. Weggeklickt ist nicht erledigt – der Abruf
+        läuft ja weiterhin nicht.
+        """
+        if self.archiv is None:
+            return
+        try:
+            from mailburg.core import zeitplan
+
+            kaputt, meldung = zeitplan.zeigt_ins_leere(self.archiv.root)
+        except Exception:  # noqa: BLE001 – eine Warnung darf nie selbst scheitern
+            return
+        if not kaputt:
+            return
+
+        antwort = QMessageBox.question(
+            self,
+            "Der selbsttätige Abruf läuft nicht mehr",
+            f"<p><b>Ihr Zeitplan steht noch, aber er greift ins Leere.</b></p>"
+            f"<p>{meldung.replace(chr(10) + chr(10), '</p><p>').replace(chr(10), '<br>')}</p>"
+            f"<p>Soll MailBurg ihn auf das Programm umstellen, das gerade "
+            f"läuft? Der Takt bleibt, wie er eingestellt war.</p>",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if antwort != QMessageBox.Yes:
+            self.stand.setText(
+                "Der selbsttätige Abruf greift ins Leere – neue Post wird "
+                "nicht geholt."
+            )
+            return
+
+        erfolg, text = zeitplan.geradeziehen(self.archiv.root)
+        if erfolg:
+            self.stand.setText(f"Zeitplan geradegezogen. {text}")
+        else:
+            QMessageBox.warning(self, "Hat nicht geklappt", text)
 
     def _geheimnis_besorgen(self, pfad: Path) -> str | None:
         """Fragt nach dem Passwort, wenn das Archiv verschlüsselt ist.

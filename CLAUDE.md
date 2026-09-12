@@ -1506,6 +1506,27 @@ geglaubt. Deshalb eng fangen (`keyring.errors.KeyringError`,
 `OSError`), und wo ein Aufrufer dem Anwender etwas schreibt, den Grund
 mitgeben statt ihn wegzuwerfen.
 
+**Was eingerichtet aussieht, ist damit nicht eingerichtet.** Die
+Schwesterregel zur vorigen, von der anderen Seite: Nicht nur ein
+Fehlschlag kann als Ergebnis durchgehen – auch ein Zustand kann
+funktionierend aussehen, ohne es zu sein. Ein Zeitplan steht in der
+Aufgabenplanung, hat seine Uhrzeit, MailBurg meldet »alle 30 Minuten«,
+und das Programm, auf das er zeigt, liegt nicht mehr dort. Der Abruf
+hört auf, ohne dass irgendwo etwas rot wird.
+
+Am 2026-09-12 aus einer Frage Stephans gefallen (»Warum hat die `.exe`
+keine Versionsnummer?«). Antwort: Damit die geplante Aufgabe ein Update
+übersteht, denn in ihr steht der volle Dateipfad. Beim Nachsehen fiel
+auf, dass schlichtes **Verschieben** der Datei denselben Schaden
+anrichtet – und dass MailBurg das nie nachprüfte.
+
+**Die Faustregel:** Wo MailBurg einen Pfad in etwas Fremdes schreibt
+(Aufgabenplanung, systemd, Verknüpfungen), muss es ihn auch wieder
+nachlesen können. Ein Eintrag, den nur der Schreiber kennt, ist eine
+Behauptung über die Vergangenheit. Geprüft wird die echte Eintragung,
+nicht die eigene Kopie davon: Wer die eigene Kopie liest, prüft seine
+Erinnerung.
+
 **Das Journal ist die Wahrheit, der Index ist Beiwerk.** Jede Information, die
 zum Wiederaufbau nötig ist, muss im Journal stehen. Beim ersten Entwurf bekam
 ein zweiter *Fundort* derselben Mail keinen Journaleintrag, weil die Datei ja
