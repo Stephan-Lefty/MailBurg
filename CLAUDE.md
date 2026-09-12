@@ -3,7 +3,7 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
-## Hier war Schluss (Stand 2026-09-12, Samstag) – 1.4.3 und 1.4.4
+## Hier war Schluss (Stand 2026-09-12, Samstag) – 1.4.3 bis 1.4.5
 
 **Zehn von einunddreißig Fenstern waren geprüft.** Das ist der ganze
 Tag in einem Satz. Das Werkzeug meldete seit Wochen »nichts
@@ -44,6 +44,31 @@ geradezuziehen.
 **Das Muster ist dasselbe wie am Vormittag**, nur von der anderen Seite:
 Nicht ein Fehlschlag geht als Ergebnis durch, sondern ein Zustand sieht
 funktionierend aus, ohne es zu sein. 1788 Tests.
+
+### Und die 1.4.5, aus der nächsten Frage
+
+»War hier nicht eine Grafik vorher drin?« – zum Infofenster. Es war nie
+eine drin; die Historie von `ui/info.py` sagt es. Aber die Frage war
+trotzdem ein Fehlerbericht: Das Fenster war 718 px hoch für 225 px Text,
+bei 24 pt sogar 2228 px. **Ein halbleeres Fenster liest sich wie ein
+kaputtes**, und der Anwender sucht den Fehler dort, wo keiner ist.
+
+Ursache war eine einzige Null. `Fliesstext.sizeHint()` gab `QSize(0, …)`
+zurück – für das Layout heißt das »braucht keine Breite«. Es hielt sich
+daraufhin für so breit wie die Knopfleiste (102 px) und fragte den Absatz
+nach seiner Höhe *für 102 px*: 665 statt 172. Diese Zahl nimmt Qt beim
+ersten Anzeigen als Fenstergröße. Die *Mindest*höhe stimmte dabei die
+ganze Zeit – nur die Anfangsgröße nicht.
+
+**Zwei Anläufe davor waren Fehlschläge und wurden zurückgenommen**, weil
+die Gegenprobe zeigte, dass sie nichts bewirken: erst eine Schwelle in
+`minimumSizeHint`, dann dieselbe Änderung in `sizeHint` ohne die Breite.
+Eine Änderung, die nichts bewirkt, gehört nicht ins Repository, auch wenn
+sie plausibel klingt – sie sieht später aus wie eine Begründung.
+
+Das Prüfwerkzeug misst seitdem beide Richtungen, zu klein *und* zu groß
+(`_viel_zu_gross`, Schwelle `LEERRAUM = 2.0`). Damit fand es sofort auch
+das Hilfefenster. 1791 Tests.
 
 ### Vorher (Stand 2026-09-10, Donnerstag)
 

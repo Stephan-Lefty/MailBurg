@@ -196,7 +196,58 @@ def _befunde(fenster, name: str) -> list[str]:
             f"{name}: Fenster ist {fenster.width()} px breit, der Inhalt "
             f"braucht {inhalt.width()} px"
         )
+
+    gefunden += _viel_zu_gross(fenster, name)
     return gefunden
+
+
+#: Ab wie viel Leerraum ein Fenster nicht mehr großzügig, sondern kaputt
+#: aussieht. Das Doppelte heißt: Die Hälfte des Fensters ist leer.
+LEERRAUM = 2.0
+
+
+def _viel_zu_gross(fenster, name: str) -> list[str]:
+    """Fenster, die viel höher aufgehen, als ihr Inhalt braucht.
+
+    **Ein halbleeres Fenster liest sich wie ein kaputtes.** Am
+    2026-09-12 fragte Stephan zum Infofenster: »War hier nicht eine
+    Grafik vorher drin?« Es war nie eine drin. Der Text stand nur mitten
+    in einer großen leeren Fläche, und das sieht aus, als wäre etwas
+    nicht geladen worden.
+
+    Bis dahin prüfte das Werkzeug nur die eine Richtung: ob ein Fenster
+    zu **klein** für seinen Inhalt ist. Die andere fiel niemandem auf,
+    weil dabei kein Text verlorengeht – es sieht bloß falsch aus, und
+    »sieht falsch aus« meldet kein Messwerkzeug von selbst.
+
+    Gemessen wird gegen die Höhe, die der Inhalt bei der **tatsächlichen
+    Breite** braucht. Nicht gegen ``sizeHint()``: Der rechnet mit
+    irgendeiner angenommenen Breite und gab beim Infofenster 718 px für
+    ein Fenster aus, in das 172 px Text gehören.
+
+    Fenster mit Rollbereich bleiben außen vor – die sind mit Absicht so
+    hoch, wie der Bildschirm hergibt.
+    """
+    from PySide6.QtWidgets import QMainWindow, QScrollArea
+
+    if isinstance(fenster, QMainWindow) or fenster.findChildren(QScrollArea):
+        return []
+
+    aufbau = fenster.layout()
+    if aufbau is None:
+        return []
+    gebraucht = aufbau.heightForWidth(fenster.width())
+    if gebraucht <= 0:
+        gebraucht = aufbau.sizeHint().height()
+    if gebraucht <= 0 or fenster.height() <= 0:
+        return []
+
+    if fenster.height() < gebraucht * LEERRAUM:
+        return []
+    return [
+        f"{name}: Fenster ist {fenster.height()} px hoch, der Inhalt "
+        f"braucht nur {gebraucht} px – die Hälfte steht leer"
+    ]
 
 
 def _zeigen(fenster, anwendung, breite=0, hoehe=0):

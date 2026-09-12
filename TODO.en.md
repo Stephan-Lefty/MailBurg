@@ -161,6 +161,21 @@ every one of these windows we undo our work for the user.**"
   thinks about the window, not about the list — and nobody notices,
   because the tool keeps reporting green.
 
+- [x] **And it now measures both directions, not just one.**
+  (2026-09-12) It checked whether a window is too *small* for its
+  contents — that loses text, and it shows. Too large went unnoticed,
+  because nothing is missing.
+
+  Stephan reported it, and as a question: "Wasn't there a graphic here
+  before?" There never was. The About window was 718 px tall for 225 px
+  of text, and 2228 px at 24 pt — taller than any screen. The help window
+  had the same on a smaller scale.
+
+  **A half-empty window reads like a broken one.** Nothing is missing,
+  nothing is lost — you just look for the fault somewhere there isn't
+  one. "Looks wrong" is not something a measuring tool reports by itself;
+  it has to be told.
+
 - [ ] **At very large font sizes in a narrow window, the hit list really
   does run out of room.** Five column headers plus the mailbox tree no
   longer fit side by side at 24 pt when the font runs wide — it showed up

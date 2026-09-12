@@ -171,6 +171,21 @@ unsere Arbeit beim User kaputt.**«
   denkt an das Fenster, nicht an die Liste – und niemand merkt es, weil
   das Werkzeug weiter grün meldet.
 
+- [x] **Und sie misst jetzt beide Richtungen, nicht nur eine.**
+  (2026-09-12) Geprüft wurde, ob ein Fenster zu *klein* für seinen Inhalt
+  ist – dabei geht Text verloren, und das fällt auf. Zu groß fiel
+  niemandem auf, weil nichts fehlt.
+
+  Gemeldet hat es Stephan, und zwar als Frage: »War hier nicht eine
+  Grafik vorher drin?« Es war nie eine drin. Das Infofenster war 718 px
+  hoch für 225 px Text, bei 24 pt sogar 2228 px – höher als jeder
+  Bildschirm. Das Hilfefenster hatte dasselbe in kleinerem Maßstab.
+
+  **Ein halbleeres Fenster liest sich wie ein kaputtes.** Es fehlt
+  nichts, es geht nichts verloren – man sucht nur den Fehler an einer
+  Stelle, an der keiner ist. »Sieht falsch aus« meldet kein Messwerkzeug
+  von selbst; man muss es ihm sagen.
+
 - [ ] **Bei sehr großer Schrift und schmalem Fenster wird der Platz in
   der Trefferliste wirklich knapp.** Fünf Spaltenköpfe und der
   Postfachbaum passen bei 24 pt nicht mehr nebeneinander, wenn die

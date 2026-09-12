@@ -74,6 +74,46 @@ def verweis(adresse: str, beschriftung: str) -> str:
     return f"<a href='{adresse}' style='color: {link()}'>{beschriftung}</a>"
 
 
+#: Ab welchem Verhältnis ein Fenster nicht mehr großzügig, sondern
+#: kaputt aussieht. Zwei heißt: Die Hälfte steht leer.
+_ZU_HOCH = 2.0
+
+
+def _hoehe_zuruecknehmen(dialog, aufbau) -> None:
+    """Nimmt einem Dialog die Höhe, die er gar nicht braucht.
+
+    **Die Gegenrichtung zu allem anderen hier.** Bisher ging es immer
+    darum, dass ein Fenster zu *klein* ist für seinen Inhalt – dabei geht
+    Text verloren, und das fällt auf. Zu groß fällt nicht auf, jedenfalls
+    nicht als Fehler: Es sieht bloß aus, als fehlte etwas.
+
+    Am 2026-09-12 hat Stephan zum Infofenster gefragt: »War hier nicht
+    eine Grafik vorher drin?« Es war nie eine drin. Das Fenster war
+    718 px hoch für 225 px Text, bei 24 pt sogar 2228 px – höher als
+    jeder Bildschirm. **Ein halbleeres Fenster liest sich wie ein
+    kaputtes.**
+
+    Woher die Zahl kam: Qt nimmt beim ersten Anzeigen den ``sizeHint``
+    des Layouts, und der wird gerechnet, bevor der Fließtext darin seine
+    wirkliche Breite hat. Bei Qts Platzhalter von 100 px braucht
+    derselbe Absatz ein Vielfaches an Höhe. Die Mindesthöhe stimmte
+    dabei die ganze Zeit – nur eben die Anfangsgröße nicht.
+
+    Deshalb wird hier nicht gerechnet, sondern nachgemessen: Was das
+    Layout bei der **tatsächlichen** Breite braucht, ist die richtige
+    Höhe. Verkleinert wird nur, wenn der Unterschied grob ist; wer sein
+    Fenster von Hand größer gezogen hat, soll das behalten.
+    """
+    if not dialog.isVisible():
+        return
+    noetig = aufbau.heightForWidth(dialog.width())
+    if noetig <= 0:
+        noetig = aufbau.sizeHint().height()
+    if noetig <= 0 or dialog.height() < noetig * _ZU_HOCH:
+        return
+    dialog.resize(dialog.width(), noetig)
+
+
 def dunkles_thema() -> bool:
     """Ob die Oberfläche gerade dunkel eingestellt ist.
 
@@ -482,6 +522,7 @@ def auswahlfelder_verbreitern(anwendung) -> None:
             aufbau = dialog.layout()
             if aufbau is not None and not hat_rollbereich:
                 aufbau.setSizeConstraint(QLayout.SetMinimumSize)
+                _hoehe_zuruecknehmen(dialog, aufbau)
 
             # **Auch die Mindestgröße zählt.** ``sizeHint`` ist der
             # Wunsch, ``minimumSizeHint`` die Untergrenze - und die

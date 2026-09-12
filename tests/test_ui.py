@@ -3480,6 +3480,79 @@ class FliesstextTest(OberflaechenTest):
 
         self.assertGreater(etikett.minimumSizeHint().height(), 0)
 
+    def test_der_sizehint_nennt_auch_eine_breite(self):
+        """**Die Null, die das Infofenster dreimal zu hoch machte.**
+
+        ``sizeHint`` gab ``QSize(0, …)`` zurück – für das Layout heißt
+        das: »Dieses Etikett braucht keine Breite.« Es hielt sich
+        daraufhin für so breit wie die Knopfleiste darunter, also 102 px,
+        und fragte den Absatz nach seiner Höhe *für 102 px*. Antwort:
+        665 statt 172. Diese Zahl nimmt Qt beim ersten Anzeigen als
+        Fenstergröße.
+
+        Ergebnis: 718 px Fenster für 225 px Text, bei 24 pt sogar
+        2228 px – höher als jeder Bildschirm. Stephan hat es am
+        2026-09-12 gemeldet, und zwar als Frage: »War hier nicht eine
+        Grafik vorher drin?« Es war nie eine drin. **Ein halbleeres
+        Fenster liest sich wie ein kaputtes**, und der Anwender sucht den
+        Fehler dort, wo keiner ist.
+
+        Für ``minimumSizeHint`` bleibt die Null richtig: Schmal werden
+        *darf* der Absatz, er wird dann eben hoch.
+        """
+        from mailburg.ui.fliesstext import Fliesstext
+
+        etikett = Fliesstext(self.LANG)
+
+        self.assertGreater(
+            etikett.sizeHint().width(), 100,
+            "Ohne Breite im sizeHint rechnet das Layout die Höhe für "
+            "die Breite der Knopfleiste",
+        )
+        self.assertEqual(
+            etikett.minimumSizeHint().width(), 0,
+            "Schmal werden darf der Absatz weiterhin",
+        )
+
+    def test_der_sizehint_passt_zur_genannten_breite(self):
+        """Höhe und Breite im selben Hinweis müssen zusammengehören.
+
+        Sonst meldet das Etikett eine Breite und dazu die Höhe für eine
+        andere – und das Layout rechnet mit einem Paar, das es so nie
+        gibt.
+        """
+        from mailburg.ui.fliesstext import Fliesstext
+
+        hinweis = Fliesstext(self.LANG).sizeHint()
+
+        self.assertEqual(
+            hinweis.height(),
+            Fliesstext(self.LANG).heightForWidth(hinweis.width()),
+        )
+
+    def test_ein_dialog_geht_nicht_doppelt_so_hoch_auf(self):
+        """Der Fall aus dem Fenster, nicht nur aus dem Etikett.
+
+        Die beiden Tests darüber halten die Ursache fest. Dieser hält
+        fest, worum es geht: Das Infofenster war 718 px hoch für 225 px
+        Text. Ein Fenster, dessen Hälfte leer ist, sieht nicht großzügig
+        aus, sondern kaputt.
+        """
+        from mailburg.ui.info import Infofenster
+
+        fenster = Infofenster()
+        fenster.show()
+        for _ in range(3):
+            self.app.processEvents()
+        noetig = fenster.layout().heightForWidth(fenster.width())
+        hoehe = fenster.height()
+        fenster.hide()
+
+        self.assertLess(
+            hoehe, noetig * 2,
+            f"Das Fenster ist {hoehe} px hoch, der Inhalt braucht {noetig}",
+        )
+
 
 class SicherungseinheitTest(OberflaechenTest):
     """Geschrieben und eingeschaltet muss dieselbe Einheit sein.

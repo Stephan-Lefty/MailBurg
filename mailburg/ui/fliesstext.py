@@ -28,6 +28,13 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import QLabel, QSizePolicy
 
 
+#: Mit dieser Breite wird gerechnet, solange die wirkliche noch nicht
+#: feststeht. Sie ist keine Vorschrift, sondern eine Annahme – aber eine,
+#: die den Dialogen dieses Programms entspricht (520 bis 800 px). Qts
+#: Platzhalter von 100 px entspricht keinem einzigen davon.
+VORGABEBREITE = 480
+
+
 class Fliesstext(QLabel):
     """Ein Absatz, der lieber wächst als Zeilen zu verschlucken."""
 
@@ -57,7 +64,39 @@ class Fliesstext(QLabel):
         return QSize(0, self.heightForWidth(breite))
 
     def sizeHint(self) -> QSize:
-        return self.minimumSizeHint()
+        """Die Höhe für eine Breite, die es später wirklich geben wird.
+
+        **Hier stand ``return self.minimumSizeHint()``, und das war der
+        Fehler.** Diese Frage kommt, *bevor* das Etikett im Layout steht
+        – und dann trägt es Qts Platzhalter von 100 px. Für 100 px
+        braucht ein Absatz ein Vielfaches an Höhe, und weil Qt beim
+        ersten Anzeigen genau diese Zahl als Fenstergröße nimmt, ging
+        das Infofenster 718 px hoch auf für 225 px Text. Bei 24 pt waren
+        es 2228 px – höher als jeder Bildschirm.
+
+        Am 2026-09-12 von Stephan gefunden, mit der Frage »War hier
+        nicht eine Grafik vorher drin?«. Es war nie eine drin. **Ein
+        halbleeres Fenster liest sich wie ein kaputtes**, und der
+        Anwender sucht den Fehler dort, wo keiner ist.
+
+        Solange das Etikett nicht sichtbar ist, gilt darum eine Breite,
+        wie Dialoge sie wirklich haben. Die *Mindest*höhe bleibt davon
+        unberührt: Die rechnet weiter mit der echten Breite und hat auch
+        nie falsch gelegen.
+        """
+        breite = self.width()
+        if not self.isVisible() or breite <= 20:
+            breite = max(self.minimumWidth(), VORGABEBREITE)
+        # **Und die Breite steht hier mit drin, nicht als Null.** Das ist
+        # der Kern: Ein ``QSize(0, …)`` sagt dem Layout, dieses Etikett
+        # brauche keine Breite. Das Layout hielt sich daraufhin für so
+        # breit wie die Knopfleiste – 102 px – und fragte den Text nach
+        # seiner Höhe *für 102 px*. Antwort: 665 statt 172.
+        #
+        # Für ``minimumSizeHint`` bleibt die Null richtig: Schmal werden
+        # **darf** der Absatz, er wird dann eben hoch. Gewünscht ist es
+        # nur nicht.
+        return QSize(breite, self.heightForWidth(breite))
 
     def resizeEvent(self, ereignis) -> None:
         """Wird das Etikett schmaler, braucht es mehr Höhe.

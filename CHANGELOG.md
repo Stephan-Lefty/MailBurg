@@ -7,6 +7,40 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.5] – 2026-09-12
+
+Aus einer Frage entstanden, die keine Fehlermeldung sein sollte: **»War
+hier nicht eine Grafik vorher drin?«** Es war nie eine drin. Der Text
+stand nur mitten in einer großen leeren Fläche – und das sieht aus, als
+wäre etwas nicht geladen worden.
+
+### Behoben
+
+- **Zwei Fenster gingen viel höher auf, als ihr Inhalt braucht.** Das
+  Fenster *Über MailBurg* war 718 px hoch für 225 px Text; bei
+  eingestellter großer Schrift wären es 2228 px gewesen – höher als
+  jeder Bildschirm. Die *Hilfe* hatte dasselbe in kleinerem Maßstab.
+
+  Dahinter stand eine einzige Null. Ein umbrechender Absatz meldete dem
+  Layout, er brauche keine Breite. Das Layout hielt sich daraufhin für so
+  breit wie die Knopfleiste darunter – 102 px – und fragte den Absatz
+  nach seiner Höhe *für 102 px*. Die Antwort war das Dreifache des
+  Richtigen, und genau diese Zahl nimmt Qt beim ersten Anzeigen als
+  Fenstergröße.
+
+  **Ein halbleeres Fenster liest sich wie ein kaputtes.** Es fehlt nichts,
+  es geht nichts verloren – man sucht nur den Fehler an einer Stelle, an
+  der keiner ist.
+
+### Geändert
+
+- **Die Lesbarkeitsprüfung misst jetzt auch die Gegenrichtung.** Bisher
+  prüfte sie, ob ein Fenster zu *klein* für seinen Inhalt ist – dabei
+  geht Text verloren, und das fällt auf. Zu groß fiel niemandem auf, weil
+  nichts fehlt: Es sieht bloß falsch aus, und »sieht falsch aus« meldet
+  kein Messwerkzeug von selbst. Gefunden hat sie damit sofort beide
+  Fenster oben.
+
 ## [1.4.4] – 2026-09-12
 
 Eine Fassung für einen Ausfall, den man nicht sieht: **Der selbsttätige
@@ -1870,6 +1904,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.4.5]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.0...v1.4.2
