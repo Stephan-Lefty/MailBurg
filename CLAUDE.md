@@ -3,7 +3,7 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
-## Hier war Schluss (Stand 2026-09-12, Samstag) – 1.4.3
+## Hier war Schluss (Stand 2026-09-12, Samstag) – 1.4.3 und 1.4.4
 
 **Zehn von einunddreißig Fenstern waren geprüft.** Das ist der ganze
 Tag in einem Satz. Das Werkzeug meldete seit Wochen »nichts
@@ -27,6 +27,23 @@ Auffangnetz, das Auskunft erfindet: Das Ergebnis sieht nicht aus wie ein
 Fehler, sondern wie ein Ergebnis.
 
 1778 Tests. 1.4.3 ist veröffentlicht, mit `.exe` und `.deb`.
+
+### Und danach die 1.4.4, aus einer Frage
+
+»Warum hat eigentlich die `.exe` keine Versionsnummer?« Antwort: weil in
+der geplanten Aufgabe der volle Dateipfad steht – mit der Version im
+Namen zeigte sie nach jedem Update ins Leere, und der Abruf hörte
+stillschweigend auf.
+
+Beim Nachsehen fiel auf, dass **Verschieben** denselben Schaden
+anrichtet. Wer die `.exe` aus dem Download-Ordner an ihren richtigen
+Platz legt, stellt den Abruf ab. Unter Linux trifft es den venv-Pfad beim
+Python-Sprung. MailBurg prüft das jetzt beim Öffnen und bietet an, es
+geradezuziehen.
+
+**Das Muster ist dasselbe wie am Vormittag**, nur von der anderen Seite:
+Nicht ein Fehlschlag geht als Ergebnis durch, sondern ein Zustand sieht
+funktionierend aus, ohne es zu sein. 1788 Tests.
 
 ### Vorher (Stand 2026-09-10, Donnerstag)
 
