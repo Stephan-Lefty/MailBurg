@@ -186,20 +186,23 @@ unsere Arbeit beim User kaputt.**«
   Stelle, an der keiner ist. »Sieht falsch aus« meldet kein Messwerkzeug
   von selbst; man muss es ihm sagen.
 
-- [ ] **Bei sehr großer Schrift und schmalem Fenster wird der Platz in
-  der Trefferliste wirklich knapp.** Fünf Spaltenköpfe und der
-  Postfachbaum passen bei 24 pt nicht mehr nebeneinander, wenn die
-  Schrift breit läuft – in der CI aufgetreten, auf Stephans Rechner
-  nicht, weil dort eine schmalere Schrift liegt. Die Betreff-Spalte
-  kürzt dann ihre Überschrift; sie ist die gedehnte und bekommt, was
-  übrig bleibt.
+- [x] **Die Trefferliste rollt jetzt waagerecht, wenn der Platz nicht
+  reicht.** (2026-09-14) Fünf Spaltenköpfe und der Postfachbaum passen
+  bei 24 pt in einem schmalen Fenster nicht mehr nebeneinander; die
+  Betreffspalte war die gedehnte und kürzte dann ihre eigene
+  Überschrift zu »Betre…«.
 
-  Das Werkzeug meldet gedehnte Spalten nicht mehr (es zeigte auf die
-  Spalte und meinte das Fenster), nennt sie aber im Bericht. **Zu
-  klären bleibt die Sache selbst:** Soll die Trefferliste bei Platzmangel
-  waagerecht rollen dürfen? Bei einer Tabelle mit fünf Spalten wäre das
-  der übliche Weg – im Gegensatz zu einem Dialog, in dem nicht gerollt
-  wird.
+  Stephans Entscheidung: »Ich würde das auch waagerecht einrichten, dann
+  passt es mit der Schriftgröße dann auch im Notfall.« **In einem Dialog
+  wird nicht gerollt – in einer Tabelle mit fünf Spalten schon.** Lesbare
+  Überschriften sind mehr wert als ein Fenster ohne Rollbalken.
+
+  Nicht über `setMinimumSectionSize` gelöst: Das gilt für alle Spalten
+  zugleich. Nachgemessen hätte das Anhangssymbol bei 9 pt 83 px bekommen
+  statt 24, und bei 24 pt wären alle fünf Spalten gleich breit gewesen –
+  der Betreff eingeschlossen, also genau die Spalte, der es helfen
+  sollte. Stattdessen dehnt `_betreff_dehnen()` die Spalte von Hand, mit
+  ihrer Kopfbreite als Untergrenze.
 
 - [ ] **Und die Grenze des Werkzeugs bleibt bestehen:** Offscreen meldet
   Qt »does not support propagateSizeHints«. Was es findet, ist echt; was

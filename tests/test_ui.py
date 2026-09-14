@@ -2172,6 +2172,104 @@ class SpaltenkopfTest(OberflaechenTest):
         self.assertTrue(all(Trefferliste.SPALTENNAMEN))
 
 
+class BetreffspalteTest(OberflaechenTest):
+    """**Der Betreff dehnt sich – aber nie unter seine Überschrift.**
+
+    Als gedehnte Spalte bekam er, was nach allen anderen übrig blieb. Bei
+    großer Schrift in einem schmalen Fenster war das weniger als sein
+    eigener Kopf, und dort stand dann »Betre…«.
+
+    Stephans Entscheidung am 2026-09-14: »Ich würde das auch waagerecht
+    einrichten, dann passt es mit der Schriftgröße dann auch im Notfall.«
+    In einem Dialog wird nicht gerollt – dort muss alles hineinpassen. In
+    einer Tabelle mit fünf Spalten ist waagerechtes Rollen der übliche
+    Weg, und lesbare Überschriften sind mehr wert als ein Fenster ohne
+    Rollbalken.
+    """
+
+    BETREFF = 3
+
+    def _fenster(self, breite, punkte):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        basis = pathlib.Path(ordner.name)
+        with mock.patch.object(paths, "data_dir", return_value=basis / "d"), \
+             mock.patch.object(paths, "config_dir", return_value=basis / "c"):
+            (basis / "d").mkdir(parents=True, exist_ok=True)
+            from mailburg.core.archive import Archive
+
+            archiv = Archive.create(basis / "A", name="Probe")
+            self.addCleanup(archiv.close)
+
+            schrift = self.app.font()
+            vorher = schrift.pointSize()
+            schrift.setPointSize(punkte)
+            self.app.setFont(schrift)
+            self.addCleanup(self._schrift_zurueck, vorher)
+
+            from mailburg.ui.hauptfenster import Hauptfenster
+
+            with mock.patch.object(Hauptfenster, "_fristen_pruefen"):
+                fenster = Hauptfenster(archiv.root)
+            fenster.resize(breite, 800)
+            fenster.show()
+            self.app.processEvents()
+            self.addCleanup(fenster.hide)
+            return fenster
+
+    def _schrift_zurueck(self, punkte):
+        schrift = self.app.font()
+        schrift.setPointSize(punkte)
+        self.app.setFont(schrift)
+
+    def test_bei_platz_dehnt_er_sich(self):
+        """Sonst stünde rechts eine leere Fläche neben kurzen Spalten."""
+        fenster = self._fenster(1280, 9)
+        kopf = fenster.tabelle.horizontalHeader()
+
+        self.assertGreater(
+            kopf.sectionSize(self.BETREFF),
+            kopf.sectionSizeHint(self.BETREFF) * 2,
+            "Der Betreff nimmt den freien Platz nicht",
+        )
+
+    def test_bei_enge_bleibt_die_ueberschrift_lesbar(self):
+        """Der Fall, um den es geht: große Schrift, schmales Fenster."""
+        fenster = self._fenster(800, 24)
+        kopf = fenster.tabelle.horizontalHeader()
+
+        self.assertGreaterEqual(
+            kopf.sectionSize(self.BETREFF),
+            kopf.sectionSizeHint(self.BETREFF),
+        )
+
+    def test_dann_rollt_die_tabelle_waagerecht(self):
+        """Der Platz ist dann wirklich zu knapp – gerollt wird lieber,
+        als eine Überschrift zu verstümmeln."""
+        fenster = self._fenster(800, 24)
+
+        self.assertGreater(
+            fenster.tabelle.horizontalScrollBar().maximum(), 0
+        )
+
+    def test_keine_ueberschrift_ist_zu_eng(self):
+        """Die Zusammenfassung: In keiner Lage steht irgendwo »…«."""
+        for breite, punkte in ((1280, 9), (1280, 24), (1000, 24), (800, 24)):
+            with self.subTest(breite=breite, punkte=punkte):
+                kopf = self._fenster(breite, punkte).tabelle.horizontalHeader()
+                zu_eng = [
+                    i for i in range(kopf.count())
+                    if kopf.sectionSizeHint(i) - kopf.sectionSize(i) > 4
+                ]
+
+                self.assertEqual(zu_eng, [])
+
+
 class ArchivwechselTest(OberflaechenTest):
     """Zwischen zwei Archiven wechselt man oft – das darf nicht mühsam sein."""
 

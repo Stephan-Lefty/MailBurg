@@ -36,8 +36,14 @@ bleibt unangetastet.
 > Nehmen Sie dort den Weg im nächsten Abschnitt. Dasselbe gilt für alles, was
 > auf Ubuntu aufbaut: Linux Mint, Pop!\_OS, Zorin.
 >
-> Woran Sie es merken, falls Sie es doch versucht haben: `mailburg-gui` sagt
-> Ihnen dann selbst, was fehlt und wie es zu beheben ist.
+> Woran Sie es merken, falls Sie es doch versucht haben: `apt` sagt es Ihnen
+> schon beim Installieren, und beim Start geht ein Fenster auf, das nennt,
+> was fehlt und wie es zu beheben ist.
+>
+> **Bis zum 14.09.2026 tat es das nicht.** Der Hinweis ging nur auf die
+> Fehlerausgabe – und ein Menüeintrag startet ohne Terminal. Wer MailBurg so
+> installiert hatte, klickte und sah gar nichts. Gemeldet hat es ein Anwender
+> auf Linux Mint; behoben ist es seit Fassung 1.4.6.
 
 ### Alle anderen: die Einrichtung im Benutzerordner
 

@@ -1548,6 +1548,27 @@ geglaubt. Deshalb eng fangen (`keyring.errors.KeyringError`,
 `OSError`), und wo ein Aufrufer dem Anwender etwas schreibt, den Grund
 mitgeben statt ihn wegzuwerfen.
 
+**Eine Auskunft ist erst dann eine, wenn sie dort landet, wo jemand
+hinsieht.** Die dritte Seite derselben Sache. Beim Auffangnetz wird eine
+Auskunft *erfunden*, beim Zeitplan sieht ein Zustand funktionierend
+*aus* – und hier ist die richtige Auskunft vollständig da und wird
+nirgends abgeholt.
+
+Am 2026-09-14 in seiner ärgerlichsten Form: Fehlt PySide6, schrieb
+MailBurg einen guten, genauen Hinweis auf `stderr` – welches Paket
+fehlt, wie es nachzurüsten ist, dass die Kommandozeile auch ohne läuft.
+Ein Menüeintrag startet ohne Terminal (`Terminal=false`), also las das
+nie jemand. Für den Anwender: **»Wenn ich das Tool starte, passiert gar
+nichts.«** Er hat sich dafür entschuldigt.
+
+**Die Faustregel:** Vor jedem `print(…, file=sys.stderr)` in einem Weg,
+der grafisch beginnen kann, steht die Frage, wer das lesen soll.
+`ui/app.py._sichtbar_melden()` beantwortet sie: Terminal → Zeile,
+grafische Sitzung ohne Terminal → Fenster (zenity/kdialog/xmessage/
+notify-send, keines davon Pflicht). Und die zweite Linie liegt noch
+davor – das `postinst` des Debian-Pakets sagt es schon bei `apt
+install`, **bevor** jemand vergeblich klickt.
+
 **Was eingerichtet aussieht, ist damit nicht eingerichtet.** Die
 Schwesterregel zur vorigen, von der anderen Seite: Nicht nur ein
 Fehlschlag kann als Ergebnis durchgehen – auch ein Zustand kann

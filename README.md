@@ -54,7 +54,7 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 1.4.5, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
+**Fassung 1.4.6, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
 Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
 Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
 Bestand von rund 68.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
@@ -188,8 +188,14 @@ liegt. Siehe [docs/zurueckspielen.md](docs/zurueckspielen.md).
 
 ## Loslegen
 
-**Debian 13, GuideOS und Verwandte:** Das fertige Paket hängt an jedem
+**Debian 13 und GuideOS:** Das fertige Paket hängt an jedem
 [Release](https://github.com/Stephan-Lefty/MailBurg/releases).
+
+> **Nicht unter Ubuntu, Linux Mint, Pop!\_OS oder Zorin.** Diese führen
+> PySide6 nicht in ihren Paketquellen. `apt` installiert MailBurg dort zwar,
+> aber **ohne Oberfläche** – Sie bekommen einen Menüeintrag, hinter dem kein
+> Fenster steckt. Für diese Systeme ist die Einrichtung im Benutzerordner der
+> Weg, gleich hier darunter.
 
 ```bash
 sudo apt install ./mailburg_*_all.deb
@@ -199,12 +205,6 @@ Es zieht die Oberfläche, den Schlüsselbund und die PDF-Werkzeuge aus der
 Distribution nach – MailBurg bringt kein eigenes Qt mit, damit
 Sicherheitsupdates über `apt` ankommen. Danach steht MailBurg im
 Anwendungsmenü und `mailburg` in der Eingabeaufforderung.
-
-> **Unter Ubuntu nicht.** Ubuntu führt PySide6 nicht in seinen Paketquellen –
-> `apt` installiert MailBurg dort zwar, aber ohne Oberfläche, und meldet das
-> nur beiläufig als nicht erfüllte Empfehlung. Nehmen Sie dort den Weg
-> darunter. Dasselbe gilt für alles, was auf Ubuntu aufbaut, etwa Linux Mint
-> und Pop!\_OS.
 
 **Alle anderen Systeme.** Voraussetzung ist Python 3.11 oder neuer; weitere
 Pakete braucht der Kern nicht.

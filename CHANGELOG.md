@@ -7,6 +7,52 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.6] – 2026-09-14
+
+### Behoben
+
+- **MailBurg startete und tat nichts** – auf jeder Distribution, die
+  PySide6 nicht als Paket führt. Ubuntu und Linux Mint tun das nicht.
+
+  Die Installation lief durch, die Verknüpfung war da, der Menüeintrag
+  auch. Beim Klick passierte nichts. MailBurg hatte die richtige
+  Auskunft parat – welches Paket fehlt und wie es nachzurüsten ist –,
+  schrieb sie aber nur auf die Fehlerausgabe. Ein Menüeintrag startet
+  ohne Terminal; die Zeile fiel also ins Nichts.
+
+  **Jetzt kommt ein Fenster.** MailBurg nimmt dafür, was auf dem System
+  da ist (`zenity`, `kdialog`, `xmessage` oder `notify-send`) und
+  verlangt keines davon. Wer aus einem Terminal startet, sieht wie bisher
+  nur die Zeile – dort hat er sie ja gelesen.
+
+  Gemeldet von einem Anwender auf Linux Mint, der sich dafür
+  entschuldigt hat: »Meist liegt es ja an dem Honk vor dem Monitor.« Es
+  lag am Programm. **Ein Programm, das startet und nichts tut, hat keinen
+  Fehler des Anwenders aufgedeckt, sondern einen eigenen.**
+
+- **Das `.deb` sagt es jetzt schon beim Installieren.** Fehlt die
+  Oberfläche, steht der Hinweis am Ende von `apt install` – bevor jemand
+  zum ersten Mal vergeblich klickt. Die Installation bricht deswegen
+  nicht ab: Die Kommandozeile läuft auch ohne Qt, und auf einem Server
+  ist genau das gewollt.
+
+- **Der Hinweis nennt Linux Mint beim Namen**, nicht nur Ubuntu. Wer
+  nicht gemeint ist, fühlt sich nicht angesprochen.
+
+### Geändert
+
+- **Die Betreffspalte bleibt lesbar, notfalls rollt die Liste.** Bei
+  großer Schrift in einem schmalen Fenster stand über der Spalte
+  »Betre…«, weil sie sich als gedehnte Spalte mit dem begnügte, was übrig
+  blieb. Jetzt behält sie mindestens die Breite ihrer Überschrift; reicht
+  der Platz dann nicht, bekommt die Trefferliste einen waagerechten
+  Rollbalken.
+
+  In einem **Dialog** wird nach wie vor nicht gerollt – dort muss alles
+  hineinpassen. In einer **Tabelle** mit fünf Spalten ist Rollen der
+  übliche Weg, und lesbare Überschriften sind mehr wert als ein Fenster
+  ohne Rollbalken.
+
 ## [1.4.5] – 2026-09-12
 
 Aus einer Frage entstanden, die keine Fehlermeldung sein sollte: **»War
@@ -1904,6 +1950,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.4.6]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.2...v1.4.3

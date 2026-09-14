@@ -41,19 +41,92 @@ def _qt_fehlt() -> str:
     """
     if aus_systempaket():
         return (
-            "Für die grafische Oberfläche fehlt PySide6.\n\n"
-            "Unter Debian und GuideOS:\n"
+            "Für die grafische Oberfläche fehlt PySide6.\n"
+            "MailBurg bringt kein eigenes Qt mit, damit es die "
+            "Sicherheitsupdates\nIhrer Distribution bekommt.\n\n"
+            "Unter Debian 13 und GuideOS reicht:\n"
             "  sudo apt install python3-pyside6.qtwidgets\n\n"
-            "Bringt Ihre Distribution PySide6 nicht mit – unter Ubuntu "
-            "ist das so –,\nhilft die Einrichtung im Benutzerordner: "
-            "siehe install.sh unter\nhttps://github.com/Stephan-Lefty/MailBurg\n\n"
-            "Die Kommandozeile läuft auch ohne:  mailburg --help"
+            "Ubuntu, Linux Mint und ihre Verwandten führen dieses Paket "
+            "nicht.\nDort ist die Einrichtung im Benutzerordner der Weg:\n\n"
+            "  git clone https://github.com/Stephan-Lefty/MailBurg.git\n"
+            "  cd MailBurg\n"
+            "  ./install.sh\n\n"
+            "Die Kommandozeile läuft auch ohne Oberfläche:  mailburg --help"
         )
     return (
         "Für die grafische Oberfläche fehlt PySide6.\n"
         "Nachrüsten mit:  pip install 'mailburg[oberflaeche]'\n"
         "Die Kommandozeile läuft auch ohne:  mailburg --help"
     )
+
+
+#: Womit sich ohne Qt ein Fenster aufmachen lässt, in dieser Reihenfolge.
+#: Jedes ist optional – MailBurg verlangt keines davon. Was da ist, wird
+#: genommen; ist nichts da, bleibt es bei der Zeile auf ``stderr``.
+_MELDER = (
+    ("zenity", lambda titel, text: [
+        "zenity", "--error", "--width=480",
+        f"--title={titel}", f"--text={text}"]),
+    ("kdialog", lambda titel, text: [
+        "kdialog", "--error", text, "--title", titel]),
+    ("xmessage", lambda titel, text: [
+        "xmessage", "-center", "-title", titel, f"{titel}\n\n{text}"]),
+    ("notify-send", lambda titel, text: [
+        "notify-send", "--urgency=critical", titel, text]),
+)
+
+
+def _sichtbar_melden(titel: str, text: str) -> None:
+    """Sagt es dort, wo derjenige hinsieht, der es angeht.
+
+    **Hier stand ein ``print`` auf ``stderr``, und das war der Fehler.**
+    Der Text dahinter ist gut: Er nennt das fehlende Paket und den Weg,
+    es nachzurüsten. Nur liest ihn niemand. Ein Menüeintrag startet ohne
+    Terminal (``Terminal=false`` in der ``.desktop``-Datei), also fällt
+    die Zeile ins Nichts, das Programm endet mit Code 2 – und für den
+    Anwender sieht es so aus:
+
+        »Wenn ich das Tool starte, passiert gar nichts.«
+
+    So gemeldet am 2026-09-14 von einem Anwender auf Linux Mint, das
+    PySide6 nicht als Paket führt. Er hat sich dafür entschuldigt: »Meist
+    liegt es ja an dem Honk vor dem Monitor.« **Es lag am Programm.** Ein
+    Programm, das startet und nichts tut, hat keinen Fehler des Anwenders
+    aufgedeckt, sondern einen eigenen.
+
+    Dasselbe Muster wie schon dreimal in diesem Projekt, hier in seiner
+    ärgerlichsten Form: **Die Auskunft war vollständig da und wurde
+    nirgends abgeholt.**
+
+    Auf ``stderr`` geht sie weiterhin – wer im Terminal startet, hat sie
+    dann schon gelesen, und ein zweites Fenster wäre Lärm.
+    """
+    import os
+    import shutil
+    import subprocess
+
+    print(text, file=sys.stderr)
+
+    try:
+        if sys.stderr.isatty():
+            return
+    except (AttributeError, ValueError):
+        pass  # kein stderr - dann erst recht ein Fenster
+
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        # Ohne grafische Sitzung gibt es niemanden, dem man etwas zeigen
+        # könnte. Auf einem Server ist die Zeile oben das Richtige.
+        return
+
+    for name, bauen in _MELDER:
+        if not shutil.which(name):
+            continue
+        try:
+            subprocess.run(bauen(titel, text), check=False, timeout=120)
+        except (OSError, subprocess.SubprocessError):
+            # Dieses Werkzeug wollte nicht – das nächste vielleicht.
+            continue
+        return
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -66,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from PySide6.QtWidgets import QApplication
     except ImportError:
-        print(_qt_fehlt(), file=sys.stderr)
+        _sichtbar_melden("MailBurg kann nicht starten", _qt_fehlt())
         return 2
 
     _fehler_zeigen_statt_sterben()

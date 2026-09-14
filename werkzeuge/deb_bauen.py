@@ -54,6 +54,67 @@ RECOMMENDS = ", ".join((
 ))
 
 #: Was den Funktionsumfang abrundet, aber selten gebraucht wird.
+#: **Was nach dem Auspacken gesagt wird, wenn die Oberfläche fehlt.**
+#:
+#: PySide6 steht in ``Recommends`` und nicht in ``Depends``, damit das
+#: Paket auch auf einen Server passt, der keine Oberfläche braucht. Der
+#: Preis dafür: Führt eine Distribution das Paket gar nicht – Ubuntu und
+#: Linux Mint tun das nicht –, dann installiert ``apt`` es schweigend
+#: nicht. MailBurg liegt auf der Platte, die Verknüpfung ist da, und beim
+#: Klick passiert nichts.
+#:
+#: So gemeldet am 2026-09-14 von einem Anwender auf Linux Mint. Deshalb
+#: diese zweite Linie: **Gesagt wird es, bevor jemand vergeblich
+#: klickt.** Die erste Linie ist die Meldung beim Start
+#: (``ui/app.py``), aber da hat er schon einmal umsonst geklickt.
+#:
+#: ``exit 0`` in jedem Fall: Ein Hinweis ist kein Grund, eine
+#: Installation scheitern zu lassen. Die Kommandozeile läuft auch ohne
+#: Qt, und wer einen Server bestückt, will genau das.
+#: Dateien in ``DEBIAN/``, die ausführbar sein müssen. dpkg-deb verweigert
+#: den Bau, wenn nicht – zu Recht.
+BETREUERSKRIPTE = ("postinst", "postrm", "preinst", "prerm")
+
+POSTINST = """\
+#!/bin/sh
+# Von werkzeuge/deb_bauen.py erzeugt - nicht von Hand aendern.
+set -e
+
+if [ "$1" != "configure" ]; then
+    exit 0
+fi
+
+if python3 -c 'import PySide6.QtWidgets' 2>/dev/null; then
+    exit 0
+fi
+
+cat >&2 <<'ENDE'
+
+  ------------------------------------------------------------------
+  MailBurg ist installiert - die grafische Oberflaeche fehlt aber noch.
+
+  Es fehlt PySide6. MailBurg bringt kein eigenes Qt mit, damit es die
+  Sicherheitsupdates Ihrer Distribution bekommt.
+
+  Unter Debian 13 und GuideOS:
+
+      sudo apt install python3-pyside6.qtwidgets
+
+  Ubuntu, Linux Mint und ihre Verwandten fuehren dieses Paket nicht.
+  Dort ist die Einrichtung im Benutzerordner der Weg:
+
+      git clone https://github.com/Stephan-Lefty/MailBurg.git
+      cd MailBurg
+      ./install.sh
+
+  Die Kommandozeile laeuft auch ohne Oberflaeche:  mailburg --help
+  ------------------------------------------------------------------
+
+ENDE
+
+exit 0
+"""
+
 SUGGESTS = ", ".join((
     "tesseract-ocr",               # eingescannte PDF lesen
     "tesseract-ocr-deu",
@@ -244,6 +305,8 @@ def bauen(ziel: Path) -> Path:
         f"{BESCHREIBUNG}",
         encoding="utf-8",
     )
+    (steuer / "postinst").write_text(POSTINST, encoding="utf-8")
+    (steuer / "postinst").chmod(0o755)
 
     # --- Packen --------------------------------------------------------
     paket = ziel / f"mailburg_{__version__}_all.deb"
@@ -256,6 +319,13 @@ def bauen(ziel: Path) -> Path:
         if pfad.is_dir():
             pfad.chmod(0o755)
         elif pfad.parent.name == "bin":
+            pfad.chmod(0o755)
+        elif pfad.name in BETREUERSKRIPTE:
+            # **Ein Skript, das nicht ausführbar ist, ist keines.**
+            # Diese Schleife läuft *nach* dem Schreiben und setzte den
+            # postinst wieder auf 0644 zurück – dpkg-deb hat es gemerkt
+            # und den Bau verweigert (»muss >=0555 und <=0775 sein«).
+            # Ohne diese Prüfung wäre ein stummes Paket herausgekommen.
             pfad.chmod(0o755)
         else:
             pfad.chmod(0o644)

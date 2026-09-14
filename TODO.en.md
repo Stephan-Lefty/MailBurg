@@ -176,19 +176,22 @@ every one of these windows we undo our work for the user.**"
   one. "Looks wrong" is not something a measuring tool reports by itself;
   it has to be told.
 
-- [ ] **At very large font sizes in a narrow window, the hit list really
-  does run out of room.** Five column headers plus the mailbox tree no
-  longer fit side by side at 24 pt when the font runs wide — it showed up
-  in CI, not on Stephan's machine, where a narrower font is installed.
-  The subject column then truncates its header; it is the stretched one
-  and gets whatever is left.
+- [x] **The hit list now scrolls horizontally when space runs short.**
+  (2026-09-14) Five column headers plus the mailbox tree no longer fit
+  side by side at 24 pt in a narrow window; the subject column was the
+  stretched one and truncated its own header to "Betre…".
 
-  The tool no longer reports stretched columns (the finding pointed at
-  the column and meant the window), but it names them in its report.
-  **What remains open is the thing itself:** should the hit list be
-  allowed to scroll horizontally when space runs short? For a five-column
-  table that would be the usual answer — unlike a dialog, where nothing
-  should ever need scrolling.
+  Stephan's call: "I'd set it up horizontally too, then it works out with
+  the font size in a pinch." **A dialog never scrolls — a five-column
+  table may.** Readable headers are worth more than a window without a
+  scrollbar.
+
+  Not solved via `setMinimumSectionSize`: that applies to every column at
+  once. Measured, the attachment glyph would have taken 83 px at 9 pt
+  instead of 24, and at 24 pt all five columns would have been equally
+  wide — subject included, i.e. the very column it was meant to help.
+  Instead `_betreff_dehnen()` stretches the column by hand, with its
+  header width as the floor.
 
 - [ ] **And the tool's limit stands:** offscreen, Qt reports "does not
   support propagateSizeHints". What it finds is real; what it does not

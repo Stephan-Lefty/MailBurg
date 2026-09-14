@@ -53,7 +53,7 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 1.4.5, in daily use.** Archive format, IMAP retrieval, search, the
+**Version 1.4.6, in daily use.** Archive format, IMAP retrieval, search, the
 graphical interface, text recognition for scanned PDFs, backups and scheduled
 retrieval are all in place and used every day — on Linux with a corpus of
 around 68,000 messages, on Windows with the ready-made `MailBurg.exe`.
@@ -178,8 +178,13 @@ the `Message-ID` against what is already there. See
 
 ## Getting started
 
-**Debian 13 and relatives:** the ready-made package is attached to every
+**Debian 13 and GuideOS:** the ready-made package is attached to every
 [release](https://github.com/Stephan-Lefty/MailBurg/releases).
+
+> **Not on Ubuntu, Linux Mint, Pop!\_OS or Zorin.** These do not carry
+> PySide6 in their archives. `apt` will install MailBurg there, but
+> **without the interface** — you get a menu entry with no window behind it.
+> On those systems the user-directory setup below is the right route.
 
 ```bash
 sudo apt install ./mailburg_*_all.deb
@@ -188,11 +193,6 @@ sudo apt install ./mailburg_*_all.deb
 It pulls the interface, the keyring and the PDF tools from the distribution —
 MailBurg ships no Qt of its own, so that security updates arrive through
 `apt`.
-
-> **Not on Ubuntu.** Ubuntu does not carry PySide6 in its archives — `apt`
-> will install MailBurg there, but without the interface, and mentions it
-> only in passing as an unmet recommendation. Use the route below instead.
-> The same goes for anything built on Ubuntu, such as Linux Mint.
 
 **Everywhere else.** Requires Python 3.11 or newer; the core needs no further
 packages.

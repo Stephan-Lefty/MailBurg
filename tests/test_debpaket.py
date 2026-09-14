@@ -222,5 +222,143 @@ class HinweisBeiFehlendemQtTest(unittest.TestCase):
                 with mock.patch.object(app, "__file__", ort):
                     self.assertEqual(app.aus_systempaket(), erwartet)
 
+    def test_linux_mint_wird_beim_namen_genannt(self):
+        """**Wer nicht gemeint ist, fühlt sich nicht angesprochen.**
+
+        Der Hinweis nannte nur Ubuntu. Der Anwender, der ihn am
+        2026-09-14 gebraucht hätte, saß vor Linux Mint – und hätte selbst
+        dann, wenn er ihn zu Gesicht bekommen hätte, nicht erkannt, dass
+        er gemeint ist.
+        """
+        self.assertIn("Linux Mint", self._hinweis(True))
+
+
+class StummerFehlstartTest(unittest.TestCase):
+    """**Ein Programm, das startet und nichts tut, ist ein kaputtes.**
+
+    Der Hinweis auf das fehlende PySide6 ging auf ``stderr``. Ein
+    Menüeintrag startet ohne Terminal (``Terminal=false`` in der
+    ``.desktop``-Datei) – die Zeile fiel also ins Nichts, das Programm
+    endete mit Code 2, und für den Anwender sah es so aus:
+
+        »Wenn ich das Tool starte, passiert gar nichts.«
+
+    So gemeldet am 2026-09-14 von einem Anwender auf Linux Mint. Er hat
+    sich dafür entschuldigt – »meist liegt es ja an dem Honk vor dem
+    Monitor«. **Es lag am Programm.**
+
+    Dasselbe Muster wie dreimal zuvor, hier in seiner ärgerlichsten
+    Form: Die Auskunft war vollständig da und wurde nirgends abgeholt.
+    """
+
+    def _melden(self, *, tty: bool, bildschirm: bool, vorhanden=("zenity",)):
+        import sys
+        from unittest import mock
+
+        from mailburg.ui import app
+
+        gerufen = []
+        umgebung = {"DISPLAY": ":0"} if bildschirm else {}
+        with mock.patch.object(sys.stderr, "isatty", lambda: tty), \
+             mock.patch.dict("os.environ", umgebung, clear=True), \
+             mock.patch("shutil.which",
+                        lambda n: f"/usr/bin/{n}" if n in vorhanden else None), \
+             mock.patch("subprocess.run",
+                        lambda *a, **k: gerufen.append(list(a[0]))), \
+             mock.patch("builtins.print"):
+            app._sichtbar_melden("Titel", "Der Text")
+        return gerufen
+
+    def test_ohne_terminal_kommt_ein_fenster(self):
+        gerufen = self._melden(tty=False, bildschirm=True)
+
+        self.assertTrue(gerufen, "Die Meldung bleibt unsichtbar")
+        self.assertIn("Der Text", " ".join(gerufen[0]))
+
+    def test_im_terminal_bleibt_es_bei_der_zeile(self):
+        """Wer dort startet, hat sie schon gelesen – ein Fenster wäre Lärm."""
+        self.assertEqual(self._melden(tty=True, bildschirm=True), [])
+
+    def test_ohne_bildschirm_wird_niemand_behelligt(self):
+        """Auf einem Server gibt es niemanden, dem man etwas zeigen könnte."""
+        self.assertEqual(self._melden(tty=False, bildschirm=False), [])
+
+    def test_es_reicht_irgendeines_der_werkzeuge(self):
+        """MailBurg verlangt keines davon – es nimmt, was da ist."""
+        for werkzeug in ("zenity", "kdialog", "xmessage", "notify-send"):
+            with self.subTest(werkzeug=werkzeug):
+                gerufen = self._melden(
+                    tty=False, bildschirm=True, vorhanden=(werkzeug,)
+                )
+
+                self.assertTrue(gerufen, f"{werkzeug} wird nicht genutzt")
+                self.assertEqual(gerufen[0][0], werkzeug)
+
+    def test_ohne_jedes_werkzeug_faellt_es_nicht_um(self):
+        """Dann bleibt nur die Zeile – aber nichts stürzt ab."""
+        self.assertEqual(
+            self._melden(tty=False, bildschirm=True, vorhanden=()), []
+        )
+
+    def test_die_zeile_auf_stderr_bleibt_in_jedem_fall(self):
+        """Sie ist das, was in einem Fehlerbericht landet."""
+        import io
+        import sys
+        from unittest import mock
+
+        from mailburg.ui import app
+
+        gefangen = io.StringIO()
+        with mock.patch.object(sys, "stderr", gefangen), \
+             mock.patch.dict("os.environ", {}, clear=True):
+            app._sichtbar_melden("Titel", "Der Text")
+
+        self.assertIn("Der Text", gefangen.getvalue())
+
+
+class PostinstTest(unittest.TestCase):
+    """Gesagt wird es, **bevor** jemand vergeblich klickt.
+
+    PySide6 steht in ``Recommends``, damit das Paket auch auf einen
+    Server passt. Führt eine Distribution das Paket gar nicht – Ubuntu
+    und Linux Mint tun das nicht –, installiert ``apt`` es schweigend
+    nicht, und MailBurg liegt ohne Oberfläche auf der Platte.
+    """
+
+    def _skript(self) -> str:
+        laden = util.spec_from_file_location(
+            "deb_bauen_probe", WURZEL / "werkzeuge" / "deb_bauen.py"
+        )
+        modul = util.module_from_spec(laden)
+        laden.loader.exec_module(modul)
+        return modul.POSTINST
+
+    def test_es_prueft_auf_pyside(self):
+        self.assertIn("import PySide6", self._skript())
+
+    def test_es_nennt_beide_wege(self):
+        text = self._skript()
+
+        self.assertIn("apt install python3-pyside6", text)
+        self.assertIn("install.sh", text)
+        self.assertIn("Linux Mint", text)
+
+    def test_ein_hinweis_bricht_keine_installation_ab(self):
+        """**Kein ``exit 1``.** Die Kommandozeile läuft auch ohne Qt, und
+        wer einen Server bestückt, will genau das. Ein Paket, das sich
+        wegen eines Hinweises nicht installieren lässt, wäre schlimmer
+        als der Hinweis.
+        """
+        zeilen = [z.strip() for z in self._skript().splitlines() if z.strip()]
+
+        self.assertNotIn("exit 1", zeilen)
+        self.assertEqual(zeilen[-1], "exit 0")
+
+    def test_nur_beim_einrichten(self):
+        """``postinst`` wird auch bei ``abort-upgrade`` gerufen – dann hat
+        niemand etwas installiert, und der Hinweis wäre verwirrend."""
+        self.assertIn('"$1" != "configure"', self._skript())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1032,7 +1032,27 @@ class Hauptfenster(QMainWindow):
         kopf.setSectionResizeMode(2, QHeaderView.Interactive)
         # Der Betreff bekommt, was übrig bleibt. Er ist die einzige Spalte,
         # bei der jedes zusätzliche Zeichen zählt.
-        kopf.setSectionResizeMode(3, QHeaderView.Stretch)
+        # **Der Betreff dehnt sich – aber nie unter seine Überschrift.**
+        # Bei großer Schrift in einem schmalen Fenster reicht der Platz
+        # für fünf Spaltenköpfe und den Postfachbaum nicht mehr; als
+        # gedehnte Spalte bekam der Betreff, was übrig blieb, und bei
+        # 24 pt stand dort »Betre…«.
+        #
+        # Stephans Entscheidung am 2026-09-14: »Ich würde das auch
+        # waagerecht einrichten, dann passt es mit der Schriftgröße dann
+        # auch im Notfall.« Richtig herum gedacht: In einem **Dialog**
+        # wird nicht gerollt, dort muss alles hineinpassen. In einer
+        # **Tabelle** mit fünf Spalten ist waagerechtes Rollen der
+        # übliche Weg – lesbare Überschriften sind mehr wert als ein
+        # Fenster ohne Rollbalken.
+        #
+        # Deshalb ``Interactive`` statt ``Stretch`` und das Dehnen von
+        # Hand: ``setMinimumSectionSize`` wäre der naheliegende Weg,
+        # gilt aber für **alle** Spalten. Nachgemessen hätte das
+        # Anhangssymbol bei 9 pt 83 px bekommen statt 24, und bei 24 pt
+        # wären alle fünf Spalten gleich breit gewesen – der Betreff
+        # eingeschlossen, also genau die Spalte, der es helfen sollte.
+        kopf.setSectionResizeMode(3, QHeaderView.Interactive)
         kopf.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         # **Auch hier stand eine geratene Zahl** (220 px). Die Spalte
         # bleibt von Hand verstellbar – deshalb ``Interactive`` –, aber
@@ -1041,6 +1061,42 @@ class Hauptfenster(QMainWindow):
         # 242 px. Am 2026-09-12 gefunden, gleicher Tag, gleicher Fehler
         # wie beim Postfachbaum.
         self.tabelle.setColumnWidth(2, max(220, kopf.sectionSizeHint(2)))
+
+        # Einmal jetzt, und danach bei jeder Größenänderung der Tabelle.
+        self.tabelle.viewport().installEventFilter(self)
+        self._betreff_dehnen()
+
+    def eventFilter(self, gegenstand, ereignis):  # noqa: N802 - Qt-Name
+        """Zieht die Betreffspalte nach, wenn die Tabelle ihre Breite ändert."""
+        from PySide6.QtCore import QEvent
+
+        if (ereignis.type() == QEvent.Resize
+                and gegenstand is self.tabelle.viewport()):
+            self._betreff_dehnen()
+        return super().eventFilter(gegenstand, ereignis)
+
+    def _betreff_dehnen(self) -> None:
+        """Gibt dem Betreff den freien Platz – mindestens aber seinen Kopf.
+
+        Das ist ``Stretch`` von Hand, mit einer Untergrenze. Qt kennt
+        beides nicht zusammen: ``Stretch`` dehnt ohne Rücksicht darauf,
+        ob die Überschrift noch lesbar ist, und ``setMinimumSectionSize``
+        gilt für alle Spalten zugleich.
+
+        Bleibt weniger Platz, als die Überschrift braucht, wird die
+        Spalte trotzdem so breit – die Tabelle bekommt dann einen
+        waagerechten Rollbalken. **In einer Tabelle ist das richtig**,
+        anders als in einem Dialog: Wer fünf Spalten hat, rollt, statt
+        Überschriften zu verstümmeln.
+        """
+        kopf = self.tabelle.horizontalHeader()
+        if kopf.count() <= 3:
+            return
+        andere = sum(
+            kopf.sectionSize(i) for i in range(kopf.count()) if i != 3
+        )
+        frei = self.tabelle.viewport().width() - andere
+        kopf.resizeSection(3, max(kopf.sectionSizeHint(3), frei))
 
     def _index_pruefen(self) -> None:
         """Merkt, wenn der Suchindex fehlt, obwohl Mails da sind.
