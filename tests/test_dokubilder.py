@@ -133,5 +133,74 @@ class TakteInDerDokuTest(unittest.TestCase):
         self.assertNotIn("10–90", svg)
 
 
+class VerweiseInsLeereTest(unittest.TestCase):
+    """**Ein Verweis auf einen Abschnitt, den es nicht gibt.**
+
+    In ``erste-schritte.md`` stand seit jeher »Zu Proton in derselben
+    Anleitung« – und in ``postfaecher-einrichten.md`` gab es zu Proton
+    kein Wort. Wer dem Verweis folgte, suchte vergeblich.
+
+    Aufgefallen am 2026-09-16, als Stephan erklärte, dass Proton ohne die
+    Bridge gar nicht geht. Der Abschnitt steht jetzt dort; dieser Test
+    hält fest, dass Verweise auf Abschnitte auch ankommen.
+
+    **Was er nicht kann, und das ist die Mehrheit der Fälle:** Der
+    ursprüngliche Verweis war gar kein Link, sondern ein Satz – »Zu
+    Proton in derselben Anleitung«. Einen Verweis in Prosa findet kein
+    Test; er wäre nur beim Lesen aufgefallen, und gelesen hat ihn zwei
+    Wochen lang niemand.
+
+    Geprüft werden hier ausschließlich Verweise der Form
+    ``[…](datei.md#abschnitt)``. Beim Anlegen war das genau einer. Der
+    Wert liegt also in der Zukunft, nicht in der Gegenwart – und wer
+    einen Verweis in einen Satz schreibt statt in eine Klammer, umgeht
+    diesen Test weiterhin.
+    """
+
+    @staticmethod
+    def _anker(text: str) -> set[str]:
+        """Die Sprungmarken, die Markdown aus Überschriften macht."""
+        marken = set()
+        for zeile in text.splitlines():
+            if not zeile.startswith("#"):
+                continue
+            titel = zeile.lstrip("#").strip().lower()
+            # Satzzeichen fallen weg, Leerzeichen werden zu Bindestrichen;
+            # Umlaute bleiben stehen.
+            sauber = re.sub(r"[^\w\s-]", "", titel, flags=re.UNICODE)
+            marken.add(re.sub(r"\s+", "-", sauber.strip()))
+        return marken
+
+    def test_jeder_abschnittsverweis_kommt_an(self):
+        fehlend = []
+
+        for datei in sorted((WURZEL / "docs").glob("*.md")):
+            text = datei.read_text(encoding="utf-8")
+            for ziel, anker in re.findall(r"\]\((\S+?\.md)#([^)\s]+)\)", text):
+                pfad = (datei.parent / ziel).resolve()
+                if not pfad.is_file():
+                    fehlend.append(f"{datei.name} → {ziel} (Datei fehlt)")
+                    continue
+                if anker.lower() not in self._anker(
+                    pfad.read_text(encoding="utf-8")
+                ):
+                    fehlend.append(f"{datei.name} → {ziel}#{anker}")
+
+        self.assertEqual(
+            fehlend, [], "Diese Verweise zeigen ins Leere: " + ", ".join(fehlend)
+        )
+
+    def test_proton_steht_in_der_anleitung(self):
+        """Der Anlass: Proton geht ohne die Bridge gar nicht, und das
+        stand nirgends."""
+        text = (
+            WURZEL / "docs" / "postfaecher-einrichten.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("--proton", text)
+        # Und der Betriebshinweis, der sonst Verwunderung stiftet.
+        self.assertIn("Neuanmeldung der Bridge", text)
+
+
 if __name__ == "__main__":
     unittest.main()

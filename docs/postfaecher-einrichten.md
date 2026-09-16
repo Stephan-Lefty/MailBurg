@@ -126,6 +126,52 @@ tragbar ist. Bei Microsoft ist die Registrierung kostenlos und ohne
 Prüfverfahren – deshalb geht dieser Weg dort ohne Weiteres, bei Gmail
 bleibt vorerst das App-Passwort die bessere Wahl.
 
+## Proton geht nur über die Bridge
+
+**Proton Mail gibt seine Mails nicht per IMAP heraus** – sie liegen dort
+Ende-zu-Ende-verschlüsselt, und es gibt keinen Server, den MailBurg direkt
+fragen könnte. Den Zugang schafft die **Proton Mail Bridge**: ein Programm,
+das auf Ihrem Rechner läuft, sich bei Proton anmeldet, entschlüsselt und die
+Mails örtlich als IMAP-Server anbietet. Ohne sie kommt kein Programm an diese
+Post, auch MailBurg nicht.
+
+Eingetragen wird dann nicht Proton, sondern die Bridge. Dafür genügt
+`--proton` – Server, Port und Verschlüsselung setzt MailBurg selbst:
+
+```bash
+mailburg konten hinzufuegen Proton --proton --benutzer ich@example.com
+```
+
+**Das Passwort dazu erzeugt die Bridge**, es steht in ihrem Fenster. Das
+Kennwort Ihres Proton-Kontos taugt dafür nicht.
+
+Im Einrichtungsassistenten tragen Sie dieselben Angaben über *Weiteres
+Postfach von Hand eintragen …* ein: Server `127.0.0.1`, Port 1143, STARTTLS.
+
+**Die Nachsicht beim Zertifikat gilt nur örtlich.** Die Bridge stellt sich
+ihr Zertifikat selbst aus, deshalb sieht MailBurg bei ihr darüber hinweg –
+aber nur, wenn der Server wirklich der eigene Rechner ist (`127.0.0.1`,
+`localhost`, `::1`). Bei jeder anderen Adresse greift die Ausnahme nicht.
+Sonst ließe sich damit die Zertifikatsprüfung für beliebige Server
+abschalten, und zwar unbemerkt.
+
+### Nach einer Neuanmeldung der Bridge dauert es
+
+**Das ist der Punkt, an dem man sich sonst wundert.** Musste sich die Bridge
+neu bei Proton anmelden, lädt sie ihren Bestand zunächst wieder herunter –
+sie hält die Mails ja örtlich vor. Während dieser Zeit ist ihr IMAP-Zugang
+zwar erreichbar, aber noch nicht vollständig gefüllt.
+
+**Rufen Sie erst ab, wenn die Bridge damit fertig ist.** Sonst sieht MailBurg
+ein halb gefülltes Postfach – nicht schlimm, denn beim nächsten Lauf kommt der
+Rest nach, aber die Zahlen im Fenster verwirren. Steht die Bridge, holt ein
+Druck auf **F5** den aktuellen Stand.
+
+Anlass für eine Neuanmeldung ist selten – aber einer kam am 16.09.2026 vor:
+Wechselt der Schlüsselbund, in dem die Bridge ihre Zugangsdaten hält, findet
+sie sie nicht mehr (siehe [Wenn etwas schiefgeht](#wenn-etwas-schiefgeht)
+weiter unten). Danach ist einmal die volle Runde fällig.
+
 ## Welche Ordner archiviert werden
 
 Alle, bis auf diese:

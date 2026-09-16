@@ -251,8 +251,9 @@ die Prüfung einfach abzuschalten, gibt es bewusst nicht.
 Postfächer ohne Thunderbird tragen Sie über **Weiteres Postfach von Hand
 eintragen …** ein. Einzelheiten zu App-Passwörtern bei Gmail, GMX und Web.de
 stehen in [Postfächer einrichten](postfaecher-einrichten.md) — dort steht auch,
-warum Microsoft-Konten derzeit nicht gehen. Zu Proton
-in derselben Anleitung.
+warum Microsoft-Konten derzeit nicht gehen — und warum es bei **Proton** ohne
+die Bridge gar nicht geht:
+[Proton geht nur über die Bridge](postfaecher-einrichten.md#proton-geht-nur-über-die-bridge).
 
 ## 5. Fertig
 
