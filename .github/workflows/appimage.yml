@@ -212,9 +212,16 @@ jobs:
           box.flush(); box.close()
           PY
           ./MailBurg.AppDir/AppRun importieren /tmp/Probe /tmp/probe.mbox --konto Probe
-          TREFFER=$(./MailBurg.AppDir/AppRun suchen /tmp/Probe "rechnung" 2>&1)
-          echo "$TREFFER"
-          echo "$TREFFER" | grep -qi "Schlussrechnung" \
+          # Erst zeigen, dann bewerten – zum vierten Mal in diesem
+          # Workflow war es andersherum, und dann steht im Protokoll nur
+          # ein Rücklaufwert.
+          set +e
+          ./MailBurg.AppDir/AppRun suchen /tmp/Probe "rechnung" > /tmp/suche.log 2>&1
+          RC=$?
+          set -e
+          echo "Rückgabewert: $RC"
+          cat /tmp/suche.log
+          grep -qi "Schlussrechnung" /tmp/suche.log \
             || { echo "::error::Die Suche findet nichts"; exit 1; }
 
       - name: Öffnet sich das Fenster?
