@@ -222,6 +222,33 @@ class HinweisBeiFehlendemQtTest(unittest.TestCase):
                 with mock.patch.object(app, "__file__", ort):
                     self.assertEqual(app.aus_systempaket(), erwartet)
 
+    def test_im_appimage_hilft_weder_pip_noch_apt(self):
+        """**Ein Rat auf den falschen Weg ist schlimmer als keiner.**
+
+        Ein AppImage bringt Qt mit. Fehlt es trotzdem, ist die Datei
+        beschädigt oder falsch gebaut – ``pip install`` hilft dagegen
+        nicht, und ``apt`` auch nicht.
+
+        Am 2026-09-16 im Prüflauf gesehen: Das AppImage riet zu
+        ``pip install 'mailburg[oberflaeche]'``, weil
+        ``aus_systempaket()`` nur ``dist-packages`` kennt und ein
+        AppImage keines ist.
+        """
+        from unittest import mock
+
+        from mailburg.ui import app
+
+        with mock.patch.dict(
+            "os.environ", {"APPIMAGE": "/opt/MailBurg-x86_64.AppImage"}
+        ):
+            text = app._qt_fehlt()
+
+        self.assertNotIn("pip install", text)
+        self.assertNotIn("apt install", text)
+        # Stattdessen: neu laden – und wenn das nicht hilft, melden.
+        self.assertIn("releases/latest", text)
+        self.assertIn("issues", text)
+
     def test_linux_mint_wird_beim_namen_genannt(self):
         """**Wer nicht gemeint ist, fühlt sich nicht angesprochen.**
 

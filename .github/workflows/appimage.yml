@@ -75,9 +75,23 @@ jobs:
             file desktop-file-utils zsync \
             binutils libpython3.12 \
             libfuse2 fuse3 \
-            libgl1 libegl1 libxkbcommon0 libdbus-1-3 libxcb-cursor0 \
-            libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 \
+            libgl1 libegl1 libdbus-1-3 \
+            libxkbcommon0 libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 \
+            libxcb-xinerama0 libxcb-xkb1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-image0 libxcb-sync1 libxcb-xfixes0 libsm6 libice6 \
             xvfb
+
+      # **Was beim Packen fehlt, fehlt später im AppImage.** PyInstaller
+      # sammelt die Bibliotheken ein, an denen Qt hängt – findet es eine
+      # nicht, meldet es eine Warnung und packt ohne sie. Beim Start
+      # scheitert dann der Import von PySide6, und MailBurg sagt »für die
+      # grafische Oberfläche fehlt PySide6«: genau der Fehler, gegen den
+      # dieses AppImage gebaut wird.
+      #
+      # So aufgelaufen am 2026-09-16 mit ``libxcb-xkb.so.1`` und
+      # ``libxkbcommon-x11.so.0``. Der Schritt unten zieht die Warnungen
+      # aus dem Protokoll, damit sie nicht in 14.000 Zeilen untergehen.
 
       - uses: actions/checkout@v4
         with:
@@ -103,7 +117,22 @@ jobs:
           chmod +x /usr/local/bin/appimagetool
 
       - name: Packen
-        run: /opt/bau/bin/pyinstaller --clean --noconfirm werkzeuge/mailburg.spec
+        run: |
+          /opt/bau/bin/pyinstaller --clean --noconfirm \
+            werkzeuge/mailburg.spec 2>&1 | tee /tmp/bau.log
+
+      - name: Fehlt eine Bibliothek?
+        # Nicht blockierend: Manche Warnungen betreffen Qt-Teile, die
+        # MailBurg nie anfasst. Aber sie gehören sichtbar – untergehen
+        # sollen sie nicht.
+        continue-on-error: true
+        run: |
+          if grep -q "Library not found" /tmp/bau.log; then
+            echo "::warning::PyInstaller hat Bibliotheken nicht gefunden:"
+            grep "Library not found" /tmp/bau.log | sort -u
+          else
+            echo "Alle Bibliotheken gefunden."
+          fi
 
       - name: Zum AppImage schnüren
         env:

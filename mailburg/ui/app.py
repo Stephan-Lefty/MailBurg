@@ -39,6 +39,30 @@ def _qt_fehlt() -> str:
     liegt PySide6 bereit, unter Ubuntu 24.04 gibt es es gar nicht als
     Paket. Genau dort läuft dieser Text also auf.
     """
+    import os
+
+    if os.environ.get("APPIMAGE"):
+        # **Im AppImage ist jeder Rat zum Nachrüsten falsch.** Es bringt
+        # Qt mit; fehlt es trotzdem, ist die Datei beschädigt oder falsch
+        # gebaut. ``pip install`` hilft dagegen nicht, und ``apt`` auch
+        # nicht – beides führte den Anwender in eine Sackgasse.
+        #
+        # Am 2026-09-16 im Prüflauf gesehen: Das AppImage meldete »pip
+        # install 'mailburg[oberflaeche]'«, weil ``aus_systempaket()``
+        # nur ``dist-packages`` kennt und ein AppImage keines ist.
+        return (
+            "Für die grafische Oberfläche fehlt PySide6 – in einem "
+            "AppImage, das sie\nmitbringen sollte. Damit stimmt etwas mit "
+            "dieser Datei nicht.\n\n"
+            "Laden Sie sie neu herunter:\n"
+            "  https://github.com/Stephan-Lefty/MailBurg/releases/latest\n\n"
+            "Bleibt es dabei, ist das ein Fehler in MailBurg und kein "
+            "Fehler Ihres\nSystems – bitte melden Sie ihn:\n"
+            "  https://github.com/Stephan-Lefty/MailBurg/issues\n\n"
+            "Die Kommandozeile läuft auch ohne Oberfläche:  "
+            "MailBurg --help"
+        )
+
     if aus_systempaket():
         return (
             "Für die grafische Oberfläche fehlt PySide6.\n"
