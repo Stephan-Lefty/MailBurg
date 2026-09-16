@@ -992,13 +992,34 @@ class GemerkterSchluesselbundTest(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.accounts = accounts
 
-    def _mit(self, frueher: str, jetzt: str) -> str:
+    def _mit(self, frueher: str, jetzt: str, busnamen=()) -> str:
+        """Fragt die Auskunft ab – **ohne den Rechner zu fragen, auf dem
+        der Test läuft.**
+
+        Hier fehlte der Ersatz für ``_busnamen``, und damit hing der Test
+        am Sitzungsbus: Fällt der Vergleich von Vermerk und Anbieter
+        unentschieden aus, sieht die Funktion bei den laufenden Diensten
+        nach – also bei denen dieses Rechners. Auf Stephans Manjaro
+        laufen gnome-keyring und kwalletd nebeneinander, und damit wurde
+        der Test rot.
+
+        **In der CI war er grün**, weil dort gar kein Sitzungsbus läuft.
+        Ein Test, der auf dem Entwicklungsrechner rot und in der CI grün
+        ist, ist schlimmer als einer, der immer rot ist: Er lehrt, dass
+        man ihm nicht zu glauben braucht.
+
+        Am 2026-09-14 aufgefallen, als er mitten in einer anderen Arbeit
+        ausschlug – und dabei nebenbei belegte, dass auf dem Rechner
+        wieder zwei Schlüsselbünde laufen.
+        """
         from unittest import mock
 
         if frueher:
             self.accounts._schluesselbund_merken(frueher)
         with mock.patch.object(
             self.accounts, "schluesselbund_name", return_value=jetzt
+        ), mock.patch.object(
+            self.accounts, "_busnamen", return_value=list(busnamen)
         ):
             return self.accounts.schluesselbund_konkurrenz()
 

@@ -188,18 +188,31 @@ liegt. Siehe [docs/zurueckspielen.md](docs/zurueckspielen.md).
 
 ## Loslegen
 
-**Debian 13 und GuideOS:** Das fertige Paket hängt an jedem
-[Release](https://github.com/Stephan-Lefty/MailBurg/releases).
+**Ubuntu, Linux Mint, Fedora, Arch, openSUSE – und alles andere:** das
+**AppImage**. Eine Datei, ausführbar machen, starten. Kein Python, keine
+Paketverwaltung, egal welche Distribution.
 
-> **Nicht unter Ubuntu, Linux Mint, Pop!\_OS oder Zorin.** Diese führen
-> PySide6 nicht in ihren Paketquellen. `apt` installiert MailBurg dort zwar,
-> aber **ohne Oberfläche** – Sie bekommen einen Menüeintrag, hinter dem kein
-> Fenster steckt. Für diese Systeme ist die Einrichtung im Benutzerordner der
-> Weg, gleich hier darunter.
+```bash
+chmod +x MailBurg-x86_64.AppImage
+./MailBurg-x86_64.AppImage
+```
+
+Es hängt an jedem [Release](https://github.com/Stephan-Lefty/MailBurg/releases).
+Legen Sie es an einen festen Platz, bevor Sie den regelmäßigen Abruf
+einrichten – der merkt sich den Ort der Datei.
+
+**Debian 13 und GuideOS:** Dort ist das `.deb` der bessere Weg, weil es die
+Oberfläche aus der Distribution nimmt und damit deren Sicherheitsupdates
+bekommt.
 
 ```bash
 sudo apt install ./mailburg_*_all.deb
 ```
+
+> **Nur dort.** Ubuntu, Linux Mint, Pop!\_OS und Zorin führen PySide6 nicht
+> in ihren Paketquellen. `apt` installiert MailBurg dort zwar, aber **ohne
+> Oberfläche** – Sie bekommen einen Menüeintrag, hinter dem kein Fenster
+> steckt. Nehmen Sie auf diesen Systemen das AppImage.
 
 Es zieht die Oberfläche, den Schlüsselbund und die PDF-Werkzeuge aus der
 Distribution nach – MailBurg bringt kein eigenes Qt mit, damit

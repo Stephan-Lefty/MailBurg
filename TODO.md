@@ -23,8 +23,46 @@ mehr nur den Entwickler.
   Auf allen fünfzehn Konten. Er hätte die Rechnungen ferngehalten, die
   am 09.09. in der Probe standen; der Ordnerausschluss reicht.
 
-- [ ] **AppImage und `.dmg` fehlen weiterhin.** Das AppImage wäre der
-  Weg für alles, was nicht Debian ist – Fedora, Arch, openSUSE.
+- [x] **Das AppImage ist gebaut.** (2026-09-14) Der Weg für alles, was
+  nicht Debian ist – Ubuntu, Mint, Fedora, Arch, openSUSE. Eine Datei,
+  ausführbar machen, starten.
+
+  Anlass war die Rückmeldung von der Linux-Mint-Maschine: »Wenn ich das
+  Tool starte, passiert gar nichts.« Das `.deb` zieht die Oberfläche aus
+  der Distribution, und Ubuntu führt sie nicht. Übrig blieb ein
+  `git clone` und eine Viertelstunde Übersetzen – für jemanden, der ein
+  Programm nur ausprobieren wollte.
+
+  Gebaut wird in einem **Debian-12-Container**, nicht auf dem
+  Ubuntu-Runner: Ein gegen neues glibc gebundenes Programm startet auf
+  älteren Systemen gar nicht erst. Debian 12 hat glibc 2.36 und Python
+  3.11, also genau die Untergrenze, die MailBurg ohnehin verlangt.
+
+  **Der Dateiname trägt keine Fassungsnummer**, aus demselben Grund wie
+  bei der `.exe`: Ihr Pfad steht im Zeitplan. Und `sys.executable` taugt
+  dort nicht – ein AppImage hängt sich unter `/tmp/.mount_XXXXXX` ein
+  und ist nach dem Beenden weg. `_mailburg_befehl()` nimmt deshalb
+  `APPIMAGE` aus der Umgebung, wenn die Datei dort wirklich liegt.
+
+- [ ] **Und das `.dmg` fehlt weiterhin.** Es hängt am selben Punkt wie
+  alles für macOS: an einem Gerät zum Prüfen.
+
+- [ ] **Flatpak: offen, aber nicht ohne Weiteres.** Die Sandbox steht
+  quer zu dem, was MailBurg tut. Es liest Thunderbird-Profile und
+  Evolution-Maildirs im Heimatverzeichnis, legt das Archiv auf eine
+  Platte der Wahl, spricht mit dem Schlüsselbund und richtet für den
+  regelmäßigen Abruf eine systemd-Einheit ein.
+
+  Um das zu erlauben, müsste man die Sandbox praktisch ganz aufmachen
+  (`--filesystem=home` plus Wechselmedien plus Secret Service). **Dann
+  ist sie Theater** – dasselbe Argument, das das Startpasswort ohne
+  Archivverschlüsselung erledigt hat (2026-08-25).
+
+  Der harte Punkt ist der Zeitplan: Eine systemd-User-Einheit auf dem
+  Wirtssystem anzulegen, geht aus einer Flatpak-Sandbox heraus
+  vermutlich nicht ohne einen anderen Mechanismus. **Vermutlich –
+  belegt ist das nicht.** Wer den Punkt aufgreift, prüft das zuerst,
+  statt es zu glauben.
 
 ### Zwei Schlüsselbünde auf einem Rechner (2026-09-07)
 

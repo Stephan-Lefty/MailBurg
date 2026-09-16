@@ -130,7 +130,21 @@ def _mailburg_befehl() -> str:
     ``mailburg`` allein genügt nicht: Ein Dienst startet ohne die
     ``PATH``-Ergänzungen einer Anmeldesitzung. Steht dort nur der Name,
     läuft der Abruf monatelang gar nicht, und niemand merkt es.
+
+    **Im AppImage ist der eigene Pfad der falsche.** Ein AppImage hängt
+    sich beim Start unter ``/tmp/.mount_XXXXXX`` ein und verschwindet
+    von dort, sobald das Programm endet – ``sys.executable`` zeigt also
+    auf ein Verzeichnis, das es in zehn Minuten nicht mehr gibt. Ein
+    Zeitplan darauf wäre nicht erst nach einem Update tot, sondern
+    sofort.
+
+    AppImage legt deshalb den Pfad der Datei selbst in die Umgebung
+    (``APPIMAGE``). Der ist bleibend, und der gehört in den Zeitplan.
     """
+    appimage = os.environ.get("APPIMAGE")
+    if appimage and Path(appimage).is_file():
+        return appimage
+
     gefunden = shutil.which("mailburg")
     if gefunden:
         return gefunden

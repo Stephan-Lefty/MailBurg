@@ -1,0 +1,229 @@
+# Baut das AppImage und hängt es an das Release.
+#
+# **Warum es das gibt.** Am 2026-09-14 meldete ein Anwender auf Linux
+# Mint: »Wenn ich das Tool starte, passiert gar nichts.« Das
+# Debian-Paket zieht die Oberfläche aus der Distribution nach, und
+# Ubuntu, Mint, Pop!_OS und Zorin führen PySide6 dort nicht. Übrig blieb
+# ein `git clone` und fünfzehn Minuten Übersetzen – für jemanden, der
+# ein Archivprogramm ausprobieren wollte.
+#
+# Das AppImage ist die Antwort: eine Datei, ausführbar machen, starten.
+#
+# **Gebaut wird auf Debian 12, nicht auf dem Ubuntu-Runner.** Ein
+# Programm, das gegen ein neues glibc gebunden ist, startet auf älteren
+# Systemen gar nicht erst – und zwar mit einer Meldung, die niemand
+# versteht. Debian 12 hat glibc 2.36 und Python 3.11, also genau die
+# Untergrenze, die MailBurg ohnehin verlangt. Wer neuer ist, kann es
+# ausführen; umgekehrt gilt das nicht.
+#
+# Dieselbe Lehre wie beim .deb am 2026-09-09: Auf dem falschen System zu
+# prüfen ist schlimmer als gar nicht zu prüfen.
+name: AppImage
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    name: MailBurg.AppImage bauen und ausprobieren
+    runs-on: ubuntu-latest
+    container: debian:bookworm
+
+    steps:
+      - name: Werkzeuge
+        run: |
+          apt-get update
+          # fuse3 und libfuse2 für appimagetool, xvfb für die Probe mit
+          # Oberfläche, file für die Prüfung, gegen welches glibc
+          # gebunden wurde.
+          apt-get install -y --no-install-recommends \
+            python3 python3-pip python3-venv git ca-certificates curl \
+            file desktop-file-utils zsync \
+            libfuse2 fuse3 \
+            libgl1 libegl1 libxkbcommon0 libdbus-1-3 libxcb-cursor0 \
+            libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 \
+            xvfb
+
+      - uses: actions/checkout@v4
+        with:
+          # Der Zeitstempel des letzten Commits geht in das Paket, damit
+          # zwei Bauten derselben Fassung gleich ausfallen.
+          fetch-depth: 0
+
+      - name: Git beruhigen
+        # Im Container gehört der Checkout einem anderen Benutzer als
+        # dem, der git aufruft; ohne das bricht jeder git-Aufruf ab.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Umgebung und Bestandteile
+        run: |
+          python3 -m venv /opt/bau
+          /opt/bau/bin/pip install --quiet --upgrade pip
+          /opt/bau/bin/pip install --quiet '.[alles]' pyinstaller
+
+      - name: appimagetool holen
+        run: |
+          curl -fsSL -o /usr/local/bin/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /usr/local/bin/appimagetool
+
+      - name: Packen
+        run: /opt/bau/bin/pyinstaller --clean --noconfirm werkzeuge/mailburg.spec
+
+      - name: Zum AppImage schnüren
+        env:
+          # appimagetool ist selbst ein AppImage und braucht sonst FUSE,
+          # das in einem Container nicht zur Verfügung steht.
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: /opt/bau/bin/python3 werkzeuge/appimage_bauen.py dist
+
+      # ---------------------------------------------------------------
+      # Ab hier die Probe. Der Bau ist nicht der Punkt.
+      # ---------------------------------------------------------------
+
+      - name: Läuft es überhaupt?
+        run: |
+          set -e
+          cd dist
+          chmod +x MailBurg-x86_64.AppImage
+          # Ohne FUSE im Container: auspacken und das Innere starten.
+          ./MailBurg-x86_64.AppImage --appimage-extract >/dev/null
+          AUSGABE=$(xvfb-run -a ./squashfs-root/AppRun --version 2>&1)
+          echo "$AUSGABE"
+          echo "$AUSGABE" | grep -q "MailBurg" \
+            || { echo "::error::Das AppImage meldet seine Fassung nicht"; exit 1; }
+
+      - name: Ist die Oberfläche wirklich drin?
+        # **Der Kern der Sache.** Genau daran ist es beim Anwender
+        # gescheitert: MailBurg war da, die Oberfläche nicht. Ein
+        # AppImage, das dieselbe Lücke hätte, wäre keinen Deut besser
+        # als das .deb auf Mint.
+        run: |
+          set -e
+          cd dist
+          test -n "$(find squashfs-root -name 'libQt6Widgets*' -print -quit)" \
+            || { echo "::error::Qt fehlt im AppImage"; exit 1; }
+          echo "Qt ist mit an Bord."
+
+      - name: Geht der Schlüsselbund mit?
+        # Ohne die Anbindung an org.freedesktop.secrets fragt MailBurg
+        # bei jedem Abruf nach dem Passwort, und der Zeitplan wäre
+        # nutzlos. Unter Windows war das schon einmal der Fehler.
+        run: |
+          set -e
+          cd dist
+          test -n "$(find squashfs-root -path '*keyring/backends*SecretService*' -print -quit)" \
+            || { echo "::error::Die Schlüsselbund-Anbindung fehlt"; exit 1; }
+          echo "SecretService ist dabei."
+
+      - name: Ein ganzer Archivlauf, ohne Python auf dem System
+        run: |
+          set -e
+          cd dist
+          ./squashfs-root/AppRun anlegen /tmp/Probe --modus privat
+          python3 - <<'PY'
+          import email.message, email.utils, mailbox
+          from datetime import datetime, timezone
+          box = mailbox.mbox("/tmp/probe.mbox", create=True)
+          for i in range(5):
+              m = email.message.EmailMessage()
+              m["Subject"] = f"Schlussrechnung {i} für Grüße aus München"
+              m["From"] = email.utils.formataddr(("Josef Müller", "m@beispiel.example"))
+              m["To"] = "ich@beispiel.example"
+              m["Date"] = email.utils.format_datetime(
+                  datetime(2025, (i % 12) + 1, 14, tzinfo=timezone.utc))
+              m.set_content(f"Inhalt {i} mit Umlauten: äöüß")
+              box.add(m)
+          box.flush(); box.close()
+          PY
+          ./squashfs-root/AppRun importieren /tmp/Probe /tmp/probe.mbox --konto Probe
+          TREFFER=$(./squashfs-root/AppRun suchen /tmp/Probe "rechnung" 2>&1)
+          echo "$TREFFER"
+          echo "$TREFFER" | grep -qi "Schlussrechnung" \
+            || { echo "::error::Die Suche findet nichts"; exit 1; }
+
+      - name: Öffnet sich das Fenster?
+        # **Der eigentliche Test, und er prüft genau den Mint-Fehler.**
+        #
+        # ``--version`` taugt dafür nicht: MailBurg beantwortet das,
+        # *bevor* es Qt überhaupt importiert (ui/app.py). Eine Fassung
+        # meldet also auch ein Programm ohne Oberfläche.
+        #
+        # Fehlt Qt, endet der Start mit Rückgabewert 2 – das ist die
+        # Signatur dessen, was der Anwender am 2026-09-14 als »es
+        # passiert gar nichts« erlebt hat. Läuft es dagegen, bleibt das
+        # Fenster offen und ``timeout`` bricht mit 124 ab. Genau diese
+        # beiden Fälle unterscheidet der Schritt.
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          cd dist
+          set +e
+          timeout 45 ./squashfs-root/AppRun > /tmp/start.log 2>&1
+          RC=$?
+          set -e
+          echo "Rückgabewert: $RC"
+          tail -20 /tmp/start.log || true
+          if [ "$RC" = "2" ]; then
+            echo "::error::MailBurg startet ohne Oberfläche - genau der Fehler, gegen den das AppImage gebaut ist"
+            exit 1
+          fi
+          if [ "$RC" != "124" ] && [ "$RC" != "0" ]; then
+            echo "::error::Der Start endete unerwartet mit $RC"
+            exit 1
+          fi
+          echo "Das Fenster geht auf."
+
+      - name: Wie alt darf das System sein?
+        # Die Zahl gehört in den Bericht: Sie sagt, welche
+        # Distributionen das AppImage ausführen können.
+        run: |
+          cd dist
+          echo "Benötigtes glibc (höchste verlangte Fassung):"
+          objdump -T squashfs-root/usr/bin/MailBurg 2>/dev/null \
+            | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -V | tail -1 \
+            || echo "(nicht ermittelbar)"
+
+      - name: Der Eintrag im Anwendungsmenü
+        run: desktop-file-validate dist/squashfs-root/mailburg.desktop
+
+      - name: Prüfsumme
+        run: |
+          cd dist
+          rm -rf squashfs-root
+          sha256sum MailBurg-x86_64.AppImage > MailBurg-x86_64.AppImage.sha256
+          cat MailBurg-x86_64.AppImage.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mailburg-appimage
+          path: |
+            dist/MailBurg-x86_64.AppImage
+            dist/MailBurg-x86_64.AppImage.sha256
+
+  # Das Hochladen gehört auf den Runner, nicht in den Container: ``gh``
+  # ist dort vorinstalliert. Dieselbe Aufteilung wie beim .deb.
+  anhaengen:
+    name: Ans Release hängen
+    needs: appimage
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mailburg-appimage
+          path: dist
+
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            dist/MailBurg-x86_64.AppImage \
+            dist/MailBurg-x86_64.AppImage.sha256 --clobber \
+            --repo "${{ github.repository }}"

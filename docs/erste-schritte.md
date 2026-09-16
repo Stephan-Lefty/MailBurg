@@ -9,6 +9,35 @@ Alle Bilder in dieser Anleitung zeigen erfundene Postfächer.
 
 ## 1. Installieren
 
+### Ubuntu, Mint, Fedora, Arch und alle übrigen: das AppImage
+
+Eine Datei, ausführbar machen, starten. Kein Python, keine Paketverwaltung,
+keine Rücksicht auf die Distribution. Das AppImage hängt an der
+[jüngsten Veröffentlichung](https://github.com/Stephan-Lefty/MailBurg/releases/latest).
+
+```bash
+chmod +x MailBurg-x86_64.AppImage
+./MailBurg-x86_64.AppImage
+```
+
+Wer lieber klickt: In den Dateieigenschaften gibt es ein Häkchen „Datei als
+Programm ausführen" (die Beschriftung unterscheidet sich je nach
+Arbeitsumgebung). Danach genügt ein Doppelklick.
+
+> **Legen Sie die Datei an einen festen Platz, bevor Sie den regelmäßigen
+> Abruf einrichten** – etwa nach `~/Programme/`. In den Zeitplan schreibt
+> MailBurg den vollen Pfad der Datei; wird sie später verschoben, holt der
+> Abruf keine Post mehr. MailBurg merkt das beim nächsten Öffnen und bietet
+> an, es geradezuziehen, aber bis dahin fehlt Ihnen die Post dieser Zeit.
+
+Zum Aktualisieren die neue Datei über die alte legen – der Name bleibt
+gleich, damit der Zeitplan weiter stimmt.
+
+**Was das AppImage kostet:** Es bringt Qt mit, rund 200 MB, und bekommt
+dessen Sicherheitsupdates deshalb nicht über Ihre Distribution, sondern erst
+mit der nächsten Fassung von MailBurg. Wer Debian 13 oder GuideOS betreibt,
+nimmt darum besser das `.deb` – gleich hier darunter.
+
 ### Debian 13 und GuideOS: das fertige Paket
 
 Eine Datei herunterladen, ein Befehl, fertig. Das `.deb` hängt an der
@@ -33,8 +62,8 @@ bleibt unangetastet.
 > **Unter Ubuntu funktioniert dieser Weg nicht.** Ubuntu führt PySide6 nicht
 > in seinen Paketquellen. `apt` installiert MailBurg dort zwar, aber ohne
 > Oberfläche – und sagt es nur beiläufig, als nicht erfüllte *Empfehlung*.
-> Nehmen Sie dort den Weg im nächsten Abschnitt. Dasselbe gilt für alles, was
-> auf Ubuntu aufbaut: Linux Mint, Pop!\_OS, Zorin.
+> Dasselbe gilt für alles, was auf Ubuntu aufbaut: Linux Mint, Pop!\_OS,
+> Zorin. **Nehmen Sie dort das AppImage weiter oben.**
 >
 > Woran Sie es merken, falls Sie es doch versucht haben: `apt` sagt es Ihnen
 > schon beim Installieren, und beim Start geht ein Fenster auf, das nennt,
@@ -43,9 +72,13 @@ bleibt unangetastet.
 > **Bis zum 14.09.2026 tat es das nicht.** Der Hinweis ging nur auf die
 > Fehlerausgabe – und ein Menüeintrag startet ohne Terminal. Wer MailBurg so
 > installiert hatte, klickte und sah gar nichts. Gemeldet hat es ein Anwender
-> auf Linux Mint; behoben ist es seit Fassung 1.4.6.
+> auf Linux Mint; behoben ist es seit Fassung 1.4.6. Dass es dieses AppImage
+> gibt, geht ebenfalls auf seine Rückmeldung zurück.
 
-### Alle anderen: die Einrichtung im Benutzerordner
+### Aus dem Quelltext: die Einrichtung im Benutzerordner
+
+Der Weg für alle, die den Quelltext ohnehin haben wollen – und bis zum
+AppImage der einzige für Ubuntu und Mint.
 
 ```bash
 git clone https://github.com/Stephan-Lefty/MailBurg.git

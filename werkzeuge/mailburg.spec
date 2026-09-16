@@ -1,5 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""Bauplan für die Windows-Fassung von MailBurg.
+"""Bauplan für die gepackten Fassungen von MailBurg.
+
+Daraus entstehen zwei Dinge: unter Windows die ``MailBurg.exe``, unter
+Linux das Innere des AppImage (siehe ``werkzeuge/appimage_bauen.py``).
+Beide haben denselben Zweck und denselben Preis, deshalb stehen sie in
+einer Datei: Zwei Baupläne, die fast gleich sind, laufen auseinander –
+und der seltener benutzte ist dann der falsche.
+
+Was sich unterscheidet, steht an ``WINDOWS`` und ist dort begründet.
+
 
 **Warum es das gibt.** Am 2026-08-27 wurde MailBurg zum ersten Mal auf
 einem frischen Windows eingerichtet. Das dauerte zwei Stunden: Python
@@ -21,8 +30,11 @@ Gebaut wird mit::
 
     pyinstaller werkzeuge/mailburg.spec
 
-Das läuft nur unter Windows sinnvoll: PyInstaller packt immer für das
-System, auf dem es läuft.
+**PyInstaller packt immer für das System, auf dem es läuft.** Eine
+Windows-Fassung entsteht nur unter Windows, ein Linux-Programm nur unter
+Linux – und dort möglichst auf einer alten Distribution, weil ein gegen
+neues glibc gebautes Programm auf älteren Systemen gar nicht erst
+startet. Deshalb läuft der AppImage-Bau in einem Debian-12-Container.
 """
 
 import sys
@@ -42,16 +54,33 @@ EINSTIEG = str(WURZEL / "werkzeuge" / "start_gui.py")
 #: PyInstaller sieht davon nichts und ließe die Windows-Anbindung weg.
 #: Genau die braucht MailBurg aber: Ohne sie würde bei jedem Abruf nach
 #: dem Passwort gefragt, und der Hintergrundabruf wäre unmöglich.
+WINDOWS = sys.platform == "win32"
+
 VERSTECKT = [
-    "keyring.backends.Windows",
     # Ohne QtSvg kann Qt die Banner nicht zeichnen: Sie liegen als SVG
     # vor, damit sie auf jedem Bildschirm scharf bleiben. PyInstaller
     # sieht den Bedarf nicht, weil MailBurg das Modul nirgends
     # ausdrücklich importiert - QPixmap lädt es zur Laufzeit nach.
     "PySide6.QtSvg",
-    "win32ctypes.core",
-    *collect_submodules("win32ctypes"),
 ]
+
+if WINDOWS:
+    VERSTECKT += [
+        "keyring.backends.Windows",
+        "win32ctypes.core",
+        *collect_submodules("win32ctypes"),
+    ]
+else:
+    # **Dasselbe Problem, anderer Schlüsselbund.** Unter Linux läuft
+    # keyring über den D-Bus-Dienst ``org.freedesktop.secrets``; ohne
+    # diesen Eintrag fehlte die Anbindung im AppImage, und MailBurg
+    # fragte bei jedem Abruf nach dem Passwort - der Hintergrundabruf
+    # wäre damit unmöglich, genau wie unter Windows ohne seine.
+    VERSTECKT += [
+        "keyring.backends.SecretService",
+        "keyring.backends.chainer",
+        "secretstorage",
+    ]
 
 #: Was Platz kostet und niemand braucht. PySide6-Essentials bringt
 #: einiges mit, das ein Archivprogramm nie anfasst.
@@ -85,8 +114,12 @@ DRAUSSEN = [
 #: bleiben.
 MITGEBRACHT = WURZEL / "werkzeuge" / "windows"
 BEIGABEN = (
-    [(str(MITGEBRACHT), "werkzeuge")] if MITGEBRACHT.is_dir() else []
+    [(str(MITGEBRACHT), "werkzeuge")]
+    if WINDOWS and MITGEBRACHT.is_dir() else []
 )
+# Unter Linux kommen poppler und tesseract aus der Distribution – dort
+# gibt es sie überall als Paket, und MailBurg findet sie über den
+# Suchpfad. Mitzupacken wären sie hier reine Größe.
 
 analyse = Analysis(
     [EINSTIEG],
@@ -166,6 +199,9 @@ exe = EXE(
     # und nicht ein schwarzes Fenster daneben.
     console=False,
     disable_windowed_traceback=False,
-    icon=str(WURZEL / "assets" / "mailburg.ico"),
-    version=str(WURZEL / "werkzeuge" / "fassung.txt"),
+    # Symbol und Fassungsressource sind Windows-Angaben. Unter Linux
+    # kennt PyInstaller sie nicht; das Symbol kommt dort aus der
+    # ``.desktop``-Datei des AppImage, die Fassung aus ``--version``.
+    icon=str(WURZEL / "assets" / "mailburg.ico") if WINDOWS else None,
+    version=str(WURZEL / "werkzeuge" / "fassung.txt") if WINDOWS else None,
 )

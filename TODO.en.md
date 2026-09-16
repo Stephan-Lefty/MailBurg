@@ -22,8 +22,45 @@ goes wrong now no longer hits the developer alone.
   invoices from the 9 September sample; the folder exclusion is
   enough.
 
-- [ ] **AppImage and `.dmg` are still missing.** The AppImage would be
-  the route for everything that is not Debian — Fedora, Arch, openSUSE.
+- [x] **The AppImage is built.** (2026-09-14) The route for everything
+  that is not Debian — Ubuntu, Mint, Fedora, Arch, openSUSE. One file,
+  make it executable, run it.
+
+  The trigger was the report from the Linux Mint machine: "when I start
+  the tool, nothing happens at all". The `.deb` pulls the interface from
+  the distribution, and Ubuntu does not carry it. What remained was a
+  `git clone` and a quarter of an hour of compiling — for someone who
+  only wanted to try a program out.
+
+  Built inside a **Debian 12 container**, not on the Ubuntu runner: a
+  binary linked against a newer glibc will not even start on older
+  systems. Debian 12 has glibc 2.36 and Python 3.11 — exactly the floor
+  MailBurg requires anyway.
+
+  **The filename carries no version number**, for the same reason as the
+  `.exe`: its path goes into the schedule. And `sys.executable` is no
+  use there — an AppImage mounts itself under `/tmp/.mount_XXXXXX` and
+  is gone once the program exits. `_mailburg_befehl()` therefore takes
+  `APPIMAGE` from the environment, provided the file is really there.
+
+- [ ] **And the `.dmg` is still missing.** It hangs on the same thing as
+  everything macOS: a machine to verify it on.
+
+- [ ] **Flatpak: open, but not straightforward.** The sandbox sits
+  crosswise to what MailBurg does. It reads Thunderbird profiles and
+  Evolution maildirs in the home directory, puts the archive on a disk
+  of your choosing, talks to the keyring, and installs a systemd unit
+  for scheduled retrieval.
+
+  Permitting all that would mean opening the sandbox almost completely
+  (`--filesystem=home` plus removable media plus Secret Service). **Then
+  it is theatre** — the same argument that settled the startup password
+  without archive encryption (2026-08-25).
+
+  The hard part is the schedule: installing a systemd user unit on the
+  host presumably does not work from inside a Flatpak sandbox without a
+  different mechanism. **Presumably — this is not established.** Whoever
+  picks this up checks that first rather than believing it.
 
 ### Two keyrings on one machine (2026-09-07)
 

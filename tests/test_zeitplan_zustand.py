@@ -129,6 +129,45 @@ class ZustandVollstaendigTest(unittest.TestCase):
         self.assertEqual(stand.behalten, 0)
 
 
+class AppImagePfadTest(unittest.TestCase):
+    """**Im AppImage ist der eigene Pfad der falsche.**
+
+    Ein AppImage hängt sich beim Start unter ``/tmp/.mount_XXXXXX`` ein
+    und verschwindet von dort, sobald das Programm endet. Ein Zeitplan,
+    der dorthin zeigt, wäre nicht erst nach dem nächsten Update tot,
+    sondern nach dem Schließen des Fensters – und zwar lautlos, wie
+    alles an dieser Stelle.
+
+    AppImage legt den bleibenden Pfad in die Umgebung (``APPIMAGE``).
+    Genau der gehört in die Diensteinheit.
+    """
+
+    def test_der_bleibende_pfad_gewinnt(self):
+        with tempfile.TemporaryDirectory() as ordner:
+            datei = Path(ordner) / "MailBurg-x86_64.AppImage"
+            datei.write_text("#!/bin/sh\n", encoding="utf-8")
+
+            with mock.patch.dict("os.environ", {"APPIMAGE": str(datei)}):
+                self.assertEqual(zeitplan._mailburg_befehl(), str(datei))
+
+    def test_ohne_appimage_bleibt_es_beim_suchpfad(self):
+        with mock.patch.dict("os.environ", {}, clear=True), \
+             mock.patch.object(zeitplan.shutil, "which",
+                               lambda n: "/usr/bin/mailburg"):
+            self.assertEqual(zeitplan._mailburg_befehl(), "/usr/bin/mailburg")
+
+    def test_ein_leerer_eintrag_wird_nicht_geglaubt(self):
+        """**Die Umgebung ist kein Beweis.** ``APPIMAGE`` kann von einem
+        früheren Lauf stehengeblieben sein oder auf eine gelöschte Datei
+        zeigen. Was nicht da ist, gehört nicht in einen Zeitplan – sonst
+        schreibt MailBurg selbst den Fehler hinein, den es seit der
+        1.4.4 meldet."""
+        with mock.patch.dict("os.environ", {"APPIMAGE": "/gibt/es/nicht"}), \
+             mock.patch.object(zeitplan.shutil, "which",
+                               lambda n: "/usr/bin/mailburg"):
+            self.assertEqual(zeitplan._mailburg_befehl(), "/usr/bin/mailburg")
+
+
 class ZeigtInsLeereTest(unittest.TestCase):
     """**Ein Zeitplan, der ins Leere zeigt, sieht aus wie einer, der geht.**
 

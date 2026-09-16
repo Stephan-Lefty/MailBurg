@@ -178,17 +178,32 @@ the `Message-ID` against what is already there. See
 
 ## Getting started
 
-**Debian 13 and GuideOS:** the ready-made package is attached to every
-[release](https://github.com/Stephan-Lefty/MailBurg/releases).
+**Ubuntu, Linux Mint, Fedora, Arch, openSUSE — and everything else:** the
+**AppImage**. One file, make it executable, run it. No Python, no package
+manager, no matter which distribution.
 
-> **Not on Ubuntu, Linux Mint, Pop!\_OS or Zorin.** These do not carry
-> PySide6 in their archives. `apt` will install MailBurg there, but
-> **without the interface** — you get a menu entry with no window behind it.
-> On those systems the user-directory setup below is the right route.
+```bash
+chmod +x MailBurg-x86_64.AppImage
+./MailBurg-x86_64.AppImage
+```
+
+It is attached to every
+[release](https://github.com/Stephan-Lefty/MailBurg/releases). Put it in a
+permanent place before setting up scheduled retrieval — the schedule
+remembers where the file is.
+
+**Debian 13 and GuideOS:** there the `.deb` is the better route, because it
+takes the interface from the distribution and thus receives its security
+updates.
 
 ```bash
 sudo apt install ./mailburg_*_all.deb
 ```
+
+> **Only there.** Ubuntu, Linux Mint, Pop!\_OS and Zorin do not carry PySide6
+> in their archives. `apt` will install MailBurg there, but **without the
+> interface** — you get a menu entry with no window behind it. On those
+> systems, use the AppImage.
 
 It pulls the interface, the keyring and the PDF tools from the distribution —
 MailBurg ships no Qt of its own, so that security updates arrive through

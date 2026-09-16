@@ -7,6 +7,33 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **Ein AppImage, an jeder Veröffentlichung.** Eine Datei, ausführbar
+  machen, starten – kein Python, keine Paketverwaltung, gleich welche
+  Distribution. Damit gibt es für Ubuntu, Linux Mint, Fedora, Arch und
+  openSUSE endlich einen Weg, der so kurz ist wie der unter Windows.
+
+  Der Anlass steht in der 1.4.6 darunter: Auf einer Linux-Mint-Maschine
+  startete MailBurg und tat nichts, weil die Oberfläche in den
+  Paketquellen fehlt. Übrig blieb bis heute ein `git clone` und eine
+  Viertelstunde Übersetzen – für jemanden, der ein Programm nur
+  ausprobieren wollte.
+
+  **Der Dateiname trägt keine Fassungsnummer**, aus demselben Grund wie
+  bei der `MailBurg.exe`: Der Pfad der Datei steht im Zeitplan für den
+  regelmäßigen Abruf. Legen Sie das AppImage deshalb an einen festen
+  Platz, bevor Sie den Abruf einrichten, und ersetzen Sie später einfach
+  die Datei.
+
+  **Was es kostet:** Das AppImage bringt Qt mit, rund 200 MB, und
+  bekommt dessen Sicherheitsupdates nicht über die Distribution, sondern
+  erst mit der nächsten Fassung von MailBurg. Wer Debian 13 oder GuideOS
+  betreibt, ist mit dem `.deb` weiterhin besser bedient – das steht auch
+  so in der Anleitung.
+
 ## [1.4.6] – 2026-09-14
 
 ### Behoben
