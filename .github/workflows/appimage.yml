@@ -125,12 +125,23 @@ jobs:
             echo "Kein FUSE im Container - geprüft wird das AppDir."
 
       - name: Läuft es überhaupt?
+        # **Erst zeigen, dann bewerten.** Hier stand
+        # ``AUSGABE=$(… 2>&1)`` unter ``set -e``: Schlägt der Aufruf
+        # fehl, bricht die Schale sofort ab – die eingefangene Ausgabe
+        # wird nie ausgegeben, und im Protokoll steht nur ein
+        # Rücklaufwert. Zum dritten Mal in diesem Workflow dieselbe
+        # Sorte Fehler: eine Auskunft, die erzeugt und nicht abgeholt
+        # wird.
         run: |
-          set -e
           cd dist
-          AUSGABE=$(xvfb-run -a ./MailBurg.AppDir/AppRun --version 2>&1)
-          echo "$AUSGABE"
-          echo "$AUSGABE" | grep -q "MailBurg" \
+          ls -l MailBurg.AppDir/AppRun MailBurg.AppDir/usr/bin/MailBurg || true
+          set +e
+          ./MailBurg.AppDir/AppRun --version > /tmp/fassung.log 2>&1
+          RC=$?
+          set -e
+          echo "Rückgabewert: $RC"
+          cat /tmp/fassung.log
+          grep -q "MailBurg" /tmp/fassung.log \
             || { echo "::error::Das AppImage meldet seine Fassung nicht"; exit 1; }
 
       - name: Ist die Oberfläche wirklich drin?
