@@ -7,14 +7,23 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.4.7] – 2026-09-16
+
+Für alle, die kein Debian betreiben: **ein AppImage.** Und ein Befund,
+der beim Bauen herauskam und weit darüber hinausreicht.
 
 ### Hinzugefügt
 
 - **Ein AppImage, an jeder Veröffentlichung.** Eine Datei, ausführbar
-  machen, starten – kein Python, keine Paketverwaltung, gleich welche
-  Distribution. Damit gibt es für Ubuntu, Linux Mint, Fedora, Arch und
-  openSUSE endlich einen Weg, der so kurz ist wie der unter Windows.
+  machen, starten – kein Python, keine Paketverwaltung.
+
+  ```bash
+  chmod +x MailBurg-x86_64.AppImage
+  ./MailBurg-x86_64.AppImage
+  ```
+
+  Damit gibt es für Ubuntu 24.04, Linux Mint 22, Fedora, Arch und
+  openSUSE einen Weg, der so kurz ist wie der unter Windows.
 
   Der Anlass steht in der 1.4.6 darunter: Auf einer Linux-Mint-Maschine
   startete MailBurg und tat nichts, weil die Oberfläche in den
@@ -33,6 +42,38 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   erst mit der nächsten Fassung von MailBurg. Wer Debian 13 oder GuideOS
   betreibt, ist mit dem `.deb` weiterhin besser bedient – das steht auch
   so in der Anleitung.
+
+  **Und wo es nicht läuft:** auf Ubuntu 22.04, Linux Mint 21 und
+  Debian 12. Diesen Systemen fehlen die Bibliotheken, an denen es hängt –
+  und ein SQLite, das MailBurgs Suchindex anlegen kann. Siehe unten.
+
+- **MailBurg sagt jetzt, wenn das SQLite des Systems zu alt ist**, statt
+  mit einem Traceback abzubrechen.
+
+  Gefunden beim ersten AppImage-Bau: In einem Debian-12-Container brach
+  das Anlegen eines Archivs ab mit »error in tokenizer constructor« und
+  sieben Zeilen Aufrufliste darüber. Wer das liest, weiß nicht, was
+  seinem System fehlt.
+
+  **Das betrifft nicht nur das AppImage.** Wer MailBurg auf einer
+  älteren Distribution aus dem Quelltext einrichtet, wäre bisher beim
+  ersten Archiv genauso abgestürzt. Die Anforderung stand nirgends und
+  wurde nirgends geprüft.
+
+  Nachgemessen statt geraten:
+
+  | System | SQLite | Suchindex möglich |
+  |---|---|---|
+  | Ubuntu 22.04, Mint 21 | 3.37 | nein |
+  | Debian 12 | 3.40 | nein |
+  | Ubuntu 24.04, Mint 22 | 3.45 | ja |
+  | Debian 13, GuideOS | 3.46 | ja |
+  | Fedora, Arch | 3.51 / 3.53 | ja |
+
+  Geprüft wird dabei die **Fähigkeit, nicht die Versionsnummer**: MailBurg
+  legt eine Probetabelle im Arbeitsspeicher an und sieht nach, ob es
+  geht. Distributionen portieren Änderungen zurück – eine Prüfung auf die
+  Nummer wäre im Zweifel falsch, und zwar in beide Richtungen.
 
 ## [1.4.6] – 2026-09-14
 
@@ -1977,6 +2018,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.4.7]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.3...v1.4.4
