@@ -149,10 +149,15 @@ jobs:
         # gescheitert: MailBurg war da, die Oberfläche nicht. Ein
         # AppImage, das dieselbe Lücke hätte, wäre keinen Deut besser
         # als das .deb auf Mint.
+        #
+        # Gesucht wird **in** der Datei, nicht daneben: PyInstaller packt
+        # alles in eine einzige ausführbare Datei, es gibt also keine
+        # ``libQt6Widgets.so`` zum Finden. Der erste Anlauf suchte
+        # danach und meldete »Qt fehlt«, während Qt einwandfrei drin war.
         run: |
           set -e
           cd dist
-          test -n "$(find MailBurg.AppDir -name 'libQt6Widgets*' -print -quit)" \
+          grep -a -q "libQt6Widgets" MailBurg.AppDir/usr/bin/MailBurg \
             || { echo "::error::Qt fehlt im AppImage"; exit 1; }
           echo "Qt ist mit an Bord."
 
@@ -163,7 +168,8 @@ jobs:
         run: |
           set -e
           cd dist
-          test -n "$(find MailBurg.AppDir -path '*keyring/backends*SecretService*' -print -quit)" \
+          grep -a -q "keyring.backends.SecretService" \
+            MailBurg.AppDir/usr/bin/MailBurg \
             || { echo "::error::Die Schlüsselbund-Anbindung fehlt"; exit 1; }
           echo "SecretService ist dabei."
 
