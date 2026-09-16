@@ -220,7 +220,20 @@ class Index:
         # anlegen. Bei einer noch leeren Datenbank tut das Nachrüsten
         # nichts – dort entstehen die Tabellen gleich vollständig.
         self._spalten_ergaenzen()
-        self.db.executescript(_SCHEMA)
+        try:
+            self.db.executescript(_SCHEMA)
+        except sqlite3.OperationalError as fehler:
+            # **Ein Traceback ist keine Auskunft.** Genau hier brach am
+            # 2026-09-16 der Lauf in einem Debian-12-Container ab, mit
+            # »error in tokenizer constructor« und sieben Zeilen
+            # Aufrufliste darüber. Wer das liest, weiß nicht, dass sein
+            # SQLite zu alt ist, und erst recht nicht, was zu tun wäre.
+            #
+            # Geprüft wird erst *hier*, nicht vorsorglich bei jedem
+            # Start: Solange nichts schiefgeht, hat niemand eine Frage.
+            if not trigramm_moeglich():
+                raise SqliteZuAlt(sqlite3.sqlite_version) from fehler
+            raise
         self.db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.db.commit()
 
@@ -790,6 +803,63 @@ class Index:
 
     def __exit__(self, *exc: object) -> None:
         self.close()
+
+
+class SqliteZuAlt(RuntimeError):
+    """Das SQLite dieses Systems kann den Zweitindex nicht anlegen.
+
+    **Gefunden am 2026-09-16 beim ersten AppImage-Bau.** In einem
+    Debian-12-Container brach das Anlegen eines Archivs ab mit
+    ``sqlite3.OperationalError: error in tokenizer constructor`` – mitten
+    in einem Traceback, ohne ein Wort darüber, was dem System fehlt.
+
+    Betroffen ist nicht nur das AppImage: **Wer MailBurg auf einer
+    älteren Distribution aus dem Quelltext einrichtet, bekommt beim
+    ersten Archiv genau diesen Absturz.** Die Anforderung stand nirgends
+    und wurde nirgends geprüft.
+
+    Dieselbe Sorte Fehler wie zwei Tage zuvor bei PySide6, nur eine
+    Schicht tiefer: Eine Voraussetzung fehlt, und statt einer Auskunft
+    kommt ein Absturz.
+    """
+
+    def __init__(self, vorhanden: str) -> None:
+        self.vorhanden = vorhanden
+        super().__init__(
+            f"Das SQLite dieses Systems ist zu alt für MailBurgs "
+            f"Zweitindex.\n"
+            f"Vorhanden ist {vorhanden}; gebraucht wird eine Fassung, die "
+            f"beim Dreizeichen-Index\ndie Angabe »remove_diacritics« "
+            f"annimmt.\n\n"
+            f"Dieser Index ist es, der »muller« auch »Müller« finden lässt "
+            f"und\n»rechnung« auch in »Schlussrechnung«.\n\n"
+            f"Abhilfe: eine neuere Distribution – oder das AppImage von\n"
+            f"https://github.com/Stephan-Lefty/MailBurg/releases/latest,\n"
+            f"das sein SQLite mitbringt."
+        )
+
+
+def trigramm_moeglich() -> bool:
+    """Ob dieses SQLite den Zweitindex anlegen kann.
+
+    **Ausprobiert, nicht an der Versionsnummer abgelesen.** Welche
+    SQLite-Fassung die Angabe ``remove_diacritics`` beim
+    Dreizeichen-Index annimmt, ließe sich nachschlagen – aber
+    Distributionen portieren Änderungen zurück, und dann stimmt die
+    Nummer nicht mehr mit der Fähigkeit überein. Gefragt wird deshalb das
+    SQLite selbst, in einer Datenbank im Arbeitsspeicher.
+
+    Kostet eine knappe Millisekunde und wird einmal je Archiv gebraucht.
+    """
+    try:
+        with sqlite3.connect(":memory:") as probe:
+            probe.execute(
+                "CREATE VIRTUAL TABLE probe USING fts5("
+                "feld, tokenize = 'trigram remove_diacritics 1')"
+            )
+    except sqlite3.Error:
+        return False
+    return True
 
 
 class IndexOutdated(RuntimeError):

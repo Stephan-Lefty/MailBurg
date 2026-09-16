@@ -241,5 +241,90 @@ class KommandozeileTest(unittest.TestCase):
         self.assertIn("mailburg neuaufbau", fehlerstrom.getvalue())
 
 
+class ZuAltesSqliteTest(unittest.TestCase):
+    """**Ein Traceback ist keine Auskunft.**
+
+    Am 2026-09-16 brach beim ersten AppImage-Bau das Anlegen eines
+    Archivs in einem Debian-12-Container ab::
+
+        sqlite3.OperationalError: error in tokenizer constructor
+
+    Darüber sieben Zeilen Aufrufliste. Wer das liest, weiß nicht, dass
+    sein SQLite zu alt ist, und erst recht nicht, was zu tun wäre.
+
+    Betroffen ist nicht nur das AppImage: Wer MailBurg auf einer älteren
+    Distribution aus dem Quelltext einrichtet, bekommt beim ersten
+    Archiv denselben Absturz. Die Anforderung stand nirgends und wurde
+    nirgends geprüft.
+    """
+
+    #: Ein Schema, das jedes SQLite ablehnt – so lässt sich der Fall
+    #: nachstellen, ohne ein altes SQLite zur Hand zu haben.
+    KAPUTT = ("CREATE VIRTUAL TABLE probe USING fts5("
+              "feld, tokenize = 'gibtesnicht');")
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.datei = Path(self._tmp.name) / "probe.db"
+
+    def test_dieses_system_kann_es(self):
+        """Sonst liefen alle übrigen Tests gegen einen halben Index."""
+        from mailburg.core import index
+
+        self.assertTrue(index.trigramm_moeglich())
+
+    def test_ein_zu_altes_sqlite_wird_benannt(self):
+        from unittest import mock
+
+        from mailburg.core import index
+
+        with mock.patch.object(index, "trigramm_moeglich", lambda: False), \
+             mock.patch.object(index, "_SCHEMA", self.KAPUTT), \
+             mock.patch.object(sqlite3, "sqlite_version", "3.40.1"):
+            with self.assertRaises(index.SqliteZuAlt) as gefangen:
+                index.Index(self.datei)
+
+        text = str(gefangen.exception)
+        self.assertIn("3.40.1", text)
+        self.assertIn("remove_diacritics", text)
+        # Und der Weg heraus, nicht nur die Diagnose.
+        self.assertIn("AppImage", text)
+
+    def test_ein_anderer_fehler_bleibt_ein_anderer(self):
+        """**Sonst wäre die Meldung eine Behauptung.**
+
+        Kann das SQLite den Zweitindex und geht trotzdem etwas schief,
+        dann liegt es an etwas anderem. Das als »zu altes SQLite« zu
+        melden, schickte den Anwender auf eine Suche, die nichts findet.
+        """
+        from unittest import mock
+
+        from mailburg.core import index
+
+        with mock.patch.object(index, "_SCHEMA", self.KAPUTT):
+            with self.assertRaises(sqlite3.OperationalError) as gefangen:
+                index.Index(self.datei)
+
+        self.assertNotIsInstance(gefangen.exception, index.SqliteZuAlt)
+
+    def test_gefragt_wird_das_sqlite_nicht_seine_nummer(self):
+        """**Ausprobiert statt abgelesen.**
+
+        Welche Fassung die Angabe annimmt, ließe sich nachschlagen – aber
+        Distributionen portieren Änderungen zurück, und dann stimmt die
+        Nummer nicht mehr mit der Fähigkeit überein. Eine Prüfung auf die
+        Nummer wäre also im Zweifel falsch, und zwar in beide Richtungen.
+        """
+        import inspect
+
+        from mailburg.core import index
+
+        quelle = inspect.getsource(index.trigramm_moeglich)
+
+        self.assertIn("CREATE VIRTUAL TABLE", quelle)
+        self.assertNotIn("sqlite_version", quelle)
+
+
 if __name__ == "__main__":
     unittest.main()

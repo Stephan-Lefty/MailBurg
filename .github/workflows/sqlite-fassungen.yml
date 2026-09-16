@@ -1,0 +1,77 @@
+# Welche Distribution bringt welches SQLite mit – und reicht es?
+#
+# **Warum es das gibt.** Am 2026-09-16 brach der erste AppImage-Bau in
+# einem Debian-12-Container beim Anlegen eines Archivs ab:
+# »error in tokenizer constructor«. MailBurgs Zweitindex verlangt beim
+# Dreizeichen-Tokenizer die Angabe ``remove_diacritics``, und ältere
+# SQLite-Fassungen nehmen sie nicht an.
+#
+# **Nachgeschlagen wäre geraten.** Welche Fassung es kann, steht zwar in
+# den SQLite-Anmerkungen – aber Distributionen portieren Änderungen
+# zurück, und dann stimmt die Nummer nicht mehr mit der Fähigkeit
+# überein. Dieser Lauf probiert es deshalb auf jedem System aus, das uns
+# interessiert, statt eine Tabelle abzuschreiben.
+#
+# Er läuft von Hand, nicht bei jedem Push: Die Antwort ändert sich nur,
+# wenn eine Distribution nachzieht.
+name: SQLite-Fassungen
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pruefen:
+    name: ${{ matrix.system }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.system }}
+    continue-on-error: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        system:
+          - debian:bookworm      # 12, oldstable
+          - debian:trixie        # 13, stable - darauf baut GuideOS
+          - ubuntu:22.04         # LTS, Grundlage von Mint 21
+          - ubuntu:24.04         # LTS, Grundlage von Mint 22
+          - ubuntu:latest
+          - fedora:latest
+          - archlinux:latest
+
+    steps:
+      - name: Python beschaffen
+        # Jede Distribution anders, und keine davon soll den Lauf
+        # aufhalten: Was sich nicht einrichten lässt, fehlt in der
+        # Übersicht - und das ist auch eine Auskunft.
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update -qq && apt-get install -y -qq python3
+          elif command -v dnf >/dev/null; then
+            dnf install -y -q python3
+          elif command -v pacman >/dev/null; then
+            pacman -Sy --noconfirm --quiet python
+          fi
+
+      - name: Kann dieses SQLite den Zweitindex?
+        run: |
+          python3 - <<'PY'
+          import sqlite3, platform
+
+          def geht(tokenizer):
+              try:
+                  with sqlite3.connect(":memory:") as db:
+                      db.execute(
+                          f"CREATE VIRTUAL TABLE p USING fts5("
+                          f"f, tokenize = '{tokenizer}')")
+              except sqlite3.Error as fehler:
+                  return f"nein ({fehler})"
+              return "ja"
+
+          print(f"System            : {platform.platform()}")
+          print(f"Python            : {platform.python_version()}")
+          print(f"SQLite            : {sqlite3.sqlite_version}")
+          print()
+          print(f"trigram           : {geht('trigram')}")
+          print(f"trigram + Akzente : {geht('trigram remove_diacritics 1')}")
+          print(f"unicode61 rd 2    : {geht('unicode61 remove_diacritics 2')}")
+          PY
