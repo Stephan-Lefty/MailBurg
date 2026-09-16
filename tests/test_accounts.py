@@ -1116,3 +1116,112 @@ class GemerkterSchluesselbundTest(unittest.TestCase):
         )
 
         self.assertEqual(self.accounts.gemerkter_schluesselbund(), "")
+
+
+class PasswortNeuSetzenTest(unittest.TestCase):
+    """**Das Passwort eines Postfachs ändern – ohne es neu anzulegen.**
+
+    Diesen Weg gab es auf der Kommandozeile nicht, obwohl
+    ``accounts.passwort_setzen`` seit jeher bereitsteht und das Fenster
+    ihn anbietet. Wer sein Passwort ändern musste, hatte die Wahl
+    zwischen der Oberfläche und ``entfernen`` plus ``hinzufuegen`` – und
+    Letzteres wirft den Abrufzustand weg, sodass der nächste Lauf das
+    ganze Postfach noch einmal durchgeht.
+
+    Gebraucht wird er regelmäßig: **Die Proton Mail Bridge erzeugt bei
+    jeder Neuanmeldung ein neues Passwort.** Am 2026-09-16 war das der
+    Fall, und dabei fiel die Lücke auf.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.ordner = Path(self._tmp.name)
+
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        flicken = mock.patch.object(
+            paths, "config_dir", return_value=self.ordner
+        )
+        flicken.start()
+        self.addCleanup(flicken.stop)
+
+        liste = Kontenliste(self.ordner / "konten.json")
+        liste.konten = [
+            Konto(name="Proton", server="127.0.0.1", benutzer="ich@example.com",
+                  port=1143, ssl=False, bruecke=True),
+        ]
+        liste.speichern()
+
+    def _lauf(self, name, eingaben, gesetzt=True):
+        from unittest import mock
+
+        from mailburg import __main__ as haupt
+
+        args = mock.Mock(name=name)
+        args.name = name
+        with mock.patch.object(haupt.getpass, "getpass",
+                               side_effect=list(eingaben)), \
+             mock.patch.object(haupt.accounts, "passwort_setzen",
+                               return_value=gesetzt) as setzen, \
+             mock.patch.object(haupt, "cmd_konten_pruefen", return_value=0), \
+             mock.patch("builtins.print"):
+            code = haupt.cmd_konten_passwort(args)
+        return code, setzen
+
+    def test_das_neue_passwort_wird_abgelegt(self):
+        code, setzen = self._lauf("Proton", ["neu-geheim", "neu-geheim"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(setzen.call_args[0][1], "neu-geheim")
+
+    def test_zweimal_gefragt_wird_nicht_umsonst(self):
+        """**Ein Tippfehler fiele sonst erst beim nächsten Abruf auf** –
+        und dort sieht es aus wie ein Serverproblem."""
+        code, setzen = self._lauf("Proton", ["neu-geheim", "vertippt"])
+
+        self.assertEqual(code, 2)
+        self.assertFalse(setzen.called, "Das falsche Passwort wurde abgelegt")
+
+    def test_eine_leere_eingabe_aendert_nichts(self):
+        code, setzen = self._lauf("Proton", ["", ""])
+
+        self.assertEqual(code, 2)
+        self.assertFalse(setzen.called)
+
+    def test_ein_unbekanntes_konto_wird_benannt(self):
+        code, setzen = self._lauf("GibtsNicht", ["a", "a"])
+
+        self.assertEqual(code, 2)
+        self.assertFalse(setzen.called)
+
+    def test_bei_oauth2_gibt_es_kein_passwort(self):
+        """Und der Hinweis nennt den Befehl, der dort hilft – ein Rat auf
+        den falschen Weg wäre schlimmer als keiner."""
+        from unittest import mock
+
+        from mailburg import __main__ as haupt
+
+        liste = Kontenliste(self.ordner / "konten.json")
+        liste.konten = [
+            Konto(name="Firma", server="outlook.office365.com",
+                  benutzer="post@example.com", oauth_anbieter="microsoft"),
+        ]
+        liste.speichern()
+
+        args = mock.Mock()
+        args.name = "Firma"
+        gemeldet = []
+        with mock.patch("builtins.print", lambda *a, **k: gemeldet.append(a)):
+            code = haupt.cmd_konten_passwort(args)
+
+        self.assertEqual(code, 2)
+        self.assertIn("konten anmelden", " ".join(str(z) for z in gemeldet))
+
+    def test_ohne_schluesselbund_wird_es_gesagt(self):
+        """Und nicht behauptet, es sei abgelegt."""
+        code, _ = self._lauf("Proton", ["neu", "neu"], gesetzt=False)
+
+        self.assertEqual(code, 1)

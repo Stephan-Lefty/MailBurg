@@ -155,22 +155,45 @@ aber nur, wenn der Server wirklich der eigene Rechner ist (`127.0.0.1`,
 Sonst ließe sich damit die Zertifikatsprüfung für beliebige Server
 abschalten, und zwar unbemerkt.
 
-### Nach einer Neuanmeldung der Bridge dauert es
+### Nach einer Neuanmeldung der Bridge: zwei Dinge sind fällig
 
-**Das ist der Punkt, an dem man sich sonst wundert.** Musste sich die Bridge
-neu bei Proton anmelden, lädt sie ihren Bestand zunächst wieder herunter –
-sie hält die Mails ja örtlich vor. Während dieser Zeit ist ihr IMAP-Zugang
-zwar erreichbar, aber noch nicht vollständig gefüllt.
+**Das ist der Punkt, an dem man sich sonst wundert.** Meldet sich die Bridge
+neu bei Proton an – oder ändert man dort etwas –, hat das zwei Folgen, und
+beide betreffen MailBurg.
 
-**Rufen Sie erst ab, wenn die Bridge damit fertig ist.** Sonst sieht MailBurg
-ein halb gefülltes Postfach – nicht schlimm, denn beim nächsten Lauf kommt der
+**Erstens erzeugt die Bridge ein neues Passwort.** Das alte gilt nicht mehr,
+und zwar für *jedes* Programm, das die Bridge benutzt. Eintragen müssen Sie es
+überall dort, wo es stand:
+
+```bash
+mailburg konten passwort Proton
+```
+
+Das legt das neue Passwort ab und probiert es gleich aus. Das Postfach bleibt
+sonst unangetastet – **anders als beim Entfernen und Neuanlegen**, das den
+Abrufzustand wegwirft und den nächsten Lauf das ganze Postfach noch einmal
+durchgehen ließe. Im Fenster geht es über *Postfächer verwalten →
+Passwort ändern …*.
+
+Denken Sie an Ihr Mailprogramm: Thunderbird, Evolution und alles andere, was
+die Bridge nutzt, brauchen dasselbe neue Passwort. Sonst steht dort ab sofort
+„Anmeldung fehlgeschlagen", und man sucht den Fehler bei Proton.
+
+**Zweitens lädt die Bridge ihren Bestand wieder herunter** – sie hält die
+Mails ja örtlich vor. Während dieser Zeit ist ihr IMAP-Zugang zwar erreichbar,
+aber noch nicht vollständig gefüllt.
+
+**Rufen Sie erst ab, wenn sie damit fertig ist.** Sonst sieht MailBurg ein
+halb gefülltes Postfach – nicht schlimm, denn beim nächsten Lauf kommt der
 Rest nach, aber die Zahlen im Fenster verwirren. Steht die Bridge, holt ein
 Druck auf **F5** den aktuellen Stand.
 
-Anlass für eine Neuanmeldung ist selten – aber einer kam am 16.09.2026 vor:
-Wechselt der Schlüsselbund, in dem die Bridge ihre Zugangsdaten hält, findet
-sie sie nicht mehr (siehe [Wenn etwas schiefgeht](#wenn-etwas-schiefgeht)
-weiter unten). Danach ist einmal die volle Runde fällig.
+Anlass für eine Neuanmeldung gibt es selten – aber einer kam am 16.09.2026
+vor: Wechselt der Schlüsselbund, in dem die Bridge ihre Zugangsdaten hält,
+findet sie sie nicht mehr (siehe [Wenn etwas
+schiefgeht](#wenn-etwas-schiefgeht) weiter unten). Danach ist die ganze Runde
+fällig: neues Passwort in der Bridge, eintragen im Mailprogramm, eintragen in
+MailBurg, warten bis der Bestand geladen ist.
 
 ## Welche Ordner archiviert werden
 

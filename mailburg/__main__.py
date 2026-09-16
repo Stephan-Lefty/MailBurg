@@ -653,6 +653,62 @@ def cmd_konten_entfernen(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_konten_passwort(args: argparse.Namespace) -> int:
+    """Legt für ein vorhandenes Postfach ein neues Passwort ab.
+
+    **Diesen Weg gab es auf der Kommandozeile nicht**, obwohl
+    ``accounts.passwort_setzen`` seit jeher bereitsteht und das Fenster
+    ihn anbietet. Wer sein Passwort ändern musste, hatte nur die Wahl
+    zwischen der Oberfläche und ``entfernen`` plus ``hinzufuegen`` – und
+    Letzteres wirft den Abrufzustand weg, sodass der nächste Lauf das
+    ganze Postfach noch einmal durchgeht.
+
+    Gebraucht wird er regelmäßig: **Die Proton Mail Bridge erzeugt bei
+    jeder Neuanmeldung ein neues Passwort.** Am 2026-09-16 war das der
+    Fall, und dabei fiel auf, dass MailBurg dafür keinen Befehl hat.
+    """
+    liste = Kontenliste()
+    konto = liste.finden(args.name)
+    if konto is None:
+        print(f"Ein Konto namens '{args.name}' gibt es nicht.", file=sys.stderr)
+        return 2
+
+    if konto.oauth_anbieter:
+        print(
+            f"'{args.name}' meldet sich per OAuth2 an – dort gibt es kein "
+            f"Passwort.\nNeu anmelden mit:  mailburg konten anmelden "
+            f"{args.name}",
+            file=sys.stderr,
+        )
+        return 2
+
+    # Zweimal fragen: Ein vertipptes Passwort fiele sonst erst beim
+    # nächsten Abruf auf, und dann sieht es aus wie ein Serverproblem.
+    passwort = getpass.getpass(f"Neues Passwort für {konto.beschreibung()}: ")
+    if not passwort:
+        print("Abgebrochen – nichts geändert.", file=sys.stderr)
+        return 2
+    if passwort != getpass.getpass("Noch einmal zur Sicherheit: "):
+        print("Die beiden Eingaben stimmen nicht überein.", file=sys.stderr)
+        return 2
+
+    if not accounts.passwort_setzen(konto, passwort):
+        print(
+            "Das Passwort ließ sich nicht ablegen – kein Schlüsselbund "
+            "erreichbar.\n"
+            "Für den Betrieb ohne Schlüsselbund gibt es 'mailburg tresor'.",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"Passwort für '{args.name}' abgelegt.")
+    # **Gleich ausprobieren, nicht nur ablegen.** Ein Passwort, das
+    # gespeichert ist und nicht funktioniert, fällt sonst erst beim
+    # nächtlichen Abruf auf – und dorthin sieht niemand.
+    print("Ich probiere es gleich aus …")
+    return cmd_konten_pruefen(args)
+
+
 def cmd_konten_pruefen(args: argparse.Namespace) -> int:
     """Meldet sich an und zeigt, was archiviert würde."""
     liste = Kontenliste()
@@ -2832,6 +2888,21 @@ def build_parser() -> argparse.ArgumentParser:
     k = konten_befehle.add_parser("entfernen", help="ein Postfach aus der Liste nehmen")
     k.add_argument("name")
     k.set_defaults(func=cmd_konten_entfernen)
+
+    k = konten_befehle.add_parser(
+        "passwort",
+        help="das Passwort eines Postfachs neu setzen",
+        description=(
+            "Legt ein neues Passwort im Schlüsselbund ab und probiert es "
+            "gleich aus. Das Postfach bleibt sonst unangetastet – "
+            "insbesondere der Abrufzustand, anders als beim Entfernen und "
+            "Neuanlegen.\n\n"
+            "Die Proton Mail Bridge erzeugt bei jeder Neuanmeldung ein "
+            "neues Passwort; dann ist dieser Befehl fällig."
+        ),
+    )
+    k.add_argument("name")
+    k.set_defaults(func=cmd_konten_passwort)
 
     k = konten_befehle.add_parser(
         "zuordnen",

@@ -198,7 +198,10 @@ class VerweiseInsLeereTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("--proton", text)
-        # Und der Betriebshinweis, der sonst Verwunderung stiftet.
+        # Und die zwei Betriebshinweise, die sonst Verwunderung stiften:
+        # das neue Passwort bei jeder Neuanmeldung …
+        self.assertIn("konten passwort", text)
+        # … und dass die Bridge danach erst ihren Bestand lädt.
         self.assertIn("Neuanmeldung der Bridge", text)
 
 

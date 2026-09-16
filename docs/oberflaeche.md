@@ -306,6 +306,15 @@ nützlich für ein Konto, das es nicht mehr gibt. **Entfernen** nimmt es samt
 Passwort aus der Liste; die bereits archivierten Mails bleiben in jedem Fall
 erhalten.
 
+> **Passwort ändern statt neu anlegen.** Wenn ein Anbieter das Passwort
+> wechselt – die [Proton Mail
+> Bridge](postfaecher-einrichten.md#proton-geht-nur-über-die-bridge) tut das
+> bei jeder Neuanmeldung –, nehmen Sie **Passwort ändern …** und nicht den
+> Umweg über Entfernen und Neuanlegen. Sonst geht der Abrufzustand verloren,
+> und der nächste Lauf geht das ganze Postfach noch einmal durch.
+>
+> Auf der Kommandozeile: `mailburg konten passwort NAME`.
+
 **Zugänge verwalten …** *(nur im Geschäftsarchiv)*
 
 Wer sich an diesem Archiv anmelden darf – und welche Postfächer er dabei zu

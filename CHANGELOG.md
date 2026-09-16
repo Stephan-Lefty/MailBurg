@@ -7,6 +7,42 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **`mailburg konten passwort NAME`** – das Passwort eines vorhandenen
+  Postfachs neu setzen, ohne es zu entfernen und neu anzulegen. Das
+  Postfach bleibt sonst unangetastet, **insbesondere sein Abrufzustand**;
+  beim Neuanlegen ginge der verloren, und der nächste Lauf ginge das
+  ganze Postfach noch einmal durch.
+
+  Gebraucht wird das regelmäßig: **Die Proton Mail Bridge erzeugt bei
+  jeder Neuanmeldung ein neues Passwort.** Im Fenster gab es den Weg
+  längst (*Postfächer verwalten → Passwort ändern …*), auf der
+  Kommandozeile nicht.
+
+  Das neue Passwort wird gleich ausprobiert, nicht nur abgelegt – sonst
+  fiele ein Tippfehler erst beim nächtlichen Abruf auf, und dorthin
+  sieht niemand.
+
+### Geändert
+
+- **Proton steht jetzt in der Anleitung.** Bisher verwies
+  [erste-schritte.md](docs/erste-schritte.md) auf einen Abschnitt, den es
+  nicht gab. Dort steht nun, dass es ohne die Bridge gar nicht geht, wie
+  das Konto eingetragen wird (`--proton` setzt Server, Port und
+  Verschlüsselung selbst) – und was nach einer Neuanmeldung der Bridge zu
+  tun ist: neues Passwort im Mailprogramm *und* in MailBurg, und mit dem
+  Abruf warten, bis die Bridge ihren Bestand geladen hat.
+
+- **Die Schlüsselbund-Meldung nennt jetzt den Weg**, nicht nur die
+  Diagnose: welcher Dienst für `org.freedesktop.secrets` eingetragen ist
+  und wo das zu ändern steht. Und die Anleitung nennt **beide** Ursachen
+  – die systemd-Einheit *und* die D-Bus-Aktivierung. Bisher stand dort
+  nur die erste; die zweite kostete am 16.09.2026 drei Stunden Suche an
+  einer Stelle, die nachweislich in Ordnung war.
+
 ## [1.4.7] – 2026-09-16
 
 Für alle, die kein Debian betreiben: **ein AppImage.** Und ein Befund,
