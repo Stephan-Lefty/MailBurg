@@ -510,6 +510,34 @@ def _secretservice_anbieter() -> str:
     return "Schlüsselbund"
 
 
+#: **Die Meldung sagte, *dass* etwas nicht stimmt – nicht, was zu tun ist.**
+#:
+#: Am 2026-09-16 stand dieselbe Lage zum zweiten Mal auf Stephans Rechner,
+#: neun Tage nach dem ersten Mal. Die Abhilfe von damals
+#: (``systemctl --user mask`` auf die gnome-keyring-Einheiten) hielt
+#: unverändert – sie schließt aber nur *einen* von zwei Wegen.
+#:
+#: Der zweite hat mit systemd nichts zu tun: D-Bus startet einen Dienst
+#: selbst, sobald jemand nach seinem Namen fragt, und wer dafür zuständig
+#: ist, steht in ``/usr/share/dbus-1/services/``. Dort war
+#: ``gnome-keyring-daemon`` eingetragen. Es genügte, dass irgendein
+#: Programm beim Anmelden nach einem Passwort fragte – bei Stephan die
+#: Proton Mail Bridge, die automatisch startet und `secret-service`
+#: benutzt.
+#:
+#: Drei Stunden Suche. Diese vier Zeilen hätten sie erspart.
+WEG_ZURUECK = (
+    "Welcher Dienst dafür eingetragen ist, steht hier:\n"
+    "  grep -l org.freedesktop.secrets /usr/share/dbus-1/services/*.service"
+    " | xargs grep -H Exec=\n\n"
+    "Ist es der falsche, lässt sich das im eigenen Ordner überstimmen – "
+    "Systemupdates\nfassen ihn nicht an. Der Weg dorthin steht in der "
+    "Anleitung:\n"
+    "  docs/postfaecher-einrichten.md, »Und wenn es trotz Maskierung "
+    "wiederkommt«"
+)
+
+
 def schluesselbund_konkurrenz() -> str:
     """Warnt, wenn mehrere Schlüsselbünde um dieselbe Rolle streiten.
 
@@ -551,7 +579,7 @@ def schluesselbund_konkurrenz() -> str:
             f"**Neu eintragen hilft nicht** – es landete wieder in "
             f"»{jetzt}«, und beim nächsten Wechsel stünden Sie erneut "
             f"hier. Sorgen Sie stattdessen dafür, dass wieder "
-            f"»{frueher}« antwortet."
+            f"»{frueher}« antwortet.\n\n" + WEG_ZURUECK
         )
 
     zeilen = _busnamen()
@@ -598,7 +626,7 @@ def schluesselbund_konkurrenz() -> str:
         f"daneben läuft die {anderer}. Liegen Ihre Passwörter dort, "
         f"findet MailBurg sie nicht – dann hilft kein Neueintragen, "
         f"sondern nur, dass wieder derselbe Dienst antwortet wie beim "
-        f"Speichern."
+        f"Speichern.\n\n" + WEG_ZURUECK
     )
 
 

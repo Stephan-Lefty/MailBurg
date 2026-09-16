@@ -1031,6 +1031,58 @@ class GemerkterSchluesselbundTest(unittest.TestCase):
         # Der Satz, der den Anwender vor der falschen Abhilfe bewahrt.
         self.assertIn("Neu eintragen hilft nicht", text)
 
+    def test_die_anleitung_nennt_beide_ursachen(self):
+        """**Die halbe Ursache ist schlimmer als keine.**
+
+        Bis zum 2026-09-16 stand in der Anleitung nur die systemd-Einheit
+        als Grund, samt ``systemctl --user mask`` als Abhilfe. Die hielt
+        auch – nur kam dieselbe Lage neun Tage später über den zweiten
+        Weg zurück, die D-Bus-Aktivierung. Wer die Anleitung befolgt
+        hatte, suchte dann an der Stelle, die nachweislich in Ordnung
+        war.
+        """
+        text = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "docs" / "postfaecher-einrichten.md"
+        ).read_text(encoding="utf-8")
+
+        # Der erste Weg, seit dem 07.09.
+        self.assertIn("systemctl --user mask", text)
+        # Der zweite, seit dem 16.09.
+        self.assertIn("/usr/share/dbus-1/services", text)
+        self.assertIn(".local/share/dbus-1/services", text)
+        # Und warum ein Abmelden allein nicht reicht.
+        self.assertIn("Linger", text)
+
+    def test_beide_wege_nennen_den_weg_zurueck(self):
+        """**Die Meldung sagte, *dass* etwas nicht stimmt – nicht, was tun.**
+
+        Am 2026-09-16 stand dieselbe Lage zum zweiten Mal auf Stephans
+        Rechner, neun Tage nach dem ersten Mal. Die Abhilfe von damals
+        (``systemctl --user mask``) hielt unverändert – sie schließt aber
+        nur einen von zwei Wegen. Den zweiten, die D-Bus-Aktivierung,
+        nannte niemand, und die Suche danach kostete drei Stunden.
+
+        Geprüft werden **beide** Zweige: der über den Vermerk und der
+        über die laufenden Dienste. Der Hinweis in nur einem von beiden
+        wäre der, den man gerade nicht zu sehen bekommt.
+        """
+        mit_vermerk = self._mit("KDE-Brieftasche", "GNOME-Schlüsselbund")
+        ohne_vermerk = self._mit(
+            "", "GNOME-Schlüsselbund",
+            busnamen=[
+                "org.freedesktop.secrets 1 gnome-keyring-daemon s :1.7 u - -",
+                "org.kde.kwalletd6 2 kwalletd6 s :1.9 u - -",
+            ],
+        )
+
+        for wo, text in (("mit Vermerk", mit_vermerk),
+                         ("ohne Vermerk", ohne_vermerk)):
+            with self.subTest(fall=wo):
+                self.assertTrue(text, "Dieser Zweig meldet gar nichts")
+                self.assertIn("/usr/share/dbus-1/services", text)
+                self.assertIn("postfaecher-einrichten.md", text)
+
     def test_derselbe_anbieter_schweigt(self):
         self.assertEqual(self._mit("KDE-Brieftasche", "KDE-Brieftasche"), "")
 

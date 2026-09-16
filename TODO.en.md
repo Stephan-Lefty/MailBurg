@@ -95,6 +95,40 @@ being asked.
   was made. Now documented in
   [docs/postfaecher-einrichten.md](docs/postfaecher-einrichten.md).
 
+- [x] **And nine days later it was back — by the second route.**
+  (2026-09-16) The same seven mailboxes, the same message. The masking
+  above still held; it closes only *one* of two routes.
+
+  The second has nothing to do with systemd: **D-Bus starts a service
+  itself** the moment anyone asks for its name. In
+  `/usr/share/dbus-1/services/org.freedesktop.secrets.service` that was
+  `gnome-keyring-daemon`. All it took was any program asking for a
+  password at login — for Stephan, the Proton Mail Bridge, which starts
+  automatically and uses `secret-service`.
+
+  The remedy is an entry of one's own under
+  `~/.local/share/dbus-1/services/` pointing at `ksecretd`. D-Bus looks
+  there first, and **system updates do not touch the user's directory** —
+  unlike the masking, which a package could in theory undo.
+
+  Two obstacles along the way, both established:
+
+  - D-Bus does not know the new file while it is running. `ReloadConfig`
+    is required — otherwise it keeps starting the old service, right
+    after every kill.
+  - `Linger=yes` lets the old service **survive the logout**. The name
+    therefore never becomes free, and an activation entry only applies to
+    a free name. The first repair attempt failed on exactly this: after
+    logging back in, the process carried the same number as before.
+
+  **The lesson, and it stings:** on 2026-09-07 we found a cause, verified
+  the remedy, and it held. The matter was still not settled — there was a
+  second route to the same place. *A confirmed cause is not the same as
+  the only one.*
+
+  MailBurg's message now names the command for checking which service is
+  registered. Three hours of searching would have been spared.
+
 - [ ] **A copied default goes stale in silence.** The exclusion list is
   copied into `konten.json` when an account is created; new default
   names never reach existing accounts. To decide: top them up

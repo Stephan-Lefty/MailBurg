@@ -288,6 +288,71 @@ Danach einmal ab- und anmelden. **Bedenken Sie, was sonst noch in diesem
 Schlüsselbund liegt** – dort gespeicherte Zugänge anderer Programme sind
 danach ebenfalls im anderen Tresor zu suchen.
 
+### Und wenn es trotz Maskierung wiederkommt
+
+**Am 16.09.2026 war dieselbe Lage wieder da**, auf demselben Rechner, obwohl
+die Maskierung von oben unverändert griff. Der Grund: Sie schließt nur *einen*
+von zwei Wegen. Der zweite hat mit systemd gar nichts zu tun.
+
+Neben den systemd-Einheiten kann D-Bus einen Dienst **selbst starten**, sobald
+jemand nach seinem Namen fragt. Wer dafür zuständig ist, steht hier:
+
+```bash
+grep -l org.freedesktop.secrets /usr/share/dbus-1/services/*.service | \
+  xargs grep -H Exec=
+```
+
+Steht dort `gnome-keyring-daemon`, ist das die Ursache – unabhängig davon, ob
+irgendeine systemd-Einheit maskiert ist. Es genügt, dass ein beliebiges
+Programm beim Anmelden nach einem Passwort fragt.
+
+**Die Abhilfe ist ein eigener Eintrag im Benutzerordner.** D-Bus sucht dort
+zuerst; `/usr/share` wird damit überstimmt, und kein Systemupdate kann es
+zurückdrehen:
+
+```bash
+mkdir -p ~/.local/share/dbus-1/services
+cat > ~/.local/share/dbus-1/services/org.freedesktop.secrets.service <<'ENDE'
+[D-BUS Service]
+Name=org.freedesktop.secrets
+Exec=/usr/bin/ksecretd
+ENDE
+```
+
+`/usr/bin/ksecretd` ist der Weg unter KDE Plasma. Unter anderen Arbeitsumgebungen
+steht dort ein anderes Programm – welches, verrät die Liste oben.
+
+Danach abmelden genügt **nicht**, wenn der alte Dienst schon läuft: Er hält den
+Namen weiter, und ein Aktivierungseintrag greift nur bei einem freien Namen.
+Zwei Dinge sind nötig:
+
+```bash
+busctl --user call org.freedesktop.DBus /org/freedesktop/DBus \
+  org.freedesktop.DBus ReloadConfig
+pkill -f "gnome-keyring-daemon.*--components=secrets"
+```
+
+Das erste liest die neue Datei ein – D-Bus kennt sie sonst nicht, weil er seit
+dem Anmelden läuft. Das zweite gibt den Namen frei. Danach ab- und anmelden;
+erst dann beansprucht der neue Dienst ihn beim Start.
+
+> **Ist `Linger=yes` gesetzt** (`loginctl show-user $USER | grep Linger`),
+> überlebt der alte Dienst sogar das Abmelden – dann führt kein Weg daran
+> vorbei, ihn wie oben zu beenden. Genau daran ist der erste Reparaturversuch
+> am 16.09. gescheitert: Der Prozess trug nach dem Neuanmelden dieselbe
+> Nummer wie vorher. **Ein Prozess, dessen Nummer eine Abmeldung überlebt,
+> wird nicht von der Sitzung gestartet.**
+
+**Wer den falschen Dienst weckt, ist selten schuld.** Auf Stephans Rechner war
+es die Proton Mail Bridge: Sie startet automatisch mit der Anmeldung, nutzt
+`secret-service` (siehe `~/.config/protonmail/bridge-v3/keychain.json`) und
+fragt als erste nach einem Passwort. Jedes andere Programm mit Autostart hätte
+dasselbe ausgelöst – der Fehler saß in der Registrierung, nicht im Programm.
+
+**Rechnen Sie damit, dass sich Programme neu anmelden müssen.** Ihre Zugänge
+liegen im alten Tresor, und der antwortet nicht mehr. Bei der Bridge war eine
+neue Proton-Anmeldung fällig; danach lag alles im richtigen Tresor.
+
 **„Anmeldung abgelehnt"** – meist fehlt das App-Passwort, siehe oben. Bei GMX
 und Web.de muss der IMAP-Zugriff zusätzlich in den Einstellungen der
 Weboberfläche freigeschaltet werden.

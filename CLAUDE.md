@@ -1548,6 +1548,30 @@ geglaubt. Deshalb eng fangen (`keyring.errors.KeyringError`,
 `OSError`), und wo ein Aufrufer dem Anwender etwas schreibt, den Grund
 mitgeben statt ihn wegzuwerfen.
 
+**Eine bestätigte Ursache ist nicht dasselbe wie die einzige.** Am
+2026-09-07 fanden wir, warum auf Stephans Rechner der falsche
+Schlüsselbund antwortet: eine systemd-Einheit, die das Paket
+eingeschaltet mitbringt. Maskiert, neu angemeldet, sieben Passwörter
+wieder da – Ursache belegt, Abhilfe geprüft.
+
+**Neun Tage später stand dieselbe Lage wieder da.** Die Maskierung hielt
+unverändert; es gab nur einen zweiten Weg zum selben Ziel. Neben systemd
+kann auch D-Bus einen Dienst starten, sobald jemand nach seinem Namen
+fragt, und dort war gnome-keyring eingetragen
+(`/usr/share/dbus-1/services/`). Ausgelöst hat es die Proton Mail
+Bridge, die automatisch startet und als erste nach einem Passwort fragt.
+
+Die Suche kostete drei Stunden – und begann an der Stelle, die
+nachweislich in Ordnung war, weil unsere eigene Anleitung sie als *die*
+Ursache nannte. **Eine halbe Ursache in der Doku ist schlimmer als
+keine:** Sie lenkt die nächste Suche an den falschen Ort.
+
+Zwei Einzelheiten, die dabei Zeit gekostet haben und jetzt in
+`docs/postfaecher-einrichten.md` stehen: D-Bus liest neue
+Aktivierungsdateien erst nach `ReloadConfig`, und bei `Linger=yes`
+überlebt der alte Dienst das Abmelden – der Name wird dann nie frei,
+und ein Aktivierungseintrag greift nur bei einem freien Namen.
+
 **Eine Auskunft ist erst dann eine, wenn sie dort landet, wo jemand
 hinsieht.** Die dritte Seite derselben Sache. Beim Auffangnetz wird eine
 Auskunft *erfunden*, beim Zeitplan sieht ein Zustand funktionierend

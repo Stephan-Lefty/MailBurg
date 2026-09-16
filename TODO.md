@@ -96,6 +96,43 @@ GNOME-Tresor.
   war zu sehen, bevor die erste Vermutung geäußert wurde. Steht jetzt
   in [docs/postfaecher-einrichten.md](docs/postfaecher-einrichten.md).
 
+- [x] **Und neun Tage später war es wieder da – über den zweiten Weg.**
+  (2026-09-16) Dieselben sieben Postfächer, dieselbe Meldung. Die
+  Maskierung von oben hielt unverändert; sie schließt nur *einen* von
+  zwei Wegen.
+
+  Der zweite hat mit systemd nichts zu tun: **D-Bus startet einen Dienst
+  selbst**, sobald jemand nach seinem Namen fragt. In
+  `/usr/share/dbus-1/services/org.freedesktop.secrets.service` stand
+  `gnome-keyring-daemon`. Es genügte, dass irgendein Programm beim
+  Anmelden nach einem Passwort fragte – bei Stephan die Proton Mail
+  Bridge, die automatisch startet und `secret-service` benutzt.
+
+  Abhilfe ist ein eigener Eintrag unter
+  `~/.local/share/dbus-1/services/`, der auf `ksecretd` zeigt. D-Bus
+  sucht dort zuerst, und **Systemupdates fassen den Benutzerordner nicht
+  an** – anders als die Maskierung, die ein Paket theoretisch wieder
+  aufheben kann.
+
+  Zwei Stolpersteine dabei, beide belegt:
+
+  - D-Bus kennt die neue Datei nicht, solange er läuft. `ReloadConfig`
+    ist nötig – sonst startet er weiter den alten Dienst, und zwar
+    sofort nach jedem Beenden.
+  - `Linger=yes` lässt den alten Dienst **das Abmelden überleben**. Der
+    Name wird damit nie frei, und ein Aktivierungseintrag greift nur bei
+    einem freien Namen. Der erste Reparaturversuch scheiterte genau
+    daran: Der Prozess trug nach dem Neuanmelden dieselbe Nummer wie
+    zuvor.
+
+  **Die Lehre, und sie ist bitter:** Wir hatten am 07.09. eine Ursache
+  gefunden, die Abhilfe geprüft, und sie hielt. Trotzdem war die Sache
+  nicht erledigt – es gab einen zweiten Weg zum selben Ziel. *Eine
+  bestätigte Ursache ist nicht dasselbe wie die einzige.*
+
+  MailBurgs Meldung nennt jetzt den Befehl, mit dem man nachsieht, wer
+  eingetragen ist. Drei Stunden Suche hätten sich damit erübrigt.
+
 - [ ] **Eine kopierte Vorgabe veraltet still.** Die Ausschlussliste wird
   beim Anlegen eines Kontos in `konten.json` hineinkopiert; neue
   Standardnamen erreichen bestehende Konten nie. Stephans Konten tragen
