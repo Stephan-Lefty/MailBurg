@@ -23,7 +23,7 @@ mehr nur den Entwickler.
   Auf allen fünfzehn Konten. Er hätte die Rechnungen ferngehalten, die
   am 09.09. in der Probe standen; der Ordnerausschluss reicht.
 
-- [x] **Das AppImage ist gebaut.** (2026-09-14) Der Weg für alles, was
+- [x] **Das AppImage ist gebaut.** (2026-09-16) Der Weg für alles, was
   nicht Debian ist – Ubuntu, Mint, Fedora, Arch, openSUSE. Eine Datei,
   ausführbar machen, starten.
 

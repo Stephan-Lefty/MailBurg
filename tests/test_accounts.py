@@ -1008,7 +1008,7 @@ class GemerkterSchluesselbundTest(unittest.TestCase):
         ist, ist schlimmer als einer, der immer rot ist: Er lehrt, dass
         man ihm nicht zu glauben braucht.
 
-        Am 2026-09-14 aufgefallen, als er mitten in einer anderen Arbeit
+        Am 2026-09-16 aufgefallen, als er mitten in einer anderen Arbeit
         ausschlug – und dabei nebenbei belegte, dass auf dem Rechner
         wieder zwei Schlüsselbünde laufen.
         """

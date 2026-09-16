@@ -22,7 +22,7 @@ goes wrong now no longer hits the developer alone.
   invoices from the 9 September sample; the folder exclusion is
   enough.
 
-- [x] **The AppImage is built.** (2026-09-14) The route for everything
+- [x] **The AppImage is built.** (2026-09-16) The route for everything
   that is not Debian — Ubuntu, Mint, Fedora, Arch, openSUSE. One file,
   make it executable, run it.
 
