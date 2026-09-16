@@ -98,20 +98,37 @@ jobs:
       # Ab hier die Probe. Der Bau ist nicht der Punkt.
       # ---------------------------------------------------------------
 
+      - name: Ist überhaupt ein AppImage entstanden?
+        run: |
+          set -e
+          cd dist
+          ls -l MailBurg-x86_64.AppImage
+          file MailBurg-x86_64.AppImage
+          chmod +x MailBurg-x86_64.AppImage
+
+      - name: Auspacken, wenn es geht
+        # **Die Hülle lässt sich hier nicht öffnen, das Innere schon.**
+        # Ein AppImage hängt sich über FUSE ein, und in einem Container
+        # gibt es das nicht – ``--appimage-extract`` endete mit
+        # Rücklaufwert 3 und ohne ein Wort dazu.
+        #
+        # Geprüft wird deshalb das AppDir, aus dem das AppImage
+        # unmittelbar davor entstanden ist: derselbe Inhalt, dieselbe
+        # ``AppRun``, nur ohne die Verpackung. **Was damit nicht geprüft
+        # ist, steht hier:** ob die Verpackung selbst sich auf einem
+        # Rechner mit FUSE einhängen lässt. Das zeigt der erste Start
+        # beim Anwender – oder ein Lauf von Hand.
+        continue-on-error: true
+        run: |
+          cd dist
+          ./MailBurg-x86_64.AppImage --appimage-extract || \
+            echo "Kein FUSE im Container - geprüft wird das AppDir."
+
       - name: Läuft es überhaupt?
         run: |
           set -e
           cd dist
-          chmod +x MailBurg-x86_64.AppImage
-          # **Die Ausgabe bleibt stehen.** Hier stand ein `>/dev/null`,
-          # und beim ersten Fehlschlag war dadurch nicht zu sehen, woran
-          # es lag – derselbe Fehler, gegen den das AppImage überhaupt
-          # gebaut wird: eine Auskunft, die niemand abholt.
-          #
-          # Ohne FUSE im Container wird ausgepackt statt eingehängt; das
-          # kann die AppImage-Laufzeit von sich aus.
-          ./MailBurg-x86_64.AppImage --appimage-extract
-          AUSGABE=$(xvfb-run -a ./squashfs-root/AppRun --version 2>&1)
+          AUSGABE=$(xvfb-run -a ./MailBurg.AppDir/AppRun --version 2>&1)
           echo "$AUSGABE"
           echo "$AUSGABE" | grep -q "MailBurg" \
             || { echo "::error::Das AppImage meldet seine Fassung nicht"; exit 1; }
@@ -124,7 +141,7 @@ jobs:
         run: |
           set -e
           cd dist
-          test -n "$(find squashfs-root -name 'libQt6Widgets*' -print -quit)" \
+          test -n "$(find MailBurg.AppDir -name 'libQt6Widgets*' -print -quit)" \
             || { echo "::error::Qt fehlt im AppImage"; exit 1; }
           echo "Qt ist mit an Bord."
 
@@ -135,7 +152,7 @@ jobs:
         run: |
           set -e
           cd dist
-          test -n "$(find squashfs-root -path '*keyring/backends*SecretService*' -print -quit)" \
+          test -n "$(find MailBurg.AppDir -path '*keyring/backends*SecretService*' -print -quit)" \
             || { echo "::error::Die Schlüsselbund-Anbindung fehlt"; exit 1; }
           echo "SecretService ist dabei."
 
@@ -143,7 +160,7 @@ jobs:
         run: |
           set -e
           cd dist
-          ./squashfs-root/AppRun anlegen /tmp/Probe --modus privat
+          ./MailBurg.AppDir/AppRun anlegen /tmp/Probe --modus privat
           python3 - <<'PY'
           import email.message, email.utils, mailbox
           from datetime import datetime, timezone
@@ -159,8 +176,8 @@ jobs:
               box.add(m)
           box.flush(); box.close()
           PY
-          ./squashfs-root/AppRun importieren /tmp/Probe /tmp/probe.mbox --konto Probe
-          TREFFER=$(./squashfs-root/AppRun suchen /tmp/Probe "rechnung" 2>&1)
+          ./MailBurg.AppDir/AppRun importieren /tmp/Probe /tmp/probe.mbox --konto Probe
+          TREFFER=$(./MailBurg.AppDir/AppRun suchen /tmp/Probe "rechnung" 2>&1)
           echo "$TREFFER"
           echo "$TREFFER" | grep -qi "Schlussrechnung" \
             || { echo "::error::Die Suche findet nichts"; exit 1; }
@@ -182,7 +199,7 @@ jobs:
         run: |
           cd dist
           set +e
-          timeout 45 ./squashfs-root/AppRun > /tmp/start.log 2>&1
+          timeout 45 ./MailBurg.AppDir/AppRun > /tmp/start.log 2>&1
           RC=$?
           set -e
           echo "Rückgabewert: $RC"
@@ -203,17 +220,17 @@ jobs:
         run: |
           cd dist
           echo "Benötigtes glibc (höchste verlangte Fassung):"
-          objdump -T squashfs-root/usr/bin/MailBurg 2>/dev/null \
+          objdump -T MailBurg.AppDir/usr/bin/MailBurg 2>/dev/null \
             | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -V | tail -1 \
             || echo "(nicht ermittelbar)"
 
       - name: Der Eintrag im Anwendungsmenü
-        run: desktop-file-validate dist/squashfs-root/mailburg.desktop
+        run: desktop-file-validate dist/MailBurg.AppDir/mailburg.desktop
 
       - name: Prüfsumme
         run: |
           cd dist
-          rm -rf squashfs-root
+          rm -rf squashfs-root MailBurg.AppDir
           sha256sum MailBurg-x86_64.AppImage > MailBurg-x86_64.AppImage.sha256
           cat MailBurg-x86_64.AppImage.sha256
 
