@@ -178,9 +178,8 @@ the `Message-ID` against what is already there. See
 
 ## Getting started
 
-**Ubuntu, Linux Mint, Fedora, Arch, openSUSE — and everything else:** the
-**AppImage**. One file, make it executable, run it. No Python, no package
-manager, no matter which distribution.
+**Ubuntu 24.04, Linux Mint 22, Fedora, Arch, openSUSE:** the **AppImage**.
+One file, make it executable, run it. No Python, no package manager.
 
 ```bash
 chmod +x MailBurg-x86_64.AppImage
@@ -191,6 +190,12 @@ It is attached to every
 [release](https://github.com/Stephan-Lefty/MailBurg/releases). Put it in a
 permanent place before setting up scheduled retrieval — the schedule
 remembers where the file is.
+
+> **Not on Ubuntu 22.04, Linux Mint 21 or Debian 12.** Those systems lack
+> both: an SQLite new enough to create MailBurg's search index (measured on
+> 2026-09-16: 3.37 and 3.40, 3.45 or later is required) and the system
+> libraries the AppImage depends on. **MailBurg does not run there** — and
+> it says so on the first archive rather than crashing.
 
 **Debian 13 and GuideOS:** there the `.deb` is the better route, because it
 takes the interface from the distribution and thus receives its security

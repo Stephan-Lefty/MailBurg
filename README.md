@@ -72,9 +72,9 @@ ersten Mal gegen einen echten Server gelaufen: rund 5.000 Nachrichten aus
 einem selbst betriebenen Stalwart, 200 davon in unter fünf Sekunden. Bei
 Fastmail hat es noch niemand ausprobiert.
 
-Für Debian und GuideOS hängt ein fertiges `.deb` an jedem Release, für
-Windows die `MailBurg.exe`. Was noch fehlt: Outlook-`.pst`, AppImage und
-`.dmg` sowie der erprobte Betrieb unter macOS. Die vollständige Liste steht in
+Für Debian 13 und GuideOS hängt ein fertiges `.deb` an jedem Release, für
+Windows die `MailBurg.exe`, für alles andere ein AppImage. Was noch fehlt:
+Outlook-`.pst`, das `.dmg` und der erprobte Betrieb unter macOS. Die Liste steht in
 [TODO.md](TODO.md).
 
 ## Wie es funktioniert
@@ -188,9 +188,8 @@ liegt. Siehe [docs/zurueckspielen.md](docs/zurueckspielen.md).
 
 ## Loslegen
 
-**Ubuntu, Linux Mint, Fedora, Arch, openSUSE – und alles andere:** das
-**AppImage**. Eine Datei, ausführbar machen, starten. Kein Python, keine
-Paketverwaltung, egal welche Distribution.
+**Ubuntu 24.04, Linux Mint 22, Fedora, Arch, openSUSE:** das **AppImage**.
+Eine Datei, ausführbar machen, starten. Kein Python, keine Paketverwaltung.
 
 ```bash
 chmod +x MailBurg-x86_64.AppImage
@@ -200,6 +199,13 @@ chmod +x MailBurg-x86_64.AppImage
 Es hängt an jedem [Release](https://github.com/Stephan-Lefty/MailBurg/releases).
 Legen Sie es an einen festen Platz, bevor Sie den regelmäßigen Abruf
 einrichten – der merkt sich den Ort der Datei.
+
+> **Nicht auf Ubuntu 22.04, Linux Mint 21 oder Debian 12.** Diesen
+> Systemen fehlt beides: ein SQLite, das MailBurgs Suchindex anlegen kann
+> (nachgemessen am 16.09.2026: 3.37 und 3.40, gebraucht wird ab 3.45), und
+> die Systembibliotheken, an denen das AppImage hängt. **MailBurg läuft
+> dort nicht** – es sagt das beim ersten Archiv auch selbst, statt
+> abzustürzen.
 
 **Debian 13 und GuideOS:** Dort ist das `.deb` der bessere Weg, weil es die
 Oberfläche aus der Distribution nimmt und damit deren Sicherheitsupdates
