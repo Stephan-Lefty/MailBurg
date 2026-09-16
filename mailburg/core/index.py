@@ -833,9 +833,13 @@ class SqliteZuAlt(RuntimeError):
             f"annimmt.\n\n"
             f"Dieser Index ist es, der »muller« auch »Müller« finden lässt "
             f"und\n»rechnung« auch in »Schlussrechnung«.\n\n"
-            f"Abhilfe: eine neuere Distribution – oder das AppImage von\n"
-            f"https://github.com/Stephan-Lefty/MailBurg/releases/latest,\n"
-            f"das sein SQLite mitbringt."
+            f"Nachgemessen am 16.09.2026:\n"
+            f"  Debian 12, Ubuntu 22.04 und Linux Mint 21   reichen nicht\n"
+            f"  Debian 13, Ubuntu 24.04, Mint 22, Fedora, Arch   reichen\n\n"
+            f"Abhilfe ist eine neuere Distribution. **Das AppImage hilft "
+            f"hier nicht:**\nEs bringt zwar sein eigenes SQLite mit, "
+            f"verlangt aber selbst ein System\nab Ubuntu 24.04 oder "
+            f"Debian 13."
         )
 
 

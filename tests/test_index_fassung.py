@@ -289,7 +289,9 @@ class ZuAltesSqliteTest(unittest.TestCase):
         self.assertIn("3.40.1", text)
         self.assertIn("remove_diacritics", text)
         # Und der Weg heraus, nicht nur die Diagnose.
-        self.assertIn("AppImage", text)
+        # Und die Systeme, auf denen es geht - nicht nur die Diagnose.
+        self.assertIn("Debian 13", text)
+        self.assertIn("Ubuntu 24.04", text)
 
     def test_ein_anderer_fehler_bleibt_ein_anderer(self):
         """**Sonst wäre die Meldung eine Behauptung.**
