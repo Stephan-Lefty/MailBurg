@@ -7,7 +7,11 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.4.8] – 2026-09-16
+
+Aus einem Nachmittag Fehlersuche an Stephans Rechner: ein fehlender
+Befehl, zwei halbe Wahrheiten in der Anleitung – und eine Ursache, die
+wir vor neun Tagen schon einmal *behoben* hatten.
 
 ### Hinzugefügt
 
@@ -2054,6 +2058,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.4.8]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.4...v1.4.5
