@@ -103,8 +103,14 @@ jobs:
           set -e
           cd dist
           chmod +x MailBurg-x86_64.AppImage
-          # Ohne FUSE im Container: auspacken und das Innere starten.
-          ./MailBurg-x86_64.AppImage --appimage-extract >/dev/null
+          # **Die Ausgabe bleibt stehen.** Hier stand ein `>/dev/null`,
+          # und beim ersten Fehlschlag war dadurch nicht zu sehen, woran
+          # es lag – derselbe Fehler, gegen den das AppImage überhaupt
+          # gebaut wird: eine Auskunft, die niemand abholt.
+          #
+          # Ohne FUSE im Container wird ausgepackt statt eingehängt; das
+          # kann die AppImage-Laufzeit von sich aus.
+          ./MailBurg-x86_64.AppImage --appimage-extract
           AUSGABE=$(xvfb-run -a ./squashfs-root/AppRun --version 2>&1)
           echo "$AUSGABE"
           echo "$AUSGABE" | grep -q "MailBurg" \
