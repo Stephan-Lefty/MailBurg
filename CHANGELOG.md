@@ -7,6 +7,78 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.5.1] – 2026-09-21
+
+Eine Fassung, die nichts Neues kann und trotzdem gebraucht wurde:
+**Drei Störungen, die binnen zweier Wochen echte Anwender getroffen
+haben, standen im Handbuch nicht.** Beschrieben waren alle drei – aber
+nur in `docs/`, und dorthin sieht niemand, der gerade im Programm
+feststeckt. Er drückt F1.
+
+### Hinzugefügt
+
+- **Das Kapitel *Tipps* kennt jetzt die Ausfälle aus dem Betrieb.**
+
+  *Der selbsttätige Abruf kann aufhören, ohne dass es auffällt.* Wer
+  die `MailBurg.exe` oder das AppImage nach dem Einrichten verschiebt,
+  stellt den Abruf ab – der Zeitplan trägt den vollen Pfad. Zu sehen
+  ist davon nichts: Der Eintrag steht weiter da, das Fenster meldet
+  weiter »alle 30 Minuten«, und es kommt trotzdem keine Post.
+
+  *Wenn plötzlich alle Passwörter weg zu sein scheinen.* Unter Linux
+  beantwortet nur **ein** Dienst die Passwortanfragen, und wer zuerst
+  startet, gewinnt. Sind zwei installiert, kann nach einem Systemupdate
+  der falsche antworten – das sieht aus wie ein leerer Schlüsselbund.
+  Mit dem Rat, der am meisten kostet, wenn er fehlt: **die Passwörter
+  dann nicht einfach neu einzutragen.** Sie lägen danach im falschen
+  Tresor, und beim nächsten Wechsel stünde man wieder da.
+
+  *Proton Mail: nach jeder Neuanmeldung der Bridge.* Sie erzeugt jedes
+  Mal ein neues Passwort, zu ändern in zwei Programmen – und mit dem
+  Abruf ist zu warten, bis die Bridge ihren Bestand geladen hat. Sonst
+  sieht es aus, als wäre Post verschwunden.
+
+  Drei Tests halten die Hinweise fest, damit sie beim nächsten Umbau
+  des Kapitels nicht unbemerkt herausfallen.
+
+- **Die Suchordner stehen jetzt dort, wo sie jemand sucht** – am Ende
+  von *Suchen, die sich lohnen*. Genau die Beispielzeilen darüber sind
+  die, die man behalten will.
+
+### Behoben
+
+- **Die Projektseite nannte Fassung 1.4.8**, während 1.5.0
+  veröffentlicht war. Die erste Zahl, die ein Besucher liest, und kein
+  Test hat sie gemeldet – weil es keinen gab.
+
+  Eine Fassungsnummer in der Doku veraltet lautlos: Sie sieht auch dann
+  richtig aus, wenn sie falsch ist. Der neue Wächter **hält keinen
+  Wortlaut fest, sondern erzwingt einen** – er wird rot, *bis* die Doku
+  nachgezogen ist. Das ist der Unterschied zu dem Test, der am
+  2026-09-07 den Satz »Microsoft-Konten gehen derzeit nicht«
+  konservierte.
+
+- **Die Übersichtsgrafik nannte weder Suchordner noch Evolution.**
+  Letzteres, obwohl MailBurg dessen lokale Ordner seit der 1.2.0 liest.
+  Die Bildbeschreibung ist mitgezogen – für einen Screenreader ist sie
+  das Bild.
+
+- **`install.sh` brach ohne Terminal still ab.** Nachgetragen: Dieser
+  Punkt steht in der 1.5.0 und ist dort ausführlich beschrieben; er
+  betrifft nur die Einrichtung aus dem Quelltext.
+
+- **Das Bilderwerkzeug schrieb in die echten Einstellungen.** Bisher
+  folgenlos – seit der 1.5.0 nicht mehr: Das Skript sucht mehrmals, und
+  die Suche merkt sich das. Der nächste Bilderlauf hätte »rechnung« in
+  die Liste *Zuletzt gesucht* des Entwicklers geschrieben und zwei
+  Suchordner in seinen Baum. Dieselbe Vorkehrung wie in
+  `werkzeuge/lesbarkeit.py` seit dem 2026-09-06, und derselbe Satz
+  gilt: **Ein Werkzeug, das Bilder macht, darf am Rechner nichts
+  ändern.**
+
+  Anwender sind davon nicht betroffen; das Skript läuft nur im
+  Quelltextbaum.
+
 ## [1.5.0] – 2026-09-21
 
 Eine Fassung aus **einer einzigen Rückmeldung** – und wie die drei
@@ -2189,6 +2261,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.5.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.8...v1.5.0
 [1.4.8]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.6...v1.4.7

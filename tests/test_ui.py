@@ -2054,6 +2054,52 @@ class HandbuchTest(OberflaechenTest):
         self.assertIn("unterstützt", text)
         self.assertNotIn("GoBD-konform", text)
 
+    def test_die_tipps_kennen_die_ausfaelle_aus_dem_betrieb(self):
+        """Was im Alltag Ärger macht, muss im Handbuch stehen.
+
+        **Am 2026-09-21 stand nichts davon dort.** Drei Lagen hatten
+        binnen zweier Wochen echte Anwender getroffen – ein Abruf, der
+        stillschweigend aufhörte; Passwörter, die scheinbar weg waren;
+        ein Proton-Passwort, das sich von selbst ändert. Beschrieben
+        waren alle drei, aber nur in ``docs/``.
+
+        **Und dorthin sieht niemand, der gerade im Programm
+        feststeckt.** Er drückt F1. Dieselbe Klasse wie die 1.4.6: Die
+        Auskunft war vollständig da und wurde nirgends abgeholt.
+        """
+        # **Zeilenumbrüche weg, bevor gesucht wird.** Der Quelltext ist
+        # auf 72 Zeichen umbrochen; ein Suchbegriff, der zufällig über
+        # eine Zeilengrenze fällt, wäre sonst nicht zu finden – und der
+        # Test würde beim nächsten Umformatieren rot, ohne dass etwas
+        # fehlt. Genau das ist beim Schreiben dieses Tests passiert.
+        text = " ".join(self._text("tipps").split())
+
+        for satz, wofuer in (
+            ("vollen Pfad", "Zeitplan zeigt nach dem Verschieben ins Leere"),
+            ("nur <i>einen</i> Dienst", "zwei Schlüsselbünde"),
+            ("jeder Neuanmeldung ein neues Passwort",
+             "Proton-Bridge wechselt das Passwort"),
+        ):
+            with self.subTest(wofuer=wofuer):
+                self.assertIn(satz, text, f"Tipps ohne Hinweis: {wofuer}")
+
+    def test_die_tipps_raten_nicht_zum_neu_eintragen(self):
+        """Der teuerste Rat bei zwei Schlüsselbünden wäre der falsche.
+
+        Wer seine Passwörter neu einträgt, legt sie in den Tresor, der
+        gerade antwortet – also in den falschen –, und steht beim
+        nächsten Wechsel wieder da. Am 2026-09-07 genau so passiert.
+        """
+        text = " ".join(self._text("tipps").split())
+
+        self.assertIn("nicht einfach neu ein", text)
+
+    def test_die_tipps_nennen_die_suchordner(self):
+        """Die Beispielsuchen darüber sind genau die zum Behalten."""
+        text = self._text("tipps")
+
+        self.assertIn("Suchordner", text)
+
     def test_aufraeumen_warnt_vor_der_falschen_reihenfolge(self):
         text = self._text("aufraeumen")
 

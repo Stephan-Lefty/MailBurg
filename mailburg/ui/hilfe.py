@@ -784,6 +784,68 @@ Mail.<br>
 <p>Und wenn eine Suche nichts findet, obwohl es die Mail geben müsste:
 Vielleicht steckt sie in einem <a href="#scans">eingescannten PDF</a>,
 das noch nicht gelesen wurde.</p>
+
+<p><b>Was Sie zweimal gesucht haben, suchen Sie ein drittes Mal.</b>
+Genau die Zeilen hier oben lohnt es, zu behalten: <i>Suchen → Diese
+Suche als Suchordner sichern …</i> gibt ihnen einen Namen und stellt
+sie links in den Baum. Mehr dazu im Kapitel
+<a href="#suchen">Suchen</a>.</p>
+
+<h3>Der selbsttätige Abruf kann aufhören, ohne dass es auffällt</h3>
+
+<p>In den Zeitplan schreibt MailBurg den <b>vollen Pfad</b> des
+Programms. Wer die Datei danach verschiebt – die
+<i>MailBurg.exe</i> aus dem Download-Ordner an ihren richtigen Platz,
+das AppImage in einen anderen Ordner –, hat damit den Abruf
+abgestellt.</p>
+
+<p><b>Zu sehen ist davon nichts.</b> Der Eintrag steht weiter in der
+Aufgabenplanung, das Fenster meldet weiter „alle 30 Minuten", und es
+kommt trotzdem keine Post. Aufgefallen wäre es erst beim Suchen einer
+Mail, die nie angekommen ist – und dann wüsste niemand, seit wann.</p>
+
+<p>MailBurg prüft das seit der Fassung 1.4.4 beim Öffnen des Archivs
+und bietet an, es geradezuziehen. <b>Legen Sie das Programm trotzdem
+erst an seinen endgültigen Platz</b>, bevor Sie den Abruf einrichten.
+Wer über die Paketverwaltung installiert hat, ist davon nicht
+betroffen.</p>
+
+<h3>Wenn plötzlich alle Passwörter weg zu sein scheinen</h3>
+
+<p>Unter Linux kann es vorkommen, dass MailBurg für <i>jedes</i>
+Postfach meldet, es liege kein Passwort im Schlüsselbund. <b>Mehrere
+Passwörter verschwinden nicht gemeinsam</b> – was gleichzeitig
+passiert, hat eine andere Ursache.</p>
+
+<p>Es gibt unter Linux nur <i>einen</i> Dienst, der Passwortanfragen
+beantwortet, und wer zuerst startet, gewinnt. Sind zwei installiert –
+etwa der GNOME-Schlüsselbund und die KDE-Brieftasche –, kann nach
+einem Systemupdate der andere antworten als der, in dem Ihre
+Passwörter liegen. Von außen sieht das aus wie ein leerer
+Schlüsselbund.</p>
+
+<p><b>Tragen Sie die Passwörter dann nicht einfach neu ein.</b> Sie
+lägen danach im falschen Tresor, und beim nächsten Wechsel stünden Sie
+wieder da. MailBurg erkennt die Lage und nennt in der Meldung den
+Dienst, der gerade antwortet. Was dann zu tun ist, steht ausführlich in
+der Anleitung <i>Postfächer einrichten</i> im Ordner <i>docs</i> des
+Projekts.</p>
+
+<h3>Proton Mail: nach jeder Neuanmeldung der Bridge</h3>
+
+<p>Die Proton Mail Bridge <b>erzeugt bei jeder Neuanmeldung ein neues
+Passwort</b>. Das alte gilt dann nicht mehr – und zwar überall.</p>
+
+<p>Zu ändern ist es an zwei Stellen: in Ihrem Mailprogramm und in
+MailBurg. Hier über <i>Einstellungen → Postfächer verwalten …</i> beim
+betreffenden Postfach, oder auf der Kommandozeile mit
+<i>mailburg konten passwort NAME</i>.</p>
+
+<p><b>Warten Sie mit dem Abruf, bis die Bridge ihren Bestand geladen
+hat.</b> Direkt nach einer Neuanmeldung meldet sie zunächst wenige
+Ordner und wenige Mails; ein Abruf in diesem Moment sieht aus, als
+wäre Post verschwunden. Sie ist es nicht – sie ist nur noch nicht
+da.</p>
 """
 
 _AUFRAEUMEN = """

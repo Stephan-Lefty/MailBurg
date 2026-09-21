@@ -53,7 +53,7 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 1.5.0, in daily use.** Archive format, IMAP retrieval, search
+**Version 1.5.1, in daily use.** Archive format, IMAP retrieval, search
 including saved searches, the graphical interface, text recognition for
 scanned PDFs, backups and scheduled retrieval are all in place and used every
 day — on Linux with a corpus of around 68,000 messages, on Windows with the
