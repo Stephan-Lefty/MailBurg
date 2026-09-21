@@ -7,6 +7,23 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **Getting rid of an archive only half works.** `mailburg loeschen`
+  removes the mail of *one account* from an archive — disposing of a
+  whole archive is not what it means, and there is no route for that.
+
+  Delete the folder by hand and the search index stays behind: it sits
+  outside on purpose, under `~/.local/share/mailburg/index/<uuid>.db`.
+  Nobody can place it afterwards — the id lived in the deleted
+  `archive.json`.
+
+  For a test archive that is kilobytes. For a grown corpus it was
+  **968 MB for 68,000 messages** in the measurement of 2026-09-21.
+
+  What is needed: a command that takes both away together and says
+  beforehand what it touches. Noticed on 2026-09-21, when a test
+  archive was created for the OAuth2 attempt — with the express
+  intention of deleting it again afterwards.
+
 ### The hash chain can break without anything being lost (2026-09-21)
 
 **Found on Stephan's real business archive**, during a health check

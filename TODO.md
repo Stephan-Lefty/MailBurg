@@ -8,6 +8,23 @@ wurde.
 
 ## Offen
 
+- [ ] **Ein Archiv loswerden geht nur halb.** `mailburg loeschen`
+  entfernt Mails *eines Postfachs* aus einem Archiv – ein ganzes Archiv
+  wegzuräumen ist damit nicht gemeint, und dafür gibt es keinen Weg.
+
+  Wer den Ordner von Hand löscht, lässt den Suchindex zurück: Er liegt
+  bewusst außerhalb, unter `~/.local/share/mailburg/index/<uuid>.db`.
+  Zuordnen kann ihn danach niemand mehr – die Kennung steht ja in der
+  gelöschten `archive.json`.
+
+  Bei einem Testarchiv sind das Kilobyte. Bei einem gewachsenen Bestand
+  waren es in der Messung vom 2026-09-21 **968 MB für 68.000 Mails**.
+
+  Gebraucht würde: ein Befehl, der beides zusammen wegnimmt und vorher
+  sagt, was er anfasst. Aufgefallen am 2026-09-21, als ein Testarchiv
+  für den OAuth2-Versuch angelegt wurde – mit der ausdrücklichen
+  Absicht, es hinterher wieder zu löschen.
+
 ### Die Hash-Kette kann reißen, ohne dass etwas verloren geht (2026-09-21)
 
 **Gefunden an Stephans echtem Geschäftsarchiv**, bei einem
