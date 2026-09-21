@@ -799,12 +799,13 @@ darin:**
   Programmfehler. Ausgerechnet auf dem Weg, der für Zeitplan und Server
   gedacht ist.
 
-- [ ] **Offen: Das Zurückholen einer Sicherung gibt es nur im Fenster.**
-  `sicherung.entpacken()` und `uebernehmen()` rufen allein
-  `ui/sichern.py` auf; auf der Kommandozeile lässt sich nur packen.
-  **Auf einem Server gibt es kein Fenster** – und dort wird eine
-  Wiederherstellung am ehesten gebraucht, nämlich dann, wenn etwas
-  kaputt ist. Der Kern kann es; es fehlt der Befehl.
+- [x] **Das Zurückholen einer Sicherung gibt es jetzt auch ohne
+  Fenster.** (2026-09-21) `sicherung.entpacken()` und `uebernehmen()`
+  hatten genau einen Aufrufer: `ui/sichern.py`. **Auf einem Server gibt
+  es kein Fenster** – und dort wird eine Wiederherstellung am ehesten
+  gebraucht, nämlich dann, wenn etwas kaputt ist. Dafür gibt es jetzt
+  `mailburg wiederherstellen`, mit beiden Wegen: in einen leeren
+  Ordner oder mit `--hinein` in ein vorhandenes Archiv.
 
 - [ ] **Offen: Über Nacht gelaufen ist es nicht.** Der Zeitplan mit
   hinterlegtem Passwort wurde von Hand durchgespielt, nicht über Tage.

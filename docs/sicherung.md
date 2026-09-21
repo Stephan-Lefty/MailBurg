@@ -151,6 +151,32 @@ Suchen.
 Probieren Sie das einmal aus, solange Sie es nicht brauchen. Der Tag, an dem
 Sie es brauchen, ist der falsche für die erste Übung.
 
+### Ohne Fenster – auf dem Server
+
+Beides geht auch auf der Kommandozeile, und dort ist es oft der einzige Weg:
+Auf einem Server gibt es kein Fenster, und gebraucht wird eine
+Wiederherstellung genau dann, wenn etwas kaputt ist.
+
+```bash
+# in einen leeren Ordner – das Archiv entsteht neu
+mailburg wiederherstellen sicherung.tar.zst ~/Archiv-neu
+
+# oder in ein vorhandenes Archiv hinein
+mailburg wiederherstellen sicherung.tar.zst --hinein ~/Mailarchiv
+```
+
+Stammt die Sicherung aus einem **verschlüsselten** Archiv, ist sie es selbst
+auch. Beim Aufnehmen in ein anderes Archiv braucht es deshalb ihr Passwort –
+und das kann ein ganz anderes sein als das des Ziels:
+
+```bash
+mailburg wiederherstellen sicherung.tar.zst --hinein ~/Mailarchiv \
+    --passwort-der-sicherung 'das der Sicherung'
+```
+
+Danach `mailburg pruefen ~/Archiv-neu`. Der Suchindex wird nicht mitgesichert;
+er entsteht beim ersten Öffnen neu oder sofort mit `mailburg neuaufbau`.
+
 ## Was dabei schiefgehen kann
 
 **Die Sicherung liegt neben dem Original.** Dann geht sie mit ihm zusammen

@@ -722,11 +722,12 @@ into a fresh archive and verifying the chain all went through.
   program fault. On the very route meant for the scheduler and the
   server.
 
-- [ ] **Open: restoring a backup exists only in the window.**
-  `sicherung.entpacken()` and `uebernehmen()` are called solely from
-  `ui/sichern.py`; the command line can only pack. **A server has no
-  window** — and that is where a restore is needed most, namely when
-  something has broken. The core can do it; the command is missing.
+- [x] **Restoring a backup now works without a window.**
+  (2026-09-21) `sicherung.entpacken()` and `uebernehmen()` had exactly
+  one caller: `ui/sichern.py`. **A server has no window** — and that is
+  where a restore is needed most, namely when something has broken.
+  There is now `mailburg wiederherstellen`, with both routes: into an
+  empty folder, or with `--hinein` into an existing archive.
 
 - [ ] **Open: it has not run overnight.** The schedule with a stored
   passphrase was walked through by hand, not over days. That remains the

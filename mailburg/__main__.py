@@ -2974,6 +2974,102 @@ def cmd_hilfe_suche(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_wiederherstellen(args) -> int:
+    """Holt ein Archiv aus einer Sicherung zurück.
+
+    **Warum es diesen Befehl gibt, und warum so spät.** Sichern konnte
+    die Kommandozeile von Anfang an; zurückholen ging bis zum
+    2026-09-21 nur im Fenster. ``sicherung.entpacken()`` und
+    ``uebernehmen()`` hatten genau einen Aufrufer: ``ui/sichern.py``.
+
+    **Auf einem Server gibt es kein Fenster** – und dort wird eine
+    Wiederherstellung am ehesten gebraucht, nämlich dann, wenn etwas
+    kaputt ist. Ein Archivprogramm, dessen Rückweg an einer grafischen
+    Oberfläche hängt, hat im Ernstfall keinen.
+
+    Aufgefallen beim Durchspielen der Verschlüsselung, als die
+    Prüfliste »Sicherung in ein neues Archiv einspielen« verlangte und
+    sich das auf der Kommandozeile nicht machen ließ.
+
+    Zwei Wege, und der Unterschied ist wesentlich:
+
+    **In einen leeren Ordner** entsteht das Archiv neu, mit seiner
+    eigenen Hash-Kette – so, wie es gesichert wurde. Das ist der Fall
+    nach einem Plattenschaden.
+
+    **In ein vorhandenes Archiv** wandern nur die Nachrichten, mit
+    ihrem ursprünglichen Postfach und Ordner. Beide Ketten bleiben
+    dabei heil, und doppelte Mails erkennt das Archiv selbst.
+    """
+    from mailburg.core import sicherung
+
+    datei = Path(args.datei).expanduser()
+    if not datei.is_file():
+        print(f"{datei} gibt es nicht.", file=sys.stderr)
+        return 2
+
+    if args.ziel and args.hinein:
+        print("Entweder ein Ziel für ein neues Archiv oder --hinein für "
+              "ein vorhandenes – beides zusammen geht nicht.",
+              file=sys.stderr)
+        return 2
+
+    if not args.ziel and not args.hinein:
+        print("Wohin? Entweder ein leerer Ordner für ein neues Archiv:\n"
+              f"    mailburg wiederherstellen {datei} ~/Archiv-neu\n\n"
+              "oder ein vorhandenes Archiv, in das die Mails wandern:\n"
+              f"    mailburg wiederherstellen {datei} --hinein ~/Archiv",
+              file=sys.stderr)
+        return 2
+
+    def melden(getan: int, gesamt: int) -> None:
+        if args.leise or not gesamt:
+            return
+        print(f"\r  {getan} von {gesamt} …", end="", flush=True)
+
+    if args.ziel:
+        ziel = Path(args.ziel).expanduser()
+        try:
+            befund = sicherung.entpacken(datei, ziel, fortschritt=melden)
+        except sicherung.SicherungFehler as exc:
+            print(f"{exc}", file=sys.stderr)
+            return 2
+
+        if not args.leise:
+            print()
+        print(f"Zurückgeholt nach {befund.ziel}:")
+        print(f"  {sprache.dateien(befund.dateien)} aus der Sicherung")
+        for warnung in befund.warnungen:
+            print(f"  Achtung: {warnung}")
+        print()
+        print("Der Suchindex wird nicht mitgesichert – er entsteht beim")
+        print("ersten Öffnen neu, oder sofort mit:")
+        print(f"    mailburg neuaufbau {befund.ziel}")
+        return 0
+
+    # In ein vorhandenes Archiv hinein.
+    with oeffnen(Path(args.hinein).expanduser(), exclusive=True) as archiv:
+        try:
+            befund = sicherung.uebernehmen(
+                archiv, datei, fortschritt=melden,
+                passwort=args.passwort_der_sicherung,
+            )
+        except sicherung.SicherungFehler as exc:
+            print(f"{exc}", file=sys.stderr)
+            return 2
+
+        if not args.leise:
+            print()
+        print(f"Aufgenommen in {archiv.name}:")
+        print(f"  {sprache.mails(befund.dateien)} aus der Sicherung")
+        for warnung in befund.warnungen:
+            print(f"  Achtung: {warnung}")
+        print()
+        print("Doppelte erkennt das Archiv selbst – dieselbe Sicherung")
+        print("zweimal einzulesen legt nichts zweimal ab.")
+    return 0
+
+
 def cmd_sichern(args) -> int:
     """Packt das Archiv in eine Datei – für den Zeitplan gedacht."""
     from mailburg.core import sicherung
@@ -3544,6 +3640,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--leise", action="store_true", help="nur bei Fehlern melden")
     p.set_defaults(func=cmd_sichern)
+
+    p = subparsers.add_parser(
+        "wiederherstellen",
+        help="ein Archiv aus einer Sicherung zurückholen",
+        description=(
+            "Der Weg zurück. Entweder in einen leeren Ordner – dann "
+            "entsteht das Archiv neu, so wie es gesichert wurde, mit "
+            "seiner eigenen Hash-Kette. Oder mit --hinein in ein "
+            "vorhandenes Archiv; dann wandern nur die Nachrichten "
+            "hinein, mit ihrem ursprünglichen Postfach und Ordner, und "
+            "beide Ketten bleiben heil. Doppelte erkennt das Archiv "
+            "selbst."
+        ),
+    )
+    p.add_argument("datei", help="die Sicherungsdatei")
+    p.add_argument(
+        "ziel", nargs="?",
+        help="leerer Ordner für ein neues Archiv",
+    )
+    p.add_argument(
+        "--hinein", default="", metavar="ARCHIV",
+        help="stattdessen in dieses vorhandene Archiv aufnehmen",
+    )
+    p.add_argument(
+        "--passwort-der-sicherung", default="", metavar="PASSWORT",
+        dest="passwort_der_sicherung",
+        help=(
+            "nur mit --hinein: das Passwort der Sicherung, falls sie aus "
+            "einem verschlüsselten Archiv stammt. Es kann ein anderes "
+            "sein als das des Zielarchivs"
+        ),
+    )
+    p.add_argument("--leise", action="store_true", help="nur bei Fehlern melden")
+    p.set_defaults(func=cmd_wiederherstellen)
 
     p = subparsers.add_parser(
         "loeschen",
