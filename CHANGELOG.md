@@ -7,6 +7,134 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.6.0] – 2026-09-21
+
+**Die Fassung vor dem ersten Firmeneinsatz.** Stephans Ansage dazu war
+knapp: »Wir müssen jetzt noch alle Fehler beseitigen, bevor die ersten
+Nutzer das Archiv für Unternehmen nutzen.«
+
+Herausgekommen ist mehr, als die Frage erwarten ließ – und das
+Gefährlichere waren nicht die bekannten Fehler, sondern die Zusagen,
+die nie jemand an der Wirklichkeit geprüft hatte. Drei davon sind
+seitdem geprüft.
+
+### Behoben
+
+- **Zwei gleichzeitige Zugriffe konnten die Hash-Kette zerreißen.** Der
+  schwerste Fehler dieser Fassung, und gefunden wurde er bei einem
+  Gesundheitscheck an einem echten Geschäftsarchiv.
+
+  `journal.append()` zählte von dem Stand, den *dieser* Zugriff beim
+  Öffnen gelesen hatte. Wer das Archiv lange offen hält – das
+  Hauptfenster – bekam nicht mit, dass nebenher ein Abruf schrieb. Am
+  12.09. schrieb der Zeitplan um 07:57 die Nummern 488 bis 493; eine
+  halbe Minute später stufte jemand im offenen Fenster sechs Mails ein,
+  und das Fenster zählte ab 488 noch einmal.
+
+  **Die Kette war damit gerissen, ohne dass eine einzige Mail
+  fehlte** – für ein Geschäftsarchiv der teuerste Fehler, den es gibt:
+  Das Programm, das die Unveränderbarkeit belegen soll, sagt selbst
+  aus, sein Protokoll sei kaputt.
+
+  Die Sperrdatei half dabei nicht; sie verhindert zwei *schreibend*
+  geöffnete Archive, und das Fenster öffnet lesend. `append()` sieht
+  jetzt vor jedem Eintrag nach, ob die offene Datei noch so aussieht
+  wie beim letzten Blick – Name und Größe, ein `stat()`. Schreibt nur
+  dieser Zugriff, wird nie nachgelesen: Der Preis bleibt bei null, wo
+  sonst der Flaschenhals läge.
+
+- **Drei Passwortabfragen brachen ohne Terminal mit einem Traceback
+  ab** – beim Anlegen eines verschlüsselten Archivs, beim
+  Passwortwechsel und beim Hinterlegen im Tresor. Von zwölf Abfragen
+  hatte genau eine die nötige Prüfung, nämlich die beim Öffnen.
+
+  Wer ein Archiv aus einem Skript einrichtet – beim Aufsetzen eines
+  Servers, in einem Container –, trifft das zuerst. Und dort sieht ein
+  Traceback aus wie ein Fehler im Programm, nicht wie eine fehlende
+  Eingabemöglichkeit.
+
+- **Beim Anlegen wurde die Umgebung nicht gelesen.** Ein
+  verschlüsseltes Archiv ließ sich damit überhaupt nicht automatisiert
+  einrichten. Beim *Öffnen* galt die Reihenfolge Umgebung → Tresor →
+  fragen seit jeher.
+
+- **`mailburg pruefen` stürzte bei einem unvollständigen Eintrag ab.**
+  Ausgerechnet das Werkzeug, das Beschädigungen finden soll, lieferte
+  bei einer bestimmten Beschädigung einen Traceback statt eines
+  Befunds.
+
+- **`install.sh` brach ohne Terminal still ab** und sah dabei aus wie
+  ein Erfolg. Nachgetragen: Dieser Punkt kam mit der 1.5.2.
+
+### Hinzugefügt
+
+- **`mailburg wiederherstellen` – der Weg zurück ohne Fenster.**
+  Sichern konnte die Kommandozeile von Anfang an; zurückholen ging nur
+  im Fenster. **Auf einem Server gibt es keines** – und dort wird eine
+  Wiederherstellung am ehesten gebraucht, nämlich dann, wenn etwas
+  kaputt ist.
+
+  Zwei Wege, und der Unterschied ist wesentlich: in einen leeren Ordner
+  entsteht das Archiv neu, mit seiner eigenen Hash-Kette. Mit
+  `--hinein` wandern nur die Nachrichten in ein vorhandenes Archiv;
+  beide Ketten bleiben heil, und Doppelte erkennt das Archiv selbst.
+
+- **`mailburg kettenvermerk` – eine bekannte Bruchstelle erklären.**
+  Die Kette umzuschreiben kommt nicht in Frage; das ist genau das, was
+  sie verhindern soll. Der Vermerk hängt sich hinten an, benennt die
+  Stelle und hängt selbst in der Kette – mit Zeitpunkt und Urheber.
+
+  Die Prüfung nennt die Stelle danach weiter, aber als *vermerkt* statt
+  als Beanstandung. **Ein Befund, der ungeklärt stehen bleibt, wird nach
+  der dritten Prüfung überlesen** – und dann meldet auch der nächste,
+  echte nichts mehr.
+
+  Eine Ausnahme gibt es: Passt der Inhalt eines Eintrags nicht mehr zu
+  seinem Fingerabdruck, lässt sich das *nicht* vermerken. Ein Bruch in
+  der Reihenfolge kann ein Betriebsunfall sein; ein veränderter Inhalt
+  ist keiner.
+
+- **OAuth2: `--mandant` für Firmen.** Manche Organisationen erlauben
+  nur Anmeldungen über ihren eigenen Mandanten; dann scheitert der
+  übliche Weg mit einer Meldung, die nach einem Fehler in MailBurg
+  aussieht.
+
+  Dabei kam ein alter Widerspruch heraus: Der Kommentar über den
+  Microsoft-Anbieter sagte seit jeher `consumers` – also nur private
+  Konten –, während der Code `common` nahm. Hätte jemand dem Kommentar
+  geglaubt, liefe ausgerechnet der Fall nicht mehr, für den OAuth2 bei
+  Microsoft überhaupt nötig ist: das Geschäftskonto in Exchange Online.
+
+### Geprüft – erstmals an der Wirklichkeit
+
+- **Die Zeitstempel laufen gegen echte Dienste.** Seit dem 31.08. stand
+  im Code: »Ein echter Dienst wurde noch nie gefragt.« Jetzt gefragt,
+  und beide hinterlegten haben geantwortet. Der Stempel ging durch die
+  unabhängige Prüfung mit `Verification: OK`.
+
+  Der Befund betraf nicht den Code, sondern den Rat: Der Prüfbefehl
+  stand an drei Stellen verkürzt ohne `-token_in`. So bricht er ab, mit
+  einer Meldung, die nach einem kaputten Stempel aussieht. Ausgeführt
+  hatte ihn nie jemand.
+
+- **Die Verschlüsselung ist durchgespielt.** Nicht nur, ob sie läuft,
+  sondern ob wirklich nichts im Klartext liegt: weder Suchwort noch
+  Absender noch Betreff sind im Archivordner oder in der gepackten
+  Sicherung zu finden. **Der Notschlüssel öffnet das Archiv
+  tatsächlich** – der zweite Weg hinein ist damit zum ersten Mal
+  gegangen.
+
+- **Die Suche ist an einer halben Million gemessen** – und an drei
+  echten Beständen daneben. Die Antwort fiel anders aus als die Frage:
+  **Nicht die Bestandsgröße begrenzt, sondern die Trefferzahl.** Eine
+  Datumssuche braucht in einem Archiv mit 18.000 Mails genauso lange
+  wie in einem mit 68.000: drei Millisekunden.
+
+  Hochgerechnet auf eine halbe Million: rund 7 GB Index, gezielte
+  Suchen bei 1 bis 10 ms, eine breite Freitextsuche bei 200 bis 300 ms.
+  **Für ein Archiv ist das die richtige Kurve** – wer darin sucht, sucht
+  etwas Bestimmtes, und genau das kostet nichts.
+
 ## [1.5.2] – 2026-09-22
 
 Zwei Punkte, die seit dem 07.09.2026 auf der Liste standen. Beide sind
@@ -2330,6 +2458,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.6.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.8...v1.5.0

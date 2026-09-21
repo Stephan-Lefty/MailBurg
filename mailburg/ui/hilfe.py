@@ -523,7 +523,7 @@ auch geregelte Abläufe bei Ihnen im Betrieb.</p>
 und »Vorhanden« überein, fehlt keine Mail – dann ist nicht der Bestand
 beschädigt, sondern die Buchführung darüber.</p>
 
-<p>Das kann vorkommen: Bis zur Fassung 1.5.2 konnten zwei gleichzeitige
+<p>Das kann vorkommen: Bis zur Fassung 1.6.0 konnten zwei gleichzeitige
 Zugriffe – ein Abruf im Hintergrund und ein offenes Fenster, in dem
 jemand einstuft – dieselbe Folgenummer zweimal vergeben. Die Kette riss
 dabei, ohne dass eine einzige Nachricht verloren ging. Behoben ist das;

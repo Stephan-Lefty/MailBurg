@@ -3,6 +3,115 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-21, Montag) – 1.5.0 bis 1.6.0
+
+**Der Tag vor dem ersten Firmeneinsatz.** Stephans Ansage: »Wir müssen
+jetzt noch alle Fehler beseitigen, bevor die ersten Nutzer das Archiv
+für Unternehmen nutzen.«
+
+Die Antwort darauf war eine Einordnung, keine Liste: **Das Gefährliche
+sind nicht die bekannten Fehler, sondern die Zusagen, die nie jemand an
+der Wirklichkeit geprüft hat.** Ein Fehler ist sichtbar; eine nie
+erprobte Funktion sieht aus wie eine Funktion.
+
+Drei davon sind seitdem geprüft – Zeitstempel, Verschlüsselung, die
+halbe Million –, und **jede einzelne Prüfung hat einen Fehler zutage
+gefördert, der nicht in dem lag, was geprüft wurde, sondern daneben.**
+
+### Der schwerste Fund: eine gerissene Hash-Kette
+
+Bei einem Gesundheitscheck nach dem Abruf meldete Stephans
+Geschäftsarchiv »Hash-Kette BESCHÄDIGT« – während keine einzige Mail
+fehlte, 346 erwartet und 346 vorhanden.
+
+`journal.append()` zählte von dem Stand, den *dieser* Zugriff beim
+Öffnen gelesen hatte. Das Hauptfenster stand offen (Stand 487), der
+Zeitplan schrieb in einem eigenen Prozess 488–493, danach stufte jemand
+im Fenster ein – und das Fenster zählte ab 488 noch einmal.
+
+**Die Sperrdatei greift dabei nicht.** Sie verhindert zwei *schreibend*
+geöffnete Archive; das Fenster öffnet lesend und schreibt trotzdem,
+sobald jemand einstuft, löscht oder Regeln anwendet.
+
+Geprüft wird jetzt vor jedem Eintrag über Name und Größe der offenen
+Datei – ein `stat()`, kostenlos, solange nur einer schreibt. Die
+vorhandene Bruchstelle wird nicht geheilt, sondern **vermerkt**
+(`mailburg kettenvermerk`): Die Kette umzuschreiben wäre genau das, was
+sie verhindern soll. Ein Vermerk erklärt einen Bruch – nie eine
+Veränderung; ein falscher Eigenhash bleibt immer eine Beanstandung.
+
+### Was die drei Prüfungen gebracht haben
+
+**Zeitstempel:** Beide hinterlegten Dienste haben geantwortet, der
+Stempel ging durch `openssl` mit `Verification: OK`. Der Befund betraf
+den Rat, nicht den Code – der Prüfbefehl stand an drei Stellen ohne
+`-token_in` und bricht so ab. Ausgeführt hatte ihn nie jemand.
+
+**Verschlüsselung:** Hält, was sie zusagt – auch nachgemessen, dass
+weder Suchwort noch Absender noch Betreff im Archivordner oder in der
+Sicherung zu finden sind. Der Notschlüssel öffnet das Archiv
+tatsächlich. Drei Fehler lagen daneben: Passwortabfragen ohne Terminal
+brachen mit einem Traceback ab (von zwölf hatte *eine* die Prüfung),
+beim Anlegen wurde die Umgebung nicht gelesen, und `TresorFehler` kam
+als Traceback.
+
+**Und dabei fiel auf, dass es den Weg zurück nur im Fenster gab.**
+`sicherung.entpacken()` hatte genau einen Aufrufer: `ui/sichern.py`.
+Auf einem Server gibt es kein Fenster – und dort wird eine
+Wiederherstellung am ehesten gebraucht. Dafür gibt es jetzt
+`mailburg wiederherstellen`.
+
+### Die halbe Million – und warum die Frage falsch gestellt war
+
+Gemessen an 500.000 erfundenen und an drei echten Beständen:
+**Nicht die Bestandsgröße begrenzt, sondern die Trefferzahl.** Eine
+Datumssuche braucht in einem Archiv mit 18.000 Mails genauso lange wie
+in einem mit 68.000 – drei Millisekunden.
+
+Hochgerechnet auf eine halbe Million: rund 7 GB Index, gezielte Suchen
+bei 1–10 ms, eine breite Freitextsuche bei 200–300 ms.
+
+**Zwei Messfehler auf dem Weg, beide lehrreich.** Der erste
+Testdatensatz baute die Mailtexte aus 28 wiederkehrenden Wörtern – ein
+»seltenes« Wort kam dadurch in 90 % aller Nachrichten vor, gemessen
+wurden 1.072 ms für einen Fall, den es nicht gibt. Und ein Vergleich
+zwischen einem kalten und einem warmen Archiv ließ das *größere*
+schneller aussehen als das kleinere.
+
+**Die Lehre ist dieselbe wie beim Betrefffilter am 09.09.: Eine Zahl
+ist kein Befund.** Ein Testdatensatz, der nicht aussieht wie die
+Wirklichkeit, misst sie nicht.
+
+### Drei eigene Fehler, die hierher gehören
+
+Sie sind alle von der Sorte, die dieses Projekt sonst bei anderen
+findet:
+
+1. **Ein Wrapper, der sich selbst überschrieb.** `~/.local/bin/mailburg`
+   war ein Symlink auf das Ziel, und `cat >` schreibt durch einen
+   Symlink hindurch. Der Wrapper rief sich danach endlos selbst auf –
+   **eine Endlosschleife sieht aus wie ein langsamer Start.**
+2. **Eine Testklasse mit einem vergebenen Namen.** Python nimmt
+   stillschweigend die zweite; vier vorhandene Tests waren damit außer
+   Betrieb, ohne dass etwas rot wurde.
+3. **Dreimal derselbe Pipe-Fehler**: `grep … | head` liefert den
+   Rückgabewert von `head`. Einmal im Installer gefunden und behoben,
+   zweimal danach selbst gemacht.
+
+### Und ein Kommentar, der das Gegenteil des Codes sagte
+
+`core/oauth2.py` behauptete seit jeher `consumers` – nur private
+Konten –, während der Code `common` nahm. Wer dem Kommentar geglaubt
+hätte, hätte ausgerechnet den Fall lahmgelegt, für den OAuth2 bei
+Microsoft nötig ist: das Geschäftskonto in Exchange Online. Drei Tests
+halten die Endpunkte jetzt fest; vorher gab es dazu keinen einzigen.
+
+Beim Richtigstellen habe ich denselben Fehler gemacht: einen Satz
+geschrieben, der eine Mandanten-ID verspricht, die es nicht gab. Der
+alte Kommentar enthielt exakt dieselbe folgenlose Zusage. Also gebaut.
+
+1974 Tests, beide Umgebungen grün.
+
 ## Hier war Schluss (Stand 2026-09-12, Samstag) – 1.4.3 bis 1.4.5
 
 **Zehn von einunddreißig Fenstern waren geprüft.** Das ist der ganze
