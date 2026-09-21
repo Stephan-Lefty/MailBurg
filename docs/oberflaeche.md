@@ -231,6 +231,19 @@ so *ähnlich* heißt, bleibt drin: »Werbung 2024« ist ein eigener Name.
 **Welche Ordner es trifft, steht vor dem Start unter dem Pfad** – eine stille
 Auslassung wäre schlimmer als keine.
 
+**Beim Abruf gilt die Liste je Postfach, und sie veraltet.** Sie wird beim
+Einrichten eines Postfachs aus der Vorgabe oben kopiert; kommt später ein Name
+dazu, erreicht er bestehende Postfächer nicht von selbst. Das ist Absicht: Wer
+einen Namen aus seiner Liste genommen hat – etwa weil sein Ordner »Werbung«
+Newsletter enthält, die er behalten will –, soll ihn nicht stillschweigend
+zurückbekommen.
+
+MailBurg sagt es deshalb nur. In *Einstellungen → Postfächer verwalten …*
+erscheint dann der Knopf *Ausschlussliste auffrischen …*; auf der
+Kommandozeile zeigt `mailburg konten ausschluss`, was fehlt, und
+`--nachziehen` trägt es ein. Bereits archivierte Post bleibt dabei, wo sie
+ist – die Liste wirkt beim nächsten Abruf, nicht rückwirkend.
+
 Das Häkchen *Papierkorb, Spamverdacht und Entwürfe mitnehmen* schaltet es ab,
 auf der Kommandozeile `--alles`. Für ein Geschäftsarchiv kann das richtig
 sein: Wer belegen muss, was ihn erreicht hat, will auch den Spamordner – dort

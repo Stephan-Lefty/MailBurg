@@ -239,6 +239,29 @@ schlägt ihn vor. Nehmen Sie den Vorschlag an, ist die Verbindung danach
 vollständig geprüft. Eine Möglichkeit, die Prüfung einfach abzuschalten,
 gibt es bewusst nicht.</p>
 
+<h3>Die Liste der übergangenen Ordner veraltet</h3>
+
+<p>Papierkorb, Spamverdacht und Entwürfe kommen nicht ins Archiv.
+Welche Namen dazuzählen, steht <b>bei jedem Postfach einzeln</b> – die
+Liste wird beim Einrichten aus der Vorgabe kopiert. Kommt später ein
+Name dazu, erreicht er bestehende Postfächer nicht von selbst.</p>
+
+<p><b>Das ist Absicht.</b> Wer einen Namen aus seiner Liste genommen
+hat – etwa weil sein Ordner »Werbung« Newsletter enthält, die er
+behalten will –, soll ihn nicht stillschweigend zurückbekommen. Danach
+fehlte Post im Archiv, ohne dass es jemand merkt, und das ist die
+teuerste Richtung: Zu viel zu archivieren lässt sich nachbessern, was
+nie geholt wurde, fällt erst Jahre später auf.</p>
+
+<p>MailBurg sagt es deshalb nur. Fehlt etwas, erscheint in
+<i>Einstellungen → Postfächer verwalten …</i> der Knopf
+<i>Ausschlussliste auffrischen …</i>; er nennt die Namen und fragt
+nach, bevor er sie einträgt. Auf der Kommandozeile zeigt
+<i>mailburg konten ausschluss</i>, was fehlt.</p>
+
+<p>Bereits archivierte Post bleibt dabei, wo sie ist – die Liste wirkt
+beim nächsten Abruf, nicht rückwirkend.</p>
+
 {menue}
 """
 
@@ -1028,7 +1051,9 @@ def kapitel() -> list[Kapitel]:
                    "stilllegen oder entfernen. Ein stillgelegtes Postfach "
                    "bleibt eingerichtet, wird beim Abruf aber übergangen. "
                    "Die bereits archivierten Mails bleiben in jedem Fall "
-                   "erhalten.")
+                   "erhalten. Steht dort der Knopf »Ausschlussliste "
+                   "auffrischen …«, sind neuere Standardnamen für "
+                   "übergangene Ordner dazugekommen – siehe oben.")
         ))),
         Kapitel("zugaenge", "Zugänge", _ZUGAENGE.format(menue=(
             _menue("Einstellungen → Zugänge verwalten …",

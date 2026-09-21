@@ -170,22 +170,22 @@ being asked.
   MailBurg's message now names the command for checking which service is
   registered. Three hours of searching would have been spared.
 
-- [ ] **A copied default goes stale in silence.** The exclusion list is
-  copied into `konten.json` when an account is created; new default
-  names never reach existing accounts. To decide: top them up
-  automatically (a deliberately removed entry would return) or report
-  the gap and let a command fill it.
+- [x] **A copied default goes stale in silence.** (2026-09-22, in 1.5.2)
+  Decided against topping up automatically: a removed entry is a
+  decision, and taking it back in silence would mean mail goes missing
+  from the archive without anyone noticing. MailBurg now reports the
+  gap — as a button in the accounts dialog, and via
+  `mailburg konten ausschluss` on the command line.
 
-- [ ] **On Arch and Manjaro a venv does not survive a Python jump.**
-  3.13 → 3.14 would have left MailBurg unusable — it only went well
-  because `install.sh` happened to run that day. The launcher should
-  detect and say so instead of failing cryptically.
+- [x] **On Arch and Manjaro a venv does not survive a Python jump.**
+  (2026-09-22, in 1.5.2) The launcher is no longer a symlink but a
+  small outpost that checks the situation before Python even starts —
+  and says one sentence instead of a traceback, leading with "your
+  archive is not affected".
 
-  **The silent half of this is covered since 2026-09-12:** the schedule
-  points into that same venv, and when it breaks, retrieval simply stops
-  — with nothing to show for it. MailBurg now notices on opening and
-  offers to put it right. What remains open is the case where someone
-  starts MailBurg itself and gets a traceback instead of a sentence.
+  **The silent half of this was covered since 2026-09-12:** the schedule
+  points into that same venv, and when it breaks, retrieval simply stops.
+  MailBurg notices on opening and offers to put it right.
 
 ### The large corpus (2026-09-07)
 

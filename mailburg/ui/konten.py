@@ -76,13 +76,27 @@ class Kontenverwaltung(QDialog):
             "registrierten Anwendung; siehe docs/oauth2.md."
         )
         self.anmelden.clicked.connect(self._anmelden)
+        # **Nur da, wenn es etwas zu tun gibt.** Ein Knopf, der bei
+        # neun von zehn Anwendern nichts bewirkt, steht im Weg – und bei
+        # einem frisch angelegten Postfach ist die Ausschlussliste immer
+        # auf dem Stand. Sichtbar wird er in ``_fuellen()``.
+        self.auffrischen = QPushButton("Ausschlussliste auffrischen …")
+        self.auffrischen.setToolTip(
+            "Papierkorb, Spamverdacht und Entwürfe kommen nicht ins "
+            "Archiv. Die Liste dieser Namen wird beim Anlegen eines "
+            "Postfachs kopiert – neuere Namen erreichen sie nicht von "
+            "selbst."
+        )
+        self.auffrischen.setVisible(False)
+        self.auffrischen.clicked.connect(self._ausschluss_auffrischen)
+
         self.stilllegen = QPushButton("Stilllegen")
         self.stilllegen.clicked.connect(self._stilllegen)
         self.entfernen = QPushButton("Entfernen")
         self.entfernen.clicked.connect(self._entfernen)
 
         knopfreihe = QHBoxLayout()
-        for knopf in (self.hinzu, self.uebernehmen):
+        for knopf in (self.hinzu, self.uebernehmen, self.auffrischen):
             knopfreihe.addWidget(knopf)
         knopfreihe.addStretch()
         for knopf in (self.zuordnen, self.passwort_neu, self.anmelden,
@@ -135,7 +149,51 @@ class Kontenverwaltung(QDialog):
 
         for spalte in range(6):
             self.baum.resizeColumnToContents(spalte)
+
+        # Eine kopierte Vorgabe veraltet still – hier wird sie sichtbar.
+        betroffen = [k for k in self.liste.konten
+                     if accounts.fehlende_ausschluesse(k)]
+        self.auffrischen.setVisible(bool(betroffen))
+
         self._auswahl_geaendert()
+
+    def _ausschluss_auffrischen(self) -> None:
+        """Trägt fehlende Standardnamen nach – nach Rückfrage.
+
+        **Die Rückfrage nennt die Namen.** Wer einen davon absichtlich
+        gestrichen hat, muss das hier sehen können; sonst nähme MailBurg
+        eine Entscheidung zurück, ohne sie zu zeigen. Die ausführliche
+        Begründung steht in ``core/accounts.fehlende_ausschluesse``.
+        """
+        betroffen = [(k, accounts.fehlende_ausschluesse(k))
+                     for k in self.liste.konten]
+        betroffen = [(k, f) for k, f in betroffen if f]
+        if not betroffen:
+            return
+
+        namen = sorted({name for _, fehlend in betroffen for name in fehlend})
+        zeilen = "\n".join(
+            f"  {k.name}: {', '.join(f)}" for k, f in betroffen
+        )
+        antwort = QMessageBox.question(
+            self,
+            "Ausschlussliste auffrischen",
+            f"Diese Ordnernamen sind neu in der Vorgabe und fehlen in "
+            f"{len(betroffen)} Postfächern:\n\n"
+            f"  {', '.join(namen)}\n\n"
+            f"Betroffen sind:\n{zeilen}\n\n"
+            f"Eintragen? Ordner mit diesen Namen kommen danach nicht mehr "
+            f"ins Archiv.\n\n"
+            f"Bereits archivierte Post bleibt, wo sie ist – die Liste "
+            f"wirkt beim nächsten Abruf, nicht rückwirkend.",
+        )
+        if antwort != QMessageBox.Yes:
+            return
+
+        for konto, _ in betroffen:
+            accounts.ausschluss_nachziehen(konto)
+        self.liste.speichern()
+        self._fuellen()
 
     def _archivnamen(self, konto) -> str:
         """Wohin dieses Postfach abgerufen wird – in Klarnamen.

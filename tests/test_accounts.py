@@ -1225,3 +1225,105 @@ class PasswortNeuSetzenTest(unittest.TestCase):
         code, _ = self._lauf("Proton", ["neu", "neu"], gesetzt=False)
 
         self.assertEqual(code, 1)
+
+
+class AusschlussVeraltetTest(unittest.TestCase):
+    """Eine kopierte Vorgabe veraltet still.
+
+    Die Ausschlussliste wird beim Anlegen eines Kontos in
+    ``konten.json`` hineinkopiert. Wächst :data:`STANDARD_AUSSCHLUSS`
+    später, erreichen die neuen Namen bestehende Konten nie.
+
+    **Am 2026-09-07 an Stephans Konten aufgefallen:** Sie trugen die
+    Liste von Wochen zuvor, während drei Namen dazugekommen waren. Für
+    »Junk-E-Mail« blieb das folgenlos, weil die Normalisierung
+    Bindestriche ignoriert – für einen Ordner namens »Spamverdacht«
+    nicht.
+    """
+
+    def _konto(self, ausschluss):
+        from mailburg.core.accounts import Konto
+
+        return Konto(name="P", server="imap.example.org",
+                     benutzer="p@example.org", ausschluss=list(ausschluss))
+
+    def test_ein_frisches_konto_ist_auf_dem_stand(self):
+        from mailburg.core.accounts import Konto, fehlende_ausschluesse
+
+        self.assertEqual(
+            fehlende_ausschluesse(
+                Konto(name="P", server="s", benutzer="p@example.org")), []
+        )
+
+    def test_was_fehlt_wird_genannt(self):
+        from mailburg.core.accounts import fehlende_ausschluesse
+
+        fehlend = fehlende_ausschluesse(self._konto(["Trash", "Junk"]))
+
+        self.assertIn("Entwürfe", fehlend)
+        self.assertNotIn("Trash", fehlend)
+
+    def test_eine_andere_schreibweise_zaehlt_als_vorhanden(self):
+        """»Junk-E-Mail« und »Junk E-Mail« sind derselbe Ordner.
+
+        Ohne diese Angleichung meldete MailBurg einen Namen als
+        fehlend, der längst wirkt – und der Anwender träge ihn ein
+        zweites Mal ein.
+        """
+        from mailburg.core.accounts import STANDARD_AUSSCHLUSS, fehlende_ausschluesse
+
+        # Alles vorhanden, aber durchgehend anders geschrieben.
+        anders = [n.lower().replace("-", " ") for n in STANDARD_AUSSCHLUSS]
+
+        self.assertEqual(fehlende_ausschluesse(self._konto(anders)), [])
+
+    def test_nachziehen_behaelt_eigene_eintraege(self):
+        """Der Ordner »Newsletter« eines Anwenders darf nicht wegfallen."""
+        from mailburg.core.accounts import ausschluss_nachziehen
+
+        konto = self._konto(["Trash", "Newsletter"])
+        ausschluss_nachziehen(konto)
+
+        self.assertIn("Newsletter", konto.ausschluss)
+        self.assertIn("Entwürfe", konto.ausschluss)
+
+    def test_nachziehen_haengt_hinten_an(self):
+        """Damit die eigene Reihenfolge erhalten bleibt."""
+        from mailburg.core.accounts import ausschluss_nachziehen
+
+        konto = self._konto(["Newsletter", "Trash"])
+        ausschluss_nachziehen(konto)
+
+        self.assertEqual(konto.ausschluss[:2], ["Newsletter", "Trash"])
+
+    def test_zweimal_nachziehen_aendert_nichts(self):
+        from mailburg.core.accounts import ausschluss_nachziehen
+
+        konto = self._konto(["Trash"])
+        ausschluss_nachziehen(konto)
+        vorher = list(konto.ausschluss)
+
+        self.assertEqual(ausschluss_nachziehen(konto), [])
+        self.assertEqual(konto.ausschluss, vorher)
+
+    def test_nichts_wird_von_selbst_ergaenzt(self):
+        """**Die eigentliche Festlegung, und die wichtigste.**
+
+        Wer einen Namen aus der Liste genommen hat, hat sich
+        entschieden – etwa weil sein Ordner »Werbung« Newsletter
+        enthält, die er behalten will. Automatisch nachzutragen nähme
+        diese Entscheidung stillschweigend zurück, und ab dann fehlte
+        Post im Archiv, ohne dass es jemand merkt.
+
+        In einem Archivprogramm ist das die teuerste Richtung: Zu viel
+        zu archivieren lässt sich nachbessern, was nie geholt wurde,
+        fällt erst Jahre später auf.
+        """
+        from mailburg.core.accounts import fehlende_ausschluesse
+
+        konto = self._konto(["Trash"])
+        fehlende_ausschluesse(konto)
+        fehlende_ausschluesse(konto)
+
+        self.assertEqual(konto.ausschluss, ["Trash"],
+                         "fehlende_ausschluesse darf nichts verändern")

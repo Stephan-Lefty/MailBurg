@@ -177,24 +177,23 @@ GNOME-Tresor.
   MailBurgs Meldung nennt jetzt den Befehl, mit dem man nachsieht, wer
   eingetragen ist. Drei Stunden Suche hätten sich damit erübrigt.
 
-- [ ] **Eine kopierte Vorgabe veraltet still.** Die Ausschlussliste wird
-  beim Anlegen eines Kontos in `konten.json` hineinkopiert; neue
-  Standardnamen erreichen bestehende Konten nie. Stephans Konten tragen
-  die Liste von vor Wochen. Zu entscheiden: automatisch ergänzen (dann
-  kommt ein bewusst gestrichener Eintrag zurück) oder die Lücke melden
-  und mit einem Befehl nachziehen lassen.
+- [x] **Eine kopierte Vorgabe veraltet still.** (2026-09-22, in der 1.5.2)
+  Entschieden wurde gegen das automatische Ergänzen: Ein gestrichener
+  Eintrag ist eine Entscheidung, und sie stillschweigend
+  zurückzunehmen hieße, dass danach Post fehlt, ohne dass es jemand
+  merkt. MailBurg meldet die Lücke jetzt – im Kontendialog als Knopf,
+  auf der Kommandozeile über `mailburg konten ausschluss`.
 
-- [ ] **Bei Arch und Manjaro überlebt eine venv keinen Python-Sprung.**
-  3.13 → 3.14 hätte MailBurg unbenutzbar gemacht – hier ging es nur gut,
-  weil `install.sh` an dem Tag ohnehin lief. Der Startbefehl sollte das
-  erkennen und sagen, statt mit einem kryptischen Fehler abzubrechen.
+- [x] **Bei Arch und Manjaro überlebt eine venv keinen Python-Sprung.**
+  (2026-09-22, in der 1.5.2) Der Startbefehl ist kein Symlink mehr,
+  sondern ein Vorposten, der die Lage prüft, bevor Python startet – und
+  einen Satz sagt statt eines Tracebacks, mit »Ihr Archiv ist davon
+  nicht betroffen« an erster Stelle.
 
-  **Die stille Hälfte davon ist seit dem 2026-09-12 abgedeckt:** Der
+  **Die stille Hälfte davon war seit dem 2026-09-12 abgedeckt:** Der
   Zeitplan zeigt in dieselbe venv, und wenn sie wegbricht, läuft der
-  Abruf nicht mehr – ohne dass irgendetwas darauf hinweist. Das merkt
-  MailBurg jetzt beim Öffnen und bietet an, es geradezuziehen. Offen
-  bleibt der Fall, dass jemand MailBurg selbst startet und einen
-  Traceback statt eines Satzes bekommt.
+  Abruf nicht mehr. Das merkt MailBurg beim Öffnen und bietet an, es
+  geradezuziehen.
 
 ### Der große Bestand (2026-09-07)
 

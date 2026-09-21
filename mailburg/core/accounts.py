@@ -122,6 +122,51 @@ def ist_ausgeschlossen(anzeige: str, ausschluss=STANDARD_AUSSCHLUSS) -> bool:
     return any(_vergleichsform(teil) in aus for teil in anzeige.split("/"))
 
 
+def fehlende_ausschluesse(konto) -> list[str]:
+    """Standardnamen, die dieses Konto nicht kennt.
+
+    **Eine kopierte Vorgabe veraltet still.** Die Ausschlussliste wird
+    beim Anlegen eines Kontos in ``konten.json`` hineinkopiert; wächst
+    :data:`STANDARD_AUSSCHLUSS` später, erreichen die neuen Namen
+    bestehende Konten nie. Am 2026-09-07 aufgefallen: Stephans Konten
+    trugen die Liste von Wochen zuvor, während drei Namen dazugekommen
+    waren.
+
+    **Warum hier nur gemeldet und nicht ergänzt wird.** Die Liste im
+    Konto ist veränderbar, und ein gestrichener Eintrag ist eine
+    Entscheidung: Wer einen Ordner »Werbung« für seine Newsletter
+    anlegt, nimmt den Namen aus der Liste. Automatisch nachzutragen
+    hieße, diese Entscheidung stillschweigend zurückzunehmen – und ab
+    dann fehlte Post im Archiv, ohne dass es jemand merkt.
+
+    **In einem Archivprogramm ist das die teuerste Richtung.** Zu viel
+    zu archivieren lässt sich jederzeit nachbessern; was nie geholt
+    wurde, fällt erst Jahre später auf. Deshalb sagt MailBurg nur
+    Bescheid, und ``mailburg konten ausschluss --nachziehen`` trägt auf
+    Ansage nach.
+
+    Verglichen wird über :func:`_vergleichsform`, nicht buchstäblich:
+    Wer »Junk-E-Mail« in der Liste hat, dem fehlt »Junk E-Mail« nicht.
+    """
+    vorhanden = {_vergleichsform(name) for name in konto.ausschluss}
+    return [name for name in STANDARD_AUSSCHLUSS
+            if _vergleichsform(name) not in vorhanden]
+
+
+def ausschluss_nachziehen(konto) -> list[str]:
+    """Trägt die fehlenden Standardnamen nach und nennt sie.
+
+    Hängt sie **hinten an**, statt die Liste neu zu setzen: Eigene
+    Einträge – der Ordner »Newsletter« eines Anwenders – bleiben damit
+    erhalten und behalten ihre Reihenfolge.
+
+    Der Aufrufer muss die Kontenliste anschließend speichern.
+    """
+    fehlend = fehlende_ausschluesse(konto)
+    konto.ausschluss = list(konto.ausschluss) + fehlend
+    return fehlend
+
+
 @dataclass
 class Konto:
     """Ein Postfach, aus dem archiviert wird."""

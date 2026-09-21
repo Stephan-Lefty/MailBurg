@@ -8,6 +8,7 @@ einsortiert wurde, bleibt es bei jedem, der nicht neu installiert.
 from __future__ import annotations
 
 import pathlib
+import sys
 import unittest
 
 
@@ -559,3 +560,194 @@ class OhneTerminalBrichtNichtsAbTest(unittest.TestCase):
     def test_auch_ein_abgerissenes_terminal_bricht_nicht_ab(self) -> None:
         """Strg+D mitten in der Eingabe, oder eine tote SSH-Sitzung."""
         self.assertIn('antwort || antwort=""', self.skript)
+
+
+class StarthilfeTest(unittest.TestCase):
+    """Der Startbefehl erkennt eine Umgebung, die nicht mehr passt.
+
+    **Bei Arch und Manjaro überlebt eine venv keinen Python-Sprung.**
+    Von 3.14 auf 3.15 verschwindet die alte Fassung; der Symlink
+    ``venv/bin/python3`` zeigt auf ``/usr/bin/python3`` und bleibt
+    deshalb gültig – nur sucht das neue Python seine Pakete unter
+    ``lib/python3.15/``, während sie in ``lib/python3.14/`` liegen.
+
+    MailBurg startet also, findet sich selbst nicht und endet in einem
+    ``ModuleNotFoundError``. **Ein Traceback auf einem Archivprogramm
+    liest sich wie Datenverlust** – und genau das ist er nicht.
+
+    Statt eines Symlinks auf das pip-Skript legt ``install.sh`` deshalb
+    seit dem 2026-09-21 einen kleinen Vorposten an, der die Lage prüft,
+    bevor Python überhaupt startet: Das genaue Python steht in
+    ``pyvenv.cfg``, und ob es die Datei noch gibt, sagt das Dateisystem.
+    """
+
+    def setUp(self) -> None:
+        self.wurzel = pathlib.Path(__file__).resolve().parent.parent
+        self.skript = (self.wurzel / "install.sh").read_text(encoding="utf-8")
+
+    def _bauen(self, ordner: str, grafisch: str = "") -> str:
+        """Ruft ``starthilfe`` aus dem echten Skript auf.
+
+        Ausgeführt, nicht gelesen – dieselbe Lehre wie beim
+        Suchpfadhinweis am 2026-09-03.
+        """
+        import subprocess
+
+        zeilen = self.skript.splitlines()
+        i = next(n for n, z in enumerate(zeilen) if z.startswith("starthilfe()"))
+        j = next(n for n in range(i + 1, len(zeilen)) if zeilen[n] == "}")
+        funktion = "\n".join(zeilen[i:j + 1])
+
+        programm = "\n".join([
+            f'VENV="{ordner}/venv"',
+            funktion,
+            f'starthilfe "{ordner}/start" "{ordner}/venv/bin/mailburg"'
+            f' "{grafisch}"',
+        ])
+        fertig = subprocess.run(["bash", "-c", programm],
+                                capture_output=True, text=True)
+        self.assertEqual(fertig.returncode, 0, fertig.stderr)
+        return f"{ordner}/start"
+
+    def _umgebung(self, ordner: pathlib.Path, python: str) -> None:
+        (ordner / "venv" / "bin").mkdir(parents=True, exist_ok=True)
+        (ordner / "venv" / "pyvenv.cfg").write_text(
+            "home = /usr/bin\n"
+            "include-system-site-packages = false\n"
+            "version = 3.14.7\n"
+            f"executable = {python}\n",
+            encoding="utf-8",
+        )
+        (ordner / "venv" / "bin" / "python3").write_text("#!/bin/sh\n")
+        (ordner / "venv" / "bin" / "python3").chmod(0o755)
+        echtes = ordner / "venv" / "bin" / "mailburg"
+        echtes.write_text('#!/bin/sh\necho DURCHGEREICHT "$@"\n')
+        echtes.chmod(0o755)
+
+    def _lauf(self, start: str, *argumente: str):
+        """Führt den Vorposten aus – mit Deckel.
+
+        **Der Deckel ist nicht Vorsicht, sondern Erfahrung.** Fällt das
+        ``rm -f`` in ``starthilfe`` weg, schreibt der Wrapper in die
+        Datei, die er selbst aufruft, und ruft sich damit endlos auf.
+        Der Test würde dann nicht rot, sondern *hängen* – und ein Test,
+        der hängt, blockiert die CI, statt sie rot zu machen.
+
+        Gefunden am 2026-09-21 bei der Gegenprobe zu genau diesem Fall.
+        """
+        import subprocess
+
+        try:
+            return subprocess.run([start, *argumente],
+                                  capture_output=True, text=True, timeout=20)
+        except subprocess.TimeoutExpired:
+            self.fail(
+                "Der Startbefehl kam nicht zurück – vermutlich ruft er "
+                "sich selbst auf. Siehe das »rm -f« in starthilfe()."
+            )
+
+    def test_heile_umgebung_reicht_durch(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            pfad = pathlib.Path(ordner)
+            # Ein Python, das es sicher gibt – das der Testlauf benutzt.
+            self._umgebung(pfad, sys.executable)
+            fertig = self._lauf(self._bauen(ordner), "--version")
+
+            self.assertEqual(fertig.returncode, 0, fertig.stderr)
+            self.assertIn("DURCHGEREICHT --version", fertig.stdout)
+
+    def test_fehlendes_python_wird_erkannt(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            pfad = pathlib.Path(ordner)
+            self._umgebung(pfad, "/usr/bin/python3.9-gibtsnicht")
+            fertig = self._lauf(self._bauen(ordner))
+
+            self.assertEqual(fertig.returncode, 1)
+            self.assertNotIn("DURCHGEREICHT", fertig.stdout)
+            self.assertIn("python3.9-gibtsnicht", fertig.stderr)
+
+    def test_die_meldung_beruhigt_wegen_des_archivs(self) -> None:
+        """**Der wichtigste Satz der ganzen Meldung.**
+
+        Wer sein Archivprogramm nicht mehr starten kann, denkt an
+        zwanzig Jahre Post – nicht an ein Verzeichnis mit Bibliotheken.
+        Dieselbe Überlegung wie bei ``IndexOutdated`` am 2026-08-31.
+        """
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            self._umgebung(pathlib.Path(ordner), "/gibts/nicht")
+            fertig = self._lauf(self._bauen(ordner))
+
+            self.assertIn("ARCHIV IST DAVON NICHT BETROFFEN", fertig.stderr)
+            self.assertIn("install.sh", fertig.stderr)
+
+    def test_auch_ein_fehlendes_venv_python_faellt_auf(self) -> None:
+        """Dann scheitert sonst schon der Shebang – »bad interpreter«."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            pfad = pathlib.Path(ordner)
+            self._umgebung(pfad, sys.executable)
+            (pfad / "venv" / "bin" / "python3").unlink()
+            fertig = self._lauf(self._bauen(ordner))
+
+            self.assertNotIn("DURCHGEREICHT", fertig.stdout)
+            self.assertIn("nicht mehr zum System", fertig.stderr)
+
+    def test_die_grafische_fassung_meldet_sichtbar(self) -> None:
+        """**Wer aus dem Menü startet, hat kein Terminal.**
+
+        Dieselbe Lehre wie am 2026-09-14 (1.4.6): Eine Auskunft auf
+        stderr, die niemand sieht, ist keine.
+        """
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            self._umgebung(pathlib.Path(ordner), "/gibts/nicht")
+            start = self._bauen(ordner, grafisch="grafisch")
+            inhalt = pathlib.Path(start).read_text(encoding="utf-8")
+
+        for melder in ("zenity", "kdialog", "xmessage", "notify-send"):
+            with self.subTest(melder=melder):
+                self.assertIn(melder, inhalt)
+
+    def test_die_kommandozeile_oeffnet_kein_fenster(self) -> None:
+        """Wer im Terminal tippt, hat die Zeile schon gelesen."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            self._umgebung(pathlib.Path(ordner), "/gibts/nicht")
+            start = self._bauen(ordner)
+            inhalt = pathlib.Path(start).read_text(encoding="utf-8")
+
+        self.assertNotIn("zenity", inhalt)
+
+    def test_das_ziel_wird_vorher_weggenommen(self) -> None:
+        """**Sonst schreibt der Wrapper in das Programm, das er aufruft.**
+
+        Hier lag ein Symlink auf genau die Datei, die im ``exec`` steht,
+        und ``cat >`` schreibt durch einen Symlink hindurch. Beim ersten
+        Lauf am 2026-09-21 wurde so das pip-Startskript überschrieben –
+        der Wrapper rief sich selbst auf und lief endlos. Eine
+        Endlosschleife sieht aus wie ein langsamer Start.
+        """
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as ordner:
+            pfad = pathlib.Path(ordner)
+            self._umgebung(pfad, sys.executable)
+            # Die Lage von damals: Das Ziel ist ein Symlink auf das
+            # echte Startskript.
+            (pfad / "start").symlink_to(pfad / "venv" / "bin" / "mailburg")
+
+            fertig = self._lauf(self._bauen(ordner))
+
+            self.assertIn("DURCHGEREICHT", fertig.stdout)
+            echtes = (pfad / "venv" / "bin" / "mailburg").read_text()
+            self.assertIn("DURCHGEREICHT", echtes,
+                          "das aufgerufene Skript wurde überschrieben")

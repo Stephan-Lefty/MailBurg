@@ -7,6 +7,75 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.5.2] – 2026-09-22
+
+Zwei Punkte, die seit dem 07.09.2026 auf der Liste standen. Beide sind
+von derselben Art: **Etwas geht kaputt, und niemand erfährt davon.**
+
+### Behoben
+
+- **Ein Python-Sprung machte MailBurg unbenutzbar – mit einem
+  Traceback als einziger Auskunft.**
+
+  Arch, Manjaro und Verwandte tauschen Python mitunter gegen eine neue
+  Hauptfassung aus und entfernen die alte. MailBurgs eigene Umgebung
+  sucht ihre Bestandteile dann unter einer Fassung, die es nicht mehr
+  gibt. Der Symlink auf `python3` bleibt dabei gültig – MailBurg
+  startet also, findet sich selbst nicht und endet in einem
+  `ModuleNotFoundError`.
+
+  **Auf einem Archivprogramm liest sich ein Traceback wie
+  Datenverlust.** Er ist keiner: Das Archiv liegt außerhalb dieser
+  Umgebung, ebenso die Postfächer, der Suchindex und die Passwörter.
+  Genau das steht jetzt als Erstes in der Meldung, zusammen mit dem
+  einen Befehl, der es wieder einrichtet.
+
+  Der Startbefehl ist dafür kein Symlink mehr, sondern ein kleiner
+  Vorposten, der die Lage prüft, **bevor Python überhaupt startet**:
+  Das genaue Python steht in `pyvenv.cfg`, und ob es die Datei noch
+  gibt, sagt das Dateisystem. Wer aus dem Menü startet, bekommt ein
+  Fenster statt einer Zeile, die niemand sieht – dieselbe Lehre wie in
+  der 1.4.6.
+
+  Wer über die Paketverwaltung installiert hat – `.deb` oder AppImage –,
+  war davon nie betroffen.
+
+  *Beim Bauen ging genau das schief, wogegen es schützt:* Das Ziel war
+  ein Symlink auf das Programm, das der Vorposten aufruft, und `cat >`
+  schreibt durch einen Symlink hindurch. Der Wrapper rief damit sich
+  selbst auf und lief endlos – **eine Endlosschleife sieht aus wie ein
+  langsamer Start.** Dagegen steht jetzt ein `rm -f` und ein Test mit
+  Zeitgrenze: Ein Test, der hängt, blockiert die CI, statt sie rot zu
+  machen.
+
+- **Eine kopierte Vorgabe veraltet still.** Papierkorb, Spamverdacht
+  und Entwürfe kommen nicht ins Archiv – welche Namen dazuzählen, steht
+  bei jedem Postfach einzeln und wird beim Einrichten aus der Vorgabe
+  kopiert. Kommt später ein Name dazu, erreicht er bestehende
+  Postfächer nie.
+
+  Am 07.09.2026 aufgefallen: Ein Bestand trug die Liste von Wochen
+  zuvor, während drei Namen dazugekommen waren.
+
+  **Ergänzt wird trotzdem nichts von selbst**, und das ist die
+  eigentliche Entscheidung dieser Fassung. Wer einen Namen aus seiner
+  Liste genommen hat – etwa weil sein Ordner »Werbung« Newsletter
+  enthält, die er behalten will –, soll ihn nicht stillschweigend
+  zurückbekommen. Danach fehlte Post im Archiv, ohne dass es jemand
+  merkt. **In einem Archivprogramm ist das die teuerste Richtung:** Zu
+  viel zu archivieren lässt sich nachbessern, was nie geholt wurde,
+  fällt erst Jahre später auf.
+
+  MailBurg sagt es deshalb nur. In *Einstellungen → Postfächer
+  verwalten …* erscheint dann der Knopf *Ausschlussliste auffrischen …*,
+  der die Namen nennt und nachfragt; auf der Kommandozeile zeigt
+  `mailburg konten ausschluss`, was fehlt, und `--nachziehen` trägt es
+  ein. Eigene Einträge bleiben dabei erhalten und behalten ihre
+  Reihenfolge.
+
+  Bereits archivierte Post bleibt, wo sie ist – die Liste wirkt beim
+  nächsten Abruf, nicht rückwirkend.
+
 ## [1.5.1] – 2026-09-21
 
 Eine Fassung, die nichts Neues kann und trotzdem gebraucht wurde:
@@ -2261,6 +2330,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.5.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.8...v1.5.0
 [1.4.8]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.7...v1.4.8

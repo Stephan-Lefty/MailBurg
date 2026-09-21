@@ -269,11 +269,107 @@ if [[ $ENTWICKLUNG -eq 1 ]]; then
 fi
 
 mkdir -p "$BIN"
-ln -sf "$VENV/bin/mailburg" "$BIN/mailburg"
+
+# **Kein Symlink, sondern ein Vorposten.** Hier stand bis zum
+# 2026-09-21 ein `ln -sf` auf das von pip erzeugte Startskript. Dessen
+# erste Zeile ist ein Shebang auf `$VENV/bin/python3` – und genau dort
+# bricht es, wenn die Distribution Python anhebt.
+#
+# **Warum das kein seltener Fall ist:** Arch und Manjaro entfernen die
+# alte Fassung beim Sprung. Der Symlink `$VENV/bin/python3` zeigt auf
+# `/usr/bin/python3` und bleibt deshalb gültig – nur sucht das neue
+# Python seine Pakete unter `lib/python3.15/`, während sie in
+# `lib/python3.14/` liegen. MailBurg startet also, findet sich selbst
+# nicht und endet in einem ModuleNotFoundError.
+#
+# Ein Traceback auf einem Archivprogramm liest sich wie Datenverlust.
+# Er ist keiner: Das Archiv liegt woanders und ist unberührt. Genau das
+# muss dastehen, und zwar bevor jemand anfängt, es zu suchen.
+starthilfe() {
+    local ziel="$1" echtes="$2" grafisch="$3"
+
+    # **Erst wegnehmen, dann schreiben.** Hier lag bis eben ein Symlink
+    # auf genau die Datei, die unten in `exec` steht – und `cat >`
+    # schreibt durch einen Symlink hindurch in dessen Ziel. Beim ersten
+    # Lauf hat das das pip-Startskript überschrieben; der Wrapper rief
+    # damit sich selbst auf und lief endlos.
+    #
+    # Gemerkt haben wir es daran, dass `mailburg --version` nicht mehr
+    # zurückkam. Eine Endlosschleife sieht aus wie ein langsamer Start.
+    rm -f "$ziel"
+
+    cat > "$ziel" <<WRAPPER
+#!/bin/sh
+# Von install.sh erzeugt. Prüft die Umgebung und reicht dann durch.
+VENV="$VENV"
+WRAPPER
+    cat >> "$ziel" <<'WRAPPER'
+
+# Das genaue Python steht in pyvenv.cfg. Fehlt es, hat die Distribution
+# es angehoben und die Umgebung zeigt ins Leere. Geprüft wird über das
+# Dateisystem, nicht durch einen Programmstart - das kostet nichts und
+# taugt auch dann noch, wenn gar kein Python mehr da ist.
+python_weg=""
+if [ -f "$VENV/pyvenv.cfg" ]; then
+    gebraucht=$(sed -n 's/^executable = //p' "$VENV/pyvenv.cfg")
+    [ -n "$gebraucht" ] && [ ! -x "$gebraucht" ] && python_weg="$gebraucht"
+fi
+[ -x "$VENV/bin/python3" ] || python_weg="${python_weg:-$VENV/bin/python3}"
+
+if [ -n "$python_weg" ]; then
+    kurz=$(basename "$python_weg")
+    text="MailBurgs Umgebung passt nicht mehr zum System.
+
+Ihre Distribution hat Python angehoben; $kurz gibt es nicht mehr.
+MailBurg findet dadurch seine eigenen Bestandteile nicht.
+
+IHR ARCHIV IST DAVON NICHT BETROFFEN. Es liegt außerhalb dieser
+Umgebung, ebenso Ihre Postfächer und der Suchindex. Verloren geht
+nichts.
+
+So wird es wieder eingerichtet - im Quellordner von MailBurg:
+
+    ./install.sh
+
+Wer über die Paketverwaltung installiert hat, ist davon nicht
+betroffen."
+    printf '%s\n' "$text" >&2
+WRAPPER
+
+    if [[ "$grafisch" == "grafisch" ]]; then
+        # **Wer aus dem Menü startet, hat kein Terminal.** Dieselbe
+        # Lehre wie am 2026-09-14: Eine Auskunft auf stderr, die
+        # niemand sieht, ist keine. Verlangt wird keines der Programme -
+        # genommen wird, was da ist.
+        cat >> "$ziel" <<'WRAPPER'
+    if [ -t 2 ]; then
+        :
+    elif command -v zenity >/dev/null 2>&1; then
+        zenity --error --no-wrap --title="MailBurg" --text="$text" 2>/dev/null
+    elif command -v kdialog >/dev/null 2>&1; then
+        kdialog --title "MailBurg" --error "$text" 2>/dev/null
+    elif command -v xmessage >/dev/null 2>&1; then
+        printf '%s\n' "$text" | xmessage -center -file - 2>/dev/null
+    elif command -v notify-send >/dev/null 2>&1; then
+        notify-send "MailBurg" "Die Umgebung passt nicht mehr zum System. Bitte ./install.sh erneut ausführen. Ihr Archiv ist nicht betroffen." 2>/dev/null
+    fi
+WRAPPER
+    fi
+
+    cat >> "$ziel" <<WRAPPER
+    exit 1
+fi
+
+exec "$echtes" "\$@"
+WRAPPER
+    chmod +x "$ziel"
+}
+
+starthilfe "$BIN/mailburg" "$VENV/bin/mailburg" ""
 hinweis "Befehl 'mailburg' liegt in $BIN"
 
 if [[ -x "$VENV/bin/mailburg-gui" ]]; then
-    ln -sf "$VENV/bin/mailburg-gui" "$BIN/mailburg-gui"
+    starthilfe "$BIN/mailburg-gui" "$VENV/bin/mailburg-gui" "grafisch"
 
     # Ein Menüeintrag, damit MailBurg dort auftaucht, wo Anwender
     # Programme suchen - und nicht nur in der Eingabeaufforderung.

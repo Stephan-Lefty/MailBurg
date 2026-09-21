@@ -733,7 +733,73 @@ def cmd_konten_pruefen(args: argparse.Namespace) -> int:
                 print(f"    {name}")
         finally:
             quelle.close()
+
+        # **Hier, weil hier die Ordner stehen.** Wer nachsieht, was
+        # archiviert würde, ist genau in dem Moment, in dem eine
+        # veraltete Ausschlussliste etwas bedeutet – ein Ordner in der
+        # Aufzählung oben, der dort nicht stehen sollte.
+        fehlend = accounts.fehlende_ausschluesse(konto)
+        if fehlend:
+            gezaehlt = sprache.anzahl(
+                len(fehlend), "neuerer Standardname", "neuere Standardnamen"
+            )
+            fehlt = "fehlt" if len(fehlend) == 1 else "fehlen"
+            print(f"  Hinweis: {gezaehlt} {fehlt} in der Ausschlussliste "
+                  f"dieses Kontos:")
+            print(f"    {', '.join(fehlend)}")
+            print(f"    Nachtragen: mailburg konten ausschluss "
+                  f"{konto.name} --nachziehen")
     return 1 if fehler else 0
+
+
+def cmd_konten_ausschluss(args: argparse.Namespace) -> int:
+    """Zeigt die übergangenen Ordner – und trägt fehlende nach.
+
+    **Nachgetragen wird nur auf Ansage.** Eine kopierte Vorgabe
+    veraltet still, aber sie von selbst aufzufrischen wäre schlimmer:
+    Wer einen Namen aus der Liste genommen hat, hat sich entschieden,
+    und diese Entscheidung stillschweigend zurückzunehmen hieße, dass
+    ab dann Post fehlt, ohne dass es jemand merkt. Die Begründung steht
+    ausführlich in :func:`accounts.fehlende_ausschluesse`.
+    """
+    liste = Kontenliste()
+    konten = [liste.finden(args.name)] if args.name else liste.konten
+    if not konten or konten[0] is None:
+        print("Kein passendes Konto gefunden.", file=sys.stderr)
+        return 2
+
+    geaendert = False
+    for konto in konten:
+        fehlend = accounts.fehlende_ausschluesse(konto)
+        print(f"{konto.beschreibung()}")
+        print(f"  Übergangen werden: {', '.join(konto.ausschluss) or '(nichts)'}")
+
+        if not fehlend:
+            print("  Die Liste ist auf dem Stand der Vorgabe.")
+            continue
+
+        if not args.nachziehen:
+            # »1 neuere Standardnamen fehlen« stand hier beim ersten
+            # Durchstich. Dafür gibt es sprache.anzahl().
+            gezaehlt = sprache.anzahl(
+                len(fehlend), "neuerer Standardname", "neuere Standardnamen"
+            )
+            fehlt = "fehlt" if len(fehlend) == 1 else "fehlen"
+            print(f"  {gezaehlt} {fehlt}: {', '.join(fehlend)}")
+            print("  Nachtragen mit --nachziehen.")
+            continue
+
+        accounts.ausschluss_nachziehen(konto)
+        geaendert = True
+        print(f"  Nachgetragen: {', '.join(fehlend)}")
+
+    if geaendert:
+        liste.speichern()
+        print()
+        print("Gespeichert. Bereits archivierte Post bleibt, wo sie ist –")
+        print("die Liste wirkt beim nächsten Abruf, nicht rückwirkend.")
+        print("Was schon im Archiv liegt, nimmt 'mailburg loeschen' heraus.")
+    return 0
 
 
 def cmd_loeschen(args: argparse.Namespace) -> int:
@@ -3058,6 +3124,25 @@ def build_parser() -> argparse.ArgumentParser:
     k = konten_befehle.add_parser("pruefen", help="Anmeldung und Ordner prüfen")
     k.add_argument("name", nargs="?", help="ohne Angabe werden alle geprüft")
     k.set_defaults(func=cmd_konten_pruefen)
+
+    k = konten_befehle.add_parser(
+        "ausschluss",
+        help="zeigen, welche Ordner übergangen werden",
+        description=(
+            "Papierkorb, Spamverdacht und Entwürfe kommen nicht ins "
+            "Archiv. Welche Namen dazu zählen, steht je Postfach – die "
+            "Liste wird beim Anlegen aus der Vorgabe kopiert und "
+            "veraltet danach still. Mit --nachziehen kommen neuere "
+            "Standardnamen dazu; von selbst geschieht das nicht, denn "
+            "ein gestrichener Eintrag ist eine Entscheidung."
+        ),
+    )
+    k.add_argument("name", nargs="?", help="ohne Angabe gilt es für alle")
+    k.add_argument(
+        "--nachziehen", action="store_true",
+        help="fehlende Standardnamen eintragen",
+    )
+    k.set_defaults(func=cmd_konten_ausschluss)
 
     p = subparsers.add_parser("abrufen", help="neue Mails aus den Postfächern holen")
     p.add_argument("archiv", help="Verzeichnis des Archivs")

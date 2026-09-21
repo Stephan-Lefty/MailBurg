@@ -347,6 +347,29 @@ Suchindex neu gebaut werden muss. Dann sagt MailBurg das beim Öffnen und
 nennt den Befehl dazu (`mailburg neuaufbau IHR-ARCHIV`). Verloren geht dabei
 nichts – der Index entsteht vollständig aus dem Archiv.
 
+### Wenn Ihre Distribution Python anhebt
+
+Arch, Manjaro und Verwandte tauschen Python mitunter gegen eine neue
+Hauptfassung aus und entfernen die alte. MailBurgs eigene Python-Umgebung
+liegt dann daneben: Sie sucht ihre Bestandteile unter der alten Fassung, die
+es nicht mehr gibt.
+
+**MailBurg sagt das seit Fassung 1.5.2 in einem Satz**, statt mit einem
+Traceback abzubrechen – und zwar mit dem wichtigsten Satz zuerst: *Ihr
+Archiv ist davon nicht betroffen.* Es liegt außerhalb dieser Umgebung,
+ebenso Ihre Postfächer, der Suchindex und die Passwörter. Verloren geht
+nichts.
+
+Die Abhilfe ist dieselbe wie beim Aktualisieren:
+
+```bash
+cd ~/MailBurg
+./install.sh --ohne-pakete
+```
+
+Wer über die Paketverwaltung installiert hat – das `.deb` oder das
+AppImage –, ist davon gar nicht erst betroffen.
+
 ### Windows
 
 Die neue `MailBurg.exe` von der
