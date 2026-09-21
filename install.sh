@@ -156,7 +156,36 @@ if [[ $MIT_PAKETEN -eq 1 ]]; then
         hinweis "Foto einer Seite ankommen. Ohne bleibt deren Inhalt für die"
         hinweis "Suche unsichtbar, und das merkt man erst, wenn man vergeblich"
         hinweis "danach sucht."
-        read -r -p "  Installieren? [J/n] " antwort
+        # **Ohne Terminal wird nicht gefragt, sondern übersprungen.**
+        #
+        # Am 2026-09-21 beim Aktualisieren von Stephans Rechner
+        # aufgelaufen: Läuft das Skript ohne angeschlossene Tastatur –
+        # aus einem anderen Skript heraus, über SSH mit Umleitung, in
+        # einem Container –, bekommt `read` sofort EOF und liefert 1.
+        # Unter `set -e` bricht das Skript an dieser Stelle ab.
+        #
+        # **Und zwar still.** Keine Fehlermeldung, die Ausgabe endet
+        # mitten im Absatz, MailBurg ist danach nicht aktualisiert.
+        # Einen Rückgabewert 1 gibt es zwar – nur war das Skript durch
+        # ein `| tail` aufgerufen, und eine Pipe liefert den Wert ihres
+        # *letzten* Glieds. Damit sah der Abbruch aus wie ein Erfolg.
+        #
+        # Dieselbe Klasse wie der Zeitplan, der ins Leere zeigt: Es
+        # sieht fertig aus.
+        #
+        # Automatisch zu installieren wäre keine Lösung: `sudo` fragt
+        # dann seinerseits nach einem Passwort und hängt. Übersprungen
+        # wird deshalb – aber laut, samt dem Befehl zum Nachrüsten.
+        if [[ -t 0 ]]; then
+            # Das `|| antwort=""` ist der Gürtel zum Hosenträger: Auch
+            # ein Terminal kann mitten in der Eingabe zugehen (Strg+D,
+            # abgerissene SSH-Sitzung), und dann gilt dasselbe.
+            read -r -p "  Installieren? [J/n] " antwort || antwort=""
+        else
+            antwort="n"
+            hinweis ""
+            hinweis "Kein Terminal – es wird nichts nachinstalliert."
+        fi
         if [[ ! "$antwort" =~ ^([nN]|[nN]ein)$ ]]; then
             $BEFEHL "${PAKETE[@]}"
         else

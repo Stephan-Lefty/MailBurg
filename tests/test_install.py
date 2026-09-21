@@ -388,3 +388,100 @@ class WappenInDerExeTest(unittest.TestCase):
         for name, _ in WAPPEN.values():
             with self.subTest(datei=name):
                 self.assertTrue((self.wurzel / "assets" / name).is_file())
+
+
+class OhneTerminalBrichtNichtsAbTest(unittest.TestCase):
+    """``install.sh`` darf ohne angeschlossene Tastatur nicht aufgeben.
+
+    **Am 2026-09-21 aufgelaufen**, beim Aktualisieren von Stephans
+    Rechner auf die 1.5.0. Das Skript lief aus einer Werkzeugsitzung
+    heraus, also ohne Terminal an ``stdin``. An der Frage nach den
+    Systempaketen bekam ``read`` sofort EOF und lieferte 1 – und unter
+    ``set -euo pipefail`` endet das Skript damit auf der Stelle.
+
+    **Und zwar still.** Keine Fehlermeldung, die Ausgabe hörte mitten im
+    Absatz auf, MailBurg war hinterher *nicht* aktualisiert. Einen
+    Rückgabewert 1 gab es zwar – nur lief das Skript durch ein
+    ``| tail``, und eine Pipe liefert den Wert ihres *letzten* Glieds.
+    Gemerkt haben wir es allein daran, dass hinterher die
+    Fassungsnummer nachgesehen wurde.
+
+    Dieselbe Klasse wie der Zeitplan, der ins Leere zeigt (1.4.4), und
+    wie das Programm, das startet und nichts tut (1.4.6): **Es sieht
+    erledigt aus.** Ein Abbruch, der aussieht wie ein Ende, ist teurer
+    als ein Absturz.
+
+    Automatisch zu installieren wäre keine Abhilfe – ``sudo`` fragte
+    dann seinerseits nach einem Passwort und hinge genauso. Also
+    übersprungen, aber laut.
+    """
+
+    def setUp(self) -> None:
+        self.skript = (
+            pathlib.Path(__file__).resolve().parent.parent / "install.sh"
+        ).read_text(encoding="utf-8")
+
+    def _lauf(self, mit_terminal: bool) -> "subprocess.CompletedProcess":
+        """Führt den Frageblock aus – wahlweise mit oder ohne Terminal.
+
+        Ausgeführt, nicht gelesen: Ob eine Fallunterscheidung stimmt,
+        sieht man ihrem Text nicht an. Das ist die Lehre vom 2026-09-03.
+        """
+        import subprocess
+
+        zeilen = self.skript.splitlines()
+        i = next(n for n, z in enumerate(zeilen)
+                 if z.strip().startswith("if [[ -t 0 ]]"))
+        j = next(n for n in range(i + 1, len(zeilen))
+                 if zeilen[n].strip() == "fi"
+                 and zeilen[n + 1].strip().startswith("if [[ !"))
+        block = "\n".join(zeilen[i:j + 1])
+
+        programm = "\n".join([
+            "set -euo pipefail",
+            "hinweis() { printf '%s\\n' \"$*\"; }",
+            block,
+            'printf "ANTWORT=%s\\n" "$antwort"',
+            'printf "DURCHGELAUFEN\\n"',
+        ])
+        return subprocess.run(
+            ["bash", "-c", programm],
+            capture_output=True, text=True,
+            # Ohne Terminal heißt: stdin ist eine Datei oder eine Pipe.
+            # Genau so läuft es aus einem anderen Skript heraus.
+            stdin=None if mit_terminal else subprocess.DEVNULL,
+        )
+
+    def test_ohne_terminal_laeuft_es_weiter(self) -> None:
+        fertig = self._lauf(mit_terminal=False)
+        self.assertEqual(fertig.returncode, 0, fertig.stderr)
+        self.assertIn("DURCHGELAUFEN", fertig.stdout)
+
+    def test_ohne_terminal_wird_nichts_installiert(self) -> None:
+        """Sonst hinge ``sudo`` an seiner eigenen Passwortfrage."""
+        fertig = self._lauf(mit_terminal=False)
+        self.assertIn("ANTWORT=n", fertig.stdout)
+
+    def test_ohne_terminal_steht_es_in_der_ausgabe(self) -> None:
+        """**Stillschweigend überspringen wäre der gleiche Fehler.**
+
+        Wer die Ausgabe später liest, muss sehen, dass hier etwas
+        ausgelassen wurde – sonst hält er die Texterkennung für
+        eingerichtet.
+        """
+        fertig = self._lauf(mit_terminal=False)
+        self.assertIn("Kein Terminal", fertig.stdout)
+
+    def test_die_frage_steht_noch_im_skript(self) -> None:
+        """Mit Terminal wird weiterhin gefragt, nicht entschieden.
+
+        Beim Bauen der Abhilfe war die Frage einen Moment lang ganz
+        verschwunden – der Block las dann von einem Kanal, auf dem
+        nichts stand, und niemand erfuhr, worum es ging.
+        """
+        self.assertIn('read -r -p "  Installieren? [J/n] " antwort',
+                      self.skript)
+
+    def test_auch_ein_abgerissenes_terminal_bricht_nicht_ab(self) -> None:
+        """Strg+D mitten in der Eingabe, oder eine tote SSH-Sitzung."""
+        self.assertIn('antwort || antwort=""', self.skript)

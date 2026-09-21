@@ -114,6 +114,30 @@ bevor er fragte.
   Pfad hinter dem Namen; »Auch gefunden: Evolution« beantwortet nichts,
   wenn es zwei davon gibt.
 
+- **`install.sh` brach ohne Terminal still ab.** Gefunden beim
+  Aktualisieren von Stephans eigenem Rechner auf diese Fassung.
+
+  Läuft das Skript ohne angeschlossene Tastatur – aus einem anderen
+  Skript heraus, über SSH mit Umleitung, in einem Container –, bekommt
+  die Frage nach den Systempaketen sofort ein Dateiende. `read` liefert
+  dann 1, und unter `set -euo pipefail` endet das Skript auf der Stelle.
+
+  **Es sah dabei aus wie ein Erfolg.** Die Ausgabe hörte mitten im
+  Absatz auf, es gab keine Fehlermeldung, und MailBurg war hinterher
+  nicht aktualisiert. Einen Rückgabewert 1 gab es zwar – nur lief das
+  Skript durch ein `| tail`, und eine Pipe liefert den Wert ihres
+  *letzten* Glieds. Aufgefallen ist es allein daran, dass hinterher die
+  Fassungsnummer nachgesehen wurde.
+
+  Ohne Terminal werden die Systempakete jetzt übersprungen – **aber
+  laut**, mit dem Befehl zum Nachrüsten. Sie stillschweigend zu
+  übergehen wäre derselbe Fehler noch einmal; sie automatisch zu
+  installieren keine Abhilfe, denn `sudo` fragte dann seinerseits nach
+  einem Passwort und hinge genauso.
+
+  Dieselbe Klasse wie die 1.4.4 und die 1.4.6: **Ein Abbruch, der
+  aussieht wie ein Ende, ist teurer als ein Absturz.**
+
 ## [1.4.8] – 2026-09-16
 
 Aus einem Nachmittag Fehlersuche an Stephans Rechner: ein fehlender
