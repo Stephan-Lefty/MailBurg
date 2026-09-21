@@ -923,9 +923,27 @@ class Archive:
         chain = self.journal.verify()
 
         expected: dict[str, str] = {}
+        unvollstaendig: list[int] = []
         for entry in self.journal.read_all():
             if entry.get("op") == "add":
-                expected[entry["hash"]] = entry["bucket"]
+                # **Ein unvollständiger Eintrag darf die Prüfung nicht
+                # kosten.** Hier stand ``entry["hash"]`` und
+                # ``entry["bucket"]`` – fehlte eines, flog ein KeyError
+                # und der Anwender bekam einen Traceback statt eines
+                # Befunds. Ausgerechnet aus dem Werkzeug, das
+                # Beschädigungen finden soll: Wessen Journal angefasst
+                # wurde, erfährt dann gerade nicht, was daran ist.
+                #
+                # Am 2026-09-21 beim Nachstellen einer Bruchstelle
+                # aufgelaufen. Im Normalbetrieb entsteht so ein Eintrag
+                # nicht – aber ``verify()`` ist genau für den Fall da,
+                # dass etwas nicht normal ist.
+                digest = entry.get("hash")
+                bucket = entry.get("bucket")
+                if isinstance(digest, str) and isinstance(bucket, str):
+                    expected[digest] = bucket
+                else:
+                    unvollstaendig.append(entry.get("seq", -1))
             elif entry.get("op") == "delete":
                 expected.pop(entry.get("hash", ""), None)
 
@@ -943,11 +961,21 @@ class Archive:
             "chain_ok": chain.ok,
             "chain_entries": chain.entries,
             "chain_errors": [str(e) for e in chain.errors],
+            # **Vermerkte Bruchstellen gehören mit ausgegeben.** Sie
+            # zählen nicht als Beanstandung, aber verschwiegen wird
+            # nichts: Eine gerissene Kette, die aus der Anzeige fällt,
+            # wäre schlimmer als eine, die dauerhaft gemeldet wird.
+            "chain_bekannt": [str(e) for e in chain.bekannt],
+            # Einträge, denen Angaben fehlen. Sie zählen als
+            # Beanstandung: Was nicht sagt, welche Mail es meint, lässt
+            # sich auch nicht gegen die Ablage halten.
+            "unvollstaendig": unvollstaendig,
             "expected": len(expected),
             "on_disk": len(on_disk),
             "missing": missing,
             "unexpected": unexpected,
-            "ok": chain.ok and not missing and not unexpected,
+            "ok": (chain.ok and not missing and not unexpected
+                   and not unvollstaendig),
         }
 
     def rebuild_index(self, *, progress=None, mit_anhangstext: bool = True) -> int:

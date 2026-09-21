@@ -457,3 +457,160 @@ class TestZweiSchreiber(unittest.TestCase):
         self.assertEqual(eintrag["seq"], 4)
         ergebnis = Journal(self.meta).verify()
         self.assertTrue(ergebnis.ok, ergebnis.errors)
+
+
+class TestKettenvermerk(unittest.TestCase):
+    """Eine bekannte Bruchstelle wird erklärt, nicht geheilt.
+
+    **Der Anlass steht in TestZweiSchreiber.** Nachdem die Ursache
+    behoben war, blieb die Frage, was mit der vorhandenen Bruchstelle
+    in Stephans Geschäftsarchiv geschieht. Die Kette umzuschreiben kam
+    nicht in Frage – das ist genau das, was sie verhindern soll.
+
+    Also ein Vermerk: Er hängt sich hinten an, benennt die Stelle und
+    erklärt sie, und er hängt selbst in der Kette. Eine spätere Prüfung
+    sieht **beides** – den Bruch und die Erklärung.
+
+    Der Grund, warum das nicht nur Kosmetik ist: Ein Befund, der
+    ungeklärt stehen bleibt, wird nach der dritten Prüfung überlesen.
+    Dann meldet auch der nächste, echte Befund nichts mehr.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.meta = Path(self.ordner.name) / "meta"
+        self.journal = Journal(self.meta)
+        self.journal.append("create", name="Probe")
+
+    def _bruch_erzeugen(self) -> int:
+        """Stellt den Fall vom 12.09. nach: zwei Zugriffe, alter Stand."""
+        fenster = Journal(self.meta)
+        Journal(self.meta).append("add", hash="ab" * 32, bucket="2026/09")
+        fenster._fremdes_schreiben = lambda: False
+        return fenster.append("classify", hash="ab" * 32,
+                              category="privat")["seq"]
+
+    def test_ohne_vermerk_ist_es_eine_beanstandung(self) -> None:
+        self._bruch_erzeugen()
+        ergebnis = Journal(self.meta).verify()
+
+        self.assertFalse(ergebnis.ok)
+        self.assertEqual(ergebnis.bekannt, ())
+
+    def test_mit_vermerk_gilt_die_stelle_als_bekannt(self) -> None:
+        nummer = self._bruch_erzeugen()
+        journal = Journal(self.meta)
+        journal.vermerk_kette("000001.jsonl", nummer, "Zwei Zugriffe")
+
+        ergebnis = Journal(self.meta).verify()
+
+        self.assertTrue(ergebnis.ok, ergebnis.errors)
+        self.assertTrue(ergebnis.bekannt, "die Stelle darf nicht verschwinden")
+
+    def test_der_bruch_bleibt_sichtbar(self) -> None:
+        """**Der wichtigste Test hier.**
+
+        Ein Vermerk, der die Stelle aus der Anzeige nimmt, hätte sie aus
+        der Welt geschafft statt sie zu dokumentieren. Wer prüft, muss
+        sie weiterhin sehen.
+        """
+        nummer = self._bruch_erzeugen()
+        Journal(self.meta).vermerk_kette("000001.jsonl", nummer, "Grund")
+
+        ergebnis = Journal(self.meta).verify()
+        texte = [str(f) for f in ergebnis.bekannt]
+
+        self.assertTrue(any("Kette gerissen" in t for t in texte), texte)
+
+    def test_ein_vermerk_gilt_nur_fuer_seine_stelle(self) -> None:
+        """**Kein Freibrief rückwirkend.**
+
+        Gälte ein Vermerk für »alles davor«, entschuldigte ein einziger
+        Eintrag jede Veränderung – und die Prüfung wäre wertlos.
+        """
+        erste = self._bruch_erzeugen()
+        zweite = self._bruch_erzeugen()
+        Journal(self.meta).vermerk_kette("000001.jsonl", erste, "nur diese")
+
+        ergebnis = Journal(self.meta).verify()
+
+        self.assertFalse(ergebnis.ok, "die zweite Stelle bleibt offen")
+        self.assertTrue(
+            any(f.seq == zweite for f in ergebnis.errors),
+            [str(f) for f in ergebnis.errors],
+        )
+
+    def test_ein_vermerk_fuer_eine_fremde_datei_zaehlt_nicht(self) -> None:
+        """Segment und Nummer müssen beide passen."""
+        nummer = self._bruch_erzeugen()
+        Journal(self.meta).vermerk_kette("999999.jsonl", nummer, "woanders")
+
+        self.assertFalse(Journal(self.meta).verify().ok)
+
+    def test_ohne_begruendung_wird_abgelehnt(self) -> None:
+        nummer = self._bruch_erzeugen()
+
+        with self.assertRaises(ValueError):
+            Journal(self.meta).vermerk_kette("000001.jsonl", nummer, "   ")
+
+    def test_der_vermerk_haengt_selbst_in_der_kette(self) -> None:
+        """Sonst ließe er sich spurlos entfernen.
+
+        Er ist ein gewöhnlicher Eintrag mit ``prev`` und Eigenhash –
+        wer ihn herausnimmt, zerreißt die Kette an dieser Stelle.
+        """
+        nummer = self._bruch_erzeugen()
+        eintrag = Journal(self.meta).vermerk_kette(
+            "000001.jsonl", nummer, "Grund")
+
+        self.assertEqual(eintrag["op"], "kette")
+        self.assertIn("prev", eintrag)
+        self.assertIn("self", eintrag)
+
+    def test_er_nennt_zeitpunkt_und_urheber(self) -> None:
+        """Ein Vermerk ohne Herkunft ist in einer Prüfung wertlos."""
+        nummer = self._bruch_erzeugen()
+        eintrag = Journal(self.meta).vermerk_kette(
+            "000001.jsonl", nummer, "Grund", actor="stephan")
+
+        self.assertEqual(eintrag["actor"], "stephan")
+        self.assertIn("ts", eintrag)
+        self.assertEqual(eintrag["grund"], "Grund")
+
+    def test_eine_echte_manipulation_bleibt_eine(self) -> None:
+        """**Die Grenze, an der alles hängt.**
+
+        Ein Vermerk erklärt eine Stelle, an der die *Kette* nicht
+        aufgeht. Er darf nicht dazu führen, dass ein nachträglich
+        veränderter Eintrag durchgeht – sonst wäre er das Werkzeug, vor
+        dem die Hash-Kette schützen soll.
+        """
+        self.journal.append("add", hash="cd" * 32, bucket="2026/09")
+        self.journal.flush()
+
+        segment = self.meta / "000001.jsonl"
+        zeilen = segment.read_text(encoding="utf-8").splitlines()
+        eintrag = json.loads(zeilen[-1])
+        eintrag["hash"] = "ff" * 32          # Inhalt verändert
+        zeilen[-1] = json.dumps(eintrag, separators=(",", ":"),
+                                sort_keys=True, ensure_ascii=False)
+        segment.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
+
+        Journal(self.meta).vermerk_kette(
+            "000001.jsonl", eintrag["seq"], "angeblich bekannt")
+
+        ergebnis = Journal(self.meta).verify()
+
+        self.assertFalse(
+            ergebnis.ok,
+            "eine Veränderung darf sich nicht wegvermerken lassen",
+        )
+        self.assertTrue(
+            any("Eigenhash" in str(f) for f in ergebnis.errors),
+            f"und zwar als Beanstandung: {[str(f) for f in ergebnis.errors]}",
+        )
+        self.assertFalse(
+            any("Eigenhash" in str(f) for f in ergebnis.bekannt),
+            "ein veränderter Inhalt ist nie »bekannt«",
+        )

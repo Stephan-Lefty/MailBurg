@@ -79,9 +79,21 @@ _SEGMENT_RE = re.compile(r"^(\d{6})\.jsonl(\.zst|\.xz)?$")
 #: eine Mail nicht der Aufbewahrung unterlag, zeigt auf diesen Eintrag –
 #: und er hängt in der Hash-Kette, lässt sich also nicht nachträglich
 #: glattziehen.
+#: ``kette`` ist der jüngste Vorgang und der ungewöhnlichste: ein
+#: Vermerk über eine Bruchstelle in der Kette selbst.
+#:
+#: **Er heilt nichts.** Die Kette bleibt gerissen, und die Prüfung sagt
+#: das weiterhin – nur nennt sie die Stelle dann als *erklärt* statt als
+#: unbekannt. Das ist der einzige vertretbare Umgang damit: Eine
+#: gerissene Kette glattzuziehen wäre genau das, was sie verhindern
+#: soll, und ein Befund, der ungeklärt stehen bleibt, wird nach der
+#: dritten Prüfung überlesen.
+#:
+#: Der Vermerk hängt selbst in der Kette, mit Zeitpunkt und Urheber.
+#: Wer ihn schreibt, dokumentiert – er verwischt nicht.
 OPERATIONS = frozenset({
     "create", "add", "delete", "classify", "seal", "note", "rules",
-    "users",
+    "users", "kette",
 })
 
 
@@ -133,8 +145,23 @@ class VerifyResult:
     errors: tuple[ChainError, ...]
     last_hash: str
 
+    bekannt: tuple[ChainError, ...] = ()
+    """Bruchstellen, zu denen ein Vermerk in der Kette steht.
+
+    **Sie sind nicht weg, sie sind erklärt.** Jeder Aufrufer, der
+    Befunde anzeigt, muss auch diese nennen – sonst verschwindet eine
+    gerissene Kette aus der Wahrnehmung, und das wäre schlimmer als ein
+    Befund, den man stehen lässt.
+    """
+
     @property
     def ok(self) -> bool:
+        """Ob es *unerklärte* Bruchstellen gibt.
+
+        Vermerkte zählen hier nicht mit. Andernfalls bliebe die Prüfung
+        für immer rot, und eine Meldung, die immer rot ist, sagt nichts
+        mehr – auch nicht, wenn morgen etwas Echtes dazukommt.
+        """
         return not self.errors
 
 
@@ -422,12 +449,38 @@ class Journal:
         Folgenummern lückenlos aufsteigen. Zusammen schließt das sowohl
         Änderungen an einzelnen Einträgen als auch das Entfernen ganzer
         Abschnitte aus.
+
+        **Vermerkte Stellen werden getrennt ausgewiesen.** Steht zu
+        einer Bruchstelle ein ``kette``-Eintrag im Journal, wandert der
+        Befund nach :attr:`VerifyResult.bekannt` statt nach ``errors``.
+        Verschwiegen wird er nicht – siehe die Begründung dort.
         """
+        vermerkt = self._vermerkte_stellen()
         errors: list[ChainError] = []
+        bekannt: list[ChainError] = []
         expected_prev = GENESIS_PREV
         expected_seq = 1
         count = 0
         last_hash = GENESIS_PREV
+
+        def melden(fund: ChainError) -> None:
+            # **Ein Vermerk erklärt einen Bruch, nie eine Veränderung.**
+            #
+            # Dass die Kette an einer Stelle nicht aufgeht, kann ein
+            # Betriebsunfall sein – zwei Zugriffe, die gleichzeitig
+            # schreiben. Dass der Inhalt eines Eintrags nicht mehr zu
+            # seinem Eigenhash passt, kann das nicht: Dort hat jemand
+            # etwas geändert.
+            #
+            # Ließe sich auch das vermerken, wäre der Vermerk genau das
+            # Werkzeug, vor dem die Hash-Kette schützen soll. Deshalb
+            # geht ein Eigenhash-Befund immer in ``errors``, auch wenn
+            # für die Stelle ein Vermerk vorliegt.
+            erklaerbar = "Eigenhash" not in fund.problem
+            if erklaerbar and (fund.segment, fund.seq) in vermerkt:
+                bekannt.append(fund)
+            else:
+                errors.append(fund)
 
         for segment in self.segments():
             try:
@@ -441,15 +494,15 @@ class Journal:
                 seq = entry.get("seq", -1)
 
                 if entry.get("self") != entry_hash(entry):
-                    errors.append(
+                    melden(
                         ChainError(seq, segment.name, "Inhalt passt nicht zum Eigenhash")
                     )
                 if entry.get("prev") != expected_prev:
-                    errors.append(
+                    melden(
                         ChainError(seq, segment.name, "Kette gerissen: prev zeigt ins Leere")
                     )
                 if seq != expected_seq:
-                    errors.append(
+                    melden(
                         ChainError(seq, segment.name, f"Folgenummer erwartet: {expected_seq}")
                     )
 
@@ -457,7 +510,63 @@ class Journal:
                 last_hash = expected_prev
                 expected_seq = seq + 1
 
-        return VerifyResult(entries=count, errors=tuple(errors), last_hash=last_hash)
+        return VerifyResult(
+            entries=count,
+            errors=tuple(errors),
+            last_hash=last_hash,
+            bekannt=tuple(bekannt),
+        )
+
+    def _vermerkte_stellen(self) -> set[tuple[str, int]]:
+        """Welche Bruchstellen einen Vermerk in der Kette haben.
+
+        **Nur was ausdrücklich benannt ist.** Ein Vermerk gilt für genau
+        ein Segment und genau eine Folgenummer – nicht für »alles
+        davor«. Sonst entschuldigte ein einziger Eintrag rückwirkend
+        jede Veränderung, und die Prüfung wäre wertlos.
+
+        Unlesbare Segmente werden hier übergangen: Sie melden sich in
+        :meth:`verify` selbst, und ein Vermerk, den niemand lesen kann,
+        ist keiner.
+        """
+        gefunden: set[tuple[str, int]] = set()
+        for segment in self.segments():
+            try:
+                entries = list(self._read_segment(segment))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                continue
+            for entry in entries:
+                if entry.get("op") != "kette":
+                    continue
+                stelle = entry.get("stelle")
+                nummer = entry.get("nummer")
+                if isinstance(stelle, str) and isinstance(nummer, int):
+                    gefunden.add((stelle, nummer))
+        return gefunden
+
+    def vermerk_kette(self, stelle: str, nummer: int, grund: str,
+                      actor: str = "") -> dict[str, Any]:
+        """Hält fest, dass an dieser Stelle ein bekannter Bruch liegt.
+
+        **Die Kette wird dabei nicht angefasst.** Der Vermerk hängt sich
+        hinten an und erklärt, was weiter vorn steht – mit Zeitpunkt,
+        Urheber und Begründung, und selbst gegen Veränderung gesichert,
+        weil er Teil derselben Kette ist.
+
+        Wer das benutzt, muss wissen: Eine spätere Prüfung sieht
+        weiterhin den Bruch *und* den Vermerk. Das ist der Zweck. Wer
+        eine saubere Kette braucht, legt ein neues Archiv an und spielt
+        den Bestand hinein.
+        """
+        if not grund.strip():
+            raise ValueError(
+                "Ein Vermerk ohne Begründung wäre wertlos – er soll ja "
+                "gerade erklären, was an der Stelle geschehen ist."
+            )
+        return self.append(
+            "kette", stelle=stelle, nummer=int(nummer),
+            grund=grund.strip(), actor=actor,
+        )
 
     # -------------------------------------------------------------- Zustand
 

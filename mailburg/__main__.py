@@ -1442,19 +1442,126 @@ def cmd_suchen(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_kettenvermerk(args: argparse.Namespace) -> int:
+    """Hält eine bekannte Bruchstelle der Hash-Kette fest.
+
+    **Der seltenste Befehl im ganzen Programm, und der heikelste.**
+    Deshalb führt er durch: Er prüft erst, ob es die Stelle überhaupt
+    gibt, zeigt sie an und verlangt eine Begründung.
+
+    Er repariert nichts. Die Kette bleibt gerissen; der Vermerk hängt
+    sich hinten an und erklärt, was weiter vorn steht. Eine spätere
+    Prüfung sieht beides – und genau so gehört es sich: Wer eine
+    Unveränderbarkeit zusagt, darf sie nicht nachträglich herstellen.
+    """
+    with oeffnen(Path(args.archiv), exclusive=True) as archive:
+        ergebnis = archive.journal.verify()
+        offen = [e for e in ergebnis.errors]
+
+        if not offen:
+            print("Keine unerklärten Bruchstellen – es gibt nichts zu "
+                  "vermerken.")
+            if ergebnis.bekannt:
+                print()
+                print(f"Bereits vermerkt sind {len(ergebnis.bekannt)} Stelle(n):")
+                for fund in ergebnis.bekannt:
+                    print(f"  - {fund}")
+            return 0
+
+        if args.nummer is None:
+            print(f"{sprache.anzahl(len(offen), 'unerklärte Bruchstelle', 'unerklärte Bruchstellen')}:")
+            print()
+            for fund in offen:
+                print(f"  Segment {fund.segment}, Eintrag {fund.seq}")
+                print(f"    {fund.problem}")
+            print()
+            print("Zum Vermerken die Nummer und eine Begründung angeben:")
+            erste = offen[0]
+            print(f"  mailburg kettenvermerk {args.archiv} "
+                  f"--nummer {erste.seq} --segment {erste.segment} \\")
+            print("      --grund \"Was an der Stelle geschehen ist\"")
+            return 0
+
+        if not args.grund:
+            print("Ein Vermerk ohne Begründung wäre wertlos – er soll ja "
+                  "gerade erklären, was geschehen ist.", file=sys.stderr)
+            return 2
+
+        passend = [f for f in offen if f.seq == args.nummer
+                   and (not args.segment or f.segment == args.segment)]
+        if not passend:
+            print(f"An Eintrag {args.nummer} ist keine unerklärte "
+                  f"Bruchstelle. Ohne --nummer zeigt der Befehl, welche "
+                  f"es gibt.", file=sys.stderr)
+            return 2
+
+        segment = args.segment or passend[0].segment
+        archive.journal.vermerk_kette(
+            segment, args.nummer, args.grund,
+            actor=args.wer or _angemeldet(),
+        )
+        archive.journal.flush()
+
+        print(f"Vermerkt: Segment {segment}, Eintrag {args.nummer}")
+        for fund in passend:
+            print(f"  {fund.problem}")
+        print()
+        print("Der Vermerk hängt jetzt in der Kette und lässt sich nicht")
+        print("mehr stillschweigend entfernen. Die Bruchstelle selbst")
+        print("bleibt, wo sie ist – 'mailburg pruefen' nennt sie künftig")
+        print("als bekannt statt als Beanstandung.")
+        return 0
+
+
+def _angemeldet() -> str:
+    """Wer gerade am Rechner sitzt – für den Urheber eines Vermerks."""
+    import getpass
+
+    try:
+        return getpass.getuser()
+    except Exception:  # noqa: BLE001 – ein Name ist nett, nicht nötig
+        return ""
+
+
 def cmd_pruefen(args: argparse.Namespace) -> int:
     """Prüft Hash-Kette und Ablage."""
     with oeffnen(Path(args.archiv), exclusive=False) as archive:
         print(f"Prüfe {archive.name} …")
         report = archive.verify()
 
-        if report["chain_ok"]:
+        if report["chain_ok"] and report.get("chain_bekannt"):
+            # **Nicht »unversehrt«, wenn darunter Bruchstellen stehen.**
+            # Zwei Zeilen, die einander widersprechen, sind schlimmer
+            # als eine unbequeme – das war die Lehre vom 2026-09-09,
+            # als das Fenster »Alle Mails sind im Archiv« meldete,
+            # während der Filter Post ferngehalten hatte.
+            print(f"  Hash-Kette:  schlüssig bis auf "
+                  f"{len(report['chain_bekannt'])} vermerkte Stelle(n) "
+                  f"({sprache.eintraege(report['chain_entries'])})")
+        elif report["chain_ok"]:
             print(f"  Hash-Kette:  unversehrt "
                   f"({sprache.eintraege(report['chain_entries'])})")
         else:
             print(f"  Hash-Kette:  BESCHÄDIGT ({len(report['chain_errors'])} Fundstellen)")
             for problem in report["chain_errors"][:20]:
                 print(f"    - {problem}")
+
+        # **Auch wenn die Kette »unversehrt« heißt.** Ein vermerkter
+        # Bruch ist erklärt, nicht verschwunden – wer prüft, muss ihn
+        # sehen. Sonst hätte der Vermerk die Stelle aus der Welt
+        # geschafft statt sie zu dokumentieren.
+        if report.get("chain_bekannt"):
+            print(f"  Vermerkt:    {len(report['chain_bekannt'])} bekannte "
+                  f"Stelle(n), erklärt im Journal:")
+            for problem in report["chain_bekannt"][:20]:
+                print(f"    - {problem}")
+
+        if report.get("unvollstaendig"):
+            print(f"  UNVOLLSTÄNDIG: {len(report['unvollstaendig'])} Eintrag/Einträge "
+                  f"ohne Angabe, welche Mail gemeint ist:")
+            for nummer in report["unvollstaendig"][:10]:
+                print(f"    - Eintrag {nummer}")
+            print("               Sie lassen sich nicht gegen die Ablage halten.")
 
         print(f"  Erwartet:    {sprache.mails(report['expected'])} laut Journal")
         print(f"  Vorhanden:   {sprache.dateien(report['on_disk'])} in der Ablage")
@@ -3265,6 +3372,25 @@ def build_parser() -> argparse.ArgumentParser:
     p = subparsers.add_parser("pruefen", help="Hash-Kette und Ablage prüfen")
     p.add_argument("archiv")
     p.set_defaults(func=cmd_pruefen)
+
+    p = subparsers.add_parser(
+        "kettenvermerk",
+        help="eine bekannte Bruchstelle der Hash-Kette festhalten",
+        description=(
+            "Hält fest, dass an einer Stelle der Kette ein bekannter "
+            "Bruch liegt, und warum. Repariert nichts: Die Kette bleibt "
+            "gerissen, der Vermerk hängt sich hinten an und erklärt sie. "
+            "Eine spätere Prüfung sieht beides – wer Unveränderbarkeit "
+            "zusagt, darf sie nicht nachträglich herstellen. "
+            "Ohne --nummer zeigt der Befehl nur, welche Stellen es gibt."
+        ),
+    )
+    p.add_argument("archiv")
+    p.add_argument("--nummer", type=int, help="Folgenummer der Bruchstelle")
+    p.add_argument("--segment", default="", help="Datei, etwa 000001.jsonl")
+    p.add_argument("--grund", default="", help="was an der Stelle geschah")
+    p.add_argument("--wer", default="", help="wer den Vermerk setzt")
+    p.set_defaults(func=cmd_kettenvermerk)
 
     p = subparsers.add_parser("neuaufbau", help="den Suchindex neu erzeugen")
     p.add_argument("archiv")

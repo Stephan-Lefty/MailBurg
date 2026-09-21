@@ -517,6 +517,38 @@ bestätigt. Deshalb sagt MailBurg, dass es revisionssicheren Betrieb
 <i>unterstützt</i>, und nicht, dass es ihn herstellt. Dazu gehören immer
 auch geregelte Abläufe bei Ihnen im Betrieb.</p>
 
+<h3>Wenn die Prüfung eine Bruchstelle meldet</h3>
+
+<p><b>Sehen Sie zuerst auf die Zahlen darunter.</b> Stimmen »Erwartet«
+und »Vorhanden« überein, fehlt keine Mail – dann ist nicht der Bestand
+beschädigt, sondern die Buchführung darüber.</p>
+
+<p>Das kann vorkommen: Bis zur Fassung 1.5.2 konnten zwei gleichzeitige
+Zugriffe – ein Abruf im Hintergrund und ein offenes Fenster, in dem
+jemand einstuft – dieselbe Folgenummer zweimal vergeben. Die Kette riss
+dabei, ohne dass eine einzige Nachricht verloren ging. Behoben ist das;
+eine Stelle, die dabei entstanden ist, bleibt aber bestehen.</p>
+
+<p><b>Repariert wird sie nicht.</b> Eine gerissene Kette glattzuziehen
+wäre genau das, was sie verhindern soll – und ein Archiv, dessen
+Protokoll sich nachträglich begradigen lässt, belegt nichts mehr.</p>
+
+<p>Stattdessen lässt sich die Stelle <b>vermerken</b>: Auf der
+Kommandozeile zeigt <i>mailburg kettenvermerk IHR-ARCHIV</i>, welche
+Stellen offen sind, und trägt auf Wunsch eine Erklärung dazu ein. Der
+Vermerk hängt selbst in der Kette, mit Zeitpunkt und Urheber, und lässt
+sich damit nicht stillschweigend entfernen.</p>
+
+<p>Die Prüfung nennt die Stelle danach weiter – aber als <i>vermerkt</i>
+statt als Beanstandung. <b>Das ist der Zweck:</b> Ein Befund, der
+ungeklärt stehen bleibt, wird nach der dritten Prüfung überlesen, und
+dann fällt auch der nächste, echte nicht mehr auf.</p>
+
+<p><b>Eine Ausnahme gibt es.</b> Passt der Inhalt eines Eintrags nicht
+mehr zu seinem Fingerabdruck, lässt sich das <i>nicht</i> vermerken.
+Ein Bruch in der Reihenfolge kann ein Betriebsunfall sein; ein
+veränderter Inhalt ist keiner.</p>
+
 {menue}
 """
 
