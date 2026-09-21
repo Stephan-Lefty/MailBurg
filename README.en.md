@@ -161,6 +161,13 @@ for any message in it — held together by the headers every mail client carries
 not by the subject. Subjects change along the way, and two messages with
 "Invoice" in the subject usually have nothing to do with each other.
 
+A search you need again and again can be given a name and then sits in the tree
+on the left: **saved searches**, the way Evolution has them and Thunderbird
+calls them "virtual folders". They hold no mail — they show whatever currently
+matches, and so they are always up to date. Anyone used to sorting mail into
+local folders works the other way round here: the mail is not moved, the
+question is asked. Available on the command line too: `mailburg suchordner`.
+
 ### And back out again
 
 An archive nothing comes back out of would be a grave. A single message goes

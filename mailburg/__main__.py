@@ -2661,6 +2661,80 @@ def cmd_regeln(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_suchordner(args: argparse.Namespace) -> int:
+    """Zeigt, legt an oder entfernt Suchordner.
+
+    **Warum es das auf der Kommandozeile überhaupt gibt.** Die Suchmaske
+    im Fenster sagt von sich selbst, sie könne nichts, was die
+    Suchsprache nicht kann – gäbe es Suchordner nur dort, wäre die
+    Kommandozeile zum ersten Mal der schwächere Weg. Und wer fünfzehn
+    Suchordner einrichtet, tut das lieber in einem Skript als in
+    fünfzehn Dialogen.
+
+    Angezeigt wird zu jedem Ordner, wie viele Nachrichten gerade auf ihn
+    passen. Das ist der Tippfehlertest: Ein Suchordner mit null Treffern
+    kann richtig sein, ist aber viel häufiger falsch geschrieben.
+    """
+    from mailburg.core import suchordner
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+
+    # **Nur lesend geöffnet, auch beim Anlegen.** Ein Suchordner steht
+    # nicht im Archiv – er ändert daran nichts, und ein exklusiver
+    # Zugriff hielte den laufenden Abruf grundlos auf.
+    with oeffnen(archiv_pfad) as archiv:
+        kennung = archiv.uuid
+
+        if args.was == "zeigen":
+            ordner = suchordner.laden(kennung)
+            if not ordner:
+                print("Keine Suchordner angelegt.")
+                print()
+                print("Einen anlegen, etwa:")
+                print(f"  mailburg suchordner {args.archiv} hinzufuegen "
+                      f"Telekom 'von:telekom betreff:Rechnung'")
+                return 0
+
+            print(sprache.anzahl(len(ordner), "Suchordner", "Suchordner") + ":")
+            for einer in ordner:
+                try:
+                    anzahl = archiv.index.count(einer.ausdruck)
+                    passt = f"{anzahl:,}".replace(",", ".") + " Treffer"
+                except Exception as exc:  # noqa: BLE001
+                    # Kann nur passieren, wenn jemand die Datei von Hand
+                    # bearbeitet hat – dann ist der Grund wichtiger als
+                    # eine Zahl, die es nicht gibt.
+                    passt = f"geht nicht: {exc}"
+                print(f"  {einer.name}")
+                print(f"      {einer.ausdruck}")
+                print(f"      {passt}")
+            return 0
+
+        if args.was == "hinzufuegen":
+            try:
+                neu = suchordner.hinzufuegen(kennung, args.name, args.ausdruck)
+            except (ValueError, suchordner.NameVergeben) as exc:
+                print(f"Geht nicht: {exc}", file=sys.stderr)
+                return 2
+            anzahl = archiv.index.count(neu.ausdruck)
+            print(f"Suchordner »{neu.name}« angelegt: {neu.ausdruck}")
+            if anzahl:
+                gezaehlt = f"{anzahl:,}".replace(",", ".")
+                print(f"Darauf passen gerade {gezaehlt} Nachrichten.")
+            else:
+                print("Darauf passt gerade keine Nachricht. Das kann so "
+                      "gewollt sein – häufiger steckt ein Tippfehler dahinter.")
+            return 0
+
+        # entfernen
+        if suchordner.entfernen(kennung, args.name):
+            print(f"Suchordner »{args.name}« entfernt. "
+                  f"An Ihrer Post ändert das nichts.")
+            return 0
+        print(f"»{args.name}« gibt es in diesem Archiv nicht.", file=sys.stderr)
+        return 2
+
+
 def cmd_hilfe_suche(args: argparse.Namespace) -> int:
     """Erklärt die Suchsprache."""
     print(describe_syntax())
@@ -3516,6 +3590,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="die Umstufung tatsächlich vornehmen",
     )
     u.set_defaults(func=cmd_regeln)
+
+    p = subparsers.add_parser(
+        "suchordner",
+        help="gespeicherte Suchen verwalten",
+        description=(
+            "Ein Suchordner ist ein Name für einen Suchausdruck. Er "
+            "enthält keine Post und verschiebt nichts – er zeigt, was "
+            "gerade auf ihn passt, und ist damit immer aktuell. Im "
+            "Fenster steht er links unter den Postfächern."
+        ),
+    )
+    p.add_argument("archiv")
+    unter = p.add_subparsers(dest="was", required=True)
+
+    u = unter.add_parser("zeigen", help="die angelegten Suchordner auflisten")
+    u.set_defaults(func=cmd_suchordner)
+
+    u = unter.add_parser("hinzufuegen", help="einen Suchordner anlegen")
+    u.add_argument("name", help="wie er im Baum heißen soll")
+    u.add_argument("ausdruck", help="wonach er sucht, etwa »von:telekom«")
+    u.set_defaults(func=cmd_suchordner)
+
+    u = unter.add_parser("entfernen", help="einen Suchordner löschen")
+    u.add_argument("name")
+    u.set_defaults(func=cmd_suchordner)
 
     p = subparsers.add_parser("suchhilfe", help="die Suchsprache erklären")
     p.set_defaults(func=cmd_hilfe_suche)

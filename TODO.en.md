@@ -7,6 +7,49 @@ down, with the date they were completed.
 
 ## Open
 
+### From the feedback of 2026-09-21
+
+A user running Evolution from Flatpak, moving over from local folders.
+Two of his three points are done in 1.5.0, one is not.
+
+- [x] **Evolution from Flatpak is found.** (2026-09-21, in 1.5.0) The
+  import dialog kept a list of its own alongside the core's; three paths
+  were missing from it. It now asks the core, and a test holds the two
+  together.
+
+- [x] **Saved searches and "recently searched".** (2026-09-21, in 1.5.0)
+  The replacement for the local folders that are lost on the way over.
+
+- [ ] **Renaming mailboxes.** His third point, and he is right: the name
+  is assigned once during import and then stays forever. A typo stays, a
+  name that no longer fits after two years stays too.
+
+  **Why this did not go in at the same time:** the account name hangs in
+  four places — `locations.account` in the search index, the retrieval
+  state in `core/sync.py`, the keyring entry, and the mapping to the
+  archive. A rename has to move all four together, otherwise it does
+  what `konten entfernen` plus a fresh setup does: the retrieval state
+  is gone, and the next run walks the entire mailbox again.
+
+  For **imported** collections — his case — keyring and retrieval state
+  do not apply. That would be the smaller first step, but it must not
+  look as though it applied to IMAP accounts as well.
+
+  There is a model for it: `index.ordner_umbenennen()` does the same for
+  folders *within* an account, including the retrieval state.
+
+- [ ] **Outside contributions: a `CONTRIBUTING.md` is missing.** The same
+  user asked whether pull requests are welcome. As long as nothing is
+  written down, the answer has to be composed afresh every time — and
+  what MailBurg expects is not self-evident: tests with every
+  contribution, no real addresses (not in test data or screenshots
+  either), comments that give the *why* with date and occasion,
+  documentation in both languages in the same go.
+
+  **The first fork also changes something quietly:** rewriting history
+  stops being free — a `git filter-repo` breaks every outside clone.
+  Until 2026-08-29 that was still a tool in active use.
+
 ### In everyday use from now on (2026-09-09)
 
 Stephan has told all users to install the current version; from here on

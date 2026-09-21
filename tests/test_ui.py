@@ -1941,8 +1941,20 @@ class PostfachreihenfolgeTest(OberflaechenTest):
         return fenster
 
     def _namen(self, fenster):
-        return [fenster.baum.topLevelItem(i).text(0)
-                for i in range(1, fenster.baum.topLevelItemCount())]
+        """Die Postfächer zwischen »Alle Postfächer« und »Suchordner«.
+
+        Der Zweig »Suchordner« steht seit dem 2026-09-21 unten im Baum
+        und ist kein Postfach. Erkannt wird er an seiner Rolle, nicht an
+        seiner Beschriftung: Ein Postfach darf »Suchordner« heißen, ohne
+        aus dieser Liste zu fallen.
+        """
+        from mailburg.ui.hauptfenster import ROLLE_SUCHORDNER
+
+        return [
+            fenster.baum.topLevelItem(i).text(0)
+            for i in range(1, fenster.baum.topLevelItemCount())
+            if fenster.baum.topLevelItem(i).data(0, ROLLE_SUCHORDNER) is None
+        ]
 
     def test_verschieben_ohne_maus(self):
         # Wer mit der Tastatur arbeitet oder eine Sprachsteuerung nutzt,
@@ -5647,8 +5659,17 @@ class BaumWaechstMitTest(OberflaechenTest):
             archiv.add(roh, account=konto, folder=ordner)
 
     def test_der_baum_waechst_waehrend_des_abrufs(self):
-        # Vorher: leer, so wie der Anwender es sah.
-        self.assertEqual(self.fenster.baum.topLevelItemCount(), 1)
+        # Vorher: kein einziges Postfach, so wie der Anwender es sah.
+        # Gezählt werden nur die Postfächer – »Alle Postfächer« steht
+        # immer da, und seit dem 2026-09-21 auch der Zweig »Suchordner«.
+        from mailburg.ui.hauptfenster import ROLLE_SUCHORDNER
+
+        postfaecher = [
+            i for i in range(1, self.fenster.baum.topLevelItemCount())
+            if self.fenster.baum.topLevelItem(i).data(0, ROLLE_SUCHORDNER)
+            is None
+        ]
+        self.assertEqual(postfaecher, [])
 
         self._mail("Firma", "INBOX", "eins")
         self._mail("Firma", "INBOX", "zwei")
@@ -6587,3 +6608,280 @@ class SpamfilterImZeitplanTest(OberflaechenTest):
 
         self.assertTrue(hasattr(dialog, "spamfilter"))
         self.assertIn("Spam-Marke", dialog.spamfilter.an.text())
+
+
+class SuchordnerImBaumTest(OberflaechenTest):
+    """Der Zweig »Suchordner« und was ein Klick darauf tut.
+
+    Gebaut auf einen Wunsch vom 2026-09-21. Die Mechanik dafür gab es
+    im Baum längst: Jeder Eintrag trägt in ``Qt.UserRole`` einen
+    Suchausdruck, und ein Klick setzt ihn ins Suchfeld. Ein Suchordner
+    setzt sich daneben – mit einem frei gewählten Ausdruck statt
+    ``konto:… ordner:…``.
+    """
+
+    def setUp(self) -> None:
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core import paths
+        from mailburg.core.archive import Archive
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        basis = pathlib.Path(self._tmp.name)
+
+        # **Eigene Verzeichnisse, sonst schreibt der Testlauf in die
+        # echten Einstellungen** – und der Anwender hätte danach einen
+        # Suchordner namens »Telekom« im Fenster.
+        for name in ("data_dir", "config_dir"):
+            patcher = mock.patch.object(
+                paths, name, return_value=basis / name
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
+            (basis / name).mkdir(parents=True, exist_ok=True)
+
+        self.wurzel = basis / "Archiv"
+        Archive.create(self.wurzel, name="P").close()
+
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        self.fenster = Hauptfenster(self.wurzel)
+        self.addCleanup(self.fenster.close)
+        self.kennung = self.fenster.archiv.uuid
+
+    # ------------------------------------------------------------ Helfer
+
+    def _zweig(self):
+        from mailburg.ui.hauptfenster import ROLLE_SUCHORDNER
+
+        baum = self.fenster.baum
+        for i in range(baum.topLevelItemCount()):
+            oben = baum.topLevelItem(i)
+            if oben.data(0, ROLLE_SUCHORDNER) is not None:
+                return oben
+        return None
+
+    def _anlegen(self, name: str, ausdruck: str) -> None:
+        from mailburg.core import suchordner
+
+        suchordner.hinzufuegen(self.kennung, name, ausdruck)
+        self.fenster._baum_fuellen()
+
+    def _postfach(self, konto: str) -> None:
+        """Legt eine Mail ab, damit das Postfach im Baum auftaucht.
+
+        Über ein eigenes Handle, genau wie im Betrieb: Das Fenster hält
+        das Archiv lesend, der Abruf öffnet es schreibend.
+        """
+        from mailburg.core.archive import Archive
+
+        roh = (
+            f"From: wer@example.org\r\n"
+            f"To: ich@example.org\r\n"
+            f"Subject: {konto}\r\n"
+            f"Date: Wed, 3 Sep 2026 09:00:00 +0200\r\n"
+            f"Message-ID: <{konto}@example.org>\r\n"
+            f"\r\nInhalt\r\n"
+        ).encode()
+        with Archive.open(self.wurzel, exclusive=False) as archiv:
+            archiv.add(roh, account=konto, folder="INBOX")
+        self.fenster._baum_fuellen()
+
+    # ------------------------------------------------------------- Tests
+
+    def test_der_zweig_steht_auch_ohne_suchordner_da(self):
+        """**Sonst findet ihn niemand.**
+
+        Ein Ordnungsmittel, das erst sichtbar wird, nachdem man es
+        benutzt hat, gibt es für den Anwender nicht – dieselbe Lehre wie
+        beim Einlesedialog am 2026-09-03.
+        """
+        zweig = self._zweig()
+        self.assertIsNotNone(zweig)
+        self.assertEqual(zweig.text(0), "Suchordner")
+
+    def test_leer_sagt_er_es(self):
+        zweig = self._zweig()
+        self.assertEqual(zweig.childCount(), 1)
+        self.assertIn("noch keiner", zweig.child(0).text(0))
+
+    def test_der_zweig_steht_unten(self):
+        """Ein Suchordner ist kein Postfach und drängt sich nicht davor."""
+        baum = self.fenster.baum
+        self.assertIs(
+            baum.topLevelItem(baum.topLevelItemCount() - 1), self._zweig()
+        )
+
+    def test_angelegter_ordner_steht_im_baum(self):
+        self._anlegen("Telekom", "von:telekom")
+        zweig = self._zweig()
+        self.assertEqual(zweig.childCount(), 1)
+        self.assertEqual(zweig.child(0).text(0), "Telekom")
+
+    def test_der_ausdruck_steht_im_tooltip(self):
+        """Wer nach einem Jahr draufklickt, soll nachlesen können."""
+        self._anlegen("Telekom", "von:telekom betreff:Rechnung")
+        self.assertEqual(self._zweig().child(0).toolTip(0),
+                         "von:telekom betreff:Rechnung")
+
+    def test_klick_sucht_danach(self):
+        self._anlegen("Telekom", "von:telekom")
+        self.fenster._ordner_gewaehlt(self._zweig().child(0))
+        self.assertEqual(self.fenster.suchfeld.text(), "von:telekom")
+
+    def test_klick_auf_die_ueberschrift_sucht_nichts(self):
+        """**Sonst zeigte eine Überschrift plötzlich das ganze Archiv.**
+
+        Hinter ihr steht kein Ausdruck; ohne eigene Abfrage wäre das der
+        leere – und der findet alles.
+        """
+        self.fenster.suchfeld.setText("rechnung")
+        self.fenster._ordner_gewaehlt(self._zweig())
+        self.assertEqual(self.fenster.suchfeld.text(), "rechnung")
+
+    def test_klick_auf_noch_keiner_sucht_nichts(self):
+        self.fenster.suchfeld.setText("rechnung")
+        self.fenster._ordner_gewaehlt(self._zweig().child(0))
+        self.assertEqual(self.fenster.suchfeld.text(), "rechnung")
+
+    def test_der_zweig_laesst_sich_nicht_verschieben(self):
+        """Zwischen den Postfächern sähe er aus wie eines.
+
+        Und seine Stelle stünde in keiner gemerkten Reihenfolge – beim
+        nächsten Start wäre er wieder unten. Eine Bewegung, die den
+        Neustart nicht überlebt, ist keine.
+
+        **Zwei Postfächer sind nötig, damit dieser Test etwas prüft.**
+        Im leeren Archiv steht der Zweig an Stelle 1 und wird schon von
+        der bestehenden Grenze gehalten – »Alle Postfächer« bleibt oben.
+        Der Test wäre dann auch ohne die Vorkehrung grün. Gefunden hat
+        das am 2026-09-21 eine Gegenprobe, nicht der Testlauf.
+        """
+        self._postfach("a@example.org")
+        self._postfach("b@example.org")
+        baum = self.fenster.baum
+        vorher = baum.indexOfTopLevelItem(self._zweig())
+        self.assertGreater(vorher, 1, "sonst prüft dieser Test nichts")
+
+        baum.setCurrentItem(self._zweig())
+        baum.verschieben(-1)
+        self.assertEqual(baum.indexOfTopLevelItem(self._zweig()), vorher)
+
+    def test_kein_postfach_rutscht_unter_den_zweig(self):
+        """Ein Postfach hinter der Überschrift gehörte scheinbar dazu."""
+        self._postfach("a@example.org")
+        self._postfach("b@example.org")
+        baum = self.fenster.baum
+        letztes = baum.topLevelItem(baum.topLevelItemCount() - 2)
+
+        baum.setCurrentItem(letztes)
+        baum.verschieben(1)
+
+        self.assertIs(
+            baum.topLevelItem(baum.topLevelItemCount() - 1), self._zweig()
+        )
+
+    def test_er_zaehlt_nicht_als_postfach(self):
+        """Sonst stünde er in der gemerkten Postfachreihenfolge."""
+        self.assertNotIn("Suchordner", self.fenster.baum.reihenfolge())
+
+    def test_entfernen_laesst_die_post_stehen(self):
+        from mailburg.core import suchordner
+
+        self._anlegen("Telekom", "von:telekom")
+        suchordner.entfernen(self.kennung, "Telekom")
+        self.fenster._baum_fuellen()
+        self.assertEqual(self._zweig().childCount(), 1)
+        self.assertIn("noch keiner", self._zweig().child(0).text(0))
+
+
+class ZuletztGesuchtImMenueTest(SuchordnerImBaumTest):
+    """Das Menü »Zuletzt gesucht« – gefüllt beim Aufklappen."""
+
+    def test_leer_am_anfang(self):
+        self.fenster._historie_fuellen()
+        eintraege = self.fenster.zuletzt_gesucht_menue.actions()
+        self.assertEqual(len(eintraege), 1)
+        self.assertFalse(eintraege[0].isEnabled())
+
+    def test_eine_suche_mit_treffern_steht_darin(self):
+        from mailburg.core import suchordner
+
+        suchordner.suche_merken(self.kennung, "von:telekom")
+        self.fenster._historie_fuellen()
+        beschriftungen = [
+            a.text() for a in self.fenster.zuletzt_gesucht_menue.actions()
+        ]
+        self.assertIn("von:telekom", beschriftungen)
+
+    def test_der_eintrag_sucht_wieder_danach(self):
+        from mailburg.core import suchordner
+
+        suchordner.suche_merken(self.kennung, "von:telekom")
+        self.fenster._historie_fuellen()
+        for eintrag in self.fenster.zuletzt_gesucht_menue.actions():
+            if eintrag.text() == "von:telekom":
+                eintrag.trigger()
+                break
+        self.assertEqual(self.fenster.suchfeld.text(), "von:telekom")
+
+    def test_kaufmannsund_bleibt_stehen(self):
+        """Qt macht aus einem »&« sonst ein Tastenkürzel und schluckt es.
+
+        Derselbe Fallstrick wie bei den Tastenkürzeln am 2026-08-31 –
+        nur andersherum: Dort war eine Folge mehrdeutig, hier wird ein
+        Zeichen stillschweigend zur Beschriftungsanweisung.
+        """
+        from mailburg.core import suchordner
+
+        suchordner.suche_merken(self.kennung, "Meier & Sohn")
+        self.fenster._historie_fuellen()
+        for eintrag in self.fenster.zuletzt_gesucht_menue.actions():
+            if "Meier" in eintrag.text():
+                eintrag.trigger()
+                break
+        self.assertEqual(self.fenster.suchfeld.text(), "Meier & Sohn")
+
+    def test_ein_langer_ausdruck_wird_gekuerzt(self):
+        """Ein Menü so breit wie der Bildschirm ist keines."""
+        from mailburg.core import suchordner
+
+        lang = "betreff:" + "x" * 200
+        suchordner.suche_merken(self.kennung, lang)
+        self.fenster._historie_fuellen()
+        beschriftungen = [
+            a.text() for a in self.fenster.zuletzt_gesucht_menue.actions()
+        ]
+        self.assertTrue(all(len(b) <= 72 for b in beschriftungen),
+                        beschriftungen)
+
+    def test_der_volle_ausdruck_steht_im_statustext(self):
+        from mailburg.core import suchordner
+
+        lang = "betreff:" + "x" * 200
+        suchordner.suche_merken(self.kennung, lang)
+        self.fenster._historie_fuellen()
+        statustexte = [
+            a.statusTip() for a in self.fenster.zuletzt_gesucht_menue.actions()
+        ]
+        self.assertIn(lang, statustexte)
+
+    def test_leeren_steht_zur_verfuegung(self):
+        """**Weil die Liste eine Spur ist.**
+
+        Sie steht im Klartext neben dem Archiv, auch wenn das Archiv
+        verschlüsselt ist. In einem Suchausdruck kann ein Name stehen.
+        """
+        from mailburg.core import suchordner
+
+        suchordner.suche_merken(self.kennung, "von:telekom")
+        self.fenster._historie_fuellen()
+        beschriftungen = [
+            a.text() for a in self.fenster.zuletzt_gesucht_menue.actions()
+        ]
+        self.assertIn("Liste leeren", beschriftungen)
+
+        self.fenster._historie_leeren()
+        self.assertEqual(suchordner.zuletzt_gesucht(self.kennung), [])

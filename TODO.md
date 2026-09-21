@@ -8,6 +8,52 @@ wurde.
 
 ## Offen
 
+### Aus der Rückmeldung vom 2026-09-21
+
+Ein Anwender mit Evolution aus Flatpak, Umsteiger von lokalen Ordnern.
+Zwei seiner drei Punkte sind in der 1.5.0 erledigt, einer nicht.
+
+- [x] **Evolution aus Flatpak wird gefunden.** (2026-09-21, in der 1.5.0)
+  Der Einlesedialog führte eine eigene Liste neben der des Kerns; drei
+  Pfade fehlten darin. Er fragt jetzt den Kern, ein Test hält beide
+  zusammen.
+
+- [x] **Suchordner und »Zuletzt gesucht«.** (2026-09-21, in der 1.5.0)
+  Der Ersatz für die lokalen Ordner, die beim Umstieg wegfallen.
+
+- [ ] **Postfächer umbenennen.** Sein dritter Punkt, und er hat recht:
+  Beim Einlesen wird der Name einmal vergeben, und danach steht er für
+  immer. Ein Tippfehler bleibt stehen, ein Name, der nach zwei Jahren
+  nicht mehr passt, auch.
+
+  **Warum das nicht in einem Zug mitging:** Der Kontoname hängt an vier
+  Stellen – `locations.account` im Suchindex, der Abrufzustand in
+  `core/sync.py`, der Schlüsselbund-Eintrag und die Zuordnung zum
+  Archiv. Ein Umbenennen muss alle vier zusammen ziehen, sonst entsteht
+  genau das, was `konten entfernen` und neu anlegen anrichtet: Der
+  Abrufzustand ist weg, und der nächste Lauf geht das ganze Postfach
+  noch einmal durch.
+
+  Für **eingelesene** Bestände – also seinen Fall – entfallen
+  Schlüsselbund und Abrufzustand. Das wäre der kleinere erste Schritt,
+  aber er darf nicht so aussehen, als gälte er auch für IMAP-Konten.
+
+  Vorbild gibt es: `index.ordner_umbenennen()` zieht dasselbe für
+  Ordner *innerhalb* eines Kontos, samt Nachziehen im Abrufzustand.
+
+- [ ] **Beiträge von außen: eine `CONTRIBUTING.md` fehlt.** Derselbe
+  Anwender hat gefragt, ob Pull Requests willkommen sind. Solange nichts
+  dasteht, muss die Antwort jedes Mal neu geschrieben werden – und was
+  MailBurg verlangt, ist nicht selbstverständlich: Tests zu jedem
+  Beitrag, keine echten Adressen (auch nicht in Testdaten und
+  Screenshots), Kommentare, die das *Warum* mit Datum und Anlass nennen,
+  Doku in beiden Sprachen im selben Zug.
+
+  **Mit dem ersten Fork ändert sich außerdem etwas Stilles:** Die
+  Historie umzuschreiben ist ab dann nicht mehr folgenlos – ein
+  `git filter-repo` zerschießt jeden fremden Klon. Bis zum 2026-08-29
+  war das noch ein Werkzeug im Gebrauch.
+
 ### Ab jetzt im Alltag (2026-09-09)
 
 Stephan hat allen Nutzern gesagt, sie sollen die aktuelle Fassung

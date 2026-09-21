@@ -297,6 +297,48 @@ Der Zeitraum lässt sich im Kalender wählen. Achten Sie auf die Trennung:
 den Tag, an dem MailBurg sie geholt hat. Eine Mail von 2016 kann heute ins
 Archiv gekommen sein.
 
+**Diese Suche als Suchordner sichern …**
+
+Gibt dem, was gerade im Suchfeld steht, einen Namen und stellt es links in den
+Baum – unter die Postfächer. Ein Klick darauf sucht wieder danach.
+
+**Ein Suchordner enthält keine Post.** Er verschiebt nichts und kopiert nichts;
+er zeigt, was gerade auf ihn passt. Damit ist er immer aktuell: Was morgen
+ankommt und dazugehört, steht darin, ohne dass Sie einsortieren. Und dieselbe
+Nachricht kann in drei Suchordnern auftauchen, ohne dreimal zu existieren.
+
+Umgekehrt heißt das: Eine Nachricht lässt sich nicht *hineinlegen*. Wer aus
+Thunderbird oder Evolution kommt und dort lokale Ordner zum Einsortieren
+benutzt hat, arbeitet hier andersherum – nicht die Post wird bewegt, sondern
+die Frage gestellt. Einen Suchordner zu entfernen ändert an Ihrer Post
+deshalb nichts.
+
+Vor dem Übernehmen steht im Dialog, wie viele Nachrichten gerade auf den
+Ausdruck passen. Das ist der Tippfehlertest: Null Treffer können richtig sein –
+häufiger sind sie ein Buchstabendreher.
+
+Ändern und Entfernen gehen über die rechte Maustaste auf dem Eintrag im Baum.
+
+**Suchordner gehören zu diesem Archiv und zu diesem Rechner.** Sie liegen neben
+dem Archiv, nicht darin – ein Archiv an einem zweiten Rechner bringt seine
+Suchordner also nicht mit. Auf der Kommandozeile geht dasselbe:
+
+```
+mailburg suchordner ~/Mailarchiv zeigen
+mailburg suchordner ~/Mailarchiv hinzufuegen Telekom "von:telekom betreff:Rechnung"
+mailburg suchordner ~/Mailarchiv entfernen Telekom
+```
+
+**Zuletzt gesucht**
+
+Die letzten zehn Suchen, die etwas gefunden haben. Beim Tippen entstehen keine
+zehn Zwischenstände: Von einer Tippfolge bleibt nur ihr längster Stand.
+
+**Die Liste ist eine Spur.** Wonach Sie gesucht haben, steht im Klartext neben
+dem Archiv – auch dann, wenn das Archiv verschlüsselt ist, denn sie gehört zur
+Oberfläche und nicht zum Bestand. In einem Suchausdruck kann ein Name stehen.
+Deshalb steht am Ende derselben Liste *Liste leeren*.
+
 ## Menü Ansicht
 
 **Fenster auf Standard zurücksetzen** – Größe und Aufteilung wie beim ersten

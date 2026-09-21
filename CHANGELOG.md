@@ -7,6 +7,113 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.5.0] – 2026-09-21
+
+Eine Fassung aus **einer einzigen Rückmeldung** – und wie die drei
+davor hat sie mehr gefunden als alles Geplante. Ein Anwender nutzt
+Evolution aus Flatpak, vermisste beim Umstieg eine Ordnungsebene, die
+er vorher hatte – und hatte sich den Ersatz dafür schon selbst gebaut,
+bevor er fragte.
+
+### Hinzugefügt
+
+- **Suchordner: eine Suche mit Namen.** Was Sie immer wieder suchen,
+  bekommt einen Namen und steht danach links im Baum unter den
+  Postfächern. *Suchen → Diese Suche als Suchordner sichern …*, ändern
+  und entfernen über die rechte Maustaste. Auf der Kommandozeile
+  dasselbe: `mailburg suchordner`.
+
+  **Der Anlass, im Wortlaut des Rückmelders:** »In Thunderbird und
+  Evolution hatte ich bis jetzt *Lokale Ordner* zum Archivieren von
+  Mails genutzt und so die Postfächer meiner Mail-Provider aufgeräumt.
+  Beim Import lokaler Ordner nach MailBurg ordne ich die wieder den
+  Postfächern zu, weil ja MailBurg dann die Archivierung erledigt.
+  Daher bräuchte ich einen Ersatz für die lokalen Ordner in Form von
+  Suchordnern.«
+
+  Das ist kein Geschmacksurteil, sondern ein Befund: Wer seine Post
+  MailBurg überlässt, gibt eine Ordnung auf, die er sich über Jahre
+  aufgebaut hat. Ohne Ersatz ist der Umstieg ein Verlust.
+
+  **Ein Suchordner enthält keine Post.** Er verschiebt nichts und
+  kopiert nichts – er zeigt, was gerade auf ihn passt. Daraus folgt der
+  eigentliche Unterschied zum lokalen Ordner: Er ist immer aktuell. Was
+  morgen ankommt und dazugehört, steht darin, ohne dass jemand
+  einsortiert. Und dieselbe Nachricht kann in drei Suchordnern
+  auftauchen, ohne dreimal zu existieren.
+
+  Umgekehrt lässt sich eine Nachricht nicht *hineinlegen*. Nicht die
+  Post wird bewegt, sondern die Frage gestellt. Einen Suchordner zu
+  entfernen ändert deshalb an Ihrer Post nichts – das steht auch in der
+  Rückfrage, bevor er verschwindet.
+
+  **Gebaut hat sich das fast von selbst**, und das ist die interessante
+  Hälfte: Jeder Eintrag im Postfachbaum trug längst einen Suchausdruck
+  (`konto:… ordner:…`), und ein Klick setzte ihn ins Suchfeld. Ein
+  Suchordner setzt sich daneben, mit einem frei gewählten Ausdruck
+  statt einem gebauten. Die Suchmaske sagt seit jeher von sich, sie
+  könne nichts, was die Suchsprache nicht kann – genau das zahlt sich
+  hier aus.
+
+  **Der Ausdruck wird beim Anlegen geprüft**, und der Dialog zeigt
+  vorher, wie viele Nachrichten gerade darauf passen. Ein Suchordner,
+  der erst beim Anklicken »Der Suchausdruck stimmt nicht« meldet, wäre
+  schlimmer als keiner: Angelegt hat man ihn vor Wochen, und woran es
+  lag, weiß dann niemand mehr. Null Treffer verhindern nichts – aber sie
+  stehen da, denn häufiger als der Lieferant ohne Rechnung ist der
+  Buchstabendreher.
+
+  **Suchordner liegen neben dem Archiv, nicht darin.** Sie sind keine
+  Post und gehören nicht in die Hash-Kette, deren Zweck es ist,
+  unverändert zu bleiben. Der Preis steht in der Anleitung: Ein Archiv
+  an einem zweiten Rechner bringt seine Suchordner nicht mit.
+
+- **»Zuletzt gesucht« im Menü Suchen** – die letzten zehn Suchen, die
+  etwas gefunden haben.
+
+  **Das Problem daran ist nicht die Wiederholung, sondern das Tippen.**
+  MailBurg sucht schon während der Eingabe; wer `rechnung telekom`
+  eintippt, löst dabei fünfzehn Suchen aus. Eine Liste, die jede davon
+  aufnimmt, ist nach einem Wort voll. Von einer Tippfolge bleibt deshalb
+  nur ihr längster Stand.
+
+  **Die Liste ist eine Spur, und das steht dabei.** Wonach jemand
+  gesucht hat, liegt im Klartext neben dem Archiv – auch dann, wenn das
+  Archiv verschlüsselt ist, denn sie gehört zur Oberfläche und nicht zum
+  Bestand. In einem Suchausdruck kann ein Name stehen, eine Adresse,
+  eine Diagnose. Deshalb steht am Ende derselben Liste *Liste leeren*,
+  und ein Test prüft nach, dass danach auch wirklich nichts mehr in der
+  Datei steht. Ein Leeren, das nur die Anzeige räumt, wäre eine falsche
+  Zusage.
+
+### Behoben
+
+- **Der Einlesedialog fand Evolution nicht, wenn es aus Flatpak kam.**
+  Gemeldet mitsamt dem Pfad:
+  `~/.var/app/org.gnome.Evolution/data/evolution/mail/local`.
+
+  Der Grund war kein vergessener Pfad, sondern **eine zweite Liste**.
+  Der Dialog führte seine eigene, und sie war eine andere als die, nach
+  der MailBurg sonst sucht. Thunderbird stand darin mit seinem
+  Flatpak-Ordner, Evolution nur mit dem klassischen.
+
+  Die Gegenprobe zeigte, dass **drei** Pfade fehlten, nicht einer:
+  Evolutions Flatpak-Ordner, Thunderbirds Snap-Ordner und
+  `~/.mozilla-thunderbird`. Alle drei kannte der Kern seit jeher.
+
+  **Zwei Listen über dieselbe Sache laufen auseinander**, und zwar immer
+  zu Lasten der zweiten – wer einen Pfad ergänzt, tut das dort, wo er
+  gerade arbeitet. Die Oberfläche fragt jetzt den Kern, und ein Test
+  hält beide zusammen: Was der Kern kennt, muss der Dialog anbieten.
+
+  Zwei Kleinigkeiten fielen dabei mit an: Vorgeschlagen wird jetzt der
+  erste Ort, **mit dem MailBurg etwas anfangen kann** – wer von einer
+  klassischen Installation auf Flatpak wechselt, lässt ein leeres
+  Verzeichnis zurück, und genau das stand sonst im Feld. Und wer
+  dieselbe Anwendung auf beiden Wegen installiert hat, sieht den vollen
+  Pfad hinter dem Namen; »Auch gefunden: Evolution« beantwortet nichts,
+  wenn es zwei davon gibt.
+
 ## [1.4.8] – 2026-09-16
 
 Aus einem Nachmittag Fehlersuche an Stephans Rechner: ein fehlender
@@ -2058,6 +2165,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.5.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.8...v1.5.0
 [1.4.8]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.4.5...v1.4.6

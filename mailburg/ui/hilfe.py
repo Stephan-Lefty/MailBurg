@@ -405,6 +405,37 @@ meistens nichts miteinander zu tun.</p>
 Archiv kam, fehlt auch hier. Schließen Sie aus »da steht nichts« also
 nicht auf »da war nichts«.</p>
 
+<h3 id="suchordner">Suchordner – eine Suche mit Namen</h3>
+
+<p>Eine Suche, die Sie immer wieder brauchen, können Sie benennen und
+im Baum links ablegen: <i>Rechnungen Telekom</i>, <i>Verein</i>,
+<i>Steuer 2025</i>. Ein Klick darauf sucht wieder danach.</p>
+
+<p><b>Ein Suchordner enthält keine Post.</b> Er verschiebt nichts und
+kopiert nichts – er zeigt, was gerade auf ihn passt. Damit ist er
+immer aktuell: Was morgen ankommt und dazugehört, steht darin, ohne
+dass Sie einsortieren. Und dieselbe Nachricht kann in drei
+Suchordnern auftauchen, ohne dreimal zu existieren.</p>
+
+<p>Umgekehrt heißt das: Eine Nachricht lässt sich nicht
+<i>hineinlegen</i>. Wer aus Thunderbird oder Evolution kommt und dort
+lokale Ordner zum Einsortieren benutzt hat, arbeitet hier andersherum –
+nicht die Post wird bewegt, sondern die Frage gestellt. Einen
+Suchordner zu entfernen ändert an Ihrer Post deshalb nichts.</p>
+
+<p><b>Suchordner gehören zu diesem Archiv und zu diesem Rechner.</b>
+Sie liegen neben dem Archiv, nicht darin – ein Archiv an einem zweiten
+Rechner bringt seine Suchordner also nicht mit.</p>
+
+<h3>Zuletzt gesucht</h3>
+
+<p>Die letzten zehn Suchen, die etwas gefunden haben, stehen unter
+<i>Suchen → Zuletzt gesucht</i>. <b>Die Liste ist eine Spur:</b> Was
+Sie gesucht haben, steht dort im Klartext – auch dann, wenn Ihr Archiv
+verschlüsselt ist, denn sie gehört zur Oberfläche und nicht zum
+Bestand. In einem Suchausdruck kann ein Name stehen. Deshalb steht am
+Ende derselben Liste <i>Liste leeren</i>.</p>
+
 {menue}
 
 <h3>Die Suchsprache</h3>
@@ -964,10 +995,20 @@ def kapitel() -> list[Kapitel]:
         ))),
         Kapitel("suchen", "Suchen", _SUCHEN.format(
             syntax=describe_syntax(),
-            menue=_menue("Suchen → Ausführlich suchen … (Strg+F)",
-                         "Eine Maske mit Feldern für Absender, Zeitraum, "
-                         "Anhänge und mehr. Sie zeigt dabei, wie der "
-                         "Suchausdruck lautet, den sie zusammensetzt."),
+            menue=(
+                _menue("Suchen → Ausführlich suchen … (Strg+F)",
+                       "Eine Maske mit Feldern für Absender, Zeitraum, "
+                       "Anhänge und mehr. Sie zeigt dabei, wie der "
+                       "Suchausdruck lautet, den sie zusammensetzt.")
+                + _menue("Suchen → Diese Suche als Suchordner sichern …",
+                         "Gibt dem, was gerade im Suchfeld steht, einen "
+                         "Namen und stellt es in den Baum links. Vor dem "
+                         "Übernehmen steht dort, wie viele Nachrichten "
+                         "gerade darauf passen – der Tippfehlertest.")
+                + _menue("Suchen → Zuletzt gesucht",
+                         "Die letzten zehn Suchen, die etwas gefunden "
+                         "haben. Am Ende der Liste steht »Liste leeren«.")
+            ),
         )),
         Kapitel("ansicht", "Die Ansicht einrichten", _ANSICHT.format(menue=(
             _menue("Ansicht → Fenster auf Standard zurücksetzen",

@@ -170,6 +170,13 @@ Ging eine Sache mehrmals hin und her, zeigt MailBurg zu jeder Nachricht den
 Mailprogramm mitführt, nicht über den Betreff. Der wechselt unterwegs, und
 zwei Mails mit „Rechnung" im Betreff haben meistens nichts miteinander zu tun.
 
+Eine Suche, die Sie immer wieder brauchen, bekommt einen Namen und steht danach
+links im Baum: **Suchordner**, wie Evolution sie kennt und Thunderbird als
+„virtuelle Ordner". Sie enthalten keine Post – sie zeigen, was gerade auf sie
+passt, und sind damit immer aktuell. Wer bisher lokale Ordner zum Einsortieren
+benutzt hat, arbeitet hier andersherum: Nicht die Post wird bewegt, sondern die
+Frage gestellt. Auch auf der Kommandozeile: `mailburg suchordner`.
+
 ### Und wieder hinaus
 
 Ein Archiv, aus dem nichts wieder herauskommt, wäre ein Grab. Eine einzelne

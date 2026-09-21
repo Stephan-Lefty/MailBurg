@@ -375,6 +375,14 @@ BAUPLAENE: list[tuple[str, str, object]] = [
     ("mailburg.ui.suchmaske.Suchmaske",
      "Suchmaske",
      lambda K, w: K(w.archiv)),
+    ("mailburg.ui.suchordner.Suchordnerdialog",
+     "Suchordner anlegen",
+     lambda K, w: K(w.archiv)),
+    ("mailburg.ui.suchordner.Suchordnerdialog",
+     "Suchordner ändern (mit langem Namen)",
+     # Gemessen wird der volle Name: Ein Feld, das bei 60 Zeichen
+     # überläuft, fällt bei »Test« nicht auf.
+     lambda K, w: K(w.archiv, "R" * 60, "von:telekom betreff:Rechnung")),
     ("mailburg.ui.regeln.Regeldialog",
      "Einstufungsregeln",
      lambda K, w: K(archiv=w.archiv)),

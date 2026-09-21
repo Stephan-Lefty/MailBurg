@@ -19,6 +19,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -62,6 +63,19 @@ from mailburg.ui.vorschau import Mailvorschau
 #: Ohne diese Pause liefe bei jedem Buchstaben eine Abfrage – bei einem
 #: großen Archiv wäre das Tippen dann zäh.
 TIPPAUSE = 250
+
+#: Woran ein Eintrag des Baums als Suchordner zu erkennen ist.
+#:
+#: Drei Werte, und die Unterscheidung ist nötig: ``None`` bei allem, was
+#: aus dem Archiv kommt, der leere Text beim Zweig »Suchordner« selbst –
+#: der ist eine Überschrift und sucht nichts – und sonst der Name des
+#: Suchordners. Ohne den mittleren Fall suchte ein Klick auf die
+#: Überschrift nach dem leeren Ausdruck, also nach allem.
+ROLLE_SUCHORDNER = Qt.UserRole + 2
+
+#: Die Überschrift des Zweigs. Steht hier, weil sowohl der Baum als auch
+#: die Tests sie brauchen.
+ZWEIG_SUCHORDNER = "Suchordner"
 
 #: So oft frischt der Postfachbaum auf, während ein Abruf läuft.
 #:
@@ -158,6 +172,8 @@ class Hauptfenster(QMainWindow):
         self.baum.reihenfolge_geaendert.connect(self._reihenfolge_merken)
         self.baum.setAccessibleName("Postfächer und Ordner")
         self.baum.itemClicked.connect(self._ordner_gewaehlt)
+        self.baum.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.baum.customContextMenuRequested.connect(self._baummenue)
         self._baumbreite_richten()
 
         self.modell = Trefferliste()
@@ -415,6 +431,20 @@ class Hauptfenster(QMainWindow):
         ausfuehrlich.setShortcut("Ctrl+F")
         ausfuehrlich.triggered.connect(self._suchmaske)
         suchen_menue.addAction(ausfuehrlich)
+
+        suchen_menue.addSeparator()
+        sichern = QAction("Diese Suche als Suchordner sichern …", self)
+        sichern.setStatusTip(
+            "Gibt der Suche im Feld oben einen Namen und stellt sie in den "
+            "Baum links. Die Post bleibt, wo sie ist."
+        )
+        sichern.triggered.connect(self._suchordner_sichern)
+        suchen_menue.addAction(sichern)
+
+        # **Beim Aufklappen gefüllt, nicht beim Aufbau des Fensters.**
+        # Sonst stünde darin, wonach beim letzten Start gesucht wurde.
+        self.zuletzt_gesucht_menue = suchen_menue.addMenu("Zuletzt gesucht")
+        self.zuletzt_gesucht_menue.aboutToShow.connect(self._historie_fuellen)
 
         ansicht = self.menuBar().addMenu("&Ansicht")
         zuruecksetzen = QAction("Fenster auf Standard zurücksetzen", self)
@@ -1476,12 +1506,147 @@ class Hauptfenster(QMainWindow):
                     "jedem ihrer Etiketten.",
                 )
         alle.setText(1, f"{self.archiv.index.count():,}".replace(",", "."))
+        self._suchordner_anhaengen()
 
         if vorher is not None and self._baumstand_herstellen(*vorher):
             return
 
         alle.setSelected(True)
         self.baum.expandItem(alle)
+
+    # --------------------------------------------------------- Suchordner
+
+    def _suchordner_anhaengen(self) -> None:
+        """Hängt den Zweig »Suchordner« unter die Postfächer.
+
+        **Unten, nicht oben.** Ein Suchordner ist eine eigene Ansicht auf
+        denselben Bestand, kein weiteres Postfach – und wer den Baum
+        öffnet, sucht zuerst seine Post. Ganz fehlen darf der Zweig
+        trotzdem nicht: Ein Ordnungsmittel, das erst sichtbar wird,
+        nachdem man es benutzt hat, findet niemand.
+        """
+        from mailburg.core import suchordner
+
+        zweig = QTreeWidgetItem([ZWEIG_SUCHORDNER, ""])
+        zweig.setData(0, ROLLE_SUCHORDNER, "")
+        zweig.setToolTip(
+            0,
+            "Gespeicherte Suchen. Sie enthalten keine Post – sie zeigen, "
+            "was gerade auf sie passt.",
+        )
+        self.baum.addTopLevelItem(zweig)
+
+        for ordner in suchordner.laden(self.archiv.uuid):
+            eintrag = QTreeWidgetItem([ordner.name, ""])
+            eintrag.setData(0, Qt.UserRole, ordner.ausdruck)
+            eintrag.setData(0, ROLLE_SUCHORDNER, ordner.name)
+            # Der Ausdruck gehört sichtbar dazu: Wer nach einem Jahr auf
+            # »Telekom« klickt, soll nachlesen können, wonach das sucht,
+            # ohne den Ordner zum Ändern zu öffnen.
+            eintrag.setToolTip(0, ordner.ausdruck)
+            zweig.addChild(eintrag)
+
+        if zweig.childCount():
+            zweig.setExpanded(True)
+        else:
+            # **Kein leerer Zweig ohne Erklärung.** Er sähe aus wie ein
+            # Postfach, aus dem alles verschwunden ist.
+            leer = QTreeWidgetItem(["(noch keiner)", ""])
+            leer.setData(0, ROLLE_SUCHORDNER, "")
+            leer.setToolTip(
+                0,
+                "Suchen Sie etwas und wählen Sie dann "
+                "»Suchen → Diese Suche als Suchordner sichern …«.",
+            )
+            zweig.addChild(leer)
+            zweig.setExpanded(True)
+
+    def _gewaehlter_suchordner(self) -> str:
+        """Der Name des gewählten Suchordners – oder leer."""
+        eintrag = self.baum.currentItem()
+        if eintrag is None:
+            return ""
+        return eintrag.data(0, ROLLE_SUCHORDNER) or ""
+
+    def _suchordner_sichern(self) -> None:
+        """Macht aus dem, was gerade im Suchfeld steht, einen Suchordner."""
+        from mailburg.core import suchordner
+        from mailburg.ui.suchordner import Suchordnerdialog
+
+        if self.archiv is None:
+            return
+
+        dialog = Suchordnerdialog(
+            self.archiv, ausdruck=self.suchfeld.text().strip(), eltern=self
+        )
+        if dialog.exec() != QDialog.Accepted:
+            return
+        name, ausdruck = dialog.werte()
+        try:
+            suchordner.hinzufuegen(self.archiv.uuid, name, ausdruck)
+        except (ValueError, suchordner.NameVergeben) as exc:
+            QMessageBox.warning(self, "Suchordner", str(exc))
+            return
+        self._baum_fuellen(auswahl_halten=True)
+        self.statusBar().showMessage(f"Suchordner »{name}« angelegt.", 5000)
+
+    def _suchordner_aendern(self, name: str) -> None:
+        from mailburg.core import suchordner
+        from mailburg.ui.suchordner import Suchordnerdialog
+
+        vorhanden = {o.name: o for o in suchordner.laden(self.archiv.uuid)}
+        alt = vorhanden.get(name)
+        if alt is None:
+            return
+
+        dialog = Suchordnerdialog(self.archiv, alt.name, alt.ausdruck, self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        neuer_name, ausdruck = dialog.werte()
+        try:
+            suchordner.aendern(self.archiv.uuid, name, neuer_name, ausdruck)
+        except (ValueError, KeyError, suchordner.NameVergeben) as exc:
+            QMessageBox.warning(self, "Suchordner", str(exc))
+            return
+        self._baum_fuellen(auswahl_halten=True)
+
+    def _suchordner_entfernen(self, name: str) -> None:
+        from mailburg.core import suchordner
+
+        antwort = QMessageBox.question(
+            self,
+            "Suchordner entfernen",
+            f"»{name}« entfernen?\n\n"
+            f"An Ihrer Post ändert das nichts – ein Suchordner ist nur ein "
+            f"Name für eine Suche. Die Nachrichten bleiben, wo sie sind.",
+        )
+        if antwort != QMessageBox.Yes:
+            return
+        suchordner.entfernen(self.archiv.uuid, name)
+        self._baum_fuellen(auswahl_halten=True)
+
+    def _baummenue(self, stelle) -> None:
+        """Rechte Maustaste im Baum – nur über einem Suchordner."""
+        from PySide6.QtWidgets import QMenu
+
+        eintrag = self.baum.itemAt(stelle)
+        if eintrag is None:
+            return
+        self.baum.setCurrentItem(eintrag)
+        name = eintrag.data(0, ROLLE_SUCHORDNER) or ""
+
+        menue = QMenu(self)
+        if name:
+            aendern = menue.addAction("Ändern …")
+            aendern.triggered.connect(lambda: self._suchordner_aendern(name))
+            entfernen = menue.addAction("Entfernen …")
+            entfernen.triggered.connect(lambda: self._suchordner_entfernen(name))
+        elif eintrag.data(0, ROLLE_SUCHORDNER) == "":
+            neu = menue.addAction("Suchordner anlegen …")
+            neu.triggered.connect(self._suchordner_sichern)
+        else:
+            return
+        menue.exec(self.baum.viewport().mapToGlobal(stelle))
 
     def _baumeintraege(self):
         """Alle Einträge des Baums, Konten und Ordner."""
@@ -1564,6 +1729,14 @@ class Hauptfenster(QMainWindow):
             return
 
         if self.modell.gesamt:
+            # **Gemerkt wird nur, was etwas gefunden hat.** Eine Liste
+            # der fehlgeschlagenen Versuche hilft niemandem – und ein
+            # Tippfehler stünde dort neben der richtigen Suche, ohne
+            # dass man ihm ansieht, welcher von beiden er ist.
+            from mailburg.core import suchordner
+
+            suchordner.suche_merken(self.archiv.uuid, ausdruck)
+
             # »Treffer« ist in Ein- und Mehrzahl gleich – hier stand
             # einmal eine Fallunterscheidung mit zwei gleichen Zweigen.
             self._suchmeldung_setzen(f"MailBurg hat {anzahl} Treffer.", True)
@@ -1573,6 +1746,54 @@ class Hauptfenster(QMainWindow):
                 False,
             )
         self.stand.setText(f"{anzahl} Treffer")
+
+    def _historie_fuellen(self) -> None:
+        """Füllt »Zuletzt gesucht« – und bietet an, sie zu vergessen."""
+        from mailburg.core import suchordner
+
+        menue = self.zuletzt_gesucht_menue
+        menue.clear()
+        if self.archiv is None:
+            menue.addAction("(nichts)").setEnabled(False)
+            return
+
+        eintraege = suchordner.zuletzt_gesucht(self.archiv.uuid)
+        if not eintraege:
+            menue.addAction("(noch nichts gesucht)").setEnabled(False)
+            return
+
+        for ausdruck in eintraege:
+            # Ein Menüeintrag darf nicht so breit werden wie der
+            # Bildschirm; der ganze Ausdruck steht im Statustext.
+            beschriftung = (
+                ausdruck if len(ausdruck) <= 70 else ausdruck[:67] + "…"
+            )
+            # Ein "&" im Suchausdruck machte Qt daraus ein Tastenkürzel
+            # und schluckte das Zeichen.
+            eintrag = menue.addAction(beschriftung.replace("&", "&&"))
+            eintrag.setStatusTip(ausdruck)
+            eintrag.triggered.connect(
+                lambda _=False, a=ausdruck: self._erneut_suchen(a)
+            )
+
+        menue.addSeparator()
+        # **Weil die Liste eine Spur ist.** Sie steht im Klartext neben
+        # dem Archiv, auch wenn das Archiv verschlüsselt ist, und in
+        # einem Suchausdruck kann ein Name stehen oder eine Diagnose.
+        leeren = menue.addAction("Liste leeren")
+        leeren.triggered.connect(self._historie_leeren)
+
+    def _erneut_suchen(self, ausdruck: str) -> None:
+        self.suchfeld.setText(ausdruck)
+        self._suchen()
+
+    def _historie_leeren(self) -> None:
+        from mailburg.core import suchordner
+
+        if self.archiv is None:
+            return
+        suchordner.historie_leeren(self.archiv.uuid)
+        self.statusBar().showMessage("Die Liste ist geleert.", 5000)
 
     def _suchmeldung_setzen(self, text: str, fuendig: bool) -> None:
         """Schreibt das Suchergebnis hin – deutlich genug, um es zu sehen.
@@ -1587,6 +1808,11 @@ class Hauptfenster(QMainWindow):
         self.suchmeldung.setText(f"<span style='{farbe}'><b>{text}</b></span>")
 
     def _ordner_gewaehlt(self, eintrag: QTreeWidgetItem) -> None:
+        # **Die Überschrift »Suchordner« sucht nichts.** Ohne diese
+        # Abfrage stünde hinter ihr der leere Ausdruck, und ein Klick auf
+        # eine Überschrift zeigte plötzlich das ganze Archiv.
+        if eintrag.data(0, ROLLE_SUCHORDNER) == "":
+            return
         vorgabe = eintrag.data(0, Qt.UserRole) or ""
         self.suchfeld.setText(vorgabe)
         self._suchen()
@@ -2429,6 +2655,12 @@ class Postfachbaum(QTreeWidget):
         gezogen = self.currentItem()
         if gezogen is None or gezogen.parent() is not None:
             return False
+        # **Der Zweig »Suchordner« bleibt unten.** Er ist kein Postfach;
+        # zwischen die Postfächer geschoben sähe er aus wie eines, und
+        # seine Stelle stünde in keiner gemerkten Reihenfolge – beim
+        # nächsten Start wäre er wieder unten.
+        if gezogen.data(0, ROLLE_SUCHORDNER) is not None:
+            return False
         # Auf einem Element abzulegen hieße "hineinlegen"; erlaubt ist nur
         # davor und dahinter.
         if self.dropIndicatorPosition() not in (
@@ -2436,7 +2668,15 @@ class Postfachbaum(QTreeWidget):
         ):
             return False
         ziel = self.itemAt(ereignis.position().toPoint())
-        return ziel is None or ziel.parent() is None
+        if ziel is None:
+            return True
+        if ziel.parent() is not None:
+            return False
+        # Unter dem Zweig »Suchordner« ist kein Platz mehr – dort stünde
+        # ein Postfach hinter einer Überschrift, zu der es nicht gehört.
+        if ziel.data(0, ROLLE_SUCHORDNER) is not None:
+            return self.dropIndicatorPosition() == QAbstractItemView.AboveItem
+        return True
 
     def verschieben(self, richtung: int) -> None:
         """Rückt das gewählte Postfach eine Stelle – für die Tastatur.
@@ -2449,10 +2689,13 @@ class Postfachbaum(QTreeWidget):
         eintrag = self.currentItem()
         if eintrag is None or eintrag.parent() is not None:
             return
+        if eintrag.data(0, ROLLE_SUCHORDNER) is not None:
+            return
         stelle = self.indexOfTopLevelItem(eintrag)
-        # Stelle 0 ist "Alle Postfächer" und bleibt oben.
+        # Stelle 0 ist "Alle Postfächer" und bleibt oben, der Zweig
+        # "Suchordner" bleibt unten. Dazwischen liegen die Postfächer.
         neu = stelle + richtung
-        if stelle < 1 or not 1 <= neu < self.topLevelItemCount():
+        if stelle < 1 or not 1 <= neu < self._untergrenze():
             return
         ausgeklappt = eintrag.isExpanded()
         self.takeTopLevelItem(stelle)
@@ -2460,6 +2703,13 @@ class Postfachbaum(QTreeWidget):
         eintrag.setExpanded(ausgeklappt)
         self.setCurrentItem(eintrag)
         self.reihenfolge_geaendert.emit()
+
+    def _untergrenze(self) -> int:
+        """Die erste Stelle, an der kein Postfach mehr stehen darf."""
+        for i in range(self.topLevelItemCount()):
+            if self.topLevelItem(i).data(0, ROLLE_SUCHORDNER) is not None:
+                return i
+        return self.topLevelItemCount()
 
     def reihenfolge(self) -> list[str]:
         """Die Postfächer in ihrer jetzigen Reihenfolge."""
