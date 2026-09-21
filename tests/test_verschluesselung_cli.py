@@ -243,11 +243,10 @@ class OhneTerminalTest(unittest.TestCase):
         self.assertIn("Notschlüssel", fehler.getvalue())
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
-class OhneTerminalTest(unittest.TestCase):
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
+class PasswortOhneTastaturTest(unittest.TestCase):
     """Passwortabfragen ohne angeschlossene Tastatur.
 
     **Am 2026-09-21 beim Erproben der Verschlüsselung aufgelaufen**, und
@@ -367,3 +366,6 @@ class OhneTerminalTest(unittest.TestCase):
 
         self.assertEqual(code, 4)
         self.assertIn("Hauptschlüssel", ausgabe.getvalue() + fehler.getvalue())
+
+if __name__ == "__main__":
+    unittest.main()

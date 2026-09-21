@@ -25,6 +25,13 @@ from pathlib import Path
 from mailburg.__main__ import main
 from mailburg.core.archive import Archive, Mode
 
+try:
+    import cryptography  # noqa: F401
+
+    HAT_KRYPTO = True
+except ImportError:  # pragma: no cover – der Kern kommt ohne aus
+    HAT_KRYPTO = False
+
 ROH = (
     b"From: absender@example.org\r\n"
     b"To: ich@example.org\r\n"
@@ -52,8 +59,15 @@ class Grundlage(unittest.TestCase):
 
         from mailburg.core import sicherung
 
-        self.sicherung = self.basis / "sicherung.tar.zst"
-        sicherung.packen(self.quelle, self.sicherung)
+        # **Den Namen bestimmt MailBurg, nicht der Test.** Ohne
+        # zstandard faellt das Packen auf LZMA zurueck und schreibt
+        # .tar.xz. Ein fest vorgegebenes ».tar.zst« enthielte dann
+        # LZMA, und das Zurueckholen verlangte ein Paket, das gar nicht
+        # gebraucht wird. In der CI ohne Zusatzpakete am 2026-09-21
+        # genau so aufgelaufen.
+        ordner = self.basis / "Sicherungen"
+        befund = sicherung.packen(self.quelle, ordner)
+        self.sicherung = befund.ziel
 
     def _lauf(self, *argumente: str):
         ausgabe, fehler = io.StringIO(), io.StringIO()
@@ -175,6 +189,7 @@ class WohinDennUeberhaupt(Grundlage):
         self.assertIn("gibt es nicht", text)
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class AusEinemVerschluesseltenArchiv(unittest.TestCase):
     """Eine Sicherung aus einem verschlüsselten Archiv.
 
@@ -196,8 +211,15 @@ class AusEinemVerschluesseltenArchiv(unittest.TestCase):
             archiv.add(ROH.replace(b"{n}", b"0"),
                        account="Probe", folder="INBOX")
 
-        self.sicherung = self.basis / "sicherung.tar.zst"
-        sicherung.packen(self.quelle, self.sicherung)
+        # **Den Namen bestimmt MailBurg, nicht der Test.** Ohne
+        # zstandard faellt das Packen auf LZMA zurueck und schreibt
+        # .tar.xz. Ein fest vorgegebenes ».tar.zst« enthielte dann
+        # LZMA, und das Zurueckholen verlangte ein Paket, das gar nicht
+        # gebraucht wird. In der CI ohne Zusatzpakete am 2026-09-21
+        # genau so aufgelaufen.
+        ordner = self.basis / "Sicherungen"
+        befund = sicherung.packen(self.quelle, ordner)
+        self.sicherung = befund.ziel
 
     def test_sie_wandert_in_ein_unverschluesseltes_archiv(self) -> None:
         ziel = self.basis / "Klar"
