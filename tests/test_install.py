@@ -98,12 +98,29 @@ class BeispieldatenTest(unittest.TestCase):
                 )
 
     def test_keine_echten_adressen_in_der_doku(self):
+        """**Auch die Dateien in der Wurzel, nicht nur ``docs/``.**
+
+        Bis zum 21.09.2026 sah dieser Wächter allein in ``docs/`` nach.
+        README, CHANGELOG, TODO und RECHTLICHES waren ungeprüft – also
+        ausgerechnet die Seiten, die auf GitHub als erstes aufgehen. Eine
+        echte Adresse dort wäre nie aufgefallen, und der Test hätte
+        weiterhin grün gemeldet.
+
+        Bemerkt beim Anlegen der ``CONTRIBUTING.md``: Sie fiel durch
+        jedes Raster, weil sie nicht in ``docs/`` liegt. Dieselbe Klasse
+        wie die Lesbarkeitsprüfung, die zehn von einunddreißig Fenstern
+        kannte – **eine Prüfung, deren Umfang von Disziplin abhängt, ist
+        keine.**
+
+        Nachgesehen: Zum Zeitpunkt der Erweiterung war keine der
+        Wurzel-Dateien zu beanstanden. Die Lücke war also eine Flanke,
+        keine Altlast.
+        """
         import re
 
-        wurzel = pathlib.Path(__file__).resolve().parent.parent
         erlaubt = (".example", ".test", ".invalid", "example.com",
                    "example.net", "example.org", "@meine-firma", "@ihre-firma")
-        for datei in (wurzel / "docs").glob("*.md"):
+        for datei in self._alle_texte():
             text = datei.read_text(encoding="utf-8")
             for adresse in re.findall(r"[\w.+-]+@[\w-]+\.[\w.-]+", text):
                 sauber = adresse.rstrip(">`.,)")
@@ -112,6 +129,27 @@ class BeispieldatenTest(unittest.TestCase):
                         sauber.endswith(erlaubt),
                         f"{datei.name}: {sauber} ist keine Beispieladresse",
                     )
+
+    @staticmethod
+    def _alle_texte():
+        """Jede Markdown-Datei des Projekts – in ``docs/`` und daneben.
+
+        Neue Dateien sind damit von selbst erfasst. Eine Liste von Hand
+        hält nicht: Wer eine Datei anlegt, denkt an die Datei, nicht an
+        die Liste.
+        """
+        wurzel = pathlib.Path(__file__).resolve().parent.parent
+        return sorted(wurzel.glob("*.md")) + sorted(
+            (wurzel / "docs").glob("*.md")
+        )
+
+    def test_der_waechter_sieht_auch_in_die_wurzel(self):
+        """Damit die Erweiterung nicht unbemerkt zurückgedreht wird."""
+        namen = {d.name for d in self._alle_texte()}
+
+        for pflicht in ("README.md", "README.en.md", "CHANGELOG.md",
+                        "TODO.md", "CONTRIBUTING.md"):
+            self.assertIn(pflicht, namen)
 
 
 class TestlaufHinterlaesstNichtsTest(unittest.TestCase):
