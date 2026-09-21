@@ -929,7 +929,50 @@ darin:**
   mit bis zu 500.000 Testmails an. Siehe ganz oben unter »Aus dem
   dritten Nutzer-Feedback«.
 
-  **Gemessen am 2026-09-21 – an 500.000 erfundenen Mails.** Angelegt in
+  **Gemessen am 2026-09-21 – an drei echten Beständen.** Dieselben
+  Suchen, dreimal je Archiv, der beste Wert (so fühlt es sich im Alltag
+  an; der erste Lauf misst mit, wie viel noch von der Platte kommt):
+
+  | Suche | 350 Mails | 18.481 Mails | 68.763 Mails |
+  |---|---|---|---|
+  | `rechnung` | 0 ms | **6 ms** / 2.582 | **45 ms** / 39.450 |
+  | `betreff:rechnung` | 0 ms | 4 ms / 928 | 33 ms / 16.680 |
+  | `hat:anhang typ:pdf` | 0 ms | 5 ms / 1.701 | 20 ms / 38.291 |
+  | `jahr:2024` | 0 ms | **3 ms** / 3.106 | **3 ms** / 2.636 |
+  | ein Quartal | 0 ms | **1 ms** / 572 | **1 ms** / 751 |
+  | `groesse:>5MB` | 0 ms | 6 ms / 275 | 15 ms / 657 |
+  | `inhalt:vertrag` | 0 ms | 7 ms / 980 | 12 ms / 5.853 |
+  | **Index** | 7 MB | 346 MB | 968 MB |
+  | **je Mail** | 19,5 KB | 19,2 KB | 14,4 KB |
+
+  **Die Antwort ist eine andere als erwartet: Nicht die Bestandsgröße
+  begrenzt, sondern die Trefferzahl.** Der Beleg steht in zwei Zeilen
+  der Tabelle: `jahr:2024` und die Quartalssuche liefern in beiden
+  großen Archiven ähnlich viele Treffer und brauchen **genau gleich
+  lang** – 3 ms und 1 ms –, obwohl das eine Archiv fast viermal so groß
+  ist. Wo die Zeit steigt, steigt sie mit den Treffern, und das
+  sublinear: fünfzehnmal so viele Treffer kosten siebenmal so lang.
+
+  **Hochgerechnet auf 500.000 echte Mails** (Faktor 7,3 auf das größte):
+
+  - Index rund **7 GB** – die alte Schätzung von 9 GB war zu hoch, weil
+    sie die Grundlast der kleinen Archive mitrechnete. Je größer der
+    Bestand, desto weniger Index je Mail.
+  - Gezielte Suchen – ein Datum, ein Absender, eine Rechnungsnummer –
+    bleiben bei **1 bis 10 ms**. Sie hängen nicht am Bestand.
+  - Eine breite Freitextsuche, die ein Drittel des Archivs trifft,
+    landet bei **200 bis 300 ms**.
+
+  Die Gegenprobe an 500.000 erfundenen Mails passt in dieselbe Kurve:
+  52.704 Treffer in 92 ms.
+
+  **Für ein Archiv ist das die richtige Kurve.** Wer darin sucht, sucht
+  etwas Bestimmtes – und genau das kostet nichts. Teuer wird nur, was
+  ohnehin niemand liest.
+
+  ---
+
+  **Die synthetische Gegenprobe – an 500.000 erfundenen Mails.** Angelegt in
   28,2 Minuten, 2,1 GB Archiv, 2,1 GB Index. Die Suche, so wie das
   Fenster sie stellt (zählen plus erste Seite):
 

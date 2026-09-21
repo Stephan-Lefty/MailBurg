@@ -841,7 +841,50 @@ into a fresh archive and verifying the chain all went through.
   on MailStore: a user offers a Stalwart mailbox with up to 500,000 test
   messages. See the top, "From the third user feedback".
 
-  **Measured on 2026-09-21 — against 500,000 invented messages.** Built
+  **Measured on 2026-09-21 — against three real corpora.** Same
+  queries, three runs each, best value (that is how it feels in daily
+  use; the first run also measures how much still comes off the disk):
+
+  | Query | 350 msgs | 18,481 msgs | 68,763 msgs |
+  |---|---|---|---|
+  | `rechnung` | 0 ms | **6 ms** / 2,582 | **45 ms** / 39,450 |
+  | `betreff:rechnung` | 0 ms | 4 ms / 928 | 33 ms / 16,680 |
+  | `hat:anhang typ:pdf` | 0 ms | 5 ms / 1,701 | 20 ms / 38,291 |
+  | `jahr:2024` | 0 ms | **3 ms** / 3,106 | **3 ms** / 2,636 |
+  | one quarter | 0 ms | **1 ms** / 572 | **1 ms** / 751 |
+  | `groesse:>5MB` | 0 ms | 6 ms / 275 | 15 ms / 657 |
+  | `inhalt:vertrag` | 0 ms | 7 ms / 980 | 12 ms / 5,853 |
+  | **Index** | 7 MB | 346 MB | 968 MB |
+  | **per message** | 19.5 KB | 19.2 KB | 14.4 KB |
+
+  **The answer turned out different from what was expected: it is not
+  corpus size that limits, but the number of hits.** Two rows prove it:
+  `jahr:2024` and the quarter query return a similar number of hits in
+  both large archives and take **exactly as long** — 3 ms and 1 ms —
+  although one archive is nearly four times the size. Where time does
+  rise, it rises with the hits, and sublinearly: fifteen times the hits
+  cost seven times as long.
+
+  **Extrapolated to 500,000 real messages** (factor 7.3 on the largest):
+
+  - index around **7 GB** — the earlier estimate of 9 GB was too high
+    because it carried the base load of the small archives. The larger
+    the corpus, the less index per message.
+  - targeted queries — a date, a sender, an invoice number — stay at
+    **1 to 10 ms**. They do not depend on corpus size.
+  - a broad full-text query hitting a third of the archive lands at
+    **200 to 300 ms**.
+
+  The counter-check against 500,000 invented messages fits the same
+  curve: 52,704 hits in 92 ms.
+
+  **For an archive that is the right curve.** Anyone searching it is
+  after something specific — and that costs nothing. Only what nobody
+  reads anyway gets expensive.
+
+  ---
+
+  **The synthetic counter-check — against 500,000 invented messages.** Built
   in 28.2 minutes, 2.1 GB archive, 2.1 GB index. Search as the window
   issues it (count plus first page):
 
