@@ -41,18 +41,16 @@ Zwei seiner drei Punkte sind in der 1.5.0 erledigt, einer nicht.
   Vorbild gibt es: `index.ordner_umbenennen()` zieht dasselbe für
   Ordner *innerhalb* eines Kontos, samt Nachziehen im Abrufzustand.
 
-- [ ] **Beiträge von außen: eine `CONTRIBUTING.md` fehlt.** Derselbe
-  Anwender hat gefragt, ob Pull Requests willkommen sind. Solange nichts
-  dasteht, muss die Antwort jedes Mal neu geschrieben werden – und was
-  MailBurg verlangt, ist nicht selbstverständlich: Tests zu jedem
-  Beitrag, keine echten Adressen (auch nicht in Testdaten und
-  Screenshots), Kommentare, die das *Warum* mit Datum und Anlass nennen,
-  Doku in beiden Sprachen im selben Zug.
+- [x] **Beiträge von außen: `CONTRIBUTING.md`.** (2026-09-21) Derselbe
+  Anwender hat gefragt, ob Pull Requests willkommen sind. Sie sind es –
+  die Bedingungen stehen jetzt an einer Stelle statt in jeder Antwort
+  neu.
 
   **Mit dem ersten Fork ändert sich außerdem etwas Stilles:** Die
   Historie umzuschreiben ist ab dann nicht mehr folgenlos – ein
   `git filter-repo` zerschießt jeden fremden Klon. Bis zum 2026-08-29
-  war das noch ein Werkzeug im Gebrauch.
+  war das noch ein Werkzeug im Gebrauch. Vor dem nächsten Mal also
+  `gh api repos/Stephan-Lefty/MailBurg/forks` prüfen.
 
 ### Ab jetzt im Alltag (2026-09-09)
 

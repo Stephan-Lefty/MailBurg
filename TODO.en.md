@@ -38,17 +38,15 @@ Two of his three points are done in 1.5.0, one is not.
   There is a model for it: `index.ordner_umbenennen()` does the same for
   folders *within* an account, including the retrieval state.
 
-- [ ] **Outside contributions: a `CONTRIBUTING.md` is missing.** The same
-  user asked whether pull requests are welcome. As long as nothing is
-  written down, the answer has to be composed afresh every time — and
-  what MailBurg expects is not self-evident: tests with every
-  contribution, no real addresses (not in test data or screenshots
-  either), comments that give the *why* with date and occasion,
-  documentation in both languages in the same go.
+- [x] **Outside contributions: `CONTRIBUTING.md`.** (2026-09-21) The same
+  user asked whether pull requests are welcome. They are — and what
+  MailBurg expects now sits in one place instead of being composed
+  afresh in every reply.
 
   **The first fork also changes something quietly:** rewriting history
   stops being free — a `git filter-repo` breaks every outside clone.
-  Until 2026-08-29 that was still a tool in active use.
+  Until 2026-08-29 that was still a tool in active use. So check
+  `gh api repos/Stephan-Lefty/MailBurg/forks` before the next time.
 
 ### In everyday use from now on (2026-09-09)
 
