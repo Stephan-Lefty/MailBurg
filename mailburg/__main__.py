@@ -400,6 +400,17 @@ def cmd_konten_anmelden(args: argparse.Namespace) -> int:
         )
         return 2
 
+    # **Eine Organisation kann den Zugriff auf sich beschränken.** Dann
+    # scheitert die Anmeldung über »common« mit einer Meldung, die nach
+    # einem Fehler in MailBurg aussieht. Wer die Verzeichnis-ID seiner
+    # Organisation kennt, trägt sie hier ein.
+    if getattr(args, "mandant", ""):
+        try:
+            anbieter = anbieter.fuer_mandanten(args.mandant)
+        except ValueError as exc:
+            print(f"{exc}", file=sys.stderr)
+            return 2
+
     kennung = args.kennung or konto.oauth_kennung
     if not kennung:
         print(
@@ -3374,6 +3385,14 @@ def build_parser() -> argparse.ArgumentParser:
     k.add_argument(
         "--kennung",
         help="Kennung Ihrer beim Anbieter registrierten Anwendung",
+    )
+    k.add_argument(
+        "--mandant", default="", metavar="ID",
+        help=(
+            "nur Microsoft: die Verzeichnis-ID Ihrer Organisation, falls "
+            "diese den Zugriff auf sich beschränkt. Ohne Angabe gilt "
+            "»common« und damit jedes Konto"
+        ),
     )
     k.set_defaults(func=cmd_konten_anmelden)
 

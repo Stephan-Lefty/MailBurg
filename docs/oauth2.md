@@ -239,6 +239,28 @@ Anmeldung bei uns und keine Stelle, an der Ihre Token vorbeikämen.
 | *Die gespeicherte Anmeldung gilt nicht mehr* | Passwort geändert, Zugriff entzogen, oder bei Google die sieben Tage des Testmodus. Neu anmelden. |
 | *Innerhalb von 5 Minuten kam keine Antwort* | Das Browserfenster wurde geschlossen oder die Anmeldung abgebrochen. |
 | *Der angeforderte Zugriff wurde nicht bewilligt* | Bei Microsoft fehlt die Berechtigung `IMAP.AccessAsUser.All` (Schritt 7). |
+| *Die Anwendung ist in diesem Verzeichnis nicht zugelassen* | Ihre Organisation beschränkt den Zugriff auf sich selbst – siehe den Abschnitt darunter. |
+
+### Wenn die Firma den Zugriff beschränkt
+
+MailBurg meldet sich normalerweise über `common` an. Das nimmt private **und**
+geschäftliche Konten an und ist für fast alle der richtige Weg.
+
+Manche Organisationen erlauben aber nur Anmeldungen über ihren eigenen
+Mandanten. Dann scheitert `common`, und die Meldung des Anbieters liest sich,
+als läge es an MailBurg. Geben Sie in dem Fall die **Verzeichnis-ID** Ihrer
+Organisation mit – sie steht im Azure-Portal bei der registrierten Anwendung:
+
+```bash
+mailburg konten anmelden Firma --anbieter microsoft \
+    --kennung IHRE-ANWENDUNGSKENNUNG \
+    --mandant 00000000-1111-2222-3333-444444444444
+```
+
+Statt der ID geht auch der Domänenname, etwa `ihre-firma.onmicrosoft.com`.
+
+Wer die ID nicht kennt, braucht sie vermutlich nicht: Ohne Angabe bleibt es
+bei `common`.
 
 ## Ehrlich dazu
 

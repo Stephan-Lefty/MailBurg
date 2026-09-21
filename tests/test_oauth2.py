@@ -584,3 +584,98 @@ class OberflaecheTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("self.passwort_neu.setEnabled(not konto.per_oauth2)", quelle)
+
+
+class TestAnbieterEndpunkte(unittest.TestCase):
+    """Die Endpunkte der Anbieter – festgehalten, nicht nur behauptet.
+
+    **Es gab dazu keinen einzigen Test**, und prompt ist aufgefallen,
+    was dabei herauskommt: Der Kommentar über :data:`MICROSOFT` sagte
+    seit jeher ``consumers`` – also nur private Konten –, während der
+    Code ``common`` nahm.
+
+    Das ist die gefährlichere Richtung, als es zunächst klingt. Wer den
+    Kommentar liest und ihm glaubt, ändert im Zweifel den Code auf
+    ``consumers``. Dann liefe ausgerechnet der Fall nicht mehr, für den
+    OAuth2 bei Microsoft überhaupt nötig ist: das Geschäftskonto in
+    Exchange Online, wo die einfache Anmeldung abgeschaltet ist.
+    """
+
+    def test_microsoft_nimmt_private_und_geschaeftliche_konten(self) -> None:
+        from mailburg.core.oauth2 import MICROSOFT
+
+        for url in (MICROSOFT.autorisierung, MICROSOFT.token):
+            with self.subTest(url=url):
+                self.assertIn("/common/", url)
+                self.assertNotIn("/consumers/", url)
+
+    def test_microsoft_fragt_nach_imap_und_erneuerung(self) -> None:
+        """Ohne ``offline_access`` gäbe es kein Erneuerungs-Token.
+
+        Dann müsste sich der Anwender bei jedem Abruf neu anmelden –
+        für einen Zeitplan im Hintergrund undenkbar.
+        """
+        from mailburg.core.oauth2 import MICROSOFT
+
+        self.assertIn("IMAP.AccessAsUser.All", MICROSOFT.bereich)
+        self.assertIn("offline_access", MICROSOFT.bereich)
+
+    def test_alle_endpunkte_sind_verschluesselt(self) -> None:
+        """Ein Token über http wäre ein Vollzugang im Klartext."""
+        from mailburg.core.oauth2 import ANBIETER
+
+        for kennung, anbieter in ANBIETER.items():
+            for url in (anbieter.autorisierung, anbieter.token):
+                with self.subTest(anbieter=kennung, url=url):
+                    self.assertTrue(url.startswith("https://"), url)
+
+
+class TestMandant(unittest.TestCase):
+    """Eine Organisation kann den Zugriff auf sich beschränken.
+
+    **Der Weg dorthin war versprochen und fehlte.** Der Kommentar über
+    :data:`MICROSOFT` nannte ihn seit jeher – »wer ein Geschäftskonto
+    anbindet, trägt seine Mandanten-ID selbst ein« –, und es gab keine
+    einzige Stelle, an der sich das eintragen ließ.
+
+    Ohne ihn scheitert die Anmeldung in solchen Organisationen mit
+    einer Meldung des Anbieters, die nach einem Fehler in MailBurg
+    aussieht.
+    """
+
+    def test_die_kennung_wandert_in_beide_urls(self) -> None:
+        from mailburg.core.oauth2 import MICROSOFT
+
+        eigen = MICROSOFT.fuer_mandanten("contoso.example")
+
+        self.assertIn("/contoso.example/", eigen.autorisierung)
+        self.assertIn("/contoso.example/", eigen.token)
+        self.assertNotIn("/common/", eigen.autorisierung)
+        self.assertNotIn("/common/", eigen.token)
+
+    def test_ohne_angabe_bleibt_alles_wie_es_war(self) -> None:
+        from mailburg.core.oauth2 import MICROSOFT
+
+        self.assertIs(MICROSOFT.fuer_mandanten(""), MICROSOFT)
+        self.assertIs(MICROSOFT.fuer_mandanten("   "), MICROSOFT)
+
+    def test_bereich_und_kennung_bleiben(self) -> None:
+        """Nur der Weg ändert sich, nicht was verlangt wird."""
+        from mailburg.core.oauth2 import MICROSOFT
+
+        eigen = MICROSOFT.fuer_mandanten("contoso.example")
+
+        self.assertEqual(eigen.bereich, MICROSOFT.bereich)
+        self.assertEqual(eigen.kennung, MICROSOFT.kennung)
+
+    def test_bei_google_wird_es_abgelehnt(self) -> None:
+        """**Statt still nichts zu tun.**
+
+        Google kennt keine Mandanten. Eine Angabe dort ist ein
+        Missverständnis, und das gehört gesagt – sonst wundert sich
+        jemand, warum seine Eingabe folgenlos bleibt.
+        """
+        from mailburg.core.oauth2 import GOOGLE
+
+        with self.assertRaises(ValueError):
+            GOOGLE.fuer_mandanten("contoso.example")

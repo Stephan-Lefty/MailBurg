@@ -64,12 +64,60 @@ class Anbieter:
     hinweis: str = ""
     """Was der Anwender über die Registrierung wissen muss."""
 
+    def fuer_mandanten(self, mandant: str) -> "Anbieter":
+        """Dieselben Endpunkte, aber auf eine Organisation eingeschränkt.
+
+        **Für Firmenkonten kann das nötig sein.** Microsoft erlaubt
+        einer Organisation, den Zugriff auf ihren eigenen Mandanten zu
+        beschränken; eine Anmeldung über ``common`` scheitert dann mit
+        einer Meldung, die nach einem Fehler in der Anwendung aussieht.
+
+        Am 2026-09-21 aufgefallen: Ein Kommentar versprach diesen Weg
+        seit jeher, und es gab ihn nicht. Erst stand dort sogar das
+        Gegenteil dessen, was der Code tat – siehe :data:`MICROSOFT`.
+
+        Die Mandanten-ID steht im Azure-Portal bei der registrierten
+        Anwendung (»Verzeichnis-ID«). Wer sie nicht kennt, braucht sie
+        auch nicht: ``common`` ist die Vorgabe und deckt den Normalfall.
+        """
+        mandant = mandant.strip()
+        if not mandant:
+            return self
+        if "/common/" not in self.autorisierung:
+            raise ValueError(
+                f"Für {self.name} gibt es keine Mandanten – die Angabe "
+                f"passt nur zu Microsoft."
+            )
+        return Anbieter(
+            kennung=self.kennung,
+            name=f"{self.name}, Mandant {mandant}",
+            autorisierung=self.autorisierung.replace(
+                "/common/", f"/{mandant}/"),
+            token=self.token.replace("/common/", f"/{mandant}/"),
+            bereich=self.bereich,
+            hinweis=self.hinweis,
+        )
+
 
 #: Microsoft: kostenlos registrierbar, kein Prüfverfahren.
 #:
-#: ``consumers`` statt ``common``: MailBurg richtet sich an einzelne
-#: Anwender. Wer ein Geschäftskonto anbindet, trägt seine Mandanten-ID
-#: selbst ein – das kann nur wissen, wer die Organisation kennt.
+#: **``common``, und das mit Bedacht.** Hier stand bis zum 2026-09-21
+#: ein Kommentar, der ``consumers`` behauptete – also nur private
+#: Konten –, während der Code schon immer ``common`` nahm. Ein
+#: Kommentar, der etwas anderes sagt als der Code, ist schlimmer als
+#: keiner: Wer ihn liest, ändert im Zweifel den Code auf das, was
+#: danebensteht.
+#:
+#: Richtig ist ``common``. Es nimmt private *und* geschäftliche Konten
+#: an, und genau darauf kommt es an: Wer MailBurg in einer Firma
+#: einsetzt, hat ein Exchange-Online-Konto – und seit Microsoft die
+#: einfache Anmeldung für IMAP abgeschaltet hat, führt dorthin kein
+#: anderer Weg mehr als OAuth2. Mit ``consumers`` liefe ausgerechnet
+#: dieser Fall nicht.
+#:
+#: Wessen Organisation den Zugriff einschränkt, trägt statt ``common``
+#: seine Mandanten-ID ein – das kann nur wissen, wer die Organisation
+#: kennt. Der Weg dafür steht in ``docs/oauth2.md``.
 MICROSOFT = Anbieter(
     kennung="microsoft",
     name="Microsoft (Outlook.com, Hotmail, Exchange)",
