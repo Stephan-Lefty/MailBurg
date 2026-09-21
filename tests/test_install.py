@@ -421,11 +421,17 @@ class OhneTerminalBrichtNichtsAbTest(unittest.TestCase):
             pathlib.Path(__file__).resolve().parent.parent / "install.sh"
         ).read_text(encoding="utf-8")
 
-    def _lauf(self, mit_terminal: bool) -> "subprocess.CompletedProcess":
+    def _lauf(self, mit_terminal: bool):
         """Führt den Frageblock aus – wahlweise mit oder ohne Terminal.
 
         Ausgeführt, nicht gelesen: Ob eine Fallunterscheidung stimmt,
         sieht man ihrem Text nicht an. Das ist die Lehre vom 2026-09-03.
+
+        **Ohne Rückgabeannotation, und das hat einen Grund.** Hier stand
+        ``-> "subprocess.CompletedProcess"``, während der Import erst
+        eine Zeile tiefer steht. Als Zeichenkette wertet Python das nie
+        aus, die Tests liefen grün – pyflakes sieht trotzdem hin und
+        machte die CI auf dem Tag v1.5.0 rot.
         """
         import subprocess
 
