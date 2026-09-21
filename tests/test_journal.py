@@ -318,3 +318,142 @@ class TestAbgebrocheneZeile(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestZweiSchreiber(unittest.TestCase):
+    """Zwei Zugriffe auf dasselbe Journal dürfen die Kette nicht zerreißen.
+
+    **Am 2026-09-21 an einem echten Geschäftsarchiv gefunden**, bei
+    einem Gesundheitscheck nach dem Abruf. ``mailburg pruefen`` meldete
+    eine gerissene Kette bei Eintrag 488 – während keine einzige Mail
+    fehlte: 346 erwartet, 346 vorhanden.
+
+    Im Journal standen die Folgenummern 488 bis 493 **zweimal**. Am
+    12.09. um 07:57:39–44 als ``add``, eine halbe Minute später um
+    07:58:02 noch einmal als ``classify``, beide beginnend mit
+    demselben ``prev``.
+
+    Die Lage dahinter: Das Hauptfenster stand offen und hatte den Stand
+    beim Öffnen gelesen (487). Der Zeitplan rief in einem eigenen
+    Prozess ab und schrieb 488 bis 493. Danach stufte jemand im Fenster
+    ein – und das Fenster zählte von *seinem* Stand weiter.
+
+    **Die Sperrdatei greift dabei nicht.** Sie verhindert zwei
+    *schreibend* geöffnete Archive; das Fenster öffnet lesend und
+    schreibt trotzdem, sobald jemand einstuft, löscht oder Regeln
+    anwendet.
+
+    Für ein Geschäftsarchiv ist das der teuerste Fehler, den es gibt:
+    Die Hash-Kette ist das ganze Versprechen, und sie war gerissen,
+    ohne dass irgendetwas verloren ging.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.meta = Path(self.ordner.name) / "meta"
+
+    def test_der_zweite_zugriff_zaehlt_weiter(self) -> None:
+        """Der Fall aus dem Betrieb, in klein."""
+        erster = Journal(self.meta)
+        erster.append("create", name="Probe")
+
+        # Das Fenster öffnet und merkt sich den Stand.
+        fenster = Journal(self.meta)
+        self.assertEqual(fenster.count, 1)
+
+        # Der Abruf schreibt nebenher – eigener Zugriff, wie ein
+        # eigener Prozess.
+        abruf = Journal(self.meta)
+        for i in range(6):
+            abruf.append("add", hash=f"{i:064x}")
+        self.assertEqual(abruf.count, 7)
+
+        # Und jetzt stuft jemand im Fenster ein.
+        eintrag = fenster.append("classify", hash="00", category="privat")
+
+        self.assertEqual(eintrag["seq"], 8,
+                         "das Fenster zählt von seinem alten Stand weiter")
+        self.assertTrue(Journal(self.meta).verify().ok,
+                        "die Kette ist gerissen")
+
+    def test_der_vorgaenger_stimmt_auch(self) -> None:
+        """Nicht nur die Nummer – auch ``prev`` muss nachgezogen sein.
+
+        Eine richtige Folgenummer mit falschem Vorgänger sähe in der
+        Aufzählung heil aus und wäre es nicht.
+        """
+        Journal(self.meta).append("create", name="Probe")
+        fenster = Journal(self.meta)
+
+        abruf = Journal(self.meta)
+        letzter = abruf.append("add", hash="ab" * 32)
+
+        eintrag = fenster.append("note", text="Hinweis")
+
+        self.assertEqual(eintrag["prev"], letzter["self"])
+
+    def test_ohne_fremdes_schreiben_wird_nicht_nachgelesen(self) -> None:
+        """**Der Preis muss bei null bleiben, wenn nur einer schreibt.**
+
+        Bei hunderttausend Mails am Stück wäre ein Nachlesen je Eintrag
+        genau der Flaschenhals, vor dem ``flush()`` warnt. Geprüft wird
+        deshalb über Name und Größe der offenen Datei – schreibt nur
+        dieser Zugriff, stimmt die gemerkte Größe immer.
+        """
+        journal = Journal(self.meta)
+        journal.append("create", name="Probe")
+
+        with mock.patch.object(Journal, "_scan_tail") as nachgelesen:
+            for i in range(20):
+                journal.append("add", hash=f"{i:064x}")
+
+        nachgelesen.assert_not_called()
+
+    def test_bei_fremdem_schreiben_wird_nachgelesen(self) -> None:
+        """Die Gegenrichtung – sonst prüfte der Test oben nichts."""
+        Journal(self.meta).append("create", name="Probe")
+        fenster = Journal(self.meta)
+        Journal(self.meta).append("add", hash="cd" * 32)
+
+        with mock.patch.object(
+            Journal, "_scan_tail", autospec=True, side_effect=Journal._scan_tail
+        ) as nachgelesen:
+            fenster.append("note", text="Hinweis")
+
+        nachgelesen.assert_called_once()
+
+    def test_viele_wechsel_hintereinander(self) -> None:
+        """Abwechselnd schreiben – so sieht ein Arbeitstag aus."""
+        Journal(self.meta).append("create", name="Probe")
+        fenster = Journal(self.meta)
+        abruf = Journal(self.meta)
+
+        for runde in range(5):
+            abruf.append("add", hash=f"{runde:064x}")
+            fenster.append("classify", hash=f"{runde:064x}", category="privat")
+
+        ergebnis = Journal(self.meta).verify()
+        self.assertTrue(ergebnis.ok, ergebnis.errors)
+        self.assertEqual(Journal(self.meta).count, 11)
+
+    def test_auch_ueber_einen_segmentwechsel(self) -> None:
+        """Ein neues Segment ändert den Dateinamen, nicht nur die Größe.
+
+        Würde nur die Größe verglichen, fiele ein Wechsel auf eine
+        kleinere neue Datei durch – die Kette risse an genau der
+        Stelle, an der ohnehin schon etwas Besonderes passiert.
+        """
+        Journal(self.meta).append("create", name="Probe")
+        fenster = Journal(self.meta)
+
+        abruf = Journal(self.meta)
+        with mock.patch("mailburg.core.journal.ROLL_SIZE", 1):
+            abruf.append("add", hash="ef" * 32)
+            abruf.append("add", hash="12" * 32)
+
+        eintrag = fenster.append("note", text="nach dem Wechsel")
+
+        self.assertEqual(eintrag["seq"], 4)
+        ergebnis = Journal(self.meta).verify()
+        self.assertTrue(ergebnis.ok, ergebnis.errors)

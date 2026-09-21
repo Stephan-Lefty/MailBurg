@@ -152,7 +152,37 @@ class Journal:
         self._last_seq = 0
         self._last_hash = GENESIS_PREV
         self._dirty = False
+        #: Name und Größe der offenen Datei, als dieser Zugriff den Stand
+        #: zuletzt gelesen hat. Daran erkennt er, dass inzwischen jemand
+        #: anders geschrieben hat – siehe :meth:`_fremdes_schreiben`.
+        self._gesehen: tuple[str, int] = ("", 0)
         self._scan_tail()
+        self._stand_merken()
+
+    # ------------------------------------------------- Stand zweier Schreiber
+
+    def _stand_merken(self) -> None:
+        """Hält fest, wie die offene Datei gerade aussieht."""
+        offen = [p for p in self.segments() if p.suffix == ".jsonl"]
+        if not offen:
+            self._gesehen = ("", 0)
+            return
+        self._gesehen = (offen[-1].name, offen[-1].stat().st_size)
+
+    def _fremdes_schreiben(self) -> bool:
+        """Ob seit dem letzten Blick jemand anders angehängt hat.
+
+        **Verglichen werden Name und Größe, nicht der Inhalt.** Ein
+        ``stat()`` kostet nichts; das Journal noch einmal zu lesen
+        dagegen schon – und genau das wäre bei hunderttausend Mails am
+        Stück der Flaschenhals, vor dem :meth:`flush` ausdrücklich
+        warnt. Schreibt nur dieser Prozess, stimmt die gemerkte Größe
+        immer, und es wird nie nachgelesen.
+        """
+        offen = [p for p in self.segments() if p.suffix == ".jsonl"]
+        if not offen:
+            return self._gesehen != ("", 0)
+        return self._gesehen != (offen[-1].name, offen[-1].stat().st_size)
 
     # --------------------------------------------------------- Eine Zeile
 
@@ -321,6 +351,27 @@ class Journal:
         if op not in OPERATIONS:
             raise ValueError(f"Unbekannter Vorgang: {op!r}")
 
+        # **Erst nachsehen, ob der eigene Stand noch gilt.**
+        #
+        # Gezählt wird von dem, was *dieser* Zugriff beim Öffnen gelesen
+        # hat. Wer das Archiv lange offen hält – das Hauptfenster –
+        # bekommt davon nichts mit, wenn nebenher ein Abruf schreibt.
+        #
+        # **Am 2026-09-21 an einem echten Geschäftsarchiv gefunden.** Am
+        # 12.09. um 07:57 schrieb der Zeitplan in einem eigenen Prozess
+        # die Nummern 488 bis 493; eine halbe Minute später stufte
+        # jemand im offenen Fenster sechs Mails ein – und das Fenster
+        # zählte ab 488 noch einmal. Die Hash-Kette war damit gerissen,
+        # ohne dass eine einzige Mail fehlte.
+        #
+        # Die Sperrdatei hilft hier nicht: Sie verhindert zwei
+        # *schreibend* geöffnete Archive. Das Fenster öffnet lesend und
+        # schreibt trotzdem, sobald jemand einstuft, löscht oder Regeln
+        # anwendet.
+        if self._fremdes_schreiben():
+            self._scan_tail()
+            self._stand_merken()
+
         entry: dict[str, Any] = {
             "seq": self._last_seq + 1,
             "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -336,6 +387,7 @@ class Journal:
 
         self._last_seq = entry["seq"]
         self._last_hash = entry["self"]
+        self._stand_merken()
         self._dirty = True
         return entry
 
