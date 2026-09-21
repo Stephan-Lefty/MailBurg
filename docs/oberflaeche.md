@@ -304,6 +304,8 @@ Archiv gekommen sein.
 
 **Diese Suche als Suchordner sichern …**
 
+![Der Dialog zum Anlegen eines Suchordners. Oben die Erklärung, dass ein Suchordner ein Name für eine Suche ist, keine Post enthält und nichts verschiebt, dafür aber immer aktuell bleibt. Darunter ein Feld für den Namen, eines für den Suchausdruck mit einem Knopf »Ausführlich …« daneben, und die Zeile »Darauf passen gerade 4 Nachrichten«.](bilder/suchordner.png)
+
 Gibt dem, was gerade im Suchfeld steht, einen Namen und stellt es links in den
 Baum – unter die Postfächer. Ein Klick darauf sucht wieder danach.
 

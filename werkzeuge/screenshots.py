@@ -426,6 +426,23 @@ def main() -> int:
             dialog.adjustSize()
             dialog.resize(breite, dialog.sizeHint().height())
 
+        # ----------------------------------------------- Suchordner
+        #
+        # Gezeigt wird ein *gefüllter* Dialog, nicht ein leerer: Der
+        # Befund darunter – wie viele Nachrichten gerade auf den
+        # Ausdruck passen – ist der eigentliche Punkt dieses Fensters,
+        # und ohne Eingabe steht dort nichts.
+        from mailburg.ui.suchordner import Suchordnerdialog
+
+        suchordnerdialog = Suchordnerdialog(
+            archiv, "Rechnungen", "betreff:rechnung", fenster
+        )
+        suchordnerdialog._pruefen()
+        _passend(suchordnerdialog, 620)
+        suchordnerdialog.show()
+        ablegen(suchordnerdialog, "suchordner")
+        suchordnerdialog.close()
+
         # ---------------------------------------- Aufbewahrung und DSGVO
         #
         # Alles, was seit dem 26.08. dazugekommen ist. Ein Menüpunkt ohne
