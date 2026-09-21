@@ -17,6 +17,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from mailburg import __main__ as haupt
 from mailburg.__main__ import main
 from mailburg.core.archive import Archive, Mode
 
@@ -35,7 +36,7 @@ class ZugaengeCliTest(unittest.TestCase):
     def _ruf(self, *args, passwort: str = "ein-langes-passwort"):
         """Führt einen Befehl aus und gibt Rückgabewert und Ausgabe zurück."""
         aus, fehler = io.StringIO(), io.StringIO()
-        with mock.patch("getpass.getpass", return_value=passwort):
+        with mock.patch.object(haupt, "eintippen", return_value=passwort):
             with redirect_stdout(aus), redirect_stderr(fehler):
                 code = main(["zugaenge", str(self.wo), *args])
         return code, aus.getvalue() + fehler.getvalue()

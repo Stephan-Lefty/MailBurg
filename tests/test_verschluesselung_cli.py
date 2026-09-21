@@ -22,6 +22,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from mailburg import __main__ as haupt
 from mailburg.__main__ import main
 from mailburg.core import krypto, paths
 from mailburg.core.archive import Archive
@@ -58,7 +59,7 @@ class VerschluesseltAnlegenTest(unittest.TestCase):
     def _anlegen(self, passwort: str = "ein langes Passwort") -> str:
         """Legt ein verschlüsseltes Archiv an und gibt die Ausgabe zurück."""
         ausgabe = io.StringIO()
-        with mock.patch("getpass.getpass", return_value=passwort):
+        with mock.patch.object(haupt, "eintippen", return_value=passwort):
             with redirect_stdout(ausgabe):
                 code = main(["anlegen", str(self.wurzel), "--verschluesseln"])
         self.assertEqual(code, 0, ausgabe.getvalue())
@@ -91,7 +92,8 @@ class VerschluesseltAnlegenTest(unittest.TestCase):
     def test_zwei_verschiedene_eingaben_legen_nichts_an(self):
         """Ein Tippfehler hier wäre später nicht mehr zu beheben."""
         eingaben = iter(["erstes", "zweites", "drittes", "drittes"])
-        with mock.patch("getpass.getpass", side_effect=lambda *_: next(eingaben)):
+        with mock.patch.object(haupt, "eintippen",
+                               side_effect=lambda *a, **k: next(eingaben)):
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 code = main(["anlegen", str(self.wurzel), "--verschluesseln"])
 
@@ -132,7 +134,8 @@ class PasswortBefehlTest(unittest.TestCase):
 
     def _wechseln(self, *eingaben: str) -> int:
         werte = iter(eingaben)
-        with mock.patch("getpass.getpass", side_effect=lambda *_: next(werte)):
+        with mock.patch.object(haupt, "eintippen",
+                               side_effect=lambda *a, **k: next(werte)):
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 return main(["passwort", "aendern", str(self.wurzel)])
 
@@ -154,7 +157,7 @@ class PasswortBefehlTest(unittest.TestCase):
     def test_mit_falschem_alten_passwort_wird_nichts_geaendert(self):
         vorher = (self.wurzel / "archive.json").read_text(encoding="utf-8")
 
-        with mock.patch("getpass.getpass", return_value="daneben"):
+        with mock.patch.object(haupt, "eintippen", return_value="daneben"):
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 code = main(["passwort", "aendern", str(self.wurzel)])
 
@@ -242,3 +245,125 @@ class OhneTerminalTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OhneTerminalTest(unittest.TestCase):
+    """Passwortabfragen ohne angeschlossene Tastatur.
+
+    **Am 2026-09-21 beim Erproben der Verschlüsselung aufgelaufen**, und
+    zwar dreimal an einem Nachmittag: beim Anlegen eines
+    verschlüsselten Archivs, beim Passwortwechsel und beim Hinterlegen
+    im Tresor. Jedes Mal ein Traceback – ``getpass.getpass`` wirft ohne
+    Terminal einen ``EOFError``.
+
+    Beim *Öffnen* war derselbe Fall seit jeher sauber gelöst, mit einer
+    ``isatty``-Prüfung und einer Meldung, die den Ausweg nennt. Von
+    zwölf Passwortabfragen in ``__main__`` hatte genau diese eine sie.
+
+    **Wer ein Archiv aus einem Skript einrichtet, trifft das zuerst** –
+    beim Aufsetzen eines Servers, in einem Container, in einer
+    Automatisierung. Und dort sieht ein Traceback aus wie ein Fehler im
+    Programm, nicht wie eine fehlende Eingabemöglichkeit.
+    """
+
+    def setUp(self) -> None:
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.ziel = Path(self.ordner.name) / "Archiv"
+
+    def _ohne_tty(self, *argumente: str):
+        """Ruft die Kommandozeile so auf, wie ein Skript es täte."""
+        from unittest import mock
+
+        ausgabe, fehler = io.StringIO(), io.StringIO()
+        with mock.patch("sys.stdin.isatty", return_value=False), \
+                redirect_stdout(ausgabe), redirect_stderr(fehler):
+            code = main(list(argumente))
+        return code, ausgabe.getvalue() + fehler.getvalue()
+
+    def test_anlegen_meldet_statt_abzustuerzen(self) -> None:
+        code, text = self._ohne_tty("anlegen", str(self.ziel), "--verschluesseln")
+
+        self.assertEqual(code, 2)
+        self.assertIn("kein Terminal", text)
+        self.assertFalse(self.ziel.exists(), "es darf nichts halbes entstehen")
+
+    def test_die_meldung_nennt_den_ausweg(self) -> None:
+        """Eine Meldung ohne Weg wäre nur ein höflicherer Absturz."""
+        _, text = self._ohne_tty("anlegen", str(self.ziel), "--verschluesseln")
+
+        self.assertIn("MAILBURG_ARCHIVPASSWORTDATEI", text)
+
+    def test_die_umgebung_wird_beim_anlegen_gelesen(self) -> None:
+        """**Der eigentliche Weg für ein Skript.**
+
+        Beim Öffnen galt die Reihenfolge Umgebung → Tresor → fragen
+        seit jeher. Beim Anlegen fragte MailBurg immer – wer ein
+        verschlüsseltes Archiv automatisiert einrichten wollte, hatte
+        gar keinen Weg.
+        """
+        import os
+        from unittest import mock
+
+        with mock.patch.dict(os.environ,
+                             {"MAILBURG_ARCHIVPASSWORT": "aus-der-umgebung"}), \
+                mock.patch("sys.stdin.isatty", return_value=False), \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            code = main(["anlegen", str(self.ziel), "--verschluesseln"])
+
+        self.assertEqual(code, 0)
+        self.assertTrue((self.ziel / "archive.json").exists())
+
+        # Und es ist wirklich dieses Passwort.
+        from mailburg.core.archive import Archive
+
+        with Archive.open(self.ziel, passwort="aus-der-umgebung",
+                          exclusive=False) as archiv:
+            self.assertTrue(archiv.name)
+
+    def test_ein_falsches_umgebungspasswort_oeffnet_nicht(self) -> None:
+        """Sonst prüfte der Test darüber nur, dass irgendetwas entstand."""
+        import os
+        from unittest import mock
+
+        from mailburg.core.krypto import KryptoFehler
+
+        with mock.patch.dict(os.environ,
+                             {"MAILBURG_ARCHIVPASSWORT": "aus-der-umgebung"}), \
+                mock.patch("sys.stdin.isatty", return_value=False), \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            main(["anlegen", str(self.ziel), "--verschluesseln"])
+
+        from mailburg.core.archive import Archive
+
+        with self.assertRaises(KryptoFehler):
+            Archive.open(self.ziel, passwort="etwas anderes", exclusive=False)
+
+    def test_der_tresor_meldet_statt_abzustuerzen(self) -> None:
+        """``passwort hinterlegen`` ohne eingerichteten Hauptschlüssel.
+
+        Ausgerechnet auf dem Weg, der für Server und Zeitplan gedacht
+        ist. Die Meldung war gut – sie nennt die fehlende
+        Umgebungsvariable –, kam aber als Traceback.
+        """
+        import os
+        from unittest import mock
+
+        with mock.patch.dict(os.environ,
+                             {"MAILBURG_ARCHIVPASSWORT": "geheim"}), \
+                mock.patch("sys.stdin.isatty", return_value=False), \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            main(["anlegen", str(self.ziel), "--verschluesseln"])
+
+        from unittest import mock as m2
+
+        ausgabe, fehler = io.StringIO(), io.StringIO()
+        with m2.patch.dict(os.environ, {}, clear=False), \
+                m2.patch.object(haupt, "eintippen", return_value="geheim"), \
+                redirect_stdout(ausgabe), redirect_stderr(fehler):
+            for name in ("MAILBURG_SCHLUESSEL", "MAILBURG_SCHLUESSELDATEI"):
+                os.environ.pop(name, None)
+            code = main(["passwort", "hinterlegen", str(self.ziel)])
+
+        self.assertEqual(code, 4)
+        self.assertIn("Hauptschlüssel", ausgabe.getvalue() + fehler.getvalue())

@@ -1162,7 +1162,7 @@ class PasswortNeuSetzenTest(unittest.TestCase):
 
         args = mock.Mock(name=name)
         args.name = name
-        with mock.patch.object(haupt.getpass, "getpass",
+        with mock.patch.object(haupt, "eintippen",
                                side_effect=list(eingaben)), \
              mock.patch.object(haupt.accounts, "passwort_setzen",
                                return_value=gesetzt) as setzen, \

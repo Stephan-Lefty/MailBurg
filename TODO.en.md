@@ -672,8 +672,10 @@ The first report from outside. Four points, three fixed straight away.
   an obscure right-click detour. An Apple developer account costs $99 a
   year — that is a decision, not a technical question.
 
-- [ ] **Exercise encryption on a real archive.** Built and tested since
-  2026-08-31, but nobody has yet worked with it day to day. In this order:
+- [x] **Exercise encryption.** (2026-09-21) Walked through on a
+  throwaway archive, not on a grown corpus. The outcome is under
+  »What the trial turned up« below. What had to be checked, in this
+  order:
 
   1. Create a small encrypted archive, fetch a few messages, close it,
      open it, search, restore a message.
@@ -691,6 +693,44 @@ The first report from outside. Four points, three fixed straight away.
   is a judgement call, not a formality: the break in the chain of
   evidence needs a reason, and the old archive has to stay for as long as
   retention periods run.
+
+#### What the trial turned up (2026-09-21)
+
+**The encryption itself held.** Checked was not only that it runs, but
+that nothing lies in the clear: neither the search term nor sender nor
+subject can be found in the archive folder or in the packed backup. The
+recovery key really does open the archive — that second way in has now
+been walked for the first time. After a passphrase change the old one no
+longer works, the new one and the recovery key do. Backup, unpacking
+into a fresh archive and verifying the chain all went through.
+
+**Three faults surfaced, and all three sit beside it, not in it:**
+
+- [x] **Three passphrase prompts aborted with a traceback when no
+  terminal was attached** — creating, changing and storing in the vault.
+  Of twelve prompts in `__main__`, exactly one had the `isatty` check.
+  There is now one place (`eintippen`), and `main` turns it into a
+  message with a way out.
+
+- [x] **Creating did not read the environment.** Anyone setting up an
+  encrypted archive from a script — server, container — had no route at
+  all. When *opening*, the order environment → vault → ask had applied
+  all along.
+
+- [x] **`TresorFehler` arrived as a traceback.** The message was good —
+  it even names the missing environment variable — it just looked like a
+  program fault. On the very route meant for the scheduler and the
+  server.
+
+- [ ] **Open: restoring a backup exists only in the window.**
+  `sicherung.entpacken()` and `uebernehmen()` are called solely from
+  `ui/sichern.py`; the command line can only pack. **A server has no
+  window** — and that is where a restore is needed most, namely when
+  something has broken. The core can do it; the command is missing.
+
+- [ ] **Open: it has not run overnight.** The schedule with a stored
+  passphrase was walked through by hand, not over days. That remains the
+  point where a fault would stay unnoticed the longest.
 
 - [ ] **What the server cannot do:** write. Classifying, deleting and
   restoring to a mailbox stay with the command line and the window. That is

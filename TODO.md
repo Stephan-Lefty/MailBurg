@@ -747,9 +747,10 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
   kostet 99 $ im Jahr – das ist eine Entscheidung, keine technische
   Frage.
 
-- [ ] **Die Verschlüsselung an einem echten Archiv erproben.** Gebaut und
-  getestet ist sie seit dem 2026-08-31, aber noch nie hat jemand damit
-  im Alltag gearbeitet. Zu prüfen, in dieser Reihenfolge:
+- [x] **Die Verschlüsselung erproben.** (2026-09-21) Durchgespielt an
+  einem Wegwerf-Archiv, nicht an einem gewachsenen Bestand. Was dabei
+  herauskam, steht unter »Was die Erprobung ergeben hat« weiter unten.
+  Zu prüfen war, in dieser Reihenfolge:
 
   1. Ein kleines verschlüsseltes Archiv anlegen, ein paar Mails abrufen,
      schließen, öffnen, suchen, eine Nachricht zurückholen.
@@ -767,6 +768,47 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
   vorn. Für das Geschäftsarchiv ist das eine Abwägung, keine
   Selbstverständlichkeit: Der Schnitt in der Nachweiskette will begründet
   sein, und das alte Archiv muss bleiben, solange Fristen laufen.
+
+#### Was die Erprobung ergeben hat (2026-09-21)
+
+**Die Verschlüsselung selbst hielt, was sie zusagt.** Nachgesehen wurde
+nicht nur, ob es läuft, sondern ob wirklich nichts im Klartext liegt:
+weder das Suchwort noch Absender noch Betreff sind im Archivordner oder
+in der gepackten Sicherung zu finden. Der Notschlüssel öffnet das
+Archiv tatsächlich – der zweite Weg hinein ist damit zum ersten Mal
+gegangen. Nach einem Passwortwechsel gilt das alte nicht mehr, das neue
+und der Notschlüssel dagegen schon. Sicherung, Entpacken in ein neues
+Archiv und Prüfung der Kette liefen durch.
+
+**Aufgefallen sind drei Fehler, und alle drei liegen daneben, nicht
+darin:**
+
+- [x] **Drei Passwortabfragen brachen ohne Terminal mit einem Traceback
+  ab** – beim Anlegen, beim Wechseln und beim Hinterlegen im Tresor.
+  Von zwölf Abfragen in `__main__` hatte genau eine die `isatty`-Prüfung.
+  Jetzt gibt es eine Stelle (`eintippen`), und `main` macht daraus eine
+  Meldung mit Ausweg.
+
+- [x] **Beim Anlegen wurde die Umgebung nicht gelesen.** Wer ein
+  verschlüsseltes Archiv aus einem Skript einrichten wollte – Server,
+  Container –, hatte gar keinen Weg. Beim Öffnen galt die Reihenfolge
+  Umgebung → Tresor → fragen seit jeher.
+
+- [x] **`TresorFehler` kam als Traceback.** Die Meldung war gut, sie
+  nennt sogar die fehlende Umgebungsvariable – nur sah sie aus wie ein
+  Programmfehler. Ausgerechnet auf dem Weg, der für Zeitplan und Server
+  gedacht ist.
+
+- [ ] **Offen: Das Zurückholen einer Sicherung gibt es nur im Fenster.**
+  `sicherung.entpacken()` und `uebernehmen()` rufen allein
+  `ui/sichern.py` auf; auf der Kommandozeile lässt sich nur packen.
+  **Auf einem Server gibt es kein Fenster** – und dort wird eine
+  Wiederherstellung am ehesten gebraucht, nämlich dann, wenn etwas
+  kaputt ist. Der Kern kann es; es fehlt der Befehl.
+
+- [ ] **Offen: Über Nacht gelaufen ist es nicht.** Der Zeitplan mit
+  hinterlegtem Passwort wurde von Hand durchgespielt, nicht über Tage.
+  Das bleibt der Punkt, an dem ein Fehler am längsten unbemerkt bliebe.
 
 - [ ] **Was der Server nicht kann:** schreiben. Einstufen, Löschen und
   das Zurücklegen ins Postfach bleiben der Kommandozeile und dem Fenster

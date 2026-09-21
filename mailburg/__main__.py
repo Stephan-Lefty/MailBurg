@@ -24,6 +24,7 @@ from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
 from mailburg.core.importer import importieren
 from mailburg.core.index import IndexOutdated
 from mailburg.core.krypto import KryptoFehler
+from mailburg.core.tresor import TresorFehler
 from mailburg.core.retention import Jurisdiction, describe
 from mailburg.core.sync import Abrufzustand
 from mailburg.extract import pdf
@@ -42,6 +43,44 @@ def _human_size(count: int) -> str:
             return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
         value /= 1024
     return f"{value:.1f} TB"
+
+
+class KeinTerminal(RuntimeError):
+    """Hier wäre etwas einzutippen, aber niemand sitzt davor."""
+
+
+def eintippen(frage: str, *, wofuer: str = "") -> str:
+    """Fragt nach einem Passwort – und sagt es, wenn das nicht geht.
+
+    **Ohne Terminal wirft ``getpass.getpass`` einen ``EOFError``**, und
+    der kommt beim Anwender als Traceback an. Am 2026-09-21 beim
+    Erproben der Verschlüsselung gleich zweimal aufgelaufen: beim
+    Anlegen eines verschlüsselten Archivs und beim Passwortwechsel.
+
+    Beim *Öffnen* war derselbe Fall seit jeher sauber gelöst – dort
+    steht eine ``isatty``-Prüfung mit einer Meldung, die den Ausweg
+    nennt. Von zwölf Passwortabfragen in dieser Datei hatte genau diese
+    eine sie. Zwölfmal dasselbe richtig zu machen hält nicht; deshalb
+    gibt es jetzt eine Stelle.
+
+    **Wer ein Archiv aus einem Skript heraus einrichtet** – beim
+    Aufsetzen eines Servers, in einem Container –, trifft das zuerst.
+    Und ein Traceback sieht dort aus wie ein Fehler im Programm, nicht
+    wie eine fehlende Eingabemöglichkeit.
+    """
+    import getpass
+
+    if not sys.stdin.isatty():
+        zweck = f" {wofuer}" if wofuer else ""
+        raise KeinTerminal(
+            f"Hier wäre ein Passwort{zweck} einzutippen, aber es ist kein "
+            f"Terminal angeschlossen.\n\n"
+            f"Aus einem Skript heraus geben Sie es über die Umgebung mit:\n"
+            f"    MAILBURG_ARCHIVPASSWORTDATEI=/pfad/zur/datei\n\n"
+            f"Die Datei ist der bessere Weg – eine Umgebungsvariable steht "
+            f"in der Prozessliste mancher Systeme."
+        )
+    return getpass.getpass(frage)
 
 
 def oeffnen(pfad, **kwargs) -> Archive:
@@ -81,7 +120,7 @@ def oeffnen(pfad, **kwargs) -> Archive:
         )
 
     return Archive.open(
-        pfad, passwort=getpass.getpass("Passwort für das Archiv: "), **kwargs
+        pfad, passwort=eintippen("Passwort für das Archiv: "), **kwargs
     )
 
 
@@ -95,12 +134,33 @@ def _archivpasswort_erfragen() -> str:
     """
     import getpass
 
+    from mailburg.core import passwort as passwort_modul
+
+    # **Erst die Umgebung, dann fragen** – dieselbe Reihenfolge wie beim
+    # Öffnen, wo sie seit jeher gilt. Hier fehlte sie: ``anlegen
+    # --verschluesseln`` fragte immer, und ohne Terminal endete das in
+    # einem EOFError.
+    #
+    # Wer ein Archiv aus einem Skript anlegt – beim Aufsetzen eines
+    # Servers, in einem Container –, hatte damit gar keinen Weg. Am
+    # 2026-09-21 beim ersten Erproben der Verschlüsselung aufgelaufen.
+    #
+    # Zweimal eingeben muss nur, wer tippt: Aus der Umgebung kommt kein
+    # Tippfehler.
+    gesetzt = passwort_modul.aus_umgebung()
+    if gesetzt:
+        return gesetzt
+
+    # Fehlt ein Terminal, wirft ``eintippen`` – und ``main`` macht daraus
+    # eine Meldung samt Ausweg. Die Prüfung steht dort und nicht hier:
+    # Zwölf Abfragen brauchen eine Stelle, nicht zwölf.
     while True:
-        erstes = getpass.getpass("Passwort für das Archiv: ")
+        erstes = eintippen("Passwort für das Archiv: ",
+                           wofuer="für das neue Archiv")
         if not erstes:
             print("Ohne Passwort keine Verschlüsselung.", file=sys.stderr)
             return ""
-        if erstes == getpass.getpass("Noch einmal zur Sicherheit: "):
+        if erstes == eintippen("Noch einmal zur Sicherheit: "):
             return erstes
         print("Die beiden stimmen nicht überein. Noch einmal.", file=sys.stderr)
 
@@ -270,7 +330,7 @@ def _passwort_besorgen(konto: Konto, *, fragen: bool = True) -> str:
         return passwort
     if not fragen:
         return ""
-    return getpass.getpass(f"Passwort für {konto.benutzer} auf {konto.server}: ")
+    return eintippen(f"Passwort für {konto.benutzer} auf {konto.server}: ")
 
 
 def cmd_konten_liste(args: argparse.Namespace) -> int:
@@ -453,11 +513,11 @@ def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
         protokoll="jmap" if per_jmap else "imap",
     )
     if per_jmap:
-        passwort = getpass.getpass(
+        passwort = eintippen(
             f"Zugriffsmarke oder Passwort für {konto.server}: "
         )
     else:
-        passwort = getpass.getpass(
+        passwort = eintippen(
             f"Passwort für {konto.benutzer} auf {konto.server}: "
         )
     if not passwort:
@@ -600,7 +660,7 @@ def cmd_konten_uebernehmen(args: argparse.Namespace) -> int:
             # Das Passwort kommt von Hand. Es aus dem Thunderbird-Profil zu
             # holen, wäre technisch möglich und trotzdem falsch – siehe
             # mailburg/core/uebernahme.py.
-            passwort = getpass.getpass(f"    Passwort für {konto.benutzer}: ")
+            passwort = eintippen(f"    Passwort für {konto.benutzer}: ")
             if not passwort:
                 print("    Ohne Passwort übersprungen.")
                 continue
@@ -684,11 +744,11 @@ def cmd_konten_passwort(args: argparse.Namespace) -> int:
 
     # Zweimal fragen: Ein vertipptes Passwort fiele sonst erst beim
     # nächsten Abruf auf, und dann sieht es aus wie ein Serverproblem.
-    passwort = getpass.getpass(f"Neues Passwort für {konto.beschreibung()}: ")
+    passwort = eintippen(f"Neues Passwort für {konto.beschreibung()}: ")
     if not passwort:
         print("Abgebrochen – nichts geändert.", file=sys.stderr)
         return 2
-    if passwort != getpass.getpass("Noch einmal zur Sicherheit: "):
+    if passwort != eintippen("Noch einmal zur Sicherheit: "):
         print("Die beiden Eingaben stimmen nicht überein.", file=sys.stderr)
         return 2
 
@@ -1627,7 +1687,7 @@ def cmd_passwort_aendern(args: argparse.Namespace) -> int:
     meta = json.loads((pfad / "archive.json").read_text(encoding="utf-8"))
     huelle = krypto.Huelle.aus_json(meta["encryption"])
 
-    altes = getpass.getpass("Bisheriges Passwort (oder Notschlüssel): ")
+    altes = eintippen("Bisheriges Passwort (oder Notschlüssel): ")
     schluessel = huelle.oeffnen(altes)
 
     neues = _archivpasswort_erfragen()
@@ -1674,7 +1734,7 @@ def cmd_passwort_hinterlegen(args: argparse.Namespace) -> int:
     # Erst prüfen, dann ablegen: Ein hinterlegtes Passwort, das nicht
     # stimmt, fiele erst nachts um drei auf - und dann als schweigender
     # Abruf, der nichts holt.
-    eingabe = getpass.getpass("Passwort für das Archiv: ")
+    eingabe = eintippen("Passwort für das Archiv: ")
     huelle.oeffnen(eingabe)
 
     passwort_modul.in_tresor(pfad, eingabe)
@@ -2466,7 +2526,7 @@ def _passwort_erfragen(name: str) -> str:
     """
     import getpass
 
-    return getpass.getpass(f"Passwort für »{name}« (mind. 10 Zeichen): ")
+    return eintippen(f"Passwort für »{name}« (mind. 10 Zeichen): ")
 
 
 def cmd_server(args: argparse.Namespace) -> int:
@@ -3851,6 +3911,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.func(args)
+    except KeinTerminal as exc:
+        # **Kein Traceback für eine fehlende Tastatur.** Dass hier
+        # niemand sitzt, ist keine Störung des Programms, sondern eine
+        # Lage – und die Meldung nennt den Ausweg.
+        print(f"{exc}", file=sys.stderr)
+        return 2
     except ArchiveLocked as exc:
         print(f"Archiv gesperrt:\n{exc}", file=sys.stderr)
         return 3
@@ -3858,6 +3924,17 @@ def main(argv: list[str] | None = None) -> int:
         # Auch hier kein Traceback. Ein falsches Passwort ist keine
         # Störung des Programms, sondern eine Auskunft an den Anwender,
         # und die Meldung erklärt schon, wie es weitergeht.
+        print(f"{exc}", file=sys.stderr)
+        return 4
+    except TresorFehler as exc:
+        # **Dieselbe Überlegung, und hier fehlte sie.** Ein nicht
+        # eingerichteter Tresor ist eine Lage, keine Störung – die
+        # Meldung nennt sogar schon die Umgebungsvariable, die fehlt.
+        # Als Traceback las sich das trotzdem wie ein Programmfehler.
+        #
+        # Am 2026-09-21 beim Erproben der Verschlüsselung aufgelaufen,
+        # und zwar ausgerechnet auf dem Weg, der für Server und
+        # Zeitplan gedacht ist: »mailburg passwort hinterlegen«.
         print(f"{exc}", file=sys.stderr)
         return 4
     except IndexOutdated as exc:

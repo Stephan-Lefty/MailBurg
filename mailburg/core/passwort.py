@@ -89,6 +89,33 @@ def hinterlegt(archiv: Path) -> str | None:
     return aus_tresor(archiv)
 
 
+def aus_umgebung() -> str | None:
+    """Nur die Umgebung, ohne Tresor – für ein Archiv, das es noch nicht gibt.
+
+    **Beim Anlegen gibt es keinen Tresoreintrag**, denn der hängt an der
+    Archivkennung, und die entsteht erst mit dem Archiv. Wer ein
+    verschlüsseltes Archiv aus einem Skript heraus anlegt – beim
+    Aufsetzen eines Servers, in einem Container –, braucht trotzdem
+    einen Weg, das Passwort mitzugeben.
+
+    Bis zum 2026-09-21 gab es ihn nicht: ``mailburg anlegen
+    --verschluesseln`` fragte immer interaktiv und brach ohne Terminal
+    mit einem ``EOFError`` ab. Beim *Öffnen* war derselbe Fall längst
+    sauber gelöst – die Lehre stand im Code und wurde an der zweiten
+    Stelle nicht angewandt.
+    """
+    ort = os.environ.get(UMGEBUNG_DATEI, "").strip()
+    if ort:
+        try:
+            inhalt = Path(ort).read_text(encoding="utf-8").strip()
+        except OSError:
+            inhalt = ""
+        if inhalt:
+            return inhalt
+
+    return os.environ.get(UMGEBUNG, "").strip() or None
+
+
 def aus_tresor(archiv: Path) -> str | None:
     """Nur der Tresor, ohne Umgebung. Für die Frage »ist es hinterlegt?«."""
     from mailburg.core import tresor
