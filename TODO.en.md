@@ -841,6 +841,42 @@ into a fresh archive and verifying the chain all went through.
   on MailStore: a user offers a Stalwart mailbox with up to 500,000 test
   messages. See the top, "From the third user feedback".
 
+  **Measured on 2026-09-21 — against 500,000 invented messages.** Built
+  in 28.2 minutes, 2.1 GB archive, 2.1 GB index. Search as the window
+  issues it (count plus first page):
+
+  | What someone looks for | Hits | Time |
+  |---|---|---|
+  | one particular invoice (subject phrase) | 0 | **4 ms** |
+  | one delivery note | 1,112 | **12 ms** |
+  | one sender in one year | 6,588 | **99 ms** |
+  | one quarter, by subject | 1,296 | **205 ms** |
+  | a whole year | 52,704 | **92 ms** |
+
+  That answers the question: **under 250 ms for anything a human
+  actually searches for.**
+
+  **Two caveats, and both belong here.** The corpus is invented, and the
+  first measurement was worthless because of it: the bodies were built
+  from 28 recurring words, so a "rare" word appeared in 90% of all
+  messages. That measured 1,072 ms — for a case that does not exist. *A
+  number is not a finding*, and a test corpus that does not look like
+  reality does not measure reality.
+
+  And the messages are small (4 KB). A real corpus with attachments needs
+  more space; that says little about search time, since attachment text
+  ends up in the index anyway.
+
+- [ ] **What the load test turned up along the way: capture slows down.**
+  From 636 messages/s over the first ten thousand to 294/s at the end —
+  same message size, same disk. For an initial import of half a million
+  that means half an hour instead of thirteen minutes.
+
+  What would need settling is where it comes from: the growing FTS5
+  index, the hash chain, or the store with its subdirectories. For daily
+  use it does not matter — mail arrives one at a time — but for a company
+  moving over it does.
+
 - [ ] **Why does the splash image never arrive in the `.exe`?** Removed on
   2026-08-30 because the reason for having it fell away — not because the
   question was answered. Anyone picking it up again will find the trail in

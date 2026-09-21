@@ -929,6 +929,44 @@ darin:**
   mit bis zu 500.000 Testmails an. Siehe ganz oben unter »Aus dem
   dritten Nutzer-Feedback«.
 
+  **Gemessen am 2026-09-21 – an 500.000 erfundenen Mails.** Angelegt in
+  28,2 Minuten, 2,1 GB Archiv, 2,1 GB Index. Die Suche, so wie das
+  Fenster sie stellt (zählen plus erste Seite):
+
+  | Was jemand sucht | Treffer | Zeit |
+  |---|---|---|
+  | eine bestimmte Rechnung (Betreff, Wortgruppe) | 0 | **4 ms** |
+  | ein Lieferschein | 1.112 | **12 ms** |
+  | ein Absender in einem Jahr | 6.588 | **99 ms** |
+  | ein Quartal, nach Betreff | 1.296 | **205 ms** |
+  | ein ganzes Jahr | 52.704 | **92 ms** |
+
+  Damit ist die Frage beantwortet: **unter 250 ms für alles, was ein
+  Mensch tatsächlich sucht.**
+
+  **Zwei Einschränkungen, und beide gehören dazu.** Der Bestand ist
+  erfunden, und die erste Messung war deshalb wertlos: Die Mailtexte
+  bestanden aus 28 wiederkehrenden Wörtern, weshalb ein »seltenes« Wort
+  in 90 % aller Nachrichten vorkam. Gemessen wurden so 1.072 ms – für
+  einen Fall, den es nicht gibt. *Eine Zahl ist kein Befund*, und ein
+  Testdatensatz, der nicht aussieht wie die Wirklichkeit, misst die
+  Wirklichkeit nicht.
+
+  Und die Mails sind klein (4 KB). Ein echter Bestand mit Anhängen
+  braucht mehr Platz; über die Suchzeit sagt das wenig, weil der
+  Anhangstext ohnehin im Index steht.
+
+- [ ] **Was beim Lasttest nebenbei auffiel: Das Aufnehmen wird
+  langsamer.** Von 636 Mails/s bei den ersten Zehntausend auf 294/s am
+  Ende – bei gleichbleibender Mailgröße, auf derselben Platte. Für
+  einen Erstimport von einer halben Million heißt das eine halbe Stunde
+  statt dreizehn Minuten.
+
+  Zu klären wäre, woran es liegt: am wachsenden FTS5-Index, an der
+  Hash-Kette, oder an der Ablage mit ihren Unterverzeichnissen. Für den
+  Alltag ist es folgenlos – dort kommen Mails einzeln –, für den
+  Umstieg einer Firma nicht.
+
 - [ ] **Warum kommt das Startbild nicht in der `.exe` an?** Ausgebaut am
   2026-08-30, weil der Anlass wegfiel – nicht, weil die Frage beantwortet
   wäre. Wer sie wieder aufnimmt, findet die Spuren in
