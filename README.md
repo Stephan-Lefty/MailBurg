@@ -62,7 +62,11 @@ Linux mit einem Bestand von rund 68.000 Mails, unter Windows mit der fertigen
 
 OAuth2 ist gebaut, aber nur gegen einen nachgebauten Anbieter geprüft: Bei
 einem echten Microsoft- oder Google-Konto hat sich damit noch niemand
-angemeldet. Wer dort abruft, nimmt vorerst besser ein App-Passwort.
+angemeldet. Bei Google kommt man vorerst mit einem App-Passwort weiter – bei
+**Microsoft nicht**: Dort ist die Anmeldung mit Passwort abgeschaltet, und
+App-Passwörter gibt es nicht mehr. Für Outlook und Microsoft 365 ist OAuth2
+damit der einzige Weg. Wer ein solches Konto hat und mittesten möchte, ist
+willkommen.
 
 Verschlüsselte Archive gibt es seit dem 31.08.2026 – gebaut und getestet,
 aber im Alltag noch nicht erprobt. Siehe
@@ -324,10 +328,11 @@ Konfigurationsdatei. Dafür wird das Paket `keyring` gebraucht; fehlt es, läuft
 alles weiter, nur wird das Passwort bei jedem Abruf neu erfragt. In die
 Kontenliste kommt es auch dann nicht.
 
-Bei Gmail, GMX, Web.de und Outlook genügt das Kennwort der Weboberfläche nicht –
-diese Anbieter verlangen für den Zugriff von außen ein eigenes App-Passwort.
-Die Anmeldung per OAuth2 gibt es inzwischen ebenfalls, sie ist aber nur gegen
-einen nachgebauten Anbieter geprüft – siehe
+Bei Gmail, GMX und Web.de genügt das Kennwort der Weboberfläche nicht – diese
+Anbieter verlangen für den Zugriff von außen ein eigenes App-Passwort. Bei
+Outlook und Microsoft 365 hilft auch das nicht mehr: Dort gibt es keine
+App-Passwörter, der Abruf geht nur noch per OAuth2. Die ist gebaut, aber nur
+gegen einen nachgebauten Anbieter geprüft – siehe
 [Anmeldung per OAuth2](docs/oauth2.md).
 
 **Was übergangen wird:** Papierkorb, Spamverdacht und Entwürfe. Der Anwender hat

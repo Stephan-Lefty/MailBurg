@@ -106,7 +106,8 @@ deshalb mit – **dafür braucht der Arbeitsplatz mindestens Fassung
 1.3.1**, ältere lassen sie liegen. Läuft eine Anmeldung später ab, wird
 sie am Arbeitsplatz erneuert und der Tresor erneut übertragen; für ein
 Postfach, das dauerhaft hier archiviert wird, ist ein App-Passwort der
-ruhigere Weg. Siehe [oauth2.md](oauth2.md).
+ruhigere Weg – **außer bei Microsoft**, wo es keines mehr gibt und die
+erneuerte Anmeldung der einzige Weg bleibt. Siehe [oauth2.md](oauth2.md).
 
 Zum Schluss die Probe:
 

@@ -30,15 +30,20 @@ down, with the date they were completed.
   answered "[ALERT] Application-specific password required" — and the
   window showed nothing but that raw line and an English link.
 
-  The matching sentence exists: *"This provider does not allow the web
+  The matching sentence exists: *"Google does not allow the web
   interface password for outside access. You need a purpose-made app
-  password."* It lives in `assistent._rat()` and is used **only** in the
+  password …"* It lives in `assistent._rat()` and is used **only** in the
   "cannot sign in" dialog, i.e. during *retrieval*. When adding a
   mailbox — where you fail for the first time and know least — it never
   appears.
 
   Fourth repetition of the same pattern in one day: *a piece of
   information only counts once it lands where someone is looking.*
+
+  The advice itself has since been reworked (2026-09-21): Microsoft sat
+  in the same list as Gmail and was sent off to fetch an app password
+  that no longer exists there. Fixed — which does not change the fact
+  that the advice sits in the wrong place.
 
 - [ ] **Getting rid of an archive only half works.** `mailburg loeschen`
   removes the mail of *one account* from an archive — disposing of a

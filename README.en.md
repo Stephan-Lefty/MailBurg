@@ -60,8 +60,11 @@ day — on Linux with a corpus of around 68,000 messages, on Windows with the
 ready-made `MailBurg.exe`.
 
 OAuth2 is implemented, but only tested against a mock provider: nobody has yet
-signed in with a real Microsoft or Google account. For those, an app password
-remains the safer choice for now.
+signed in with a real Microsoft or Google account. With Google, an app password
+still gets you there — with **Microsoft it does not**: password sign-in is
+switched off and app passwords no longer exist. For Outlook and Microsoft 365,
+OAuth2 is the only remaining route. If you have such an account and would like
+to help test, you are very welcome.
 
 Encrypted archives have been available since 2026-08-31 — built and tested,
 but not yet exercised in daily use. See
@@ -292,9 +295,10 @@ file. This needs the `keyring` package; without it everything still runs, the
 password is simply asked for on every fetch. It is not written to the account
 list either way.
 
-Gmail, GMX, Web.de and Outlook do not accept your web password for outside
-access — they require an app-specific password. OAuth2 sign-in exists as well
-by now, but has only been tested against a mock provider — see
+Gmail, GMX and Web.de do not accept your web password for outside access — they
+require an app-specific password. Outlook and Microsoft 365 go further: app
+passwords are gone there, and IMAP works only via OAuth2. That path is built,
+but has only been tested against a mock provider — see
 [docs/oauth2.md](docs/oauth2.md) (German).
 
 **What is skipped:** trash, spam and drafts. The user already sorted that mail

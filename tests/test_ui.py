@@ -473,6 +473,42 @@ class PasswortNachfrageTest(OberflaechenTest):
         )
         self.assertIn("App-Passwort", rat)
 
+    def test_bei_google_steht_auch_der_zweite_weg(self):
+        # MailBurg kann sich bei Google per OAuth2 anmelden. Der Rat
+        # nannte lange nur das App-Passwort und verschwieg das.
+        from mailburg.ui.assistent import PasswortNachfrage
+
+        for server in ("imap.gmail.com", "imap.googlemail.com"):
+            with self.subTest(server=server):
+                rat = PasswortNachfrage._rat(
+                    self.konto(server=server), "Anmeldung abgelehnt"
+                )
+                self.assertIn("OAuth2", rat)
+
+    def test_microsoft_wird_nicht_zum_app_passwort_geschickt(self):
+        """Der Fehler, der beim ersten echten Anmeldeversuch auffiel.
+
+        Microsoft lag mit Gmail in einer Liste und bekam denselben Rat:
+        »Sie brauchen ein App-Passwort.« Dort gibt es die nicht mehr –
+        der Rat schickte den Anwender in den leeren Raum.
+        """
+        from mailburg.ui.assistent import PasswortNachfrage
+
+        for server in (
+            "outlook.office365.com",
+            "imap-mail.outlook.com",
+            "imap.hotmail.com",
+        ):
+            with self.subTest(server=server):
+                rat = PasswortNachfrage._rat(
+                    self.konto(server=server), "Anmeldung abgelehnt"
+                )
+                self.assertIn("OAuth2", rat)
+                self.assertNotIn(
+                    "Sie brauchen ein eigens", rat,
+                    "Microsoft kennt keine App-Passwörter mehr",
+                )
+
     def test_rat_bei_einer_bruecke(self):
         from mailburg.ui.assistent import PasswortNachfrage
 

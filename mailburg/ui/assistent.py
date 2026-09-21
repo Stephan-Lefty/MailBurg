@@ -167,10 +167,44 @@ class PasswortNachfrage(QDialog):
 
         if "abgelehnt" in grund or "AUTHENTICATIONFAILED" in grund.upper():
             anbieter = konto.server.lower()
-            if any(
-                name in anbieter
-                for name in ("gmail", "google", "gmx", "web.de", "outlook", "office365")
-            ):
+
+            # **Microsoft steht für sich.** Bis zum 21.09.2026 bekam es
+            # denselben Rat wie Gmail: »Sie brauchen ein App-Passwort.«
+            # Bei Microsoft gibt es die aber nicht mehr – die Anmeldung
+            # mit Passwort ist für IMAP abgeschaltet. Wer dem Rat folgte,
+            # suchte in den Sicherheitseinstellungen nach etwas, das dort
+            # nicht mehr existiert, und hatte keinen Hinweis auf den
+            # einzigen Weg, der bleibt.
+            # Die Erkennung liegt bei der IMAP-Quelle – eine zweite
+            # Liste hier würde irgendwann von jener abweichen.
+            from mailburg.sources.imap import _ist_microsoft
+
+            if _ist_microsoft(konto.server):
+                return (
+                    "Microsoft nimmt für den Abruf von außen <b>kein "
+                    "Passwort</b> mehr an – auch kein App-Passwort, die gibt "
+                    "es dort nicht mehr. Der einzige Weg ist die Anmeldung "
+                    "per OAuth2: im Fenster <i>Postfächer</i> der Knopf "
+                    "<i>Anmelden …</i>. Was dafür einmalig beim Anbieter zu "
+                    "registrieren ist, steht in <tt>docs/oauth2.md</tt>."
+                )
+
+            # **Zwei Wege, nicht einer.** Der Rat nannte lange nur das
+            # App-Passwort und verschwieg, dass MailBurg sich bei Google
+            # auch per OAuth2 anmelden kann. Das App-Passwort bleibt der
+            # kürzere Weg und steht deshalb zuerst.
+            if "gmail" in anbieter or "google" in anbieter:
+                return (
+                    "Google lässt das Kennwort der Weboberfläche für den "
+                    "Zugriff von außen nicht zu. Sie brauchen ein eigens "
+                    "erzeugtes <b>App-Passwort</b> aus den Sicherheits"
+                    "einstellungen Ihres Kontos – das ist der kürzere Weg. "
+                    "Alternativ meldet MailBurg sich per OAuth2 an: im "
+                    "Fenster <i>Postfächer</i> der Knopf <i>Anmelden …</i>, "
+                    "siehe <tt>docs/oauth2.md</tt>."
+                )
+
+            if any(name in anbieter for name in ("gmx", "web.de")):
                 return (
                     "Dieser Anbieter lässt das Kennwort der Weboberfläche für "
                     "den Zugriff von außen nicht zu. Sie brauchen ein eigens "
@@ -926,9 +960,11 @@ class KontenSeite(QWizardPage):
                 "IMAP-Server Ihres Anbieters, Ihre Mailadresse und das "
                 "Passwort.</p>"
                 f"<p>{ablage}.</p>"
-                "<p><i>Bei Gmail, GMX, Web.de und Outlook genügt das Kennwort "
+                "<p><i>Bei Gmail, GMX und Web.de genügt das Kennwort "
                 "der Weboberfläche nicht – diese Anbieter verlangen ein eigens "
-                "erzeugtes App-Passwort.</i></p>"
+                "erzeugtes App-Passwort. Outlook und Microsoft 365 nehmen "
+                "überhaupt kein Passwort mehr an; dort führt der Weg über "
+                "<i>Postfächer → Anmelden …</i>.</i></p>"
             )
         self.herkunft.setText(text)
 

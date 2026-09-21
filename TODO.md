@@ -33,15 +33,20 @@ wurde.
   »[ALERT] Application-specific password required« – und im Fenster
   stand nur diese rohe Zeile samt englischem Link.
 
-  Den passenden Satz gibt es: *»Dieser Anbieter lässt das Kennwort der
+  Den passenden Satz gibt es: *»Google lässt das Kennwort der
   Weboberfläche für den Zugriff von außen nicht zu. Sie brauchen ein
-  eigens erzeugtes App-Passwort.«* Er steht in `assistent._rat()` und
+  eigens erzeugtes App-Passwort …«* Er steht in `assistent._rat()` und
   wird **nur** im Dialog »Anmeldung nicht möglich« verwendet, also beim
   *Abruf*. Beim Eintragen eines Postfachs – wo man zum ersten Mal
   scheitert und am wenigsten weiß – erscheint er nicht.
 
   Vierte Wiederholung desselben Musters an einem Tag: *Eine Auskunft
   ist erst dann eine, wenn sie dort landet, wo jemand hinsieht.*
+
+  Der Rat selbst ist inzwischen überarbeitet (2026-09-21): Microsoft
+  lag mit Gmail in einer Liste und wurde zu einem App-Passwort
+  geschickt, das es dort nicht mehr gibt. Das ist behoben – es ändert
+  aber nichts daran, dass der Rat an der falschen Stelle steht.
 
 - [ ] **Ein Archiv loswerden geht nur halb.** `mailburg loeschen`
   entfernt Mails *eines Postfachs* aus einem Archiv – ein ganzes Archiv

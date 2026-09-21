@@ -18,8 +18,9 @@ nicht:
 * Einem Archivprogramm vertraut man jahrzehntealte Geschäftspost an. Dieses
   Vertrauen ist mehr wert als die gesparte Tipparbeit.
 * Es nützte oft nicht einmal etwas: Bei Gmail und Outlook liegt in
-  Thunderbird ein OAuth-Token, kein Passwort, und für MailBurg braucht es
-  dort ohnehin ein eigenes App-Passwort.
+  Thunderbird ein OAuth-Token, kein Passwort. Bei Gmail braucht MailBurg
+  dort ohnehin ein eigenes App-Passwort, bei Outlook eine eigene
+  OAuth2-Anmeldung – App-Passwörter gibt es bei Microsoft nicht mehr.
 
 Das Passwort fragt MailBurg deshalb einmal je Konto ab. Alles andere kommt
 von hier.

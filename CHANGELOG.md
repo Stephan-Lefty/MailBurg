@@ -66,6 +66,35 @@ seitdem geprüft.
 - **`install.sh` brach ohne Terminal still ab** und sah dabei aus wie
   ein Erfolg. Nachgetragen: Dieser Punkt kam mit der 1.5.2.
 
+- **Microsoft-Konten bekamen einen Rat, der ins Leere führt.** Gefunden
+  beim ersten Anmeldeversuch an einem echten Konto – dem Test, der bis
+  dahin nie jemand gemacht hatte.
+
+  Der Hinweis nach einer abgelehnten Anmeldung lautete: »Sie brauchen
+  ein eigens erzeugtes App-Passwort aus den Sicherheitseinstellungen
+  Ihres Kontos.« Für Gmail stimmt das. Outlook und Microsoft 365 lagen
+  aber in derselben Liste – und **dort gibt es keine App-Passwörter
+  mehr**. Wer dem Rat folgte, suchte in den Sicherheitseinstellungen
+  nach etwas, das Microsoft abgeschafft hat, und bekam keinen Hinweis
+  auf den einzigen Weg, der bleibt: OAuth2.
+
+  Bemerkenswert daran: Die IMAP-Quelle wusste es längst. Sie nimmt
+  Microsoft mit `_ist_microsoft()` ausdrücklich aus und schreibt den
+  richtigen Text. Nur die Oberfläche hatte eine eigene, ältere Liste –
+  und die kannte den Unterschied nicht. Jetzt fragt auch sie
+  `_ist_microsoft()`; zwei Listen über denselben Sachverhalt laufen
+  irgendwann auseinander, und diese hier hatten es schon.
+
+  Derselbe Fehler stand an drei weiteren Stellen: im Einrichtungstext
+  des Assistenten, in beiden READMEs und in einer Randbemerkung zur
+  Übernahme aus Thunderbird. Der Test, der den Rat prüfte, fragte
+  ausschließlich Gmail ab – deshalb fiel es nie auf. Er prüft jetzt
+  beide.
+
+  Bei Google ist zusätzlich ergänzt, dass es OAuth2 überhaupt gibt: Der
+  Rat nannte allein das App-Passwort und verschwieg den zweiten Weg,
+  obwohl MailBurg ihn gebaut hat.
+
 ### Hinzugefügt
 
 - **`mailburg wiederherstellen` – der Weg zurück ohne Fenster.**
