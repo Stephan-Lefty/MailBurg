@@ -26,13 +26,26 @@ Versprechen stillschweigend aufweicht, hat es nie gemeint.
 diesem Siegel gehört – der Hash darin muss der gestempelte sein – und
 liest die beglaubigte Zeit heraus. Es prüft **nicht** die Signatur des
 Dienstes gegen dessen Zertifikatskette; dafür bräuchte es einen
-vollständigen CMS-Prüfer. Der Weg dafür steht in der Anleitung und
-führt über ``openssl ts -verify``.
+vollständigen CMS-Prüfer. Der Weg dafür steht in :func:`openssl_befehl`
+und führt über ``openssl ts -verify -token_in``.
 
 Das ist ehrlicher, als eine Prüfung vorzutäuschen, die keine ist: Wer
 den Zeitstempel vor Gericht braucht, prüft ihn ohnehin mit
 Standardwerkzeugen und nicht mit dem Programm, dessen Archiv er belegen
 soll.
+
+**Am 2026-09-21 zum ersten Mal gegen einen echten Dienst gelaufen.**
+Bis dahin war alles nur gegen ``openssl`` auf dem eigenen Rechner
+geprüft – also gegen die eigenen Annahmen darüber, was ein
+Zeitstempeldienst erwartet. Der Lauf gegen ``freetsa.org`` bestätigte
+beides: Die Anfrage wurde angenommen (``Status: Granted``), und der
+zurückgegebene Stempel bestand die unabhängige Prüfung mit
+``Verification: OK``.
+
+**Ein Befund kam dabei heraus**, und er betraf nicht den Code, sondern
+den Rat: Der Prüfbefehl stand an drei Stellen ohne ``-token_in``. So
+bricht er ab, und zwar mit einer ASN.1-Meldung, die nach einem kaputten
+Stempel aussieht. Niemand hatte ihn je ausgeführt.
 """
 
 from __future__ import annotations
@@ -251,13 +264,53 @@ class Befund:
         return self.passt and self.zeit is not None
 
 
+def openssl_befehl(token: str = "stempel.tst", daten: str = "stand.txt",
+                   ca: str = "wurzel.pem") -> str:
+    """Der Befehl, mit dem sich ein Stempel unabhängig prüfen lässt.
+
+    **Steht hier, damit er an einer Stelle steht.** Der Prosatext im
+    Modulkopf und die Meldung in :func:`pruefen` nannten ihn vorher
+    beide verkürzt – als ``openssl ts -verify``, ohne ``-token_in``.
+    So bricht er ab: MailBurg legt das *Token* ab, nicht die
+    vollständige Antwort des Dienstes, und ``openssl`` erwartet ohne
+    den Schalter eine ``TS_RESP``. Die ASN.1-Meldung, die dabei kommt,
+    sieht nach einem kaputten Stempel aus.
+
+    **Am 2026-09-21 an einem echten Stempel durchgespielt** – geholt
+    von ``freetsa.org``, geprüft mit genau diesem Befehl: das Ergebnis
+    lautete ``Verification: OK``.
+
+    ``-untrusted`` braucht es dabei nicht: Das Zertifikat des Dienstes
+    steckt im Token. Es mit anzugeben schadet nicht, aber es schickte
+    den Anwender auf die Suche nach einer Datei, die er nicht braucht.
+
+    Das Wurzelzertifikat kommt vom Dienst selbst – bei FreeTSA als
+    ``cacert.pem``. Es gehört neben das Archiv: Wer den Stempel in
+    zehn Jahren prüft, braucht es, und der Dienst muss es dann nicht
+    mehr geben.
+    """
+    return (
+        f"openssl ts -verify -data {daten} \\\n"
+        f"    -in {token} -token_in -CAfile {ca}"
+    )
+
+
 def pruefen(token: bytes, digest: bytes) -> Befund:
     """Hält einen Stempel gegen den Stand, zu dem er gehören soll.
 
     **Das beantwortet die halbe Frage.** Stimmt der Hash, gehört der
     Stempel zu diesem Siegel und zu keinem anderen. Ob der Dienst ihn
     wirklich ausgestellt hat, steht damit noch nicht fest – das sagt nur
-    seine Signatur, und die prüft ``openssl ts -verify``.
+    seine Signatur, und die prüft ``openssl``.
+
+    **Dabei gehört ``-token_in`` dazu**, und das ist kein Detail:
+    MailBurg legt das *Token* ab, nicht die vollständige Antwort des
+    Dienstes. Ohne den Schalter erwartet ``openssl`` eine ``TS_RESP``
+    und bricht mit einer ASN.1-Meldung ab – wer die sieht, hält seinen
+    Stempel für kaputt, obwohl nur der Befehl unvollständig war. Am
+    2026-09-21 beim ersten Lauf gegen einen echten Dienst genau so
+    passiert; bis dahin stand hier ein Befehl, den niemand ausprobiert
+    hatte. Der vollständige steht in :func:`openssl_befehl`.
 
     Nicht lesbar heißt nicht falsch: Ein Token, dessen Aufbau MailBurg
     nicht kennt, kann trotzdem gültig sein. Deshalb steht in solchen
@@ -271,7 +324,7 @@ def pruefen(token: bytes, digest: bytes) -> Befund:
             hinweis=(
                 f"Der Stempel ließ sich nicht auslesen ({fehler}). Das "
                 f"heißt nicht, dass er falsch ist – prüfen Sie ihn mit "
-                f"»openssl ts -verify«."
+                f"openssl:\n\n{openssl_befehl()}"
             ),
         )
 

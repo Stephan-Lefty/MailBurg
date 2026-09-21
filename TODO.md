@@ -1032,11 +1032,34 @@ Zwei Punkte von der Liste, dazu die Fassung **1.3.0**.
   schreibt `siegel --ausgeben` Stand und Stempel als Dateien heraus,
   mitsamt dem `openssl ts -verify`, der beides prüft.
 
-  **Offen geblieben:** Es hat noch nie jemand einen echten Dienst
-  gefragt. Geprüft ist gegen eine selbst aufgesetzte Zeitstempelstelle
-  aus `openssl ts`. FreeTSA und die DFN-Stelle sind als Kurznamen
-  hinterlegt, aber ungetestet – wie bei OAuth2 fehlt die Gegenprobe am
-  echten Gegenüber.
+  **Erledigt am 2026-09-21:** Beide hinterlegten Dienste wurden
+  gefragt und haben geantwortet – FreeTSA und die DFN-Stelle. Der
+  Stempel von FreeTSA ging anschließend durch die unabhängige Prüfung:
+
+  ```
+  openssl ts -verify -data stand.txt -in stempel.tst -token_in -CAfile cacert.pem
+  → Verification: OK
+  ```
+
+  Damit ist belegt, dass MailBurgs von Hand gebautes ASN.1 Anfragen
+  erzeugt, die ein echter Dienst annimmt, und dass seine Antworten mit
+  Standardwerkzeugen prüfbar sind.
+
+  **Ein Befund kam dabei heraus, und er betraf den Rat, nicht den
+  Code:** Der Prüfbefehl stand im Modulkopf und in der Fehlermeldung
+  verkürzt als `openssl ts -verify` – ohne `-token_in`. So bricht er
+  ab, mit einer ASN.1-Meldung, die nach einem kaputten Stempel
+  aussieht. Ausgeführt hatte ihn nie jemand. Er steht jetzt an einer
+  Stelle (`zeitstempel.openssl_befehl()`), und ein Wächtertest sucht
+  im ganzen Repo nach verkürzten Aufrufen.
+
+- [ ] **Was am Zeitstempel weiterhin offen ist.** Der Lauf war eine
+  Einzelprobe von Hand. Ungeprüft bleibt: ein Siegel im Alltag über
+  Wochen, das Verhalten bei einem Dienst, der zeitweise nicht
+  antwortet, und die Frage, ob die abgelegten Stempel nach einem
+  Archivumzug noch prüfbar sind. Das Wurzelzertifikat gehört dafür
+  neben das Archiv – in der Anleitung steht das, getan hat es noch
+  niemand.
 
 - [x] **Die Lesbarkeit der Oberfläche.** (2026-08-31) Aus einer
   Meldung Stephans über ein zu schmales Auswahlfeld wurden sechs

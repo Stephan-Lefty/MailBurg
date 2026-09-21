@@ -13,6 +13,7 @@ Verhalten, wenn ein Dienst ablehnt oder nicht antwortet.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -298,3 +299,121 @@ class GestempeltWirdTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPruefbefehl(unittest.TestCase):
+    """Der Befehl, den wir Anwendern für die Gegenprüfung nennen.
+
+    **Er stand fünf Fassungen lang unvollständig da.** An drei Stellen
+    hieß es ``openssl ts -verify`` – ohne ``-token_in``. MailBurg legt
+    aber das *Token* ab, nicht die vollständige Antwort des Dienstes.
+    Ohne den Schalter erwartet ``openssl`` eine ``TS_RESP`` und bricht
+    mit einer ASN.1-Meldung ab.
+
+    Wer das ausprobiert, schließt daraus auf seinen Stempel statt auf
+    den Befehl – ein Rat, der so nicht läuft, ist schlimmer als keiner.
+    Dieselbe Klasse wie der Hinweis auf ``~/.bashrc`` bei fish am
+    2026-09-03.
+
+    Aufgefallen am 2026-09-21, beim ersten Lauf gegen einen echten
+    Dienst. Bis dahin hatte den Befehl niemand ausgeführt.
+    """
+
+    def test_token_in_gehoert_dazu(self) -> None:
+        from mailburg.core.zeitstempel import openssl_befehl
+
+        self.assertIn("-token_in", openssl_befehl())
+
+    def test_er_nennt_das_wurzelzertifikat(self) -> None:
+        """Ohne die Kette prüft ``openssl`` die Signatur nicht.
+
+        ``-untrusted`` gehört dagegen **nicht** dazu: Das Zertifikat
+        des Dienstes steckt im Token. Am 2026-09-21 nachgemessen –
+        ohne den Schalter meldet openssl genauso ``Verification: OK``.
+        Ihn zu nennen schickte den Anwender auf die Suche nach einer
+        Datei, die er nicht braucht.
+        """
+        from mailburg.core.zeitstempel import openssl_befehl
+
+        self.assertIn("-CAfile", openssl_befehl())
+        self.assertNotIn("-untrusted", openssl_befehl())
+
+    def test_kein_text_nennt_den_befehl_noch_unvollstaendig(self) -> None:
+        """**Der Wächter gegen den Rückfall.**
+
+        Er sucht überall dort, wo der Befehl stehen könnte, nach einem
+        ``openssl ts -verify`` ohne ``-token_in``.
+        """
+        import pathlib
+        import re
+
+        wurzel = pathlib.Path(__file__).resolve().parent.parent
+        dateien = (
+            list((wurzel / "mailburg").rglob("*.py"))
+            + list((wurzel / "docs").glob("*.md"))
+            + sorted(wurzel.glob("*.md"))
+        )
+        for datei in dateien:
+            if datei.name == "CHANGELOG.md":
+                continue  # ein Protokoll wird nicht rückwirkend geändert
+            text = datei.read_text(encoding="utf-8")
+            # **Nur echte Befehlszeilen, keine Prosa.** In der TODO
+            # steht »mitsamt dem openssl ts -verify, der beides prüft« -
+            # das ist ein Verweis, kein Befehl zum Abtippen. Ein
+            # Waechter, der auch darauf anschlaegt, wird irgendwann
+            # mit einer Ausnahme stillgelegt.
+            #
+            # Ein Befehl erstreckt sich ueber zwei Zeilen; gesucht wird
+            # deshalb im Fenster dahinter.
+            for treffer in re.finditer(r"openssl ts -verify", text):
+                fenster = text[treffer.start():treffer.start() + 200]
+                if "-in " not in fenster:
+                    continue  # Prosa, kein Aufruf
+                with self.subTest(datei=datei.name):
+                    self.assertIn(
+                        "-token_in", fenster,
+                        f"{datei.name}: der Aufruf bricht ohne -token_in ab",
+                    )
+
+
+@unittest.skipUnless(
+    os.environ.get("MAILBURG_TSA_TEST"),
+    "greift auf einen fremden Dienst zu – mit MAILBURG_TSA_TEST=1 an",
+)
+class TestEchterDienst(unittest.TestCase):
+    """Gegen einen echten Zeitstempeldienst, nicht gegen unsere Annahmen.
+
+    **Ausdrücklich einzuschalten**, und das aus zwei Gründen: Der Test
+    verbindet sich mit einem fremden Rechner, und er wäre in der CI
+    flatterhaft – ein Dienst, der gerade nicht antwortet, machte einen
+    Lauf rot, ohne dass an MailBurg etwas wäre.
+
+    Am 2026-09-21 zum ersten Mal gelaufen, gegen ``freetsa.org``:
+    Anfrage angenommen, Stempel zurück, Hash passend, und die
+    unabhängige Prüfung mit ``openssl`` meldete ``Verification: OK``.
+    """
+
+    def test_ein_echter_stempel_passt_zum_hash(self) -> None:
+        import hashlib
+
+        from mailburg.core import zeitstempel
+
+        digest = hashlib.sha256(b"MailBurg Testlauf").digest()
+        stempel = zeitstempel.holen(digest, zeitstempel.DIENSTE["freetsa"])
+
+        befund = zeitstempel.pruefen(stempel.rohdaten, digest)
+
+        self.assertTrue(befund.passt, befund.hinweis)
+        self.assertIsNotNone(befund.zeit)
+
+    def test_ein_fremder_hash_passt_nicht(self) -> None:
+        """Sonst prüfte der Test oben nur, dass irgendetwas zurückkam."""
+        import hashlib
+
+        from mailburg.core import zeitstempel
+
+        digest = hashlib.sha256(b"MailBurg Testlauf").digest()
+        stempel = zeitstempel.holen(digest, zeitstempel.DIENSTE["freetsa"])
+
+        anderer = hashlib.sha256(b"etwas ganz anderes").digest()
+        self.assertFalse(zeitstempel.pruefen(stempel.rohdaten, anderer).passt)

@@ -935,8 +935,32 @@ Two items off the list, plus version **1.3.0**.
   --ausgeben` writes state and token to files along with the
   `openssl ts -verify` that does.
 
-  **Still open:** no real service has ever been asked. Testing is against
-  a timestamp authority set up locally with `openssl ts`.
+  **Done on 2026-09-21:** both configured services were asked and
+  answered — FreeTSA and the DFN authority. The FreeTSA token then
+  passed independent verification:
+
+  ```
+  openssl ts -verify -data stand.txt -in stempel.tst -token_in -CAfile cacert.pem
+  → Verification: OK
+  ```
+
+  This shows that MailBurg's hand-built ASN.1 produces requests a real
+  service accepts, and that its answers verify with standard tools.
+
+  **One finding came out of it, and it concerned the advice, not the
+  code:** the verification command appeared in the module header and in
+  the error message shortened to `openssl ts -verify` — without
+  `-token_in`. Like that it aborts, with an ASN.1 message that looks
+  like a broken token. Nobody had ever run it. It now lives in one
+  place (`zeitstempel.openssl_befehl()`), and a guard test searches the
+  whole repository for shortened calls.
+
+- [ ] **What remains open about timestamps.** The run was a single
+  manual sample. Still unverified: a seal in daily use over weeks, the
+  behaviour when a service is temporarily unreachable, and whether
+  stored tokens still verify after the archive has moved. The root
+  certificate belongs next to the archive for that — the guide says so,
+  nobody has done it.
 
 - [x] **Interface legibility.** (2026-08-31) One report about a
   too-narrow dropdown turned into six rounds and four classes of fault:
