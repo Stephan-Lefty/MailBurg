@@ -169,6 +169,21 @@ Der Dialog schlägt vor, was er auf dem Rechner findet, und sagt **vor** dem
 Start, was er dort erkannt hat. Passt nichts davon, nennt er den Grund statt
 nur »geht nicht«.
 
+Gesucht wird an beiden Stellen, an denen ein Programm liegen kann: klassisch
+installiert (`~/.local/share/evolution/mail/local`, `~/.thunderbird`) **und**
+als Flatpak oder Snap, die jeder Anwendung ein eigenes Heimatverzeichnis geben
+(`~/.var/app/org.gnome.Evolution/data/…`,
+`~/.var/app/org.mozilla.Thunderbird/…`, `~/snap/thunderbird/…`). Haben Sie
+dasselbe Programm auf beiden Wegen installiert, steht der volle Pfad hinter
+dem Namen – sonst wären die zwei Einträge nicht zu unterscheiden.
+
+Vorgeschlagen wird der erste Ort, mit dem MailBurg etwas anfangen kann. Wer
+von einer klassischen Installation auf Flatpak wechselt, lässt ein leeres
+Verzeichnis zurück; nach der bloßen Reihenfolge stünde genau das im Feld.
+
+Findet der Dialog nichts, ist das kein Hindernis: *Ordner auswählen …* nimmt
+jeden Pfad. Die Vorschläge sind eine Abkürzung, keine Liste des Erlaubten.
+
 **Der Kontoname entscheidet, wo die Post landet.** Zur Auswahl stehen die
 Postfächer, die es in diesem Archiv schon gibt; eintippen lässt sich trotzdem,
 was man will.

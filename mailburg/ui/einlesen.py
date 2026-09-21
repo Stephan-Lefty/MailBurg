@@ -39,23 +39,58 @@ from PySide6.QtWidgets import (
 
 from mailburg.ui.arbeit import Einleselauf, Läufer
 
-#: Orte, an denen Mailprogramme ihre lokalen Ordner ablegen. Sie werden
-#: nur vorgeschlagen, wenn es sie wirklich gibt – ein Vorschlag ins Leere
-#: verwirrt mehr, als er hilft.
-def _bekannte_orte() -> list[tuple[str, Path]]:
+def _kandidaten() -> list[tuple[str, Path]]:
+    """Orte, an denen Mailprogramme ihre lokalen Ordner ablegen könnten.
+
+    **Die Pfade kommen aus dem Kern, nicht von hier.** Bis zum
+    2026-09-21 führte dieser Dialog eine eigene Liste – und die war eine
+    andere als die, nach der MailBurg sonst sucht: Thunderbird stand
+    darin mit seinem Flatpak-Ordner, Evolution nur mit dem gewohnten,
+    und Thunderbirds Snap-Ordner fehlte ganz, obwohl
+    ``local.thunderbird_profile_dirs()`` ihn seit jeher kennt.
+
+    Gemeldet hat es ein Anwender mit Evolution aus Flatpak: Der Dialog
+    bot ihm nichts an, obwohl seine Post da war. **Zwei Listen über
+    dieselbe Sache laufen auseinander**, und zwar immer zu Lasten der
+    zweiten – wer einen Pfad ergänzt, tut das dort, wo er gerade
+    arbeitet. ``tests/test_einlesen_orte.py`` hält beide jetzt zusammen.
+    """
+    from mailburg.sources import local
+
     heim = Path.home()
-    kandidaten = [
-        # Evolution legt seine lokalen Ordner nach Maildir++ ab. Genau
-        # dieser Fall war es, der 2026-09-03 gemeldet wurde.
-        ("Evolution – lokale Ordner", heim / ".local/share/evolution/mail/local"),
-        ("Thunderbird", heim / ".thunderbird"),
-        ("Thunderbird (Flatpak)",
-         heim / ".var/app/org.mozilla.Thunderbird/.thunderbird"),
+    kandidaten: list[tuple[str, Path]] = []
+
+    # Evolution legt seine lokalen Ordner nach Maildir++ ab. Genau
+    # dieser Fall war es, der 2026-09-03 gemeldet wurde.
+    for ort in local.evolution_mailordner():
+        kandidaten.append(("Evolution – lokale Ordner", ort))
+    for ort in local.thunderbird_profile_dirs():
+        kandidaten.append(("Thunderbird", ort))
+
+    kandidaten += [
         ("KMail / Akonadi", heim / ".local/share/local-mail"),
         ("Maildir im Benutzerordner", heim / "Maildir"),
         ("Mail im Benutzerordner", heim / "Mail"),
     ]
-    return [(name, ort) for name, ort in kandidaten if ort.exists()]
+    return kandidaten
+
+
+#: Vorgeschlagen wird nur, was es wirklich gibt – ein Vorschlag ins Leere
+#: verwirrt mehr, als er hilft. Steht dieselbe Anwendung zweimal da (etwa
+#: klassisch *und* aus Flatpak installiert), bekommt sie den Pfad
+#: dahinter; ohne ihn wären zwei gleichnamige Einträge nicht zu
+#: unterscheiden.
+def _bekannte_orte() -> list[tuple[str, Path]]:
+    vorhanden = [(name, ort) for name, ort in _kandidaten() if ort.exists()]
+
+    mehrfach = {
+        name for name, _ in vorhanden
+        if sum(1 for anderer, _ in vorhanden if anderer == name) > 1
+    }
+    return [
+        (f"{name} – {ort}" if name in mehrfach else name, ort)
+        for name, ort in vorhanden
+    ]
 
 
 class Einlesedialog(QDialog):
@@ -189,15 +224,39 @@ class Einlesedialog(QDialog):
     # ------------------------------------------------------------ Wählen
 
     def _vorschlagen(self) -> None:
-        """Trägt den ersten gefundenen Ort ein, ohne ihn aufzudrängen."""
+        """Trägt den ersten brauchbaren Ort ein, ohne ihn aufzudrängen.
+
+        **Brauchbar heißt: MailBurg kann etwas damit anfangen.** Dass ein
+        Verzeichnis existiert, sagt darüber nichts – ein leeres
+        ``~/.local/share/evolution/mail/local`` bleibt stehen, wenn
+        jemand von der klassischen Installation auf Flatpak wechselt, und
+        wäre nach der bloßen Reihenfolge der erste Vorschlag gewesen.
+        Vorgeschlagen würde dann genau der Ordner ohne Post.
+        """
         orte = _bekannte_orte()
         if not orte:
             return
-        name, ort = orte[0]
+
+        ort = next((o for _, o in orte if self._taugt(o)), orte[0][1])
         self.pfad.setText(str(ort))
         if len(orte) > 1:
-            weitere = ", ".join(n for n, _ in orte[1:])
+            # Mit vollem Pfad, nicht nur mit dem Namen: Wer dieselbe
+            # Anwendung klassisch und aus Flatpak installiert hat, sieht
+            # sonst zweimal »Evolution« und weiß nicht, welches welches ist.
+            weitere = ", ".join(str(o) for _, o in orte if o != ort)
             self.pfad.setToolTip(f"Auch gefunden: {weitere}")
+
+    @staticmethod
+    def _taugt(ort: Path) -> bool:
+        """Ob sich dieser Ort als Quelle öffnen lässt."""
+        from mailburg.sources import local
+
+        try:
+            quelle = local.open_path(ort)
+        except (ValueError, FileNotFoundError, OSError):
+            return False
+        quelle.close()
+        return True
 
     def _waehlen(self) -> None:
         ort = QFileDialog.getExistingDirectory(

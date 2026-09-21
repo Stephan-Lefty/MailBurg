@@ -323,6 +323,33 @@ def thunderbird_profile_dirs() -> list[Path]:
     ]
 
 
+def evolution_mailordner() -> list[Path]:
+    """Wo Evolution seine *lokalen Ordner* ablegen könnte.
+
+    Das Gegenstück zu :func:`thunderbird_profile_dirs`, und es gibt sie
+    aus demselben Grund: **Ein Ort ist nicht ein Pfad.** Dieselbe
+    Anwendung liegt je nach Installationsweg woanders, und wer nur den
+    gewohnten Pfad kennt, findet bei der Hälfte der Anwender nichts.
+
+    Nicht zu verwechseln mit
+    :func:`mailburg.core.uebernahme.evolution_verzeichnisse` – die sucht
+    Evolutions *Konten*, also die Zugangsdaten. Hier geht es um die Post
+    auf der Platte.
+
+    **Flatpak gibt jeder Anwendung ein eigenes Heimatverzeichnis.** Aus
+    ``~/.local/share`` wird ``~/.var/app/<Kennung>/data``, aus
+    ``~/.config`` wird ``config``. Gemeldet am 2026-09-21 von einem
+    Anwender, dessen Evolution aus Flatpak kommt: Der Einlesedialog bot
+    ihm nichts an, obwohl seine Post da war.
+    """
+    heim = Path.home()
+    return [
+        heim / ".local" / "share" / "evolution" / "mail" / "local",
+        heim / ".var" / "app" / "org.gnome.Evolution" / "data"
+        / "evolution" / "mail" / "local",
+    ]
+
+
 def find_thunderbird_profiles() -> list[Path]:
     """Sucht die Thunderbird-Profile des angemeldeten Benutzers.
 

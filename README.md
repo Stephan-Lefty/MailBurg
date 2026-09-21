@@ -155,7 +155,8 @@ MBOX-Dateien und **Ordnern voller `.eml`-Dateien** – auch verschachtelt, und
 `.emlx` von Apple Mail zählt mit. Das ist der Weg für alles, was ein anderes
 Programm einmal einzeln exportiert hat. Für alles von der Platte gibt es
 *Post → Lokale Mailordner einlesen …*; der Dialog schlägt vor, was er auf dem
-Rechner findet, und zeigt vor dem Start, was er dort erkannt hat. Und seit Kurzem über
+Rechner findet – klassisch installiert wie auch als Flatpak oder Snap – und
+zeigt vor dem Start, was er dort erkannt hat. Und seit Kurzem über
 **[JMAP](docs/jmap.md)**, den Nachfolger von IMAP: Er beantwortet in einer
 Anfrage, was seit dem letzten Abruf dazugekommen ist, statt es aus
 Nachrichtennummern zu erraten. Können bisher Fastmail, Stalwart und Cyrus –
