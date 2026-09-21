@@ -28,7 +28,7 @@ Jahre später auf. **Es hängt an einem Gerät zum Prüfen**, nicht an einer
 Fassungsnummer – solange es keines gibt, bleibt dieser Absatz stehen.
 
 <p align="center">
-  <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer über IMAP oder JMAP, Mailprogramme und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile." width="960">
+  <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer über IMAP oder JMAP, lokale Ordner aus Thunderbird, Evolution oder KMail und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Gesucht wird im Volltext samt Anhängen, Wiederkehrendes lässt sich als Suchordner ablegen. Zugriff über Oberfläche und Kommandozeile." width="960">
 </p>
 
 **Neu hier?** [Erste Schritte](docs/erste-schritte.md) führt mit Bildern von der Installation bis zum ersten durchsuchbaren Archiv. [Die Oberfläche](docs/oberflaeche.md) erklärt jedes Fenster und jeden Menüpunkt.
@@ -54,10 +54,11 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 1.4.8, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche,
-Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der regelmäßige
-Abruf im Hintergrund stehen und werden täglich benutzt – unter Linux mit einem
-Bestand von rund 68.000 Mails, unter Windows mit der fertigen `MailBurg.exe`.
+**Fassung 1.5.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche samt
+Suchordnern, Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der
+regelmäßige Abruf im Hintergrund stehen und werden täglich benutzt – unter
+Linux mit einem Bestand von rund 68.000 Mails, unter Windows mit der fertigen
+`MailBurg.exe`.
 
 OAuth2 ist gebaut, aber nur gegen einen nachgebauten Anbieter geprüft: Bei
 einem echten Microsoft- oder Google-Konto hat sich damit noch niemand

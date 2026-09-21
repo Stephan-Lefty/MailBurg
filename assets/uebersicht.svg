@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 660" width="1240" height="660" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
   <title>MailBurg – wie es arbeitet</title>
-  <desc>Postfächer über IMAP oder JMAP und lokale Mailordner werden nur gelesen. MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, und führt darüber ein Protokoll mit Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Zugriff über Oberfläche und Kommandozeile.</desc>
+  <desc>Postfächer über IMAP oder JMAP und lokale Mailordner aus Thunderbird, Evolution oder KMail werden nur gelesen. MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, und führt darüber ein Protokoll mit Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Gesucht wird im Volltext samt Anhängen, Wiederkehrendes lässt sich als Suchordner ablegen. Zugriff über Oberfläche und Kommandozeile.</desc>
 
   <defs>
     <marker id="pfeil" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -40,8 +40,8 @@
     <circle cx="72" cy="208" r="15" fill="#5b6672"/>
     <path d="M65 202 h14 v13 h-14 z" fill="none" stroke="#ffffff" stroke-width="1.6"/>
     <text x="100" y="205" class="kasten-titel">Mailprogramm</text>
-    <text x="100" y="225" class="kasten-text">Thunderbird-Profil,</text>
-    <text x="100" y="242" class="kasten-text">Maildir, MBOX – ohne Passwort</text>
+    <text x="100" y="225" class="kasten-text">Thunderbird, Evolution, KMail –</text>
+    <text x="100" y="242" class="kasten-text">Maildir, MBOX, .eml, ohne Passwort</text>
   </g>
 
   <g>
@@ -97,29 +97,30 @@
   <!-- ================================================== Zugriff (rechts) -->
   <text x="900" y="52" class="ueberschrift">WOZU</text>
 
-  <path d="M814 200 C 856 200, 866 128, 908 122" fill="none" stroke="#1668e3" stroke-width="2" marker-end="url(#pfeil)"/>
-  <path d="M814 240 C 856 240, 866 232, 908 226" fill="none" stroke="#1668e3" stroke-width="2" marker-end="url(#pfeil)"/>
-  <path d="M814 280 C 856 280, 866 330, 908 330" fill="none" stroke="#5b6672" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#pfeil-grau)"/>
+  <path d="M814 200 C 856 200, 866 138, 908 132" fill="none" stroke="#1668e3" stroke-width="2" marker-end="url(#pfeil)"/>
+  <path d="M814 240 C 856 240, 866 250, 908 245" fill="none" stroke="#1668e3" stroke-width="2" marker-end="url(#pfeil)"/>
+  <path d="M814 280 C 856 280, 866 349, 908 349" fill="none" stroke="#5b6672" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#pfeil-grau)"/>
 
   <g>
-    <rect x="910" y="80" width="290" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
+    <rect x="910" y="80" width="290" height="104" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
     <text x="932" y="110" class="kasten-titel">Suchen und lesen</text>
     <text x="932" y="130" class="kasten-text">Volltext über Text, Kopfzeilen und</text>
     <text x="932" y="147" class="kasten-text">Anhänge – auch in eingescannten PDF</text>
+    <text x="932" y="164" class="kasten-text">Suchordner für Wiederkehrendes</text>
   </g>
 
   <g>
-    <rect x="910" y="184" width="290" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
-    <text x="932" y="214" class="kasten-titel">Oberfläche und Kommandozeile</text>
-    <text x="932" y="234" class="kasten-text">Beide können dasselbe. Der Abruf läuft im</text>
-    <text x="932" y="251" class="kasten-text">Hintergrund, viertelstündlich bis täglich</text>
+    <rect x="910" y="202" width="290" height="86" rx="10" fill="#ffffff" stroke="#7f8a99" stroke-width="1.5"/>
+    <text x="932" y="232" class="kasten-titel">Oberfläche und Kommandozeile</text>
+    <text x="932" y="252" class="kasten-text">Beide können dasselbe. Der Abruf läuft im</text>
+    <text x="932" y="269" class="kasten-text">Hintergrund, viertelstündlich bis täglich</text>
   </g>
 
   <g>
-    <rect x="910" y="288" width="290" height="86" rx="10" fill="#f7f9fc" stroke="#7f8a99" stroke-width="1.5" stroke-dasharray="5 4"/>
-    <text x="932" y="318" class="kasten-titel" fill="#5b6672">Geplant: als IMAP-Konto</text>
-    <text x="932" y="338" class="kasten-text">Das Archiv in jedem Mailprogramm</text>
-    <text x="932" y="355" class="kasten-text">einbinden – auch am Telefon</text>
+    <rect x="910" y="306" width="290" height="86" rx="10" fill="#f7f9fc" stroke="#7f8a99" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="932" y="336" class="kasten-titel" fill="#5b6672">Geplant: als IMAP-Konto</text>
+    <text x="932" y="356" class="kasten-text">Das Archiv in jedem Mailprogramm</text>
+    <text x="932" y="373" class="kasten-text">einbinden – auch am Telefon</text>
   </g>
 
   <!-- ============================================ Ablageorte (unten) -->

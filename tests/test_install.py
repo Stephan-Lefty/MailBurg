@@ -224,6 +224,36 @@ class FassungsnummerTest(unittest.TestCase):
         self.assertNotIn("version", set(daten["project"]) - {"dynamic"})
         self.assertRegex(__version__, r"^\d+\.\d+\.\d+")
 
+    def test_die_readme_nennt_die_aktuelle_fassung(self) -> None:
+        """Die erste Zahl, die ein Besucher der Projektseite liest.
+
+        **Am 2026-09-21 stand dort 1.4.8, während 1.5.0 veröffentlicht
+        war.** Kein Test hat das gemeldet, weil es keinen gab – und
+        gemerkt hat es Stephan beim Blick auf die eigene Seite.
+
+        Eine Fassungsnummer in der Doku veraltet lautlos. Sie sieht auch
+        dann richtig aus, wenn sie falsch ist, und sagt dem Leser
+        obendrein etwas Falsches über das, was er gerade herunterlädt.
+
+        **Dieser Wächter hält keinen Wortlaut fest, sondern erzwingt
+        einen.** Das ist der Unterschied zu dem Test, der am 2026-09-07
+        den Satz »Microsoft-Konten gehen derzeit nicht« konservierte: Der
+        hier wird rot, *bis* die Doku nachgezogen ist.
+        """
+        from mailburg import __version__
+
+        for datei, muster in (
+            ("README.md", "**Fassung {},"),
+            ("README.en.md", "**Version {},"),
+        ):
+            inhalt = (self.wurzel / datei).read_text(encoding="utf-8")
+            erwartet = muster.format(__version__)
+            self.assertIn(
+                erwartet, inhalt,
+                f"{datei} nennt nicht die Fassung {__version__} – "
+                f"gesucht: {erwartet!r}",
+            )
+
 
 class WindowsFassungKannAllesTest(unittest.TestCase):
     """Die ``.exe`` muss enthalten, was MailBurg kann.

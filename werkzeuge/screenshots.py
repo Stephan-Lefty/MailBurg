@@ -332,6 +332,38 @@ def main() -> int:
     farben.auswahlfelder_verbreitern(anwendung)
 
     zwischen = Path(tempfile.mkdtemp(prefix="mailburg-bilder-"))
+
+    # **Die Einstellungen umlenken, bevor irgendein Fenster aufgeht.**
+    #
+    # Dieselbe Vorkehrung wie in ``werkzeuge/lesbarkeit.py``, und mit
+    # demselben Grund wie dort am 2026-09-06: Ein Werkzeug, das Bilder
+    # macht, darf am Rechner nichts ändern.
+    #
+    # Seit der 1.5.0 wiegt das schwerer. Die Suche merkt sich, wonach
+    # gesucht wurde, und dieses Skript sucht mehrmals – ohne den Patch
+    # stünde nach jedem Bilderlauf »rechnung« in der Liste »Zuletzt
+    # gesucht« des echten Anwenders, und die Suchordner für das Bild
+    # stünden in seinem Baum.
+    #
+    # Aufgefallen beim Nachziehen der Bilder für die 1.5.0 – also
+    # bevor das Skript zum ersten Mal mit dieser Fassung lief. Beim
+    # nächsten Lauf wäre es Stephans eigene Konfiguration gewesen.
+    from unittest import mock
+
+    from mailburg.core import paths
+
+    einstellungsordner = zwischen / "einstellungen"
+    datenordner = zwischen / "daten"
+    einstellungsordner.mkdir(parents=True, exist_ok=True)
+    datenordner.mkdir(parents=True, exist_ok=True)
+    umlenkung = [
+        mock.patch.object(paths, "config_dir",
+                          return_value=einstellungsordner),
+        mock.patch.object(paths, "data_dir", return_value=datenordner),
+    ]
+    for patch in umlenkung:
+        patch.start()
+
     try:
         ort = zwischen / "Geschaeftsarchiv"
         # Anlegen, füllen, schließen: Das Hauptfenster öffnet es gleich
@@ -345,6 +377,19 @@ def main() -> int:
 
         fenster = Hauptfenster(ort)
         archiv = fenster.archiv
+
+        # **Zwei Suchordner, damit der Zweig etwas zeigt.** Leer steht
+        # dort »(noch keiner)«, und ein Bild davon erklärt niemandem,
+        # wozu das gut ist. Die Namen sind so gewählt, dass man den
+        # Zweck am Namen sieht - genau darum geht es bei Suchordnern.
+        from mailburg.core import suchordner as _suchordner
+
+        _suchordner.hinzufuegen(archiv.uuid, "Rechnungen",
+                                "betreff:rechnung")
+        _suchordner.hinzufuegen(archiv.uuid, "Steuer 2025",
+                                "von:kraemer jahr:2025")
+        fenster._baum_fuellen()
+
         # Aufgeklappt zeigt der Baum, wie die Ordner unter einem
         # Postfach hängen - genau das, was eine Anleitung erklären soll.
         fenster.baum.expandAll()
@@ -511,6 +556,8 @@ def main() -> int:
 
         fenster.close()
     finally:
+        for patch in umlenkung:
+            patch.stop()
         shutil.rmtree(zwischen, ignore_errors=True)
 
     print(f"\nFertig. {len(POST)} Beispielmails, alle Namen erfunden.")

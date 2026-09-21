@@ -281,6 +281,13 @@ Ein **Doppelklick** öffnet eine Nachricht in einem eigenen Fenster. Mit der
 **rechten Maustaste** öffnen Sie sie in Ihrem Mailprogramm, legen sie in ein
 Postfach zurück oder speichern sie als Datei.
 
+**Eine Suche, die Sie öfter brauchen, können Sie behalten.** *Suchen → Diese
+Suche als Suchordner sichern …* gibt ihr einen Namen und stellt sie links in
+den Baum, unter die Postfächer. Ein Klick darauf sucht wieder danach – und
+zwar immer nach dem heutigen Stand: Was morgen ankommt und dazugehört, steht
+darin, ohne dass Sie etwas einsortieren. An Ihrer Post ändert ein Suchordner
+nichts; er ist nur ein Name für eine Frage.
+
 Mehr zur Oberfläche: [Die Oberfläche](oberflaeche.md).
 Mehr zur Suchsprache: **Hilfe → Suchsprache** oder `mailburg suchhilfe`.
 

@@ -10,7 +10,7 @@ Dieselben Erklärungen stehen auch im Programm selbst unter **Hilfe → Handbuch
 
 ## Das Hauptfenster
 
-![Das Hauptfenster in drei Bereichen: links die Postfächer mit ihren Ordnern, rechts oben die Nachrichtenliste mit Anhangsymbol, Datum, Absender, Betreff und Größe, darunter der Lesebereich. Ganz oben das Suchfeld, unten die Zahl der Mails im Archiv.](bilder/uebersicht.png)
+![Das Hauptfenster in drei Bereichen: links die Postfächer mit ihren Ordnern und darunter der Zweig »Suchordner« mit zwei gespeicherten Suchen, rechts oben die Nachrichtenliste mit Anhangsymbol, Datum, Absender, Betreff und Größe, darunter der Lesebereich. Ganz oben das Suchfeld, unten die Zahl der Mails im Archiv.](bilder/uebersicht.png)
 
 Vier Bereiche:
 
@@ -23,6 +23,11 @@ unteren Fensterrand bemerkt dabei niemand.
 **Links die Postfächer** mit ihren Ordnern und der Zahl der Mails. Ein Klick
 grenzt die Suche darauf ein. Die Postfächer lassen sich anordnen – mit der Maus
 oder über Strg+Auf und Strg+Ab.
+
+Darunter steht der Zweig **Suchordner**: gespeicherte Suchen, die Sie selbst
+benennen. Ein Klick darauf sucht wieder danach. Sie enthalten keine Post,
+sondern zeigen, was gerade auf sie passt – mehr dazu beim [Menü
+Suchen](#menü-suchen). Die rechte Maustaste ändert und entfernt sie.
 
 **Rechts die Treffer.** Ein Klick auf einen Spaltenkopf sortiert, ein zweiter
 dreht die Richtung um; das Zeichen ⇅ zeigt, welche Spalten sich sortieren

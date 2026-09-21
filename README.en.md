@@ -28,7 +28,7 @@ years later. **It hangs on having a machine to verify it on**, not on a
 version number — until there is one, this paragraph stays.
 
 <p align="center">
-  <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes over IMAP or JMAP, mail clients and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Access via the interface or the command line." width="960">
+  <img src="assets/uebersicht-2000.png" alt="Overview: mailboxes over IMAP or JMAP, local folders from Thunderbird, Evolution or KMail and the Proton bridge are only ever read; MailBurg stores every message byte for byte in an archive whose location you choose, with a journal and hash chain. The search index lives outside the archive and can be rebuilt at any time. Search covers full text including attachments, and recurring searches can be saved as folders. Access via the interface or the command line." width="960">
 </p>
 
 <sub>Die Grafik ist auf Deutsch – wie die Oberfläche und die Suchsprache.</sub>
@@ -53,10 +53,11 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 1.4.8, in daily use.** Archive format, IMAP retrieval, search, the
-graphical interface, text recognition for scanned PDFs, backups and scheduled
-retrieval are all in place and used every day — on Linux with a corpus of
-around 68,000 messages, on Windows with the ready-made `MailBurg.exe`.
+**Version 1.5.0, in daily use.** Archive format, IMAP retrieval, search
+including saved searches, the graphical interface, text recognition for
+scanned PDFs, backups and scheduled retrieval are all in place and used every
+day — on Linux with a corpus of around 68,000 messages, on Windows with the
+ready-made `MailBurg.exe`.
 
 OAuth2 is implemented, but only tested against a mock provider: nobody has yet
 signed in with a real Microsoft or Google account. For those, an app password
