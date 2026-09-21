@@ -8,6 +8,56 @@ wurde.
 
 ## Offen
 
+### Die Hash-Kette kann reißen, ohne dass etwas verloren geht (2026-09-21)
+
+**Gefunden an Stephans echtem Geschäftsarchiv**, bei einem
+Gesundheitscheck nach dem Abruf. `mailburg pruefen` meldet:
+
+```
+Hash-Kette:  BESCHÄDIGT (2 Fundstellen)
+  - Eintrag 488 in 000001.jsonl: Kette gerissen: prev zeigt ins Leere
+  - Eintrag 488 in 000001.jsonl: Folgenummer erwartet: 494
+Erwartet:    346 Mails laut Journal
+Vorhanden:   346 Dateien in der Ablage
+```
+
+**Keine Mail fehlt und keine ist verändert** – die Zahlen stimmen. Die
+Folgenummern 488 bis 493 stehen zweimal da: einmal am 2026-09-12 um
+07:57:39–44 als `add`, dann um 07:58:02 noch einmal als `classify`,
+beide beginnend mit demselben `prev`.
+
+- [ ] **Die Ursache: `append()` zählt vom Stand, den *dieser* Prozess
+  beim Öffnen gelesen hat.** `journal.append()` nimmt
+  `self._last_seq + 1`. Wer das Archiv lange offen hält – das
+  Hauptfenster – und danach schreibt, schreibt mit einer Nummer, die
+  inzwischen vergeben ist.
+
+  Am 12.09. war genau das die Lage: Das Fenster stand offen (Stand
+  487), der Zeitplan rief ab und schrieb 488–493 in einem eigenen
+  Prozess, danach stufte jemand im Fenster ein – und das Fenster zählte
+  ab 488 weiter.
+
+  **Die Sperrdatei greift hier nicht.** Sie verhindert zwei *schreibend*
+  geöffnete Archive; das Fenster öffnet lesend und schreibt trotzdem ins
+  Journal, sobald jemand einstuft, löscht oder Regeln anwendet.
+
+  Zu klären, bevor etwas gebaut wird: Ob jeder Schreibvorgang den
+  Journalstand neu einliest (kostet bei jedem Eintrag einen Dateizugriff
+  – bei hunderttausend Mails am Stück der Flaschenhals, vor dem
+  `flush()` ausdrücklich warnt), oder ob nur die *seltenen* Schreiber
+  aus dem Fenster das tun. Die Aufnahme läuft ohnehin exklusiv.
+
+- [ ] **Und: Was tun mit der vorhandenen Bruchstelle?** Die Kette
+  umzuschreiben wäre genau das, was sie verhindern soll – für ein
+  Geschäftsarchiv mit GoBD-Anspruch kommt das nicht in Frage. Denkbar
+  ist ein **Vermerk** im Journal, der die Stelle benennt und erklärt,
+  und eine Prüfung, die eine so vermerkte Stelle als bekannt ausweist
+  statt als Beanstandung. **Stephans Entscheidung.**
+
+  Bis dahin gilt: Das Archiv ist vollständig, die Prüfung meldet es
+  trotzdem. Eine Meldung, die stehen bleibt, gewöhnt man sich an – das
+  ist der eigentliche Schaden.
+
 ### Aus der Rückmeldung vom 2026-09-21
 
 Ein Anwender mit Evolution aus Flatpak, Umsteiger von lokalen Ordnern.

@@ -7,6 +7,45 @@ down, with the date they were completed.
 
 ## Open
 
+### The hash chain can break without anything being lost (2026-09-21)
+
+**Found on Stephan's real business archive**, during a health check
+after a retrieval run. `mailburg pruefen` reports a broken chain at
+entry 488 — while **no message is missing and none is altered**: 346
+expected, 346 present.
+
+Sequence numbers 488 to 493 appear twice: once on 2026-09-12 at
+07:57:39–44 as `add`, then at 07:58:02 again as `classify`, both
+starting from the same `prev`.
+
+- [ ] **The cause: `append()` counts from the state *this* process read
+  when it opened.** `journal.append()` takes `self._last_seq + 1`.
+  Anyone holding the archive open for a long time — the main window —
+  and writing afterwards writes a number that has since been taken.
+
+  That was exactly the situation on 12 September: the window was open
+  (state 487), the scheduler retrieved and wrote 488–493 in its own
+  process, then someone classified in the window — and the window
+  carried on from 488.
+
+  **The lock file does not help here.** It prevents two archives being
+  opened *for writing*; the window opens read-only and still writes to
+  the journal as soon as someone classifies, deletes or applies rules.
+
+  To settle before anything is built: whether every write re-reads the
+  journal state (a file access per entry — the bottleneck `flush()`
+  explicitly warns about at a hundred thousand messages), or only the
+  *rare* writers from the window do. Capture runs exclusively anyway.
+
+- [ ] **And: what to do about the existing break?** Rewriting the chain
+  would be precisely what it exists to prevent — out of the question for
+  a business archive. A **note** in the journal naming and explaining the
+  spot is conceivable, plus a check that reports such a spot as known
+  rather than as a finding. **Stephan's call.**
+
+  Until then: the archive is complete, the check reports it anyway. A
+  warning that stays gets ignored — that is the real damage.
+
 ### From the feedback of 2026-09-21
 
 A user running Evolution from Flatpak, moving over from local folders.
