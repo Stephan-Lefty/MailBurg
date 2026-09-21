@@ -8,6 +8,26 @@ wurde.
 
 ## Offen
 
+- [ ] **Den IMAP-Server aus der Mailadresse vorschlagen.** Wer
+  »…@gmail.com« einträgt, muss heute wissen, dass der Server
+  `imap.gmail.com` heißt. Am 2026-09-21 an einem echten Versuch
+  aufgelaufen: eingetippt war `imap.google.com`, und die Meldung lautete
+  »Der Name oder der Dienst ist nicht bekannt«.
+
+  **MailBurg kennt die Anbieter längst** – in `ui/assistent.py._rat()`
+  steht eine Liste mit gmail, google, gmx, web.de, outlook und
+  office365. Sie greift nur an der falschen Stelle: erst, *nachdem* der
+  Server die Anmeldung abgelehnt hat. Kommt gar keine Verbindung
+  zustande, nützt sie nichts.
+
+  Zu bauen wäre: Beim Verlassen des Adressfeldes den passenden Server
+  und Port eintragen, sofern die Felder noch leer sind. Und bei Gmail
+  und Outlook gleich dazusagen, dass ein gewöhnliches Passwort dort
+  nicht mehr funktioniert – das ist keine Kleinigkeit, sondern der
+  häufigste Grund, warum eine Einrichtung scheitert.
+
+  Für Proton gibt es so eine Erkennung seit jeher (`--proton`).
+
 - [ ] **Ein Archiv loswerden geht nur halb.** `mailburg loeschen`
   entfernt Mails *eines Postfachs* aus einem Archiv – ein ganzes Archiv
   wegzuräumen ist damit nicht gemeint, und dafür gibt es keinen Weg.

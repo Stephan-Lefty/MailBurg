@@ -7,6 +7,24 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **Suggest the IMAP server from the mail address.** Anyone entering
+  "…@gmail.com" has to know today that the server is called
+  `imap.gmail.com`. Hit during a real attempt on 2026-09-21: what was
+  typed was `imap.google.com`, and the message read "name or service
+  not known".
+
+  **MailBurg knows the providers already** — `ui/assistent.py._rat()`
+  holds a list with gmail, google, gmx, web.de, outlook and office365.
+  It just applies at the wrong moment: only *after* the server has
+  rejected the login. When no connection happens at all, it is useless.
+
+  What to build: on leaving the address field, fill in the matching
+  server and port, provided those fields are still empty. And for Gmail
+  and Outlook say right there that an ordinary password no longer works
+  — that is not a detail but the most common reason a setup fails.
+
+  For Proton such detection has existed all along (`--proton`).
+
 - [ ] **Getting rid of an archive only half works.** `mailburg loeschen`
   removes the mail of *one account* from an archive — disposing of a
   whole archive is not what it means, and there is no route for that.
