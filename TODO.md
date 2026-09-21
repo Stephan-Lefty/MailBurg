@@ -28,6 +28,21 @@ wurde.
 
   Für Proton gibt es so eine Erkennung seit jeher (`--proton`).
 
+  **Und derselbe Dialog holt einen vorhandenen Rat nicht ab.** Am
+  2026-09-21 im selben Versuch: Mit richtigem Server antwortete Google
+  »[ALERT] Application-specific password required« – und im Fenster
+  stand nur diese rohe Zeile samt englischem Link.
+
+  Den passenden Satz gibt es: *»Dieser Anbieter lässt das Kennwort der
+  Weboberfläche für den Zugriff von außen nicht zu. Sie brauchen ein
+  eigens erzeugtes App-Passwort.«* Er steht in `assistent._rat()` und
+  wird **nur** im Dialog »Anmeldung nicht möglich« verwendet, also beim
+  *Abruf*. Beim Eintragen eines Postfachs – wo man zum ersten Mal
+  scheitert und am wenigsten weiß – erscheint er nicht.
+
+  Vierte Wiederholung desselben Musters an einem Tag: *Eine Auskunft
+  ist erst dann eine, wenn sie dort landet, wo jemand hinsieht.*
+
 - [ ] **Ein Archiv loswerden geht nur halb.** `mailburg loeschen`
   entfernt Mails *eines Postfachs* aus einem Archiv – ein ganzes Archiv
   wegzuräumen ist damit nicht gemeint, und dafür gibt es keinen Weg.

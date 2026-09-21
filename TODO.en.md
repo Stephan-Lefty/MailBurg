@@ -25,6 +25,21 @@ down, with the date they were completed.
 
   For Proton such detection has existed all along (`--proton`).
 
+  **And the same dialog fails to pick up advice that already exists.**
+  In the same attempt on 2026-09-21: with the right server, Google
+  answered "[ALERT] Application-specific password required" — and the
+  window showed nothing but that raw line and an English link.
+
+  The matching sentence exists: *"This provider does not allow the web
+  interface password for outside access. You need a purpose-made app
+  password."* It lives in `assistent._rat()` and is used **only** in the
+  "cannot sign in" dialog, i.e. during *retrieval*. When adding a
+  mailbox — where you fail for the first time and know least — it never
+  appears.
+
+  Fourth repetition of the same pattern in one day: *a piece of
+  information only counts once it lands where someone is looking.*
+
 - [ ] **Getting rid of an archive only half works.** `mailburg loeschen`
   removes the mail of *one account* from an archive — disposing of a
   whole archive is not what it means, and there is no route for that.
