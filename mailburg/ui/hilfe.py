@@ -163,6 +163,50 @@ Vertrauen ist mehr wert als die gesparte Tipparbeit.</p>
 <p>Abgelegt werden die Passwörter im Schlüsselbund Ihres Systems, nie in
 einer Datei des Programms.</p>
 
+<h3>Wenn das gewohnte Passwort nicht angenommen wird</h3>
+
+<p><b>Das ist der häufigste Grund, warum eine Einrichtung scheitert</b> –
+und es liegt nicht an Ihnen. Die großen Anbieter lassen das Kennwort, mit
+dem Sie sich im Browser anmelden, für den Zugriff von außen nicht mehr zu.
+Gebraucht wird ein eigens erzeugtes <b>App-Passwort</b>: Es gilt nur für
+dieses eine Programm und lässt sich einzeln zurückziehen, ohne dass Sie
+Ihr Kontopasswort ändern müssen.</p>
+
+<p>Betroffen sind <b>Gmail, GMX und Web.de</b>. Bei <b>Outlook und
+Microsoft&nbsp;365</b> hilft auch das nicht mehr – dort gibt es keine
+App-Passwörter, der Abruf geht nur noch über
+<a href="#zugaenge">die Anmeldung per OAuth2</a>.</p>
+
+<p><b>Bei Gmail</b> müssen Sie zweierlei wissen, weil Sie es sonst nicht
+finden:</p>
+
+<p>Erstens setzt Google die <b>Zwei-Faktor-Anmeldung</b> voraus. Ist sie
+aus, bietet es App-Passwörter gar nicht erst an. Im Google-Konto unter
+<i>Sicherheit und Anmeldung</i> steht der Punkt
+<i>2-Faktor-Authentifizierung</i>; läuft sie, steht dort »Aktiviert
+seit …«.</p>
+
+<p>Zweitens steht der Weg zu den App-Passwörtern <b>in keinem Menü
+mehr</b> – auch nicht auf der Seite zur Zwei-Faktor-Anmeldung. Erreichbar
+sind sie nur noch über die Adresse selbst:</p>
+
+<p><tt>https://myaccount.google.com/apppasswords</tt></p>
+
+<p>Dort tragen Sie einen Namen ein, etwa <tt>MailBurg</tt>, und klicken
+auf <i>Erstellen</i>. Google zeigt daraufhin 16 Buchstaben in vier
+Vierergruppen. <b>Die Leerzeichen gehören nicht dazu</b> – in das
+Passwortfeld kommen die 16 Zeichen am Stück. Und das Passwort erscheint
+<b>genau einmal</b>: Haben Sie es verlegt, löschen Sie den Eintrag auf
+derselben Seite und legen einen neuen an.</p>
+
+<p>Ein <b>Passkey</b> ist etwas anderes und ersetzt das nicht. Er meldet
+<i>Sie</i> an der Weboberfläche an; ein App-Passwort meldet <i>ein
+Programm</i> am Postfach an.</p>
+
+<p>Der Server heißt <tt>imap.gmail.com</tt> auf Anschluss 993 mit SSL –
+auch dann, wenn Ihre Adresse auf <tt>@googlemail.com</tt> endet. Als
+Benutzernamen tragen Sie die vollständige Adresse ein.</p>
+
 <h3>IMAP oder JMAP</h3>
 
 <p>Oben im Postfachdialog steht <b>Abrufweg</b>. In aller Regel bleibt

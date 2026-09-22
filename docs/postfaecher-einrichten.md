@@ -88,12 +88,81 @@ diesen einen Zweck gilt und sich einzeln widerrufen lässt.
 
 | Anbieter | Server | Wo das App-Passwort herkommt |
 |----------|--------|------------------------------|
-| Gmail | `imap.gmail.com` | Google-Konto → Sicherheit → Bestätigung in zwei Schritten → App-Passwörter. Setzt zwingend die Zwei-Faktor-Anmeldung voraus. |
+| Gmail | `imap.gmail.com` | Eigener Abschnitt weiter unten – der Weg ist nicht mehr im Menü zu finden |
 | GMX | `imap.gmx.net` | Einstellungen → POP3/IMAP-Abruf zuerst freischalten |
 | Web.de | `imap.web.de` | Einstellungen → POP3/IMAP-Abruf zuerst freischalten |
 | Posteo | `posteo.de` | Das gewöhnliche Passwort genügt |
 | mailbox.org | `imap.mailbox.org` | Das gewöhnliche Passwort genügt |
 | IONOS | `imap.ionos.de` | Das gewöhnliche Passwort genügt |
+
+## Gmail Schritt für Schritt
+
+Am 22.09.2026 an einem echten Konto durchlaufen. Bis dahin stand hier ein
+Klickpfad, den es nicht mehr gibt.
+
+**Voraussetzung: die Zwei-Faktor-Anmeldung muss an sein.** Ohne sie bietet
+Google App-Passwörter gar nicht erst an. Nachsehen können Sie es im
+Google-Konto unter *Sicherheit und Anmeldung*: Dort steht ein Punkt
+**2-Faktor-Authentifizierung**, und wenn sie läuft, steht daneben
+»Aktiviert seit …«. Ist sie aus, schalten Sie sie zuerst dort ein – Google
+führt Sie dabei durch die Einrichtung.
+
+> Die Anmeldung mit einem **Passkey** ist etwas anderes als ein
+> App-Passwort und ersetzt es nicht. Ein Passkey meldet *Sie* an der
+> Weboberfläche an; ein App-Passwort meldet *ein Programm* am Postfach an.
+> MailBurg braucht das zweite.
+
+**Den Weg dorthin finden Sie nicht im Menü.** Google hat die App-Passwörter
+aus den Sicherheitseinstellungen entfernt; auf der Seite zur
+2-Faktor-Authentifizierung stehen sie ebenfalls nicht mehr. Erreichbar sind
+sie nur noch über die Adresse selbst:
+
+```
+https://myaccount.google.com/apppasswords
+```
+
+Google fragt dort noch einmal, ob Sie es wirklich sind – mit Passkey oder
+Passwort. Das ist normal, die Seite gilt als heikel.
+
+**Dann:** einen Namen eintragen, etwa `MailBurg`, und auf *Erstellen*
+klicken. Google zeigt daraufhin 16 Buchstaben, der Lesbarkeit halber in vier
+Vierergruppen.
+
+- Das Passwort erscheint **genau einmal**. Danach listet die Seite nur noch
+  den Namen. Kopieren Sie es sofort oder tragen Sie es gleich in MailBurg
+  ein.
+- Die **Leerzeichen gehören nicht dazu**. In das Passwortfeld kommen die 16
+  Zeichen am Stück.
+
+**In MailBurg** tragen Sie das Postfach dann so ein:
+
+| Feld | Wert |
+|------|------|
+| Server | `imap.gmail.com` |
+| Anschluss | 993, mit SSL |
+| Benutzer | Ihre vollständige Mailadresse |
+| Passwort | die 16 Zeichen ohne Leerzeichen |
+
+Der Server heißt auch dann `imap.gmail.com`, wenn Ihre Adresse auf
+**@googlemail.com** endet – das ist nur der alte deutsche Name für dasselbe
+Postfach.
+
+**Wenn Sie das Passwort verlegt haben**, kommen Sie nicht mehr daran. Löschen
+Sie den Eintrag auf derselben Seite über das Mülleimer-Symbol und legen Sie
+einen neuen an. Das ist kein Schaden – ein App-Passwort gilt nur für dieses
+eine Programm.
+
+Zurückziehen können Sie es ebenso: Ein gelöschtes App-Passwort sperrt
+MailBurg aus, Ihr Google-Konto bleibt unberührt.
+
+**Ordner »Alle Nachrichten«:** Gmail legt jede Mail zusätzlich dort ab. Beim
+Archivieren würde dadurch jede Nachricht ein zweites Mal gezählt. MailBurg
+übergeht diesen Ordner von sich aus; einstellen müssen Sie dafür nichts.
+
+Wer statt des App-Passworts die Anmeldung per OAuth2 möchte: siehe
+[Anmeldung per OAuth2](oauth2.md). Sie erspart das App-Passwort, verlangt
+dafür eine einmalige Einrichtung in der Google Cloud Console – und im
+Testmodus verfallen die Marken nach sieben Tagen.
 
 ## Microsoft-Konten gehen nur über OAuth2
 
