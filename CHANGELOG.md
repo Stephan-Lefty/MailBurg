@@ -7,12 +7,16 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.7.0] – 2026-09-22
 
 **Der erste Durchlauf mit einem echten Google-Konto.** Bis zum
 22.09.2026 hatte niemand MailBurg an einem Gmail-Postfach eingerichtet –
-weder Stephan noch ich. Der Abruf läuft seitdem, 567 Mails. Auf dem Weg
-dorthin kamen fünf Fehler heraus, und keiner davon steckte im Abruf.
+weder Stephan noch ich. Am Ende liefen drei davon nebeneinander, 812
+Mails, Hash-Kette unversehrt.
+
+Auf dem Weg dorthin kamen sechs Fehler heraus, und **keiner davon steckte
+im Abruf**. Der tat, was er sollte – zweimal sogar dann, als wir ihm das
+Gegenteil unterstellten.
 
 ### Behoben
 
@@ -72,6 +76,21 @@ dorthin kamen fünf Fehler heraus, und keiner davon steckte im Abruf.
   Posteingang sieht eben genauso aus wie ein aufgeräumter.
 
 ### Hinzugefügt
+
+- **Wartende Scans stehen jetzt in der Abrufmeldung**, mit einem Knopf
+  *Jetzt lesen …* daneben. Bisher stand ihre Zahl allein am Menüeintrag
+  *Eingescannte PDF lesen … (9)* und als Statustipp in der Fußzeile –
+  sichtbar also, solange das Menü offen ist und die Maus darüber steht.
+
+  »Alle Mails sind im Archiv« stimmt buchstäblich und sagt trotzdem zu
+  wenig: Ein eingescanntes PDF ist für die Suche ein weißes Blatt. Wer
+  die Zahl nie sah, suchte Monate später vergeblich nach einer Rechnung.
+  Dieselbe Klasse wie der Betrefffilter am 09.09.
+
+  Von Stephan vorgeschlagen. Er wollte, dass sich das Erkennungsfenster
+  von selbst öffnet; geworden ist es eine Frage mit zwei Knöpfen – ein
+  Fenster, das sich ungefragt aufschiebt, unterbricht auch den, der
+  gerade etwas anderes vorhat.
 
 - **`werkzeuge/schwaerzen.py`** – legt graue, deckende Balken über
   Mailadressen, Mailserver, Telefonnummern, IBAN sowie Steuer- und

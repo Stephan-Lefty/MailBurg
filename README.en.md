@@ -53,18 +53,23 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 1.6.0, in daily use.** Archive format, IMAP retrieval, search
+**Version 1.7.0, in daily use.** Archive format, IMAP retrieval, search
 including saved searches, the graphical interface, text recognition for
 scanned PDFs, backups and scheduled retrieval are all in place and used every
 day — on Linux with a corpus of around 68,000 messages, on Windows with the
 ready-made `MailBurg.exe`.
 
-OAuth2 is implemented, but only tested against a mock provider: nobody has yet
-signed in with a real Microsoft or Google account. With Google, an app password
-still gets you there — with **Microsoft it does not**: password sign-in is
-switched off and app passwords no longer exist. For Outlook and Microsoft 365,
-OAuth2 is the only remaining route. If you have such an account and would like
-to help test, you are very welcome.
+**Gmail has been exercised against real accounts since 2026-09-22** — three
+mailboxes side by side, using app passwords. It also showed that MailBurg gets
+multi-location storage right: 189 messages carried several labels and still sit
+on disk exactly once.
+
+OAuth2 is implemented, but still only tested against a mock provider: nobody
+has yet signed in with a real Microsoft or Google account. With Google you do
+not need it — an app password does the job. With **Microsoft there is no other
+route**: password sign-in is switched off and app passwords no longer exist. If
+you have an Outlook or Microsoft 365 account and would like to help test, you
+are very welcome.
 
 Encrypted archives have been available since 2026-08-31 — built and tested,
 but not yet exercised in daily use. See

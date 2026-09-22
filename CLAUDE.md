@@ -3,6 +3,101 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-22, Dienstag) – 1.7.0
+
+**Der erste Gmail-Durchlauf, und er ging anders aus als geplant.** Vorgesehen
+war ein OAuth2-Test über die Google Cloud Console. Gebraucht wurde er nicht:
+Bei Google genügt ein App-Passwort, und damit liefen am Ende drei Postfächer
+nebeneinander – 812 Mails, Hash-Kette unversehrt.
+
+**Sechs Fehler kamen dabei heraus, und keiner steckte im Abruf.** Das ist der
+Satz, der diesen Tag zusammenfasst. Der Abruf tat, was er sollte – zweimal
+sogar dann, als wir ihm das Gegenteil unterstellten.
+
+### Die drei falschen Fährten
+
+Alle drei endeten gleich: Die Zahl stimmte, die Deutung nicht.
+
+1. **»Zwei statt drei Mails angekommen.«** Ich sagte eine Zahl voraus (811)
+   und lag falsch, weil ich übersah, dass MailBurg **bytegenau** ablegt: Die
+   Kopie im Gesendet-Ordner hat andere `Received:`-Zeilen als die beim
+   Empfänger. Über Postfachgrenzen hinweg gibt es bei echter Post praktisch
+   nie eine Dublette.
+2. **»Vielleicht übersieht MailBurg Mails, die nur unter *Alle Nachrichten*
+   liegen.«** Plausibel, nicht belegt – und beinahe hätte ich den Ausschluss
+   gelockert. Das hätte **jeden Gmail-Fundort verdoppelt**, um ein Problem zu
+   lösen, das es nicht gab.
+3. **Die wirkliche Ursache** lag in einer Kontoeinstellung: Zwei der drei
+   Konten leiten an Proton weiter und löschen danach. MailBurg holte, was da
+   war – nichts.
+
+Daraus wurde ein Doku-Punkt, der vorher fehlte: **Eine Weiterleitung mit
+Löschen macht das Archiv lückenhaft, und MailBurg kann das nicht bemerken.**
+Übrig bleiben die gesendeten Nachrichten, und genau die geben dem Archiv ein
+Aussehen von Vollständigkeit. Ein leerer Posteingang sieht eben aus wie ein
+aufgeräumter.
+
+### Was die Mehrfachablage an echten Daten macht
+
+Der beste Einzelbefund des Tages, und er ist positiv: 808 eindeutige Mails
+auf **1.000 Fundorte**. 189 Nachrichten tragen mehrere Gmail-Etiketten und
+liegen trotzdem genau einmal auf der Platte. Kein Fundort ging verloren,
+nichts doppelt – geprüft war das bis dahin nur mit erfundenen Daten.
+
+Nebenbei: Zwei Konten desselben Anbieters benennen dieselben Ordner
+verschieden (`[Gmail]/` und `[Google Mail]/`). Dass das nicht auffällt, liegt
+an der Entscheidung aus dem JMAP-Bau, Ordner über ihre **Rolle** zu beurteilen
+und nicht über den Namen. Erste Auszahlung an echten Daten.
+
+### Die sechs Fehler
+
+**Ein Archiv konnte in einem Archiv landen.** Aus zwei für sich harmlosen
+Regeln: Wer denselben Ordner ein zweites Mal wählt, findet ihn nicht mehr leer
+vor, und daraufhin hängt der Assistent seinen Vorgabenamen an. `sicherung.
+packen()` liest mit `rglob("*")` – eine Sicherung des äußeren Archivs enthielte
+das innere samt Journal und Hash-Kette.
+
+**Der Assistent vergab jedem Archiv denselben Namen** (»Mailarchiv«, der
+Vorgabename des angehängten Ordners). **Der Zuordnungsdialog zeigte nur
+Namen** – und entscheidet dabei, ob Geschäftspost im Privatarchiv landet.
+**Ein weiterverwendetes Archiv bekam keine Kennung gemerkt**; derselbe Fehler
+war am 27.08. schon da und wurde nur im Anlege-Zweig behoben.
+
+**Die Gmail-Anleitung nannte einen Klickpfad, den es nicht mehr gibt.** Google
+hat den Punkt umbenannt (*2-Faktor-Authentifizierung*) und die App-Passwörter
+**ganz aus dem Menü entfernt** – erreichbar nur noch über
+`myaccount.google.com/apppasswords`. Im **Handbuch des Programms** kamen
+App-Passwörter bis dahin mit keinem Wort vor, beim häufigsten Grund für eine
+gescheiterte Einrichtung.
+
+**Wartende Scans standen nur am Menüeintrag** und als Statustipp – sichtbar,
+solange die Maus darüber steht. Sie stehen jetzt in der Abrufmeldung, mit
+einem Knopf daneben. Stephans Vorschlag; er wollte ein selbstöffnendes
+Fenster, geworden ist eine Frage mit zwei Knöpfen.
+
+### Neu: werkzeuge/schwaerzen.py
+
+Graue, deckende Balken über Mailadressen, Server, Telefonnummern, IBAN sowie
+Steuer- und Aktenzeichen in einem Bildschirmfoto. **Balken und kein
+Weichzeichner** – weichgezeichnete Schrift lässt sich zurückrechnen, und bei
+etwas so Formathaftem wie einer Mailadresse ist das keine Theorie.
+
+Erkannt wird wortweise **und** zeilenweise: Tesseract zerlegt eine Mailadresse
+gelegentlich am Punkt, und dann passt auf kein Bruchstück ein Muster.
+
+Am Ende steht nicht »sauber«, sondern wonach gesucht wurde. Im Prüfbild blieb
+»Kündigung Müller« stehen. **Ein Schwärzwerkzeug, dem man blind vertraut, ist
+gefährlicher als keines** – dieselbe Regel wie bei `lesbarkeit.py`.
+
+### Ein Testfehler, der fast durchgerutscht wäre
+
+Die Abrufmeldung baut jetzt ein eigenes `QMessageBox`, weil sie einen zweiten
+Knopf braucht. Die vorhandenen Tests fingen `QMessageBox.information` ab – ohne
+Anpassung wäre `exec()` gelaufen. **Ein blockierender Dialog sieht im Testlauf
+nicht nach einem Fehler aus, sondern nach einem hängenden Rechner.**
+
+1984 Tests, `lesbarkeit.py` ohne Befund.
+
 ## Hier war Schluss (Stand 2026-09-21, Montag) – 1.5.0 bis 1.6.0
 
 **Der Tag vor dem ersten Firmeneinsatz.** Stephans Ansage: »Wir müssen

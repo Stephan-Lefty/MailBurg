@@ -54,18 +54,23 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 1.6.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche samt
+**Fassung 1.7.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche samt
 Suchordnern, Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der
 regelmäßige Abruf im Hintergrund stehen und werden täglich benutzt – unter
 Linux mit einem Bestand von rund 68.000 Mails, unter Windows mit der fertigen
 `MailBurg.exe`.
 
-OAuth2 ist gebaut, aber nur gegen einen nachgebauten Anbieter geprüft: Bei
-einem echten Microsoft- oder Google-Konto hat sich damit noch niemand
-angemeldet. Bei Google kommt man vorerst mit einem App-Passwort weiter – bei
-**Microsoft nicht**: Dort ist die Anmeldung mit Passwort abgeschaltet, und
-App-Passwörter gibt es nicht mehr. Für Outlook und Microsoft 365 ist OAuth2
-damit der einzige Weg. Wer ein solches Konto hat und mittesten möchte, ist
+**Gmail ist seit dem 22.09.2026 an echten Konten erprobt** – drei Postfächer
+nebeneinander, mit App-Passwort. Dabei zeigte sich auch, dass MailBurg
+Mehrfachablage richtig rechnet: 189 Nachrichten trugen mehrere Etiketten und
+liegen trotzdem genau einmal auf der Platte.
+
+OAuth2 ist gebaut, aber weiterhin nur gegen einen nachgebauten Anbieter
+geprüft: Bei einem echten Microsoft- oder Google-Konto hat sich damit noch
+niemand angemeldet. Bei Google braucht man es auch nicht – dort genügt ein
+App-Passwort. Bei **Microsoft dagegen führt kein anderer Weg hin**: Die
+Anmeldung mit Passwort ist abgeschaltet, App-Passwörter gibt es nicht mehr.
+Wer ein Outlook- oder Microsoft-365-Konto hat und mittesten möchte, ist sehr
 willkommen.
 
 Verschlüsselte Archive gibt es seit dem 31.08.2026 – gebaut und getestet,
