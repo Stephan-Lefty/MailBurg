@@ -51,6 +51,18 @@ RECOMMENDS = ", ".join((
     "python3-cryptography",        # verschlüsselte Archive und Tresor
     "python3-pypdf",               # PDF-Anhänge durchsuchbar
     "poppler-utils",               # pdftotext, der schnellere Weg
+    # **Hier und nicht unter Suggests.** Bis zum 2026-09-22 stand
+    # Zstandard bei den Vorschlägen, die apt nicht mitinstalliert – mit
+    # der Begründung, es packe ja nur besser. Das stimmt beim
+    # *Schreiben*. Beim *Lesen* ist es keine Kür: Wer ein Archiv hat, in
+    # dem .zst-Dateien liegen – etwa von einer venv-Installation oder
+    # von einem Rechner mit Python 3.14 –, bekommt ohne dieses Paket
+    # keine einzige Nachricht mehr angezeigt.
+    #
+    # Genau so ist es einer Anwenderin am 2026-09-22 ergangen: Klick auf
+    # eine Mail, Traceback. Ab Python 3.14 ist Zstandard eingebaut und
+    # das Paket überflüssig – Debian 13 liefert aber 3.13.
+    "python3-zstandard",
 ))
 
 #: Was den Funktionsumfang abrundet, aber selten gebraucht wird.
@@ -118,7 +130,6 @@ exit 0
 SUGGESTS = ", ".join((
     "tesseract-ocr",               # eingescannte PDF lesen
     "tesseract-ocr-deu",
-    "python3-zstandard",           # bessere Packung; ab 3.14 eingebaut
     "python3-starlette",           # Das Archiv im Browser
     "python3-uvicorn",
 ))

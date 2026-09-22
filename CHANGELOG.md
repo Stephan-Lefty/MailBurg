@@ -7,6 +7,42 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **Ohne das Paket »zstandard« ließ sich keine einzige Nachricht
+  öffnen** – und die Meldung schickte in die Irre. Von einer Anwenderin
+  gemeldet (22.09.2026): Debian-Paket eingerichtet, Mail angeklickt,
+  Traceback.
+
+  Drei Fehler wirkten zusammen, und jeder für sich wäre harmlos
+  gewesen:
+
+  **`python3-zstandard` stand unter *Suggests*** – das installiert apt
+  nicht mit. Begründet war das mit »packt nur besser«. Das stimmt beim
+  *Schreiben*; beim **Lesen** ist es Voraussetzung. Wer ein Archiv hat,
+  in dem `.zst`-Dateien liegen, kommt ohne dieses Paket an keine
+  Nachricht mehr heran. Es steht jetzt unter *Recommends*.
+
+  **Die Meldung nannte den falschen Paketnamen.** »zstandard« heißt es
+  bei pip; unter Debian heißt dasselbe `python3-zstandard`, und
+  `apt install zstandard` findet nichts. Die Anwenderin installierte
+  daraufhin `zstd` – das Kommandozeilenwerkzeug – und schrieb: »Python
+  ist aktuell und Zstandard auch.« Beides stimmte. Die Meldung nennt
+  jetzt den Namen, der zur Installationsart passt.
+
+  **Und die Prüfung beim Öffnen gab es nie.** Der Modulkopf von
+  `core/compress.py` beschrieb seit jeher eine Funktion
+  `ensure_readable()`, die beim Öffnen sicherstellt, dass sich das
+  Archiv lesen lässt. **Sie war nirgends implementiert.** Deshalb kam
+  der Fehler nicht beim Öffnen mit einer Erklärung, sondern beim ersten
+  Klick als Traceback. Jetzt gibt es sie, und `Archive.open()` ruft sie
+  auf.
+
+  Vierte Fundstelle desselben Musters an einem Tag: ein Kommentar, der
+  eine Zusage macht, die der Code nicht einlöst.
+
 ## [1.7.3] – 2026-09-22
 
 ### Hinzugefügt

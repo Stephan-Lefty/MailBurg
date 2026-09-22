@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from mailburg import FORMAT_VERSION, __version__
+from mailburg.core import compress
 from mailburg.core import index as index_modul
 from mailburg.core import paths
 from mailburg.core.index import Index
@@ -388,6 +389,15 @@ class Archive:
                 f"(Format {version}, dieses Programm kann {FORMAT_VERSION}). "
                 f"Bitte MailBurg aktualisieren."
             )
+
+        # **Lieber hier als beim ersten Klick auf eine Nachricht.** Fehlt
+        # auf diesem Rechner die Zstandard-Unterstützung, während das
+        # Archiv damit gepackte Dateien enthält, lässt sich keine einzige
+        # Mail anzeigen. Am 2026-09-22 hat das eine Anwenderin als
+        # Traceback getroffen, nachdem sie in der Trefferliste etwas
+        # angeklickt hatte – die Meldung kommt jetzt beim Öffnen und sagt,
+        # welches Paket fehlt.
+        compress.ensure_readable(root)
         schluessel = None
         if meta.get("encryption"):
             from mailburg.core import krypto
