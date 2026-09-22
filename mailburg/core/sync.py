@@ -123,20 +123,44 @@ class Abrufzustand:
 
     # ---------------------------------------------------------- Festhalten
 
-    def ordner_gesehen(self, konto: str, ordner: str, uidvalidity: int) -> bool:
-        """Hält den UIDVALIDITY-Wert fest.
+    def muss_neu_gelesen_werden(
+        self, konto: str, ordner: str, uidvalidity: int
+    ) -> bool:
+        """Hat der Server die UIDs neu vergeben?
 
-        Gibt zurück, ob der Ordner vollständig neu gelesen werden muss –
-        also ob der Server seine UIDs zwischenzeitlich neu vergeben hat.
+        **Fragt nur, schreibt nichts.** Das Festhalten macht
+        :meth:`ordner_fertig`, und zwar erst, wenn der Ordner wirklich
+        gelesen ist.
         """
         vorher = self.uidvalidity(konto, ordner)
+        return vorher is not None and vorher != int(uidvalidity)
+
+    def ordner_fertig(self, konto: str, ordner: str, uidvalidity: int) -> None:
+        """Schreibt den UIDVALIDITY-Wert fest – nach vollständigem Lesen.
+
+        **Die Trennung vom Feststellen ist der eigentliche Punkt.** Bis
+        zum 2026-09-22 tat eine einzige Methode beides: Sie meldete den
+        Wechsel *und* merkte sich sofort den neuen Wert. Scheiterte der
+        Abruf danach – ein abgelehntes Passwort genügt –, stand der neue
+        Wert schon in der Datei. Beim nächsten Lauf war er gleich dem
+        gespeicherten, der Vollabruf unterblieb, **und die Mails kamen
+        nie.**
+
+        Gefunden an Stephans Proton-Konto: Nach einem Neuaufbau der
+        Bridge vergab sie allen Ordnern neue, wieder niedrige UIDs. Der
+        Höchststand stammt aus dem Index und blieb hoch – jede neue Mail
+        lag darunter und wurde übersprungen. Lautlos, wochenlang.
+
+        Diese Reihenfolge kostet im schlechtesten Fall einen zweiten
+        Vollabruf. Die andere kostet Post.
+        """
+        vorher = self.uidvalidity(konto, ordner)
+        gewechselt = vorher is not None and vorher != int(uidvalidity)
         self._ordner(konto, ordner)["uidvalidity"] = int(uidvalidity)
-        neu_lesen = vorher is not None and vorher != int(uidvalidity)
-        if neu_lesen:
+        if gewechselt:
             # Die alten Nachzügler zeigen auf Mails, die es unter dieser
             # Nummer nicht mehr gibt. Sie anzufordern brächte nichts.
             self._ordner(konto, ordner).pop("nachholen", None)
-        return neu_lesen
 
     def vormerken(self, konto: str, ordner: str, uid: int) -> None:
         """Merkt eine UID vor, die beim nächsten Lauf noch einmal drankommt."""

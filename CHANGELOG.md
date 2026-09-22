@@ -11,6 +11,42 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Nach einem Serverwechsel der Nachrichtennummern kam Post lautlos
+  nicht mehr an.** Der schwerste Fehler dieser Fassung, gefunden an
+  einem echten Proton-Konto.
+
+  Vergibt ein Server neue UIDs – bei der Proton Mail Bridge nach jedem
+  Neuaufbau –, meldet er das über `UIDVALIDITY`. MailBurg erkannte das
+  auch und wollte den Ordner vollständig neu lesen. **Es merkte sich
+  den neuen Wert aber sofort, bevor feststand, ob dieser Vollabruf
+  gelingt.**
+
+  Scheiterte der Lauf danach – ein abgelehntes Passwort genügt –, stand
+  der neue Wert schon in der Datei. Beim nächsten Mal war er gleich dem
+  gespeicherten, der Vollabruf unterblieb, und weil der Höchststand aus
+  dem Index kommt und hoch geblieben war, lag **jede neue Mail
+  darunter**. Sie wurde nie angefordert.
+
+  Genau so lief es bei Stephan: Bridge neu eingerichtet, Abruf scheitert
+  am alten Bridge-Passwort, Passwort repariert – und ab da meldete
+  MailBurg brav »nichts Neues«, während im Postfach zwei Tage Post lag.
+
+  Feststellen und Festschreiben sind jetzt getrennt: `ordner_fertig()`
+  läuft erst, wenn der Ordner wirklich durch ist. Bricht der Abruf ab,
+  bleibt die alte Kennzahl stehen und der nächste Lauf holt alles.
+  **Diese Reihenfolge kostet im schlechtesten Fall einen zweiten
+  Vollabruf. Die andere kostet Post.**
+
+- **Ohne Terminal nannte jede Passwortabfrage denselben Ausweg** –
+  `MAILBURG_ARCHIVPASSWORTDATEI` –, auch wenn nach dem Passwort eines
+  *Postfachs* gefragt wurde. Für Postfächer gibt es diese Variable
+  nicht; wer dem Rat folgte, setzte sie und stand genauso da.
+
+  Aufgefallen beim Versuch, die Proton-Anmeldung zu prüfen: Der
+  Prüfbefehl schien ein Archivpasswort zu verlangen, obwohl er gar kein
+  Archiv öffnet. Die Meldung log über ihren eigenen Anlass – und
+  verdeckte, dass in Wahrheit ein Postfachpasswort fehlte.
+
 - **Eine Mail ohne Datum ließ sich aus einem Geschäftsarchiv löschen.**
   Ohne Datum lässt sich keine Aufbewahrungsfrist rechnen – und die
   Prüfung ging in diesem Fall mit einem schlichten `return` durch, statt

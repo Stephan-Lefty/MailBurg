@@ -49,7 +49,47 @@ class KeinTerminal(RuntimeError):
     """Hier wäre etwas einzutippen, aber niemand sitzt davor."""
 
 
-def eintippen(frage: str, *, wofuer: str = "") -> str:
+#: Was ohne Terminal stattdessen zu tun ist – je nachdem, wonach gefragt
+#: wurde.
+#:
+#: **Ein Ausweg für den falschen Fall ist schlimmer als keiner.** Bis zum
+#: 2026-09-22 nannte jede dieser Meldungen `MAILBURG_ARCHIVPASSWORTDATEI`,
+#: auch wenn nach dem Passwort eines *Postfachs* gefragt wurde. Für
+#: Postfächer gibt es diese Variable nicht; wer dem Rat folgte, setzte
+#: sie und stand danach genauso da.
+#:
+#: Aufgefallen beim Versuch, eine Proton-Anmeldung zu prüfen: Der
+#: Prüfbefehl schien ein Archivpasswort zu verlangen, obwohl er gar kein
+#: Archiv öffnet. Die Meldung log über ihren eigenen Anlass – und
+#: verdeckte damit, dass in Wahrheit ein Postfachpasswort fehlte.
+AUSWEG_ARCHIV = (
+    "Aus einem Skript heraus geben Sie es über die Umgebung mit:\n"
+    "    MAILBURG_ARCHIVPASSWORTDATEI=/pfad/zur/datei\n\n"
+    "Die Datei ist der bessere Weg – eine Umgebungsvariable steht in der "
+    "Prozessliste mancher Systeme."
+)
+
+AUSWEG_POSTFACH = (
+    "Postfachpasswörter liegen im Schlüsselbund. Hinterlegen Sie es "
+    "einmal an einem Terminal:\n"
+    "    mailburg konten passwort NAME\n\n"
+    "Danach kommt auch ein Abruf ohne Terminal daran. Auf einem Server "
+    "ohne Schlüsselbund tut es der Tresor:\n"
+    "    mailburg tresor uebernehmen"
+)
+
+#: Für ein Passwort, das jemand sich gerade ausdenkt – ein Zugang zum
+#: Archiv in der Server Edition. Dafür gibt es keinen Umweg, und einen
+#: zu nennen wäre schlimmer als zu sagen, dass es keinen gibt.
+AUSWEG_KEINER = (
+    "Ein neues Passwort lässt sich nur an einem Terminal festlegen – "
+    "über die Umgebung entgegenzunehmen wäre hier keine Erleichterung, "
+    "sondern ein Loch."
+)
+
+
+def eintippen(frage: str, *, wofuer: str = "",
+              ausweg: str = AUSWEG_ARCHIV) -> str:
     """Fragt nach einem Passwort – und sagt es, wenn das nicht geht.
 
     **Ohne Terminal wirft ``getpass.getpass`` einen ``EOFError``**, und
@@ -74,11 +114,7 @@ def eintippen(frage: str, *, wofuer: str = "") -> str:
         zweck = f" {wofuer}" if wofuer else ""
         raise KeinTerminal(
             f"Hier wäre ein Passwort{zweck} einzutippen, aber es ist kein "
-            f"Terminal angeschlossen.\n\n"
-            f"Aus einem Skript heraus geben Sie es über die Umgebung mit:\n"
-            f"    MAILBURG_ARCHIVPASSWORTDATEI=/pfad/zur/datei\n\n"
-            f"Die Datei ist der bessere Weg – eine Umgebungsvariable steht "
-            f"in der Prozessliste mancher Systeme."
+            f"Terminal angeschlossen.\n\n" + ausweg
         )
     return getpass.getpass(frage)
 
@@ -330,7 +366,8 @@ def _passwort_besorgen(konto: Konto, *, fragen: bool = True) -> str:
         return passwort
     if not fragen:
         return ""
-    return eintippen(f"Passwort für {konto.benutzer} auf {konto.server}: ")
+    return eintippen(f"Passwort für {konto.benutzer} auf {konto.server}: ",
+                     ausweg=AUSWEG_POSTFACH)
 
 
 def cmd_konten_liste(args: argparse.Namespace) -> int:
@@ -525,11 +562,13 @@ def cmd_konten_hinzufuegen(args: argparse.Namespace) -> int:
     )
     if per_jmap:
         passwort = eintippen(
-            f"Zugriffsmarke oder Passwort für {konto.server}: "
+            f"Zugriffsmarke oder Passwort für {konto.server}: ",
+            ausweg=AUSWEG_POSTFACH,
         )
     else:
         passwort = eintippen(
-            f"Passwort für {konto.benutzer} auf {konto.server}: "
+            f"Passwort für {konto.benutzer} auf {konto.server}: ",
+            ausweg=AUSWEG_POSTFACH,
         )
     if not passwort:
         print("Ohne Passwort geht es nicht.", file=sys.stderr)
@@ -671,7 +710,8 @@ def cmd_konten_uebernehmen(args: argparse.Namespace) -> int:
             # Das Passwort kommt von Hand. Es aus dem Thunderbird-Profil zu
             # holen, wäre technisch möglich und trotzdem falsch – siehe
             # mailburg/core/uebernahme.py.
-            passwort = eintippen(f"    Passwort für {konto.benutzer}: ")
+            passwort = eintippen(f"    Passwort für {konto.benutzer}: ",
+                                 ausweg=AUSWEG_POSTFACH)
             if not passwort:
                 print("    Ohne Passwort übersprungen.")
                 continue
@@ -755,11 +795,13 @@ def cmd_konten_passwort(args: argparse.Namespace) -> int:
 
     # Zweimal fragen: Ein vertipptes Passwort fiele sonst erst beim
     # nächsten Abruf auf, und dann sieht es aus wie ein Serverproblem.
-    passwort = eintippen(f"Neues Passwort für {konto.beschreibung()}: ")
+    passwort = eintippen(f"Neues Passwort für {konto.beschreibung()}: ",
+                         ausweg=AUSWEG_KEINER)
     if not passwort:
         print("Abgebrochen – nichts geändert.", file=sys.stderr)
         return 2
-    if passwort != eintippen("Noch einmal zur Sicherheit: "):
+    if passwort != eintippen("Noch einmal zur Sicherheit: ",
+                             ausweg=AUSWEG_KEINER):
         print("Die beiden Eingaben stimmen nicht überein.", file=sys.stderr)
         return 2
 
@@ -2537,7 +2579,8 @@ def _passwort_erfragen(name: str) -> str:
     """
     import getpass
 
-    return eintippen(f"Passwort für »{name}« (mind. 10 Zeichen): ")
+    return eintippen(f"Passwort für »{name}« (mind. 10 Zeichen): ",
+                     ausweg=AUSWEG_KEINER)
 
 
 def cmd_server(args: argparse.Namespace) -> int:

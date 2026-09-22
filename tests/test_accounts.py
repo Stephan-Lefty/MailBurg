@@ -175,29 +175,58 @@ class AbrufzustandTest(unittest.TestCase):
 
     def test_uidvalidity_ueberdauert(self):
         z = self.zustand()
-        z.ordner_gesehen("Firma", "INBOX", 1234)
+        z.ordner_fertig("Firma", "INBOX", 1234)
         z.speichern()
         self.assertEqual(self.zustand().uidvalidity("Firma", "INBOX"), 1234)
 
     def test_erstes_sehen_verlangt_keinen_neuaufbau(self):
-        self.assertFalse(self.zustand().ordner_gesehen("Firma", "INBOX", 1234))
+        self.assertFalse(
+            self.zustand().muss_neu_gelesen_werden("Firma", "INBOX", 1234)
+        )
 
     def test_gleicher_wert_verlangt_keinen_neuaufbau(self):
         z = self.zustand()
-        z.ordner_gesehen("Firma", "INBOX", 1234)
-        self.assertFalse(z.ordner_gesehen("Firma", "INBOX", 1234))
+        z.ordner_fertig("Firma", "INBOX", 1234)
+        self.assertFalse(z.muss_neu_gelesen_werden("Firma", "INBOX", 1234))
 
     def test_geaenderter_wert_verlangt_neuaufbau(self):
         z = self.zustand()
-        z.ordner_gesehen("Firma", "INBOX", 1234)
-        self.assertTrue(z.ordner_gesehen("Firma", "INBOX", 9999))
+        z.ordner_fertig("Firma", "INBOX", 1234)
+        self.assertTrue(z.muss_neu_gelesen_werden("Firma", "INBOX", 9999))
+
+    def test_fragen_schreibt_nichts_fest(self):
+        """Der Kern des Fehlers vom 2026-09-22.
+
+        Früher tat eine Methode beides: melden *und* merken. Scheiterte
+        der Abruf danach – ein abgelehntes Passwort genügt –, stand der
+        neue Wert schon in der Datei. Beim nächsten Lauf war er gleich
+        dem gespeicherten, der Vollabruf unterblieb, und die Mails kamen
+        nie.
+        """
+        z = self.zustand()
+        z.ordner_fertig("Firma", "INBOX", 1234)
+
+        # Der Server hat neu vergeben. Wir fragen – und brechen dann ab.
+        self.assertTrue(z.muss_neu_gelesen_werden("Firma", "INBOX", 9999))
+
+        # Nichts festgeschrieben: Der nächste Lauf muss es wieder melden.
+        self.assertEqual(z.uidvalidity("Firma", "INBOX"), 1234)
+        self.assertTrue(z.muss_neu_gelesen_werden("Firma", "INBOX", 9999))
+
+    def test_erst_nach_vollstaendigem_lesen_gilt_der_neue_wert(self):
+        z = self.zustand()
+        z.ordner_fertig("Firma", "INBOX", 1234)
+        z.muss_neu_gelesen_werden("Firma", "INBOX", 9999)
+        z.ordner_fertig("Firma", "INBOX", 9999)
+        self.assertEqual(z.uidvalidity("Firma", "INBOX"), 9999)
+        self.assertFalse(z.muss_neu_gelesen_werden("Firma", "INBOX", 9999))
 
     def test_neuaufbau_wirft_die_vormerkungen_weg(self):
         # Die alten Nummern zeigen auf Mails, die es so nicht mehr gibt.
         z = self.zustand()
-        z.ordner_gesehen("Firma", "INBOX", 1234)
+        z.ordner_fertig("Firma", "INBOX", 1234)
         z.vormerken("Firma", "INBOX", 42)
-        z.ordner_gesehen("Firma", "INBOX", 9999)
+        z.ordner_fertig("Firma", "INBOX", 9999)
         self.assertEqual(z.nachzuegler("Firma", "INBOX"), [])
 
     def test_vormerken_und_streichen(self):
@@ -230,7 +259,7 @@ class AbrufzustandTest(unittest.TestCase):
 
     def test_konto_vergessen(self):
         z = self.zustand()
-        z.ordner_gesehen("Firma", "INBOX", 1234)
+        z.ordner_fertig("Firma", "INBOX", 1234)
         z.konto_vergessen("Firma")
         self.assertIsNone(z.uidvalidity("Firma", "INBOX"))
 

@@ -645,23 +645,44 @@ class ImapSource(Source):
         if status != "OK":
             raise ImapFehler(f"{daten}")
 
+        # **Erst lesen, dann festhalten.** Die Kennzahl wird unten
+        # gespeichert – nachdem der Ordner durch ist. Wer sie vorher
+        # festschreibt, verliert bei einem Abbruch genau den Vollabruf,
+        # den ein Wechsel gerade ausgelöst hätte. Ausführlich steht das
+        # in ``sync.ordner_fertig``.
+        gueltigkeit = self._uidvalidity()
+
         anzahl = int(_antwort_text(daten[0]) or 0) if daten else 0
         if anzahl == 0:
+            self._ordner_abschliessen(anzeige, gueltigkeit)
             return
 
-        uids = self._zu_holen(anzeige)
+        uids = self._zu_holen(anzeige, gueltigkeit)
         if not uids:
+            self._ordner_abschliessen(anzeige, gueltigkeit)
             return
 
         for block in self._bloecke(uids):
             yield from self._block_holen(block, anzeige)
 
-    def _zu_holen(self, anzeige: str) -> list[int]:
+        # Hierher kommt nur, wer alle Blöcke geliefert hat. Bricht der
+        # Abruf vorher ab – Verbindung weg, Verbraucher gibt auf –,
+        # bleibt die alte Kennzahl stehen, und der nächste Lauf liest
+        # den Ordner noch einmal vollständig.
+        self._ordner_abschliessen(anzeige, gueltigkeit)
+
+    def _ordner_abschliessen(self, anzeige: str, gueltigkeit: int | None) -> None:
+        """Hält fest, dass dieser Ordner vollständig gelesen wurde."""
+        if self.zustand is not None and gueltigkeit is not None:
+            self.zustand.ordner_fertig(self.account, anzeige, gueltigkeit)
+
+    def _zu_holen(self, anzeige: str, gueltigkeit: int | None = None) -> list[int]:
         """Ermittelt, welche UIDs dieser Lauf anfordern muss."""
         neu_lesen = self.voll
         if self.zustand is not None:
-            gueltigkeit = self._uidvalidity()
-            if gueltigkeit is not None and self.zustand.ordner_gesehen(
+            if gueltigkeit is None:
+                gueltigkeit = self._uidvalidity()
+            if gueltigkeit is not None and self.zustand.muss_neu_gelesen_werden(
                 self.account, anzeige, gueltigkeit
             ):
                 # Der Server hat die UIDs neu vergeben. Alles, was wir über

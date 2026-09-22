@@ -1489,7 +1489,7 @@ class BestandsanzeigeTest(OberflaechenTest):
         with tempfile.TemporaryDirectory() as ordner:
             datei = pathlib.Path(ordner) / "zustand.json"
             zustand = Abrufzustand("egal", datei=datei)
-            zustand.ordner_gesehen("Konto", "INBOX", 1)
+            zustand.ordner_fertig("Konto", "INBOX", 1)
             zustand.speichern()
 
             self.assertEqual(Abrufzustand("egal", datei=datei).zuletzt, "")

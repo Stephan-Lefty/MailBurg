@@ -210,7 +210,7 @@ class ZustandTest(unittest.TestCase):
         # Der Server hat die UIDs neu vergeben. Was wir über den Ordner zu
         # wissen glaubten, ist damit wertlos.
         z = zustand(self.tmp)
-        z.ordner_gesehen("Firma", "INBOX", 1000)
+        z.ordner_fertig("Firma", "INBOX", 1000)
 
         server = FakeImap([FakeOrdner("INBOX", {1: mail("a"), 2: mail("b")}, uidvalidity=2000)])
         q = ImapSource(konto(), verbindung=server, zustand=z, hoechststand=lambda _o: 5)
@@ -218,17 +218,57 @@ class ZustandTest(unittest.TestCase):
 
     def test_gleiche_uidvalidity_laesst_den_hoechststand_gelten(self):
         z = zustand(self.tmp)
-        z.ordner_gesehen("Firma", "INBOX", 1000)
+        z.ordner_fertig("Firma", "INBOX", 1000)
 
         server = FakeImap([FakeOrdner("INBOX", {1: mail("a"), 2: mail("b")}, uidvalidity=1000)])
         q = ImapSource(konto(), verbindung=server, zustand=z, hoechststand=lambda _o: 1)
         self.assertEqual([m.uid for m in q.iter_messages()], [2])
 
+    def test_abgebrochener_vollabruf_wird_nachgeholt(self):
+        """Der Fehler vom 2026-09-22, am ganzen Ablauf nachgestellt.
+
+        Gefunden an einem echten Proton-Konto: Nach einem Neuaufbau der
+        Bridge vergab sie allen Ordnern neue, wieder niedrige UIDs. Der
+        erste Abruf danach erkannte den Wechsel – und scheiterte am
+        alten Bridge-Passwort im Schlüsselbund. Die neue Kennzahl stand
+        da aber schon in der Datei.
+
+        Beim nächsten Lauf war sie gleich der gespeicherten, der
+        Vollabruf unterblieb, und weil der Höchststand aus dem Index
+        kommt und hoch geblieben war, lag **jede neue Mail darunter**.
+        Zwei Tage Post, die lautlos nicht ankam.
+        """
+        z = zustand(self.tmp)
+        z.ordner_fertig("Firma", "INBOX", 1000)
+
+        # Der Server hat neu vergeben, und der Abruf bricht mittendrin ab.
+        server = FakeImap([
+            FakeOrdner("INBOX", {1: mail("a"), 2: mail("b")}, uidvalidity=2000)
+        ])
+        lauf = ImapSource(konto(), verbindung=server, zustand=z,
+                          hoechststand=lambda _o: 5).iter_messages()
+        next(lauf)          # eine Mail entgegengenommen …
+        lauf.close()        # … und dann aufgegeben.
+
+        # Die alte Kennzahl muss stehen geblieben sein, sonst gilt der
+        # Ordner fälschlich als abgeglichen.
+        self.assertEqual(z.uidvalidity("Firma", "INBOX"), 1000)
+
+        # Und der nächste Lauf holt wirklich alles, nicht nur das über
+        # dem Höchststand.
+        server2 = FakeImap([
+            FakeOrdner("INBOX", {1: mail("a"), 2: mail("b")}, uidvalidity=2000)
+        ])
+        q2 = ImapSource(konto(), verbindung=server2, zustand=z,
+                        hoechststand=lambda _o: 5)
+        self.assertEqual([m.uid for m in q2.iter_messages()], [1, 2])
+        self.assertEqual(z.uidvalidity("Firma", "INBOX"), 2000)
+
     def test_vorgemerkte_mail_wird_erneut_geholt(self):
         # Sie war beim letzten Lauf gescheitert und liegt unterhalb des
         # Höchststands - ohne Vormerkung fehlte sie für immer.
         z = zustand(self.tmp)
-        z.ordner_gesehen("Firma", "INBOX", 1000)
+        z.ordner_fertig("Firma", "INBOX", 1000)
         z.vormerken("Firma", "INBOX", 2)
 
         server = FakeImap([FakeOrdner("INBOX", {1: mail("a"), 2: mail("b"), 3: mail("c")})])
@@ -239,7 +279,7 @@ class ZustandTest(unittest.TestCase):
         # Der Anwender hat die Mail inzwischen weggeworfen. Sie bei jedem
         # Lauf erneut anzufordern, wäre sinnlos.
         z = zustand(self.tmp)
-        z.ordner_gesehen("Firma", "INBOX", 1000)
+        z.ordner_fertig("Firma", "INBOX", 1000)
         z.vormerken("Firma", "INBOX", 99)
 
         server = FakeImap([FakeOrdner("INBOX", {1: mail("a")})])
