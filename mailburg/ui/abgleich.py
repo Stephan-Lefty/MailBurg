@@ -271,10 +271,17 @@ class Abgleichdialog(QDialog):
         else:
             tag = self.befunde[0].stichtag.strftime("%d.%m.%Y")
             gesamt = sum(b.geprueft for b in self.befunde)
+            # Ohne eine einzige geprüfte Nachricht gibt es nichts
+            # freizugeben. »Alle 0 sind im Archiv, räumen Sie
+            # gefahrlos auf« wäre eine Unbedenklichkeitsbescheinigung
+            # für einen Vergleich, den es nicht gab.
             self.stand.setText(
                 f"<b>Alle {gesamt} Nachrichten vor dem {tag} sind im "
                 f"Archiv.</b><br>Sie können sie im Mailprogramm gefahrlos "
                 f"aufräumen lassen."
+                if gesamt else
+                f"<b>In keinem Postfach liegt etwas, was älter als der "
+                f"{tag} wäre.</b><br>Es gab also nichts zu vergleichen."
             )
         self.stand.setTextFormat(Qt.RichText)
         self.fertig.emit(self.befunde)
@@ -288,11 +295,22 @@ class Abgleichdialog(QDialog):
                 continue
 
             oben.setText(1, str(befund.geprueft))
+            # **»Vollständig« nur, wo etwas verglichen wurde.** Beim
+            # ersten echten Einsatz am 2026-09-22 stand bei zwei
+            # Postfächern »0 – vollständig«: Null geprüft, und daneben
+            # eine Unbedenklichkeitsbescheinigung. Wo nichts war, wurde
+            # nichts verglichen; das ist kein Befund, sondern die
+            # Abwesenheit eines Befunds.
+            #
+            # Bei den Ordnern darunter stand es von Anfang an richtig.
+            # Zwei Stellen, eine nachgezogen, die andere nicht – zum
+            # wiederholten Mal in diesem Projekt.
             oben.setText(
                 2,
                 "unklar" if befund.unklar
                 else f"{befund.fehlend} fehlen" if befund.fehlend
-                else "vollständig",
+                else "vollständig" if befund.geprueft
+                else "nichts so altes vorhanden",
             )
             for eintrag in befund.ordner:
                 if eintrag.uidvalidity_geaendert:

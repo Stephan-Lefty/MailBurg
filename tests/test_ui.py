@@ -7269,6 +7269,33 @@ class AbgleichdialogTest(OberflaechenTest):
         self.assertNotIn("gefahrlos", gesamt)
         self.assertIn("Nummerierung", gesamt)
 
+    def test_null_geprueft_ist_kein_vollstaendig(self):
+        """Beim ersten echten Einsatz gefunden, 2026-09-22.
+
+        Zwei Postfächer meldeten »0 – vollständig«: Null geprüft, und
+        daneben eine Unbedenklichkeitsbescheinigung. Wo nichts war,
+        wurde nichts verglichen – das ist die Abwesenheit eines
+        Befunds, nicht einer.
+
+        Bei den Ordnern darunter stand es von Anfang an richtig. Zwei
+        Stellen, eine nachgezogen, die andere nicht.
+        """
+        dialog = self._dialog([
+            self._befund(ordner=[self._ordner(auf_dem_server=0, im_archiv=0)])
+        ])
+        self.assertNotIn("vollständig", self._baumtext(dialog))
+        self.assertIn("nichts so altes", self._baumtext(dialog))
+
+    def test_ohne_eine_einzige_nachricht_keine_freigabe(self):
+        """Dieselbe Frage eine Ebene höher – über alle Postfächer."""
+        dialog = self._dialog([
+            self._befund(ordner=[self._ordner(auf_dem_server=0, im_archiv=0)]),
+            self._befund(konto="Zweites",
+                         ordner=[self._ordner(auf_dem_server=0, im_archiv=0)]),
+        ])
+        self.assertNotIn("gefahrlos", dialog.stand.text())
+        self.assertIn("nichts zu vergleichen", dialog.stand.text())
+
     def _baumtext(self, dialog) -> str:
         teile = []
         for i in range(dialog.liste.topLevelItemCount()):
