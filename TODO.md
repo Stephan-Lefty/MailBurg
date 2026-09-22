@@ -8,6 +8,30 @@ wurde.
 
 ## Offen
 
+- [ ] **Der Assistent fragt nicht, wie das Archiv heißen soll.** Es gibt
+  kein Namensfeld. Der Name entsteht aus dem Ordnernamen – seit dem
+  2026-09-22 immerhin aus dem, den der Anwender selbst gewählt hat, und
+  nicht mehr aus dem angehängten Vorgabeordner.
+
+  Das ist die halbe Antwort. Stephans Satz dazu am 2026-09-22: *»Wenn
+  ich ein neues Archiv anlege, z. B. GmailArchiv, dann will ich auch,
+  dass dort die Mails landen.«* Ein eigenes Feld wäre die ganze.
+
+  Dazu gehört: **Umbenennen geht bis heute gar nicht.** Weder ein
+  Befehl noch ein Feld. Wer sich beim Anlegen vertippt, lebt damit –
+  oder legt das Archiv neu an und spielt zurück.
+
+- [ ] **Der angehängte Unterordner geschieht stillschweigend.** Wer
+  einen nicht leeren Ordner wählt, bekommt `…/Mailarchiv` darunter.
+  Der Grund ist gut – ohne ihn macht ein Fehlklick das halbe
+  Benutzerverzeichnis zum Archiv –, aber der Pfad im Feld ändert sich
+  lautlos. Wer gerade tippt, sieht es nicht.
+
+  Am 2026-09-22 war genau das die Ursache dafür, dass zwei Archive
+  ineinander landeten. Der zweite Teil ist seitdem abgefangen (ein
+  Archiv im Archiv wird abgelehnt), der erste nicht: Es gehört ein
+  sichtbarer Hinweis dazu, *bevor* angelegt wird.
+
 - [ ] **Den IMAP-Server aus der Mailadresse vorschlagen.** Wer
   »…@gmail.com« einträgt, muss heute wissen, dass der Server
   `imap.gmail.com` heißt. Am 2026-09-21 an einem echten Versuch

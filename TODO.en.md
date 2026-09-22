@@ -7,6 +7,30 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **The wizard never asks what the archive should be called.** There
+  is no name field. The name is derived from the folder name — since
+  2026-09-22 at least from the one the user picked, no longer from the
+  default subfolder appended to it.
+
+  That is half an answer. Stephan's words on 2026-09-22: *"When I create
+  a new archive, say GmailArchiv, I want the mail to end up there too."*
+  A field of its own would be the whole one.
+
+  Related: **renaming is not possible at all today.** No command, no
+  field. Anyone who mistypes at creation time lives with it — or creates
+  the archive again and restores into it.
+
+- [ ] **The appended subfolder happens silently.** Pick a non-empty
+  folder and you get `…/Mailarchiv` underneath it. The reason is sound —
+  without it, one stray click turns half your home directory into an
+  archive — but the path in the field changes without a sound. Anyone
+  mid-typing does not see it.
+
+  On 2026-09-22 this was exactly why two archives ended up nested inside
+  one another. The second half is caught since then (an archive inside an
+  archive is refused), the first is not: there should be a visible notice
+  *before* anything is created.
+
 - [ ] **Suggest the IMAP server from the mail address.** Anyone entering
   "…@gmail.com" has to know today that the server is called
   `imap.gmail.com`. Hit during a real attempt on 2026-09-21: what was

@@ -12,6 +12,7 @@ Schlüsselbund.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -659,12 +660,83 @@ class ArchivSeite(QWizardPage):
                 ziel = ziel / orte.VORGABENAME
             self.pfad.setText(str(ziel))
 
+    @staticmethod
+    def _archivname(ziel: Path) -> str:
+        """Der Name, den der Anwender gewählt hat – nicht unserer.
+
+        `_waehlen()` hängt an einen nicht leeren Ordner noch
+        `VORGABENAME` an, damit niemand aus Versehen sein ganzes
+        Benutzerverzeichnis zum Archiv macht. Das ist richtig. Falsch
+        war, den *Namen* des Archivs aus diesem angehängten Teil zu
+        ziehen: Wer »Gmail-Test« wählt, bekam ein Archiv namens
+        »Mailarchiv« – unseren Vorgabenamen, nicht seinen.
+
+        Sichtbar wurde es am 2026-09-22 im Zuordnungsdialog, der nur
+        Namen anzeigt: Dort stand »Mailarchiv« zwischen drei echten
+        Archiven, und der Anwender konnte nicht erkennen, welches sein
+        Testarchiv war. Bei einer Entscheidung, vor deren Folgen
+        derselbe Dialog in drei Zeilen warnt.
+
+        Ein eigenes Namensfeld wäre die vollständige Antwort und steht
+        in der TODO. Hier wird nur der Name genommen, den der Anwender
+        ohnehin eingetippt hat.
+        """
+        if ziel.name == orte.VORGABENAME and ziel.parent != Path.home():
+            # Der Elternordner ist der, den der Anwender gewählt hat.
+            # Ausgenommen das Benutzerverzeichnis: »stephan« wäre kein
+            # Archivname, sondern ein Kontoname.
+            return ziel.parent.name
+        return ziel.name
+
     @property
     def betriebsart(self) -> Mode:
         return Mode.GESCHAEFTLICH if self.geschaeftlich.isChecked() else Mode.PRIVAT
 
+    @staticmethod
+    def _archiv_darueber(ziel: Path) -> Path | None:
+        """Liegt über dem Ziel schon ein Archiv? Dann nicht hineinbauen.
+
+        **Ein Archiv im Archiv bringt alles durcheinander, was den
+        Ordner als Ganzes nimmt.** `sicherung.packen()` liest ihn mit
+        `rglob("*")` – eine Sicherung des äußeren Archivs enthielte das
+        innere samt eigener Hash-Kette und eigenem Journal. Beim
+        Zurückspielen wäre das ein Knäuel.
+
+        Entstanden ist der Fall am 2026-09-21 aus zwei harmlosen Regeln,
+        die zusammen etwas Unerwünschtes ergeben: Wer denselben Ordner
+        ein zweites Mal wählt, findet ihn nicht mehr leer vor – dort
+        liegt ja das Archiv vom ersten Mal –, und daraufhin hängt
+        `_waehlen()` seinen Vorgabenamen an. Das neue Archiv landete so
+        *im* alten. Zwei Archive, sieben Minuten auseinander, ineinander
+        verschachtelt, und im Zuordnungsdialog nebeneinander stehend,
+        als wären sie gleichwertig.
+
+        Geprüft wird bis zur Wurzel und nicht nur eine Ebene hoch: Der
+        Vorgabename kann auch von Hand ergänzt worden sein.
+        """
+        for oben in ziel.parents:
+            if (oben / "archive.json").is_file():
+                return oben
+        return None
+
     def validatePage(self) -> bool:
         ziel = Path(self.pfad.text()).expanduser()
+
+        darueber = self._archiv_darueber(ziel)
+        if darueber is not None:
+            QMessageBox.warning(
+                self,
+                "Archiv im Archiv",
+                f"In {darueber} liegt bereits ein Archiv – {ziel} läge "
+                f"darin.\n\n"
+                f"Das geht nicht gut aus: Eine Sicherung des äußeren "
+                f"Archivs nähme das innere mit, samt dessen Journal und "
+                f"Hash-Kette.\n\n"
+                f"Wählen Sie einen Ordner daneben. Wenn Sie das "
+                f"vorhandene Archiv erweitern wollen, geben Sie "
+                f"{darueber} selbst an.",
+            )
+            return False
 
         if (ziel / "archive.json").exists():
             antwort = QMessageBox.question(
@@ -676,6 +748,32 @@ class ArchivSeite(QWizardPage):
             )
             if antwort == QMessageBox.Yes:
                 self.wizard().archiv_pfad = ziel
+                # **Auch hier die Kennung merken, nicht nur den Pfad.**
+                # Sonst bleibt `archiv_kennung` leer, die Zuordnung am
+                # Ende des Assistenten läuft ins Leere, und der Anwender
+                # steht vor »Diesem Archiv ist kein Postfach zugeordnet«
+                # – nach einer Einrichtung, die er gerade durchlaufen
+                # hat.
+                #
+                # Am 2026-09-22 an einem echten Gmail-Konto aufgefallen.
+                # Derselbe Fehler war am 2026-08-27 schon einmal da und
+                # wurde nur im Anlege-Zweig behoben; dieser hier blieb
+                # liegen. Zwei Wege, einer nachgezogen, der andere nicht.
+                #
+                # Gelesen wird aus `archive.json`, nicht über
+                # `Archive.open()`: Die Kennung steht dort im Klartext,
+                # und ein verschlüsseltes Archiv verlangte sonst hier
+                # schon das Passwort.
+                try:
+                    daten = json.loads(
+                        (ziel / "archive.json").read_text(encoding="utf-8")
+                    )
+                    self.wizard().archiv_kennung = daten.get("uuid", "")
+                except (OSError, ValueError):
+                    # Unlesbar? Dann scheitert gleich das Öffnen mit
+                    # einer besseren Meldung als hier. Die fehlende
+                    # Zuordnung ist dann das kleinere Problem.
+                    pass
                 return True
             return False
 
@@ -704,6 +802,7 @@ class ArchivSeite(QWizardPage):
         try:
             archiv = Archive.create(
                 ziel,
+                name=self._archivname(ziel),
                 mode=self.betriebsart,
                 jurisdiction=self.rechtsraum.currentData(),
                 passwort=passwort,

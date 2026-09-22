@@ -4237,6 +4237,138 @@ class AssistentZuordnungTest(OberflaechenTest):
             "zugeordnet wird, bevor die Auswahl geprüft ist",
         )
 
+    def test_auch_ein_vorhandenes_archiv_wird_gemerkt(self):
+        """Die andere Hälfte desselben Fehlers, 2026-09-22.
+
+        Der Fix von 2026-08-27 setzte die Kennung nur beim *Anlegen*.
+        Wer im Assistenten ein vorhandenes Archiv weiterverwendete,
+        bekam wieder die Sackgasse – erst nach dem vollständigen
+        Durchlauf, also an der teuersten Stelle.
+        """
+        import inspect
+
+        from mailburg.ui.assistent import ArchivSeite
+
+        quelle = inspect.getsource(ArchivSeite.validatePage)
+        # Der Zweig, der ein vorhandenes Archiv weiterverwendet.
+        vorhanden = quelle.split("Archiv vorhanden", 1)[1]
+        bis_zum_ende_des_zweigs = vorhanden.split("Ordner nicht leer", 1)[0]
+        self.assertIn(
+            "archiv_kennung", bis_zum_ende_des_zweigs,
+            "ein weiterverwendetes Archiv bekommt keine Kennung gemerkt",
+        )
+
+    def test_der_archivname_kommt_vom_gewaehlten_ordner(self):
+        """»Gmail-Test« darf nicht zu »Mailarchiv« werden."""
+        from pathlib import Path
+
+        from mailburg.core import orte
+        from mailburg.ui.assistent import ArchivSeite
+
+        # Der Fall aus der Praxis: Anwender wählt einen Ordner, der
+        # Assistent hängt seinen Vorgabenamen an.
+        ziel = Path("/daten/Gmail-Test") / orte.VORGABENAME
+        self.assertEqual(ArchivSeite._archivname(ziel), "Gmail-Test")
+
+        # Wer den Ordner selbst so nennt, meint ihn auch so.
+        self.assertEqual(
+            ArchivSeite._archivname(Path("/daten/Firmenarchiv")),
+            "Firmenarchiv",
+        )
+
+        # Und im Benutzerverzeichnis bleibt es beim Vorgabenamen – der
+        # Anmeldename wäre als Archivname sinnlos.
+        self.assertEqual(
+            ArchivSeite._archivname(Path.home() / orte.VORGABENAME),
+            orte.VORGABENAME,
+        )
+
+    def test_der_zuordnungsdialog_zeigt_den_pfad(self):
+        """Zwei Archive können gleich heißen, zwei Pfade nicht.
+
+        Der Dialog entscheidet, ob Geschäftspost im Privatarchiv
+        landet. Bis zum 2026-09-22 zeigte er dafür allein den Namen –
+        und der Assistent vergab jedem Archiv denselben.
+        """
+        import inspect
+
+        from mailburg.ui.konten import ArchivZuordnung
+
+        quelle = inspect.getsource(ArchivZuordnung.__init__)
+        self.assertIn(
+            "pfad", quelle,
+            "der Dialog zeigt den Pfad nicht an",
+        )
+        # Die Quelle muss ihn auch liefern.
+        liste = inspect.getsource(ArchivZuordnung._bekannte_archive)
+        self.assertIn("str(pfad)", liste)
+
+    def test_kein_archiv_in_einem_archiv(self):
+        """Der Fall vom 2026-09-21, aus zwei harmlosen Regeln entstanden.
+
+        Derselbe Ordner zweimal gewählt: Beim zweiten Mal war er nicht
+        mehr leer – das Archiv vom ersten Mal lag darin –, also hängte
+        der Assistent seinen Vorgabenamen an. Das neue Archiv landete
+        im alten.
+        """
+        import tempfile
+        from pathlib import Path
+
+        from mailburg.ui.assistent import ArchivSeite
+
+        with tempfile.TemporaryDirectory() as ordner:
+            aussen = Path(ordner) / "Gmail-Test"
+            aussen.mkdir()
+            (aussen / "archive.json").write_text("{}", encoding="utf-8")
+
+            # Genau der Pfad, der bei Stephan entstanden ist.
+            innen = aussen / "Mailarchiv"
+            self.assertEqual(ArchivSeite._archiv_darueber(innen), aussen)
+
+            # Auch tiefer verschachtelt muss es auffallen.
+            self.assertEqual(
+                ArchivSeite._archiv_darueber(aussen / "a" / "b"), aussen
+            )
+
+            # Und daneben ist in Ordnung.
+            daneben = Path(ordner) / "Zweites"
+            self.assertIsNone(ArchivSeite._archiv_darueber(daneben))
+
+    def test_zwei_gleichnamige_archive_sind_unterscheidbar(self):
+        """Der Fall aus der Praxis, im gebauten Fenster nachgestellt.
+
+        Quelltext zu lesen sagt nur, dass etwas dasteht – nicht, dass
+        der Anwender es sieht. Hier stehen wirklich zwei Archive
+        namens »Mailarchiv« im Dialog.
+        """
+        from unittest import mock
+
+        from PySide6.QtWidgets import QLabel
+
+        from mailburg.core.accounts import Konto
+        from mailburg.ui.konten import ArchivZuordnung
+
+        archive = [
+            ("aaa-1111", "Mailarchiv", "/daten/Gmail-Test/Mailarchiv"),
+            ("bbb-2222", "Mailarchiv", "/daten/Firma/Mailarchiv"),
+        ]
+        konto = Konto(name="Test", server="imap.example.org", benutzer="post")
+
+        with mock.patch.object(
+            ArchivZuordnung, "_bekannte_archive", staticmethod(lambda: archive)
+        ):
+            dialog = ArchivZuordnung(konto)
+
+        gezeigt = [
+            kind.text() for kind in dialog.findChildren(QLabel)
+        ]
+        for _, _, pfad in archive:
+            self.assertIn(
+                pfad, gezeigt,
+                f"{pfad} steht nicht im Dialog – die beiden »Mailarchiv« "
+                f"sind nicht auseinanderzuhalten",
+            )
+
 
 class KontenZuordnungTest(OberflaechenTest):
     """Die Meldung schickte an eine Stelle, an der es nichts gab.

@@ -431,10 +431,22 @@ class ArchivZuordnung(QDialog):
         erklaerung.setTextFormat(Qt.RichText)
         aufbau.addWidget(erklaerung)
 
-        for kennung, name in self._bekannte_archive():
+        for kennung, name, pfad in self._bekannte_archive():
             kaestchen = QCheckBox(name)
             kaestchen.setChecked(kennung in konto.archive)
             aufbau.addWidget(kaestchen)
+            # **Der Pfad unter dem Namen.** Zwei Archive können gleich
+            # heißen; zwei Pfade können es nicht. Als eigene, gedämpfte
+            # Zeile statt im Kästchentext – die Auswahl soll nach wie
+            # vor am Namen erfolgen, der Pfad entscheidet nur die
+            # Zweifelsfälle.
+            unterzeile = QLabel(pfad)
+            unterzeile.setEnabled(False)
+            unterzeile.setIndent(
+                self.fontMetrics().horizontalAdvance("MM") * 2
+            )
+            unterzeile.setToolTip(pfad)
+            aufbau.addWidget(unterzeile)
             self.kaestchen.append((kaestchen, kennung))
 
         if not self.kaestchen:
@@ -455,8 +467,21 @@ class ArchivZuordnung(QDialog):
         aufbau.addWidget(knoepfe)
 
     @staticmethod
-    def _bekannte_archive() -> list[tuple[str, str]]:
-        """Kennung und Name der zuletzt geöffneten Archive."""
+    def _bekannte_archive() -> list[tuple[str, str, str]]:
+        """Kennung, Beschriftung und Pfad der zuletzt geöffneten Archive.
+
+        **Der Pfad gehört dazu, und das war er lange nicht.** Bis zum
+        2026-09-22 stand hier nur der Name – und Namen sind nicht
+        eindeutig: Der Assistent vergab bis dahin für jedes über ihn
+        angelegte Archiv denselben (»Mailarchiv«). Wer zwei davon hatte,
+        sah im Dialog zweimal dasselbe und musste raten, bei einer
+        Entscheidung, vor deren Folgen derselbe Dialog in drei Zeilen
+        warnt.
+
+        Aufgefallen an einem echten Fall: Zwischen drei Geschäftsarchiven
+        stand ein »Mailarchiv«, und das war in Wahrheit das Testarchiv in
+        einem Ordner namens »Gmail-Test«.
+        """
         import json
 
         from mailburg.core.einstellungen import zuletzt_benutzte_pfade
@@ -469,11 +494,11 @@ class ArchivZuordnung(QDialog):
             except (OSError, ValueError):
                 continue
             kennung = daten.get("uuid")
-            if kennung and kennung not in [k for k, _ in gefunden]:
+            if kennung and kennung not in [k for k, _, _ in gefunden]:
                 name = daten.get("name") or pathlib.Path(pfad).name
                 art = daten.get("mode", "")
                 zusatz = " (geschäftlich)" if art.startswith("gesch") else ""
-                gefunden.append((kennung, f"{name}{zusatz}"))
+                gefunden.append((kennung, f"{name}{zusatz}", str(pfad)))
         return gefunden
 
     @classmethod
