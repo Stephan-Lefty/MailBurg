@@ -7,37 +7,88 @@ down, with the date they were completed.
 
 ## Open
 
-- [ ] **Full-text search in the manual.** Stephan's wish from
-  2026-09-22: the help window should be searchable — optionally, via a
-  checkbox, across the guides in `docs/` as well.
+- [ ] **Full-text search in the manual — and expanding the manual for it.**
+  Stephan's wish from 2026-09-22: the help window should be searchable.
 
-  **The first half is straightforward.** The chapters live as text
-  inside the program (`hilfe.py`), and a `Suchleiste` already exists for
-  the opened message. What is missing is searching **across all
-  chapters** rather than just the visible one: a field above the chapter
-  list, hits below it with chapter name and a snippet, one click jumps
-  there. The hit should be highlighted, otherwise you go on hunting
-  inside the chapter.
+  **Manual only, not the repository.** A checkbox for "search the guides
+  too" was considered first and dropped the same evening: `docs/` is not
+  installed at all — `pyproject.toml` only picks up `mailburg*`. On the
+  development machine the files sit in the repository folder and would
+  be searchable; for every other user there would be nothing. Exactly
+  the kind of trap that sprang twice on that same day: something works
+  because there happens to be more here than elsewhere.
 
-  **The second half has an obstacle:** `docs/` is not installed at all.
-  `pyproject.toml` only picks up `mailburg*` — on Stephan's machine the
-  files sit in the repository folder, for every other user they do not
-  exist, and neither the `.exe` nor the AppImage carry them. A checkbox
-  for it would find nothing for almost everyone.
+  Stephan's decision instead: **expand the manual** and link out to the
+  repository for anything deeper.
 
-  Two routes, to be decided before anyone starts:
+  **What needs building is search across all chapters.** They live as
+  text inside the program (`hilfe.py`), and a `Suchleiste` already
+  exists for the opened message — but it only searches the visible
+  chapter. Wanted: a field above the chapter list, hits below with
+  chapter name and snippet, one click jumps there. Highlight the hit,
+  otherwise you go on hunting inside the chapter.
 
-  1. **Ship `docs/*.md` with the package** (216 KB without images, 1.9 MB
-     with them). Search then works offline and identically everywhere.
-     To settle: markdown only or `docs/bilder/` too, and whether the
-     guides can then drift apart in two versions — the packaged one and
-     the one on GitHub.
-  2. **Offer a link only** ("continue searching in the guides", opens
-     GitHub). Cheap, but needs a connection and leaves the program.
+  **Where the manual is thin**, counted on 2026-09-22: **OAuth2 appears
+  exactly once** — at the very topic where Microsoft users are otherwise
+  stuck, since there is no other route into the mailbox. The schedule
+  appears twice. Both have a full guide in `docs/` but no chapter of
+  their own.
 
-  For a user who is stuck right now, route 1 has the stronger case:
-  whoever sits in the program looking for help may well have no network
-  — or no appetite for searching a repository.
+  **And there is not a single link into the repository so far.** The
+  address lives as `QUELLTEXT_URL` in `mailburg/__init__.py` and should
+  not be written out in scattered places.
+
+- [ ] **Jump straight to the menu entry from the manual.** Stephan's
+  wish from 2026-09-22: where the manual describes a window, it should
+  be possible to **open** it from there — instead of reading, closing
+  and then hunting for it.
+
+  Today the text gives directions: "*Post → Ist alles im Archiv? …*".
+  Anyone sitting in front of it has to close the help and walk the path.
+
+  **The pattern already exists:** the manual uses internal links for
+  chapter jumps (`<a href="#abrufen">`), and `QTextBrowser` reports
+  every click via `anchorClicked`. What needs building is a scheme of
+  its own — say `aktion:abgleich` — that triggers the matching action of
+  the main window.
+
+  Two things to settle before anyone starts: the help window must
+  **not** reach into the main window itself — better a signal that
+  arrives where the actions live. And a link whose target does not exist
+  must stand out: a guard test should hold every `aktion:` address in
+  the manual against the actions that really exist. Otherwise it points
+  nowhere one day and nobody notices — like the menu entry that could go
+  unmentioned in the manual until a test started checking.
+
+- [ ] **"Suchsprache …" tells nobody anything.** The entry under *Hilfe*
+  jumps to the *Suchen* chapter and means the search syntax —
+  `von:müller`, `betreff:"offene posten"`, `jahr:2025`, `-werbung`.
+
+  **Stephan asked on 2026-09-22 what it was supposed to mean** — the
+  author of the program. And when pressed: *"Suchsprache — I take that
+  to mean German or English."*
+
+  **So the name does not merely puzzle, it misleads.** You expect a
+  language setting and find search syntax. That is worse than an opaque
+  name: with an opaque one you might click out of curiosity, with a
+  misleading one you go on looking for the language setting elsewhere —
+  and never find it, because there is none.
+
+  Its neighbour in the same menu reads "Was das Journal ist …" and
+  explains itself. **Stephan's proposals, both better than mine:
+  "Suche in Mails …" or "Suche im Archiv …"** — under *Hilfe* either
+  reads by itself as "help on searching".
+
+  **"im Archiv" has the stronger case:** MailBurg searches not just
+  message text but attachments too, right into scanned PDFs — "in
+  Mails" would be too narrow and would leave out one of its strengths.
+  And "Archiv" is the term the program uses throughout: title bar, the
+  *Archiv* menu, *Archiv prüfen*.
+
+  To be carried along: the no-hits message ("F1 erklärt die
+  Suchsprache"), `mailburg suchhilfe` on the command line,
+  `docs/oberflaeche.md` — and the manual itself, where the chapter is
+  simply called "Suchen", which is fine.
 
 - [ ] **A mailbox where nothing arrives any more should stand out.**
   Surfaced through the reconciliation on 2026-09-22: two of six

@@ -8,38 +8,92 @@ wurde.
 
 ## Offen
 
-- [ ] **Volltextsuche im Handbuch.** Stephans Wunsch vom 22.09.2026: Im
-  Hilfefenster soll man suchen können – und wahlweise mit einem Häkchen
-  auch in den Anleitungen aus `docs/`.
+- [ ] **Volltextsuche im Handbuch – und das Handbuch dafür ausbauen.**
+  Stephans Wunsch vom 22.09.2026: Im Hilfefenster soll man suchen
+  können.
 
-  **Die erste Hälfte ist naheliegend.** Die Kapitel liegen als Text im
+  **Nur im Handbuch, nicht im Repo.** Ein Häkchen »auch in den
+  Anleitungen suchen« war zuerst angedacht und wurde am selben Abend
+  verworfen: `docs/` ist gar nicht mitinstalliert – `pyproject.toml`
+  nimmt nur `mailburg*` mit. Auf dem Entwicklungsrechner liegen die
+  Dateien im Repo-Ordner und wären durchsuchbar, bei jedem anderen
+  Anwender gäbe es nichts. Genau die Sorte Falle, die an diesem Tag
+  schon zweimal zugeschnappt hat: Etwas läuft, weil hier zufällig mehr
+  da ist als anderswo.
+
+  Stephans Entscheidung stattdessen: **das Handbuch gezielter ausbauen**
+  und von dort für Vertiefungen ins Repository verlinken.
+
+  **Zu bauen ist die Suche über alle Kapitel.** Sie liegen als Text im
   Programm (`hilfe.py`), eine `Suchleiste` gibt es bereits für die
-  geöffnete Nachricht. Was fehlt, ist die Suche **über alle Kapitel**
-  statt nur im angezeigten: ein Feld über der Kapitelliste, darunter die
-  Treffer mit Kapitelnamen und Textausschnitt, ein Klick springt hin.
-  Die Fundstelle sollte hervorgehoben werden, sonst sucht man im Kapitel
-  weiter.
+  geöffnete Nachricht – die sucht aber nur im angezeigten Kapitel.
+  Gebraucht wird ein Feld über der Kapitelliste, darunter die Treffer
+  mit Kapitelnamen und Textausschnitt, ein Klick springt hin. Die
+  Fundstelle hervorheben, sonst sucht man im Kapitel weiter.
 
-  **Die zweite Hälfte hat eine Hürde:** `docs/` ist gar nicht
-  mitinstalliert. `pyproject.toml` nimmt nur `mailburg*` mit – bei
-  Stephan liegen die Dateien im Repo-Ordner, bei jedem anderen Anwender
-  gibt es sie nicht, und in der `.exe` und im AppImage ebenso wenig. Ein
-  Häkchen dafür fände also bei fast allen nichts.
+  **Wo das Handbuch dünn ist**, am 22.09.2026 ausgezählt: **OAuth2 kommt
+  genau einmal vor** – ausgerechnet bei dem Thema, an dem
+  Microsoft-Nutzer sonst gar nicht weiterkommen, denn dort gibt es
+  keinen anderen Weg ins Postfach. Der Zeitplan steht zweimal da. Beides
+  hat eine vollständige Anleitung in `docs/`, aber kein eigenes Kapitel.
 
-  Zwei Wege, und das ist zu entscheiden, bevor jemand anfängt:
+  **Und Verweise ins Repository gibt es bisher keinen einzigen.** Die
+  Adresse steht als `QUELLTEXT_URL` in `mailburg/__init__.py` und gehört
+  nicht verstreut hingeschrieben.
 
-  1. **`docs/*.md` ins Paket aufnehmen** (216 KB ohne die Bilder, mit
-     Bildern 1,9 MB). Dann läuft die Suche offline und überall gleich.
-     Zu klären: nur die Markdown-Dateien oder auch `docs/bilder/`, und
-     ob die Anleitungen dann in zwei Fassungen auseinanderlaufen können
-     – die im Paket und die auf GitHub.
-  2. **Nur einen Verweis anbieten** (»Weitersuchen in den Anleitungen«,
-     öffnet GitHub). Billig, aber braucht Internet und verlässt das
-     Programm.
+- [ ] **Aus dem Handbuch direkt zum Menüpunkt springen.** Stephans
+  Wunsch vom 22.09.2026: Wo das Handbuch ein Fenster beschreibt, soll
+  man es von dort aus **öffnen** können – nicht erst lesen, schließen
+  und suchen.
 
-  Für einen Anwender, der gerade nicht weiterkommt, spricht viel für
-  Weg 1: Wer im Programm sitzt und Hilfe sucht, hat womöglich gerade
-  kein Netz – oder keine Lust, in einem Repository zu suchen.
+  Heute steht im Text »*Post → Ist alles im Archiv? …*« als Wegangabe.
+  Wer davorsitzt, muss die Hilfe zuklappen und den Weg nachlaufen.
+
+  **Das Muster ist schon da:** Das Handbuch nutzt interne Links für
+  Kapitelsprünge (`<a href="#abrufen">`), und `QTextBrowser` meldet
+  jeden Klick über `anchorClicked`. Zu bauen wäre ein eigenes Schema –
+  etwa `aktion:abgleich` –, das die passende Aktion des Hauptfensters
+  auslöst.
+
+  Zwei Dinge sind dabei zu klären, bevor jemand anfängt: Das
+  Hilfefenster darf das Hauptfenster **nicht** von sich aus anfassen –
+  besser ein Signal, das dort ankommt, wo die Aktionen liegen. Und ein
+  Link, dessen Ziel es nicht gibt, muss auffallen: Ein Wächtertest
+  sollte jede `aktion:`-Adresse im Handbuch gegen die wirklich
+  vorhandenen Aktionen halten. Sonst zeigt er eines Tages ins Leere,
+  und es merkt niemand – wie der Menüpunkt, der bis heute ungeprüft im
+  Handbuch fehlen konnte.
+
+- [ ] **»Suchsprache …« sagt niemandem etwas.** Der Menüpunkt unter
+  *Hilfe* springt ins Kapitel *Suchen* und meint die Syntax der Suche –
+  `von:müller`, `betreff:"offene posten"`, `jahr:2025`, `-werbung`.
+
+  **Stephan hat am 22.09.2026 gefragt, was damit gemeint ist** – der
+  Autor des Programms. Und auf Nachfrage genauer: *»Suchsprache, da
+  verstehe ich Deutsch oder Englisch.«*
+
+  **Der Name führt also nicht nur ins Unklare, sondern auf eine falsche
+  Fährte.** Man erwartet eine Spracheinstellung und findet Suchsyntax.
+  Das ist schlimmer als ein unverständlicher Name: Bei dem klickt man
+  vielleicht aus Neugier, beim irreführenden sucht man die
+  Spracheinstellung anderswo weiter – und findet sie nicht, weil es sie
+  nicht gibt.
+
+  Der Nachbar im selben Menü heißt »Was das Journal ist …« und erklärt
+  sich von selbst. **Stephans Vorschläge, beide besser als
+  meine: »Suche in Mails …« oder »Suche im Archiv …«** – unter *Hilfe*
+  liest sich beides von selbst als »Hilfe zum Suchen«.
+
+  **Für »im Archiv« spricht mehr:** MailBurg durchsucht nicht nur
+  Mailtexte, sondern auch Anhänge bis in eingescannte PDF hinein – »in
+  Mails« wäre zu eng und ließe ausgerechnet eine der Stärken aus. Und
+  »Archiv« ist der Begriff, den das Programm durchgehend benutzt:
+  Titelleiste, Menü *Archiv*, *Archiv prüfen*.
+
+  Mitzuziehen sind die Fehlermeldung bei null Treffern (»F1 erklärt die
+  Suchsprache«), `mailburg suchhilfe` auf der Kommandozeile,
+  `docs/oberflaeche.md` und das Handbuch selbst – dort heißt das Kapitel
+  schlicht »Suchen«, das ist in Ordnung.
 
 - [ ] **Ein Postfach, in dem nichts mehr ankommt, sollte auffallen.**
   Am 2026-09-22 im Abgleich sichtbar geworden: Zwei von sechs
