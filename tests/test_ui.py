@@ -1573,17 +1573,29 @@ class AbrufmeldungTest(OberflaechenTest):
         self.addCleanup(fenster.close)
         return fenster
 
-    def _melden(self, ergebnisse):
+    def _melden(self, ergebnisse, fenster=None):
+        """Fängt ab, was das Fenster nach dem Abruf sagt.
+
+        **Zwei Wege, und beide müssen abgefangen sein.** Seit dem
+        2026-09-22 baut die Erfolgsmeldung ein eigenes `QMessageBox`,
+        weil sie bei wartenden Scans einen zweiten Knopf braucht. Wer
+        nur `information` abfängt, lässt `exec()` laufen – und ein
+        blockierender Dialog sieht im Testlauf nicht nach einem Fehler
+        aus, sondern nach einem hängenden Rechner.
+        """
         from unittest import mock
 
         from PySide6.QtWidgets import QMessageBox
 
         gesagt = []
-        fenster = self._fenster()
+        fenster = fenster or self._fenster()
         with mock.patch.object(QMessageBox, "information",
                                lambda *a, **k: gesagt.append(("gut", a[2]))), \
              mock.patch.object(QMessageBox, "warning",
-                               lambda *a, **k: gesagt.append(("warnung", a[2]))):
+                               lambda *a, **k: gesagt.append(("warnung", a[2]))), \
+             mock.patch.object(
+                 QMessageBox, "exec",
+                 lambda selbst: gesagt.append(("gut", selbst.text())) or 0):
             fenster._abruf_fertig(ergebnisse)
         return gesagt
 
@@ -1598,6 +1610,64 @@ class AbrufmeldungTest(OberflaechenTest):
         self.assertEqual(art, "gut")
         self.assertIn("Alle Mails sind im Archiv", text)
         self.assertIn("12", text)
+
+    def test_wartende_scans_stehen_in_der_meldung(self):
+        """»Alle Mails sind im Archiv« – und trotzdem nicht auffindbar.
+
+        Ein eingescanntes PDF ist für die Suche ein weißes Blatt. Bis
+        zum 2026-09-22 stand die Zahl allein am Menüeintrag, als
+        Statustipp: sichtbar, solange die Maus darüber steht. Wer sie
+        nie sah, suchte Monate später vergeblich nach einer Rechnung.
+
+        Von Stephan gemeldet, nachdem er beim ersten Gmail-Abruf
+        zufällig ins Menü sah.
+        """
+        from unittest import mock
+
+        class Stat:
+            neu = 40
+
+        fenster = self._fenster()
+        with mock.patch.object(type(fenster), "_wartende_scans",
+                               lambda selbst: 9):
+            gesagt = self._melden({"a@example.org": Stat()}, fenster=fenster)
+
+        self.assertEqual(len(gesagt), 1)
+        _art, text = gesagt[0]
+        self.assertIn("9", text)
+        self.assertIn("durchsuchbar", text)
+
+    def test_ohne_scans_kein_hinweis(self):
+        """Wer keine Scans hat, soll auch nichts darüber lesen."""
+        from unittest import mock
+
+        class Stat:
+            neu = 40
+
+        fenster = self._fenster()
+        with mock.patch.object(type(fenster), "_wartende_scans",
+                               lambda selbst: 0):
+            gesagt = self._melden({"a@example.org": Stat()}, fenster=fenster)
+
+        _art, text = gesagt[0]
+        self.assertNotIn("durchsuchbar", text)
+
+    def test_die_zahl_darf_die_meldung_nicht_verhindern(self):
+        """Fehlt die Zahl, fehlt ein Hinweis – nicht die Meldung."""
+        from unittest import mock
+
+        class Stat:
+            neu = 5
+
+        fenster = self._fenster()
+        with mock.patch(
+            "mailburg.core.erkennung.Warteschlange",
+            side_effect=RuntimeError("Index kaputt"),
+        ):
+            gesagt = self._melden({"a@example.org": Stat()}, fenster=fenster)
+
+        self.assertEqual(len(gesagt), 1)
+        self.assertIn("Alle Mails sind im Archiv", gesagt[0][1])
 
     def test_bei_einem_gescheiterten_postfach_keine_entwarnung(self):
         # Die falsche Entwarnung ist in einem Archivprogramm der teuerste

@@ -2070,9 +2070,35 @@ class Hauptfenster(QMainWindow):
                 f"das mit\n  mailburg konten spamfilter NAME --aus"
             )
 
-        QMessageBox.information(
-            self,
-            "Abruf abgeschlossen",
+        # **Eingescannte PDF gehören in diese Meldung.** Bis zum
+        # 2026-09-22 stand ihre Zahl allein im Menüeintrag
+        # »Eingescannte PDF lesen … (9)«. Wer das Menü nicht aufklappt,
+        # erfährt nie, dass Anhänge für die Suche leere Blätter sind –
+        # und sucht Monate später vergeblich nach einer eingescannten
+        # Rechnung.
+        #
+        # Dieselbe Klasse wie der Betrefffilter am 2026-09-09: »Alle
+        # Mails sind im Archiv« stimmt, und trotzdem ist etwas nicht
+        # auffindbar. Der Satz muss auch das aushalten.
+        #
+        # Von Stephan vorgeschlagen, nachdem er beim ersten Gmail-Abruf
+        # zufällig ins Menü sah. Er wollte, dass sich das Fenster von
+        # selbst öffnet; eine Frage ist dasselbe mit einem Klick mehr –
+        # und lässt die Entscheidung bei ihm. Ein Fenster, das sich
+        # ungefragt aufschiebt, unterbricht auch den, der gerade etwas
+        # anderes vorhat.
+        scans = self._wartende_scans()
+        scansatz = (
+            f"\n\n{scans} eingescannte PDF sind noch nicht durchsuchbar. "
+            f"Ein Foto einer Seite hat keine Textebene – für die Suche "
+            f"ist es ein weißes Blatt."
+            if scans else ""
+        )
+
+        kasten = QMessageBox(self)
+        kasten.setIcon(QMessageBox.Information)
+        kasten.setWindowTitle("Abruf abgeschlossen")
+        kasten.setText(
             # **Ohne den Betrefffilter ist alles im Archiv, mit ihm
             # nicht.** Der Satz muss beides aushalten, sonst steht dort
             # eine Zusage, die der Anwender selbst abbestellt hat – und
@@ -2081,8 +2107,31 @@ class Hauptfenster(QMainWindow):
              "Alles Abgerufene ist im Archiv.")
             + (f"\n\n{neu} neu hinzugekommen." if neu else
                "\n\nEs war nichts Neues da.")
-            + nachsatz,
+            + nachsatz + scansatz
         )
+        if scans:
+            lesen = kasten.addButton("Jetzt lesen …", QMessageBox.AcceptRole)
+            kasten.addButton("Später", QMessageBox.RejectRole)
+            kasten.exec()
+            if kasten.clickedButton() is lesen:
+                self._texterkennung()
+            return
+        kasten.setStandardButtons(QMessageBox.Ok)
+        kasten.exec()
+
+    def _wartende_scans(self) -> int:
+        """Wie viele eingescannte PDF noch auf die Texterkennung warten."""
+        if self.archiv is None:
+            return 0
+        from mailburg.core.erkennung import Warteschlange
+
+        try:
+            return Warteschlange(self.archiv.index).anzahl()
+        except Exception:  # noqa: BLE001 – eine Zahl ist kein Grund zu scheitern
+            # Wie beim Menüeintrag: Fehlt die Zahl, fehlt ein Hinweis.
+            # Die Abrufmeldung deswegen ausfallen zu lassen wäre der
+            # größere Schaden.
+            return 0
 
     def _sperre_klaeren(self, pfad) -> bool | None:
         """Klärt vor dem Abruf, ob eine Sperre im Weg liegt.
