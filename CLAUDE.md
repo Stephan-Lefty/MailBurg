@@ -3,7 +3,7 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
-## Hier war Schluss (Stand 2026-09-22, Dienstag) – 1.7.0
+## Hier war Schluss (Stand 2026-09-22, Dienstag) – 1.7.0 bis 1.7.3
 
 **Der erste Gmail-Durchlauf, und er ging anders aus als geplant.** Vorgesehen
 war ein OAuth2-Test über die Google Cloud Console. Gebraucht wurde er nicht:
@@ -13,6 +13,22 @@ nebeneinander – 812 Mails, Hash-Kette unversehrt.
 **Sechs Fehler kamen dabei heraus, und keiner steckte im Abruf.** Das ist der
 Satz, der diesen Tag zusammenfasst. Der Abruf tat, was er sollte – zweimal
 sogar dann, als wir ihm das Gegenteil unterstellten.
+
+Vier Fassungen sind daraus geworden, und **die letzte kam aus einer Frage
+Stephans**: Alle Anwender sollten nach dem Fehler der 1.7.1 einmal vollständig
+abrufen – und wer drei Archive hat, hieß das dreimal einen Pfad
+zusammensuchen, den man auswendig nicht kennt. Seitdem gibt es
+`mailburg abrufen --alle`. **Ein Rat, der zu mühsam zu befolgen ist, wird
+nicht befolgt.**
+
+Dabei gilt dieselbe Regel wie beim Abgleich: Ein klemmendes Archiv beendet den
+Lauf nicht, und **was übersprungen wurde, wird genannt** – eine abgezogene
+Platte sähe sonst aus wie ein Archiv, in dem nichts Neues war.
+
+**Vorbehalt:** Geprüft ist `--alle` gegen erfundene Verzeichnisse, nicht an
+einem echten Lauf über mehrere Archive. Derselbe Satz wie bei OAuth2 und
+seinerzeit bei JMAP – er gehört stehen gelassen, bis es jemand ausprobiert
+hat.
 
 ### Die drei falschen Fährten
 
