@@ -165,16 +165,21 @@ einer Datei des Programms.</p>
 
 <h3>Wenn die Post weitergeleitet und danach gelöscht wird</h3>
 
-<p><b>Dann archivieren Sie das falsche Postfach.</b> Wer bei seinem
-Anbieter eine Weiterleitung eingerichtet hat, die eingehende Post an eine
-andere Adresse schickt und hier anschließend löscht, hat ein Postfach,
-durch das die Mails nur hindurchfallen. MailBurg holt, was da ist – und
-da ist nichts mehr.</p>
+<p><b>Dann kommt neue Post dort nicht mehr an.</b> Wer bei seinem
+Anbieter eine Weiterleitung eingerichtet hat, die eingehende Nachrichten
+an eine andere Adresse schickt und hier anschließend löscht, hat ein
+Postfach, durch das die neue Post nur hindurchfällt. MailBurg holt, was
+da ist – und da ist nichts mehr.</p>
 
-<p>Übrig bleiben die <i>gesendeten</i> Nachrichten, denn eine
-Weiterleitung betrifft nur den Posteingang. Das ist das Tückische: Das
-Archiv füllt sich, die Prüfung meldet »alles in Ordnung«, die Zahlen
-sehen plausibel aus – und die Hälfte fehlt.</p>
+<p><b>Der Altbestand bleibt.</b> Eine Weiterleitung wirkt nur auf das,
+was nach ihrer Einrichtung eintrifft. Ein solches Postfach sieht deshalb
+gut gefüllt aus und ist trotzdem seit Monaten stehen geblieben. Ebenso
+bleiben die <i>gesendeten</i> Nachrichten – die Weiterleitung betrifft
+nur den Posteingang.</p>
+
+<p>Das ist das Tückische: Das Archiv füllt sich beim ersten Abruf, die
+Prüfung meldet »alles in Ordnung«, die Zahlen sehen plausibel aus – und
+es kommt nichts Neues mehr dazu.</p>
 
 <p><b>MailBurg kann das nicht bemerken.</b> Ein leerer Posteingang sieht
 genauso aus wie ein aufgeräumter. Richten Sie deshalb das Postfach ein,

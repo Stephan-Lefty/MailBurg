@@ -82,27 +82,35 @@ sudo pacman -S gnome-keyring python-keyring
 
 ## Wenn die Post weitergeleitet und danach gelöscht wird
 
-**Dann archivieren Sie das falsche Postfach.** Wer bei seinem Anbieter eine
-Weiterleitung eingerichtet hat, die eingehende Post an eine andere Adresse
-schickt und anschließend hier löscht, hat ein Postfach, durch das die Mails
-nur hindurchfallen. MailBurg holt, was da ist – und da ist nichts mehr.
+**Dann kommt neue Post dort nicht mehr an.** Wer bei seinem Anbieter eine
+Weiterleitung eingerichtet hat, die eingehende Nachrichten an eine andere
+Adresse schickt und anschließend hier löscht, hat ein Postfach, durch das die
+neue Post nur hindurchfällt. MailBurg holt, was da ist – und da ist nichts
+mehr.
 
-Übrig bleiben die **gesendeten** Nachrichten, denn die Weiterleitung betrifft
-nur den Posteingang. Das ist das Tückische daran: Das Archiv füllt sich, die
-Prüfung meldet »alles in Ordnung«, und die Zahlen sehen plausibel aus. Nur
-fehlt die Hälfte.
+**Der Altbestand bleibt erhalten.** Eine Weiterleitung wirkt nur auf das, was
+nach ihrer Einrichtung eintrifft; was vorher da war, liegt weiter im Ordner.
+Ein solches Postfach sieht deshalb gut gefüllt aus und ist trotzdem seit
+Monaten stehen geblieben. Ebenso bleiben die **gesendeten** Nachrichten, denn
+die Weiterleitung betrifft nur den Posteingang.
+
+Das ist das Tückische daran: Das Archiv füllt sich beim ersten Abruf,
+`mailburg pruefen` meldet »alles in Ordnung«, und die Zahlen sehen plausibel
+aus. Nur kommt nichts Neues mehr dazu.
 
 **MailBurg kann das nicht bemerken.** Ein leerer Posteingang sieht genauso
 aus wie ein aufgeräumter.
 
-Archivieren Sie deshalb **das Postfach, in dem die Post am Ende liegt** – im
-Beispiel oben also das Ziel der Weiterleitung, nicht die Quelle. Die
+Archivieren Sie deshalb **das Postfach, in dem die Post am Ende liegt** – also
+das Ziel der Weiterleitung, nicht die Quelle. Den Altbestand und die
 gesendeten Nachrichten der Quelladresse holen Sie zusätzlich, wenn Sie sie
 brauchen.
 
 Aufgefallen am 22.09.2026: Zwei Testmails an drei eigene Gmail-Konten kamen
 im Archiv nur zweimal statt dreimal an. Der Abruf war korrekt – zwei der
-Konten leiteten an Proton weiter und löschten danach.
+Konten leiteten weiter und löschten danach. Der Abgleich zeigte am selben Tag
+die andere Hälfte des Bildes: In denselben Postfächern lagen 754 und 185
+ältere Nachrichten, alle vollständig archiviert.
 
 ## App-Passwörter
 
