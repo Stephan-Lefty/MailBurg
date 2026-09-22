@@ -96,25 +96,37 @@ Knopf braucht. Die vorhandenen Tests fingen `QMessageBox.information` ab – ohn
 Anpassung wäre `exec()` gelaufen. **Ein blockierender Dialog sieht im Testlauf
 nicht nach einem Fehler aus, sondern nach einem hängenden Rechner.**
 
-### Und eine Auskunft über die eigene Umgebung, die zweimal falsch war
+### Eine Korrektur, die selbst falsch war
 
-Ich sagte Stephan zweimal, seine Installation laufe noch auf der alten Fassung
-und das heute Gebaute sei »im Repo, aber noch nicht bei dir«. **Beides war
-falsch.** Seine venv unter `~/.local/share/mailburg/venv` ist ein
-*editierbarer* Install und zeigt direkt auf den Repo-Ordner – jede gespeicherte
-Datei ist beim nächsten Programmstart aktiv.
+Ich sagte Stephan, seine Installation laufe noch auf der alten Fassung und das
+Gebaute sei »im Repo, aber noch nicht bei dir«. Dann nahm ich das zurück: Die
+venv sei ein *editierbarer* Install und zeige direkt auf den Repo-Ordner. Ich
+schrieb es in diese Datei und ins Gedächtnis.
 
-Das ist mehr als eine Ungenauigkeit: Der Satz verleitet dazu, eine halbfertige
-Datei liegen zu lassen, weil sie ja »noch niemanden erreicht«. Bei einem
-Archivprogramm, das derselbe Mensch nebenher benutzt, ist das ein echtes
-Risiko.
+**Die Rücknahme war der Fehler.** Stephans Installation ist eine eigene Kopie
+unter `~/.local/share/mailburg/venv/lib/python3.14/site-packages/mailburg`.
+Aufgeflogen, weil das Über-Fenster hartnäckig 1.7.0 zeigte, während die Datei
+im Repo längst 1.7.1 sagte.
 
-Nachsehen statt annehmen:
+**Der Messfehler ist die eigentliche Lehre.** Ich hatte
+`python3 -c "import mailburg; print(mailburg.__file__)"` *im
+Repo-Verzeichnis* ausgeführt und den Repo-Pfad gesehen. Das aktuelle
+Verzeichnis steht in `sys.path` vor site-packages – gemessen wurde die
+Arbeitskopie, nicht die Installation. Dieselbe Klasse wie der Installer, der
+am 03.09. seinen eigenen Suchpfad prüfte statt den der Anwender-Shell: **Eine
+Prüfung, die die fragliche Umgebung nicht nachstellt, misst etwas anderes als
+das, was sie zu messen vorgibt.**
+
+Richtig geht es von woanders:
 
 ```bash
-~/.local/share/mailburg/venv/bin/python3 -c \
-  "import mailburg, pathlib; print(pathlib.Path(mailburg.__file__).parent)"
+cd /tmp && ~/.local/share/mailburg/venv/bin/python3 -c \
+  "import mailburg, pathlib; print(pathlib.Path(mailburg.__file__).parent, mailburg.__version__)"
 ```
+
+Praktisch heißt das: **Ein `git push` erreicht Stephan nicht.** Erst
+`./install.sh` und ein Neustart tun das. Das Über-Fenster zeigt verlässlich,
+was wirklich läuft – es hat diesen Fehler gefunden.
 
 1984 Tests, `lesbarkeit.py` ohne Befund.
 
