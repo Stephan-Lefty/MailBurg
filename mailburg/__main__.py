@@ -1172,7 +1172,95 @@ def _konten_waehlen(liste, archive, gewuenscht: str | None, *, laut: bool = True
 
 
 def cmd_abrufen(args: argparse.Namespace) -> int:
-    """Holt neue Mails aus den Postfächern ins Archiv."""
+    """Holt neue Mails aus den Postfächern ins Archiv.
+
+    Mit ``--alle`` läuft das über jedes bekannte Archiv nacheinander.
+    """
+    if getattr(args, "alle", False):
+        return _abrufen_ueber_alle(args)
+    if not args.archiv:
+        print(
+            "Welches Archiv? Geben Sie den Ordner an – oder --alle für "
+            "jedes bekannte.",
+            file=sys.stderr,
+        )
+        return 2
+    return _abrufen_eines(args)
+
+
+def _abrufen_ueber_alle(args: argparse.Namespace) -> int:
+    """Ruft nacheinander in jedes Archiv ab, das MailBurg kennt.
+
+    **Gedacht für den Fall »einmal alles nachholen«** – nach einem
+    Update etwa, wenn ein Fehler dazu geführt haben kann, dass Post
+    übersprungen wurde. Wer drei Archive hat, soll dafür nicht dreimal
+    einen Pfad heraussuchen müssen, den er auswendig nicht kennt.
+
+    **Bekannt heißt: schon einmal geöffnet.** Die Liste stammt aus den
+    zuletzt benutzten Archiven. Ein Archiv, das auf diesem Rechner noch
+    nie offen war, steht nicht darin – deshalb wird am Ende gesagt, wie
+    viele es waren, statt stillschweigend »fertig« zu melden.
+
+    **Ein Archiv, das klemmt, beendet den Lauf nicht.** Eine abgezogene
+    Platte, ein laufendes Hauptfenster mit Sperre, ein falsches
+    Passwort: Jedes davon betrifft ein Archiv, nicht die übrigen.
+    """
+    from mailburg.core.einstellungen import zuletzt_benutzte_pfade
+
+    bekannt = [Path(p) for p in zuletzt_benutzte_pfade()]
+    vorhanden = [p for p in bekannt if (p / "archive.json").is_file()]
+    verschwunden = [p for p in bekannt if p not in vorhanden]
+
+    if not vorhanden:
+        print(
+            "Kein Archiv gefunden. MailBurg merkt sich, welche es schon "
+            "einmal geöffnet hat – auf diesem Rechner war das noch keines.\n"
+            "Geben Sie den Ordner diesmal von Hand an.",
+            file=sys.stderr,
+        )
+        return 2
+
+    print(f"{len(vorhanden)} Archive werden abgerufen:")
+    for pfad in vorhanden:
+        print(f"  {pfad}")
+    if verschwunden:
+        # **Was ausgelassen wird, muss gesagt werden.** Eine abgezogene
+        # Platte sieht sonst aus wie ein Archiv, das nichts Neues hatte.
+        print()
+        print("Nicht erreichbar und deshalb übersprungen:", file=sys.stderr)
+        for pfad in verschwunden:
+            print(f"  {pfad}", file=sys.stderr)
+    print()
+
+    fehler = 0
+    for nummer, pfad in enumerate(vorhanden, 1):
+        print(f"── {nummer}/{len(vorhanden)}  {pfad}")
+        einzeln = argparse.Namespace(**vars(args))
+        einzeln.archiv = str(pfad)
+        einzeln.alle = False
+        try:
+            if _abrufen_eines(einzeln) != 0:
+                fehler += 1
+        except (ArchiveError, OSError, RuntimeError) as exc:
+            # Ein Archiv, das sich nicht öffnen lässt – gesperrt, Platte
+            # weg, Passwort falsch –, kostet die übrigen nichts.
+            print(f"  FEHLER: {exc}", file=sys.stderr)
+            fehler += 1
+        print()
+
+    if fehler:
+        print(
+            f"Bei {fehler} von {len(vorhanden)} Archiven ist etwas "
+            f"schiefgegangen – siehe oben.",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"Alle {len(vorhanden)} Archive sind durch.")
+    return 0
+
+
+def _abrufen_eines(args: argparse.Namespace) -> int:
+    """Der eigentliche Abruf für ein einzelnes Archiv."""
     liste = Kontenliste()
     mit_text = not args.ohne_anhangstext
     fehler = 0
@@ -3470,7 +3558,18 @@ def build_parser() -> argparse.ArgumentParser:
     k.set_defaults(func=cmd_konten_ausschluss)
 
     p = subparsers.add_parser("abrufen", help="neue Mails aus den Postfächern holen")
-    p.add_argument("archiv", help="Verzeichnis des Archivs")
+    p.add_argument(
+        "archiv", nargs="?",
+        help="Verzeichnis des Archivs – entfällt bei --alle",
+    )
+    p.add_argument(
+        "--alle", action="store_true",
+        help=(
+            "nacheinander in jedes Archiv abrufen, das MailBurg schon "
+            "einmal geöffnet hat. Für »einmal alles nachholen«, etwa nach "
+            "einem Update"
+        ),
+    )
     p.add_argument("--konto", help="nur dieses Konto abrufen")
     p.add_argument(
         "--ordner",

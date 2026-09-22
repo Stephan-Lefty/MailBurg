@@ -22,6 +22,19 @@ mailburg abrufen ~/Archiv
 Der erste Lauf holt den ganzen Bestand und dauert entsprechend. Läuft schon
 eine [Zeitsteuerung](zeitsteuerung.md), passiert das ohnehin von selbst.
 
+**Alles noch einmal durchsehen lassen** – nach einem Serverumzug etwa, oder
+wenn Nachrichten übersprungen worden sein könnten:
+
+```bash
+mailburg abrufen --alle --voll
+```
+
+Das läuft durch **jedes Archiv**, das MailBurg auf diesem Rechner schon
+einmal geöffnet hat; einen Pfad müssen Sie dafür nicht heraussuchen. Doppelt
+abgelegt wird nichts – MailBurg erkennt jede Nachricht an ihrem Inhalt
+wieder. Ein Archiv auf einer abgezogenen Platte wird übersprungen und am Ende
+genannt.
+
 In der Oberfläche sagt MailBurg nach jedem selbst gestarteten Abruf, ob alle
 Postfächer erreichbar waren. **Steht dort auch nur eines als nicht erreichbar,
 fangen Sie hier nicht an aufzuräumen** – dessen Mails fehlen im Archiv.

@@ -7,6 +7,29 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **`mailburg abrufen --alle`** läuft nacheinander durch jedes Archiv,
+  das MailBurg auf diesem Rechner schon einmal geöffnet hat. Einen Pfad
+  muss man dafür nicht heraussuchen.
+
+  Entstanden aus einer Frage: Nach dem Fehler der 1.7.1 sollten alle
+  Anwender einmal vollständig abrufen – und wer drei Archive hat, hieß
+  das dreimal einen Pfad zusammensuchen, den man auswendig nicht kennt.
+  Jetzt genügt:
+
+  ```bash
+  mailburg abrufen --alle --voll
+  ```
+
+  **Ein klemmendes Archiv beendet den Lauf nicht.** Eine abgezogene
+  Platte, ein laufendes Hauptfenster mit Sperre, ein falsches Passwort:
+  Jedes davon betrifft ein Archiv, nicht die übrigen. Und was
+  übersprungen wurde, **wird am Ende genannt** – eine abgezogene Platte
+  sähe sonst aus wie ein Archiv, in dem nichts Neues war.
+
 ## [1.7.2] – 2026-09-22
 
 ### Hinzugefügt

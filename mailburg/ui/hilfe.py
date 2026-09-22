@@ -389,6 +389,29 @@ dieser aufgehört hat – verloren geht dabei nichts.</p>
 <p>Danach wird nur noch geholt, was neu dazugekommen ist. Das dauert
 Sekunden.</p>
 
+<h3>Einmal alles nachholen</h3>
+
+<p>Manchmal soll MailBurg <i>nicht</i> nur das Neue holen, sondern alles
+noch einmal durchsehen – etwa nachdem ein Postfach umgezogen ist oder
+nach einem Programmfehler, bei dem Nachrichten übersprungen worden sein
+könnten. Auf der Kommandozeile geht das so:</p>
+
+<p><tt>mailburg abrufen --alle --voll</tt></p>
+
+<p>Das läuft nacheinander durch <b>jedes Archiv</b>, das MailBurg auf
+diesem Rechner schon einmal geöffnet hat – Sie müssen keinen Pfad
+heraussuchen. Wollen Sie nur eines, schreiben Sie dessen Ordner
+dahinter statt <tt>--alle</tt>.</p>
+
+<p><b>Doppelt abgelegt wird dabei nichts.</b> MailBurg erkennt jede
+Nachricht an ihrem Inhalt wieder, nicht an einer laufenden Nummer. Der
+Lauf dauert länger als ein gewöhnlicher Abruf, ändert aber an dem, was
+schon da ist, nichts.</p>
+
+<p>Ist eine externe Platte gerade nicht angeschlossen, wird das
+betreffende Archiv übersprungen – und am Ende ausdrücklich genannt,
+damit es nicht so aussieht, als wäre dort nichts gewesen.</p>
+
 <p><b>Regelmäßig im Hintergrund.</b> Sinnvoll ist ein Zeitplan, sonst
 muss jemand daran denken. MailBurg muss dafür weder geöffnet bleiben
 noch beim Anmelden mitstarten – geholt wird ohne Fenster. Nötig ist nur,
