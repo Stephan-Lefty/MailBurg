@@ -89,6 +89,27 @@ wurde.
   für den OAuth2-Versuch angelegt wurde – mit der ausdrücklichen
   Absicht, es hinterher wieder zu löschen.
 
+  **Und am 2026-09-22 hat Stephans Rückfrage den Punkt eingegrenzt:**
+  *»Darf man im Normalfall überhaupt ein Archiv löschen? Privates schon,
+  aber geschäftliche ja nicht!«*
+
+  Für ein **Geschäftsarchiv** darf es diesen Befehl deshalb nicht geben,
+  solange auch nur eine Aufbewahrungsfrist läuft – und er dürfte auch
+  keinen Schalter bekommen, der das übergeht. Einzeln ist das seit
+  jeher abgesichert (`_check_retention`); ein Befehl für das *ganze*
+  Archiv würde diese Absicherung aushebeln, wenn er den Ordner einfach
+  wegräumt.
+
+  Zu bauen wäre er also so: Bei einem Privatarchiv räumt er auf. Bei
+  einem Geschäftsarchiv rechnet er zuerst nach, ob noch etwas unter
+  Frist steht, und lehnt dann ab – mit der Zahl der betroffenen Mails
+  und dem Jahr, ab dem es ginge.
+
+  Am 2026-09-22 haben wir das Testarchiv mit `rm -rf` entfernt. Bei
+  einem Privatarchiv ohne Folgen, bei einem Geschäftsarchiv genau der
+  Weg, den es nicht geben soll. **Ein Befehl, den es nicht gibt, wird
+  durch einen ersetzt, der nichts prüft.**
+
 ### Die Hash-Kette kann reißen, ohne dass etwas verloren geht (2026-09-21)
 
 **Gefunden an Stephans echtem Geschäftsarchiv**, bei einem

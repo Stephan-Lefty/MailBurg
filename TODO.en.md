@@ -86,6 +86,26 @@ down, with the date they were completed.
   archive was created for the OAuth2 attempt — with the express
   intention of deleting it again afterwards.
 
+  **And on 2026-09-22 Stephan's question narrowed it down:** *"Is one
+  even allowed to delete an archive normally? A private one yes, but a
+  business one no!"*
+
+  For a **business archive** this command must therefore not exist as
+  long as a single retention period is still running — and it must not
+  gain a switch that overrides that. Individual messages have been
+  protected all along (`_check_retention`); a command for the *whole*
+  archive would defeat that protection if it simply removed the folder.
+
+  So it would have to be built like this: for a private archive it
+  clears up. For a business archive it first works out whether anything
+  is still under retention, and refuses — naming the number of affected
+  messages and the year from which it would be allowed.
+
+  On 2026-09-22 we removed the test archive with `rm -rf`. Harmless for
+  a private archive, and exactly the route that must not exist for a
+  business one. **A command that does not exist gets replaced by one
+  that checks nothing.**
+
 ### The hash chain can break without anything being lost (2026-09-21)
 
 **Found on Stephan's real business archive**, during a health check

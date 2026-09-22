@@ -114,5 +114,73 @@ class TestBeschreibung(unittest.TestCase):
         self.assertIn("7", text)
 
 
+class KeinWegVorbei(unittest.TestCase):
+    """Die Fristprüfung darf im Programm nicht umgehbar sein.
+
+    `Archive.delete()` nimmt einen Parameter `override_retention`. Er ist
+    für Tests da – und wäre für den Nächsten, der eine Löschfunktion
+    baut, ein offenes Tor. Stephans Ansage dazu am 2026-09-22: Post, die
+    noch unter Aufbewahrungspflicht steht, wird **nicht über MailBurg**
+    gelöscht. Nicht mit Warnung, nicht mit Rückfrage – gar nicht.
+
+    Dieser Test ist deshalb dieselbe Sorte Wächter wie der in
+    `test_sicht.py`: Er schlägt an, sobald jemand den Schalter im
+    Programmcode setzt.
+    """
+
+    #: Namen, die eine Fristprüfung aushebeln würden. Der erste ist der
+    #: historische; wer einen neuen erfindet, trägt ihn hier ein – und
+    #: merkt dabei, dass er etwas tut, das nicht vorgesehen ist.
+    AUSHEBELND = ("override_retention", "frist_uebergehen", "ohne_frist")
+
+    def test_kein_aufrufer_hebelt_die_fristpruefung_aus(self) -> None:
+        """Über den Syntaxbaum, nicht über die Textsuche.
+
+        Ein `grep` findet den Namen auch in Docstrings und Kommentaren –
+        und meldet dann ausgerechnet die Stelle, an der *erklärt* wird,
+        warum es den Schalter nicht mehr gibt. Beim ersten Lauf ist mir
+        genau das passiert. Ein Wächter, der auf seine eigene
+        Begründung anschlägt, wird abgeschaltet statt beachtet.
+        """
+        import ast
+        import pathlib
+
+        wurzel = pathlib.Path(__file__).resolve().parent.parent / "mailburg"
+        fundstellen = []
+        for datei in sorted(wurzel.rglob("*.py")):
+            baum = ast.parse(datei.read_text(encoding="utf-8"), str(datei))
+            for knoten in ast.walk(baum):
+                if not isinstance(knoten, ast.Call):
+                    continue
+                for schluessel in knoten.keywords:
+                    if (schluessel.arg in self.AUSHEBELND
+                            and not (isinstance(schluessel.value, ast.Constant)
+                                     and schluessel.value.value is False)):
+                        fundstellen.append(
+                            f"{datei.relative_to(wurzel)}:{knoten.lineno}"
+                        )
+        self.assertEqual(
+            fundstellen, [],
+            "Die Fristprüfung wird hier umgangen: "
+            + ", ".join(fundstellen)
+            + " – gesperrte Post wird nicht über MailBurg gelöscht.",
+        )
+
+    def test_die_kommandozeile_bietet_keinen_schalter(self) -> None:
+        """Auch nicht unter einem anderen Namen."""
+        import pathlib
+
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "mailburg" / "__main__.py"
+        ).read_text(encoding="utf-8")
+        for verdacht in ("--trotzdem", "--frist-ignorieren", "--ohne-frist",
+                         "--override"):
+            self.assertNotIn(
+                verdacht, quelle,
+                f"{verdacht} wäre ein Weg an der Aufbewahrungsfrist vorbei",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

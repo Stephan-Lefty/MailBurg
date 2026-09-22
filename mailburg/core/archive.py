@@ -646,7 +646,6 @@ class Archive:
         reason: str,
         actor: str = "",
         note: str = "",
-        override_retention: bool = False,
     ) -> None:
         """Entfernt eine Mail und hinterlässt einen Grabstein.
 
@@ -657,8 +656,26 @@ class Archive:
 
         ``reason`` sollte benennen, warum: ``dsgvo_art17``,
         ``frist_abgelaufen``, ``irrtuemlich_archiviert``, ``privat``.
+
+        **In einem Geschäftsarchiv gibt es keinen Weg an der
+        Aufbewahrungsfrist vorbei.** Bis zum 2026-09-22 nahm diese
+        Methode ein ``override_retention=True`` entgegen, begründet mit
+        dem Löschverlangen nach Art. 17 DSGVO. Die Begründung war zu
+        weit gefasst: Art. 17 Abs. 3 nimmt ausdrücklich aus, was zur
+        Erfüllung einer rechtlichen Aufbewahrungspflicht nötig ist.
+        Solange die Frist läuft, wird nicht gelöscht, sondern die
+        Verarbeitung eingeschränkt.
+
+        Der Ausweg für eine Mail, die gar nicht geschäftlich ist, heißt
+        deshalb nicht »trotzdem löschen«, sondern ``classify(…,
+        Category.PRIVAT)`` – und dieser Vorgang hängt in der Hash-Kette,
+        ist also später belegbar. Ein stiller Schalter wäre es nicht
+        gewesen.
+
+        Stephans Ansage dazu: gesperrte Post wird nicht über MailBurg
+        gelöscht. Nicht mit Warnung, nicht mit Rückfrage – gar nicht.
         """
-        if self.mode.is_business and not override_retention:
+        if self.mode.is_business:
             self._check_retention(digest)
 
         removed = self.store.remove(digest, bucket)
@@ -798,25 +815,62 @@ class Archive:
         return treffer
 
     def _check_retention(self, digest: str) -> None:
-        """Bremst das Löschen, solange eine Aufbewahrungsfrist läuft."""
+        """Bremst das Löschen, solange eine Aufbewahrungsfrist läuft.
+
+        **Der Zweifel wirkt gegen das Löschen.** Bis zum 2026-09-22 war
+        das an zwei Stellen umgekehrt: Eine Mail ohne Datum und eine mit
+        unlesbarem Datum liefen beide mit einem schlichten ``return``
+        durch – also gelöscht, ohne dass je eine Frist gerechnet wurde.
+
+        Das widerspricht dem eigenen Aufbau: ``Category.UNBESTIMMT``
+        wird ausdrücklich »wie aufbewahrungspflichtig behandelt«. Beim
+        Datum galt das Gegenteil, und niemandem fiel es auf, weil ein
+        gelungenes Löschen aussieht wie ein Ergebnis.
+
+        Ohne Datum lässt sich keine Frist rechnen. Für ein
+        Geschäftsarchiv heißt das: nicht löschbar, solange das so ist.
+        Die Meldung sagt, was stattdessen zu tun ist.
+        """
         row = self.index.db.execute(
             "SELECT date, category FROM messages WHERE hash = ?", (digest,)
         ).fetchone()
-        if row is None or not row["date"]:
+        if row is None:
+            # Nicht im Index – dann gibt es auch nichts zu schützen.
             return
+
+        if not row["date"]:
+            raise RetentionLocked(
+                "Zu dieser Mail ist kein Datum bekannt, damit lässt sich "
+                "keine Aufbewahrungsfrist rechnen. In einem Geschäftsarchiv "
+                "bleibt sie deshalb erhalten. Wenn das Datum im Kopf der "
+                "Nachricht steht, hilft ein Neuaufbau des Suchindex "
+                "(»mailburg neuaufbau«)."
+            )
 
         try:
             reference = datetime.fromisoformat(row["date"]).date()
         except ValueError:
-            return
+            raise RetentionLocked(
+                f"Das Datum dieser Mail ist nicht lesbar "
+                f"({row['date']!r}), damit lässt sich keine "
+                f"Aufbewahrungsfrist rechnen. In einem Geschäftsarchiv "
+                f"bleibt sie deshalb erhalten."
+            ) from None
 
         category = Category(row["category"])
         if self.policy.is_locked(category, reference):
             end = self.policy.expires_end_of(category, reference)
+            # **Kein Ausweg im Text, den es nicht gibt.** Hier stand bis
+            # zum 2026-09-22 »oder ausdrücklich unter Angabe eines
+            # Grundes«. Einen solchen Weg gibt es nicht – und er soll es
+            # auch nicht geben: Post, die noch unter Aufbewahrungspflicht
+            # steht, wird nicht über MailBurg gelöscht.
             raise RetentionLocked(
                 f"Diese Mail unterliegt noch der Aufbewahrungspflicht "
-                f"({category.value}, bis Ende {end}). Löschen ist erst danach "
-                f"zulässig – oder ausdrücklich unter Angabe eines Grundes."
+                f"({category.value}, bis Ende {end}). Vorher lässt sie "
+                f"sich nicht löschen. Stufen Sie sie als »privat« ein, "
+                f"falls sie nicht geschäftlich ist – das ist der einzige "
+                f"Weg, und er wird im Journal vermerkt."
             )
 
     # --------------------------------------------------------------- Prüfen

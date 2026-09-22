@@ -389,16 +389,71 @@ class TestGeschaeftsarchiv(ArchiveTestCase):
 
         self.assertTrue(self.archive.store.exists(result.hash, result.bucket))
 
-    def test_loeschen_bleibt_mit_ausdruecklicher_begruendung_moeglich(self) -> None:
-        """Sonst ließe sich ein Löschverlangen nach Art. 17 nie erfüllen."""
+    def test_auch_ein_loeschverlangen_bricht_die_frist_nicht(self) -> None:
+        """Art. 17 Abs. 3 DSGVO nimmt Aufbewahrungspflichten aus.
+
+        Bis zum 2026-09-22 stand hier das Gegenteil: ein Test namens
+        »löschen bleibt mit ausdrücklicher Begründung möglich«, der
+        `override_retention=True` setzte. Die Begründung war zu weit
+        gefasst – solange die Frist läuft, wird nicht gelöscht, sondern
+        die Verarbeitung eingeschränkt.
+
+        Stephans Ansage: gesperrte Post wird nicht über MailBurg
+        gelöscht. Nicht mit Warnung, nicht mit Rückfrage – gar nicht.
+        """
         result = self.archive.add(probe("Beleg", jahr=2025), account="firma", folder="INBOX")
         self.archive.index.commit()
 
-        self.archive.delete(
-            result.hash, result.bucket,
-            reason="dsgvo_art17", actor="stephan", override_retention=True,
-        )
+        with self.assertRaises(RetentionLocked):
+            self.archive.delete(
+                result.hash, result.bucket,
+                reason="dsgvo_art17", actor="stephan",
+            )
+        self.assertTrue(self.archive.store.exists(result.hash, result.bucket))
+
+    def test_der_ausweg_fuehrt_ueber_die_einstufung(self) -> None:
+        """Was nicht geschäftlich ist, wird als privat eingestuft.
+
+        Das ist der einzige Weg – und er hängt im Journal, ist also
+        später belegbar. Ein stiller Schalter wäre das nicht gewesen.
+        """
+        from mailburg.core.retention import Category
+
+        result = self.archive.add(probe("Beleg", jahr=2025), account="firma", folder="INBOX")
+        self.archive.index.commit()
+
+        self.archive.classify(result.hash, Category.PRIVAT, actor="stephan")
+        self.archive.delete(result.hash, result.bucket, reason="privat")
         self.assertFalse(self.archive.store.exists(result.hash, result.bucket))
+
+    def test_ohne_datum_wird_nicht_geloescht(self) -> None:
+        """Im Zweifel gegen das Löschen – wie bei `Category.UNBESTIMMT`.
+
+        Ohne Datum lässt sich keine Frist rechnen. Bis zum 2026-09-22
+        lief dieser Fall mit einem schlichten `return` durch, also
+        gelöscht, ohne dass je eine Frist gerechnet wurde.
+        """
+        result = self.archive.add(probe("Ohne Datum"), account="firma", folder="INBOX")
+        self.archive.index.db.execute(
+            "UPDATE messages SET date = '' WHERE hash = ?", (result.hash,)
+        )
+        self.archive.index.commit()
+
+        with self.assertRaises(RetentionLocked):
+            self.archive.delete(result.hash, result.bucket, reason="versehen")
+        self.assertTrue(self.archive.store.exists(result.hash, result.bucket))
+
+    def test_unlesbares_datum_wird_nicht_geloescht(self) -> None:
+        """Dieselbe Lücke, zweite Form."""
+        result = self.archive.add(probe("Krummes Datum"), account="firma", folder="INBOX")
+        self.archive.index.db.execute(
+            "UPDATE messages SET date = 'gestern' WHERE hash = ?", (result.hash,)
+        )
+        self.archive.index.commit()
+
+        with self.assertRaises(RetentionLocked):
+            self.archive.delete(result.hash, result.bucket, reason="versehen")
+        self.assertTrue(self.archive.store.exists(result.hash, result.bucket))
 
     def test_abgelaufene_frist_gibt_die_mail_frei(self) -> None:
         result = self.archive.add(probe("Uralt", jahr=2005), account="firma", folder="INBOX")

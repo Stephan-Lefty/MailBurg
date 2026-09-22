@@ -7,6 +7,41 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **Eine Mail ohne Datum ließ sich aus einem Geschäftsarchiv löschen.**
+  Ohne Datum lässt sich keine Aufbewahrungsfrist rechnen – und die
+  Prüfung ging in diesem Fall mit einem schlichten `return` durch, statt
+  zu bremsen. Dasselbe bei einem unlesbaren Datum.
+
+  Das widersprach dem eigenen Aufbau: `Category.UNBESTIMMT` wird
+  ausdrücklich »wie aufbewahrungspflichtig behandelt«. Beim Datum galt
+  das Gegenteil, und es fiel niemandem auf, weil ein gelungenes Löschen
+  aussieht wie ein Ergebnis.
+
+- **`override_retention` ist entfallen.** Der Parameter hebelte die
+  Fristprüfung aus, begründet mit dem Löschverlangen nach Art. 17 DSGVO.
+  Die Begründung war zu weit gefasst: **Art. 17 Abs. 3 nimmt aus, was
+  zur Erfüllung einer rechtlichen Aufbewahrungspflicht nötig ist.**
+  Solange die Frist läuft, wird nicht gelöscht, sondern die Verarbeitung
+  eingeschränkt.
+
+  Benutzt hat ihn im Programm ohnehin niemand – er war ein offenes Tor
+  für den Nächsten, der eine Löschfunktion baut. Ein Wächtertest hält
+  es jetzt zu, über den Syntaxbaum statt über eine Textsuche.
+
+  Der Ausweg für eine Mail, die gar nicht geschäftlich ist, heißt
+  weiterhin: als **privat** einstufen. Dieser Vorgang hängt in der
+  Hash-Kette und ist damit belegbar – ein stiller Schalter wäre das
+  nicht gewesen.
+
+- **Die Fehlermeldung versprach einen Weg, den es nicht gibt.** »Löschen
+  ist erst danach zulässig – oder ausdrücklich unter Angabe eines
+  Grundes«: Diesen Weg gab es im Programm nirgends. Sie nennt jetzt den,
+  den es gibt.
+
 ## [1.7.0] – 2026-09-22
 
 **Der erste Durchlauf mit einem echten Google-Konto.** Bis zum
