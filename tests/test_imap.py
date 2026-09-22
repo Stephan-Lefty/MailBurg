@@ -264,6 +264,33 @@ class ZustandTest(unittest.TestCase):
         self.assertEqual([m.uid for m in q2.iter_messages()], [1, 2])
         self.assertEqual(z.uidvalidity("Firma", "INBOX"), 2000)
 
+    def test_hoechststand_ueber_dem_server_erzwingt_vollabruf(self):
+        """Die zweite Hälfte desselben Fehlers.
+
+        Nach einem Nummernwechsel stehen im Index beide Nummerierungen
+        nebeneinander – die alte mit den höheren Zahlen. `max_uid()`
+        nimmt das Maximum über alle. Ein Vollabruf holt die Post zwar
+        einmal herein, **aber der Lauf danach ist wieder blind**.
+
+        Hier gibt es keinen gespeicherten Zustand: Der Widerspruch
+        allein – der Server kennt nur Nummern bis 3, das Archiv
+        behauptet 5000 – muss genügen.
+        """
+        server = FakeImap([
+            FakeOrdner("INBOX", {1: mail("a"), 2: mail("b"), 3: mail("c")})
+        ])
+        q = ImapSource(konto(), verbindung=server,
+                       hoechststand=lambda _o: 5000)
+        self.assertEqual([m.uid for m in q.iter_messages()], [1, 2, 3])
+
+    def test_plausibler_hoechststand_bleibt_gueltig(self):
+        """Ohne Widerspruch wird nicht neu gelesen."""
+        server = FakeImap([
+            FakeOrdner("INBOX", {1: mail("a"), 2: mail("b"), 3: mail("c")})
+        ])
+        q = ImapSource(konto(), verbindung=server, hoechststand=lambda _o: 2)
+        self.assertEqual([m.uid for m in q.iter_messages()], [3])
+
     def test_vorgemerkte_mail_wird_erneut_geholt(self):
         # Sie war beim letzten Lauf gescheitert und liegt unterhalb des
         # Höchststands - ohne Vormerkung fehlte sie für immer.

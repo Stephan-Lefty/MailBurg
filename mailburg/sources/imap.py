@@ -692,6 +692,36 @@ class ImapSource(Source):
         seit = 0 if neu_lesen else self._hoechststand(anzeige)
 
         gefunden = set(self._suchen(f"UID {seit + 1}:*"))
+
+        # **Der Server kann nicht weniger haben, als wir zu haben
+        # glauben.** Steht seine höchste UID unter unserem Höchststand,
+        # ist der Höchststand wertlos – dann zählen wir Nummern aus
+        # einer Nummerierung mit, die es nicht mehr gibt.
+        #
+        # Das ist die zweite Hälfte des Fehlers vom 2026-09-22. Die
+        # erste war, dass ein abgebrochener Vollabruf nicht nachgeholt
+        # wurde. Behebt man nur die, bleibt der Schaden trotzdem: Nach
+        # einem Wechsel stehen im Index beide Nummerierungen
+        # nebeneinander, die alte mit den höheren Zahlen – und
+        # `index.max_uid()` nimmt das Maximum über alle. Ein Vollabruf
+        # holt die Post zwar einmal herein, aber der Lauf danach ist
+        # wieder blind.
+        #
+        # Die Prüfung greift auch dort, wo ein Server den Wechsel gar
+        # nicht meldet: nach einem Umzug, nach einer Wiederherstellung
+        # aus einer Sicherung. `UIDVALIDITY` ist eine Zusage des
+        # Servers – diese hier ist eine Beobachtung.
+        if not neu_lesen and gefunden and max(gefunden) < seit:
+            self._melden(
+                f"Ordner '{anzeige}': Der Server kennt nur Nummern bis "
+                f"{max(gefunden)}, im Archiv steht {seit}. Die "
+                f"Nummerierung hat sich geändert – der Ordner wird "
+                f"vollständig neu gelesen."
+            )
+            neu_lesen = True
+            seit = 0
+            gefunden = set(self._suchen("UID 1:*"))
+
         # ``n:*`` liefert nach RFC 3501 immer mindestens die höchste UID –
         # auch wenn die kleiner als n ist. Ohne diesen Filter holte jeder
         # Lauf die zuletzt archivierte Mail noch einmal.

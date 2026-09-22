@@ -7,7 +7,7 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.7.1] – 2026-09-22
 
 ### Behoben
 
@@ -36,6 +36,20 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   bleibt die alte Kennzahl stehen und der nächste Lauf holt alles.
   **Diese Reihenfolge kostet im schlechtesten Fall einen zweiten
   Vollabruf. Die andere kostet Post.**
+
+  **Und dazu die zweite Hälfte**, die beinahe liegen geblieben wäre:
+  Nach einem Wechsel stehen im Index beide Nummerierungen nebeneinander
+  – die alte mit den höheren Zahlen –, und `index.max_uid()` nimmt das
+  Maximum über alle. Ein Vollabruf holt die Post zwar einmal herein,
+  *der Lauf danach wäre wieder blind gewesen*.
+
+  MailBurg prüft deshalb jetzt auf den Widerspruch selbst: **Der Server
+  kann nicht weniger haben, als wir zu haben glauben.** Kennt er nur
+  Nummern bis 3, während im Archiv 5000 steht, wird der Ordner neu
+  gelesen – und es wird gesagt, warum. Das greift auch dort, wo ein
+  Server den Wechsel gar nicht meldet: nach einem Umzug, nach einer
+  Wiederherstellung aus einer Sicherung. `UIDVALIDITY` ist eine Zusage
+  des Servers; diese Prüfung ist eine Beobachtung.
 
 - **Ohne Terminal nannte jede Passwortabfrage denselben Ausweg** –
   `MAILBURG_ARCHIVPASSWORTDATEI` –, auch wenn nach dem Passwort eines
