@@ -163,6 +163,24 @@ Vertrauen ist mehr wert als die gesparte Tipparbeit.</p>
 <p>Abgelegt werden die Passwörter im Schlüsselbund Ihres Systems, nie in
 einer Datei des Programms.</p>
 
+<h3>Wenn die Post weitergeleitet und danach gelöscht wird</h3>
+
+<p><b>Dann archivieren Sie das falsche Postfach.</b> Wer bei seinem
+Anbieter eine Weiterleitung eingerichtet hat, die eingehende Post an eine
+andere Adresse schickt und hier anschließend löscht, hat ein Postfach,
+durch das die Mails nur hindurchfallen. MailBurg holt, was da ist – und
+da ist nichts mehr.</p>
+
+<p>Übrig bleiben die <i>gesendeten</i> Nachrichten, denn eine
+Weiterleitung betrifft nur den Posteingang. Das ist das Tückische: Das
+Archiv füllt sich, die Prüfung meldet »alles in Ordnung«, die Zahlen
+sehen plausibel aus – und die Hälfte fehlt.</p>
+
+<p><b>MailBurg kann das nicht bemerken.</b> Ein leerer Posteingang sieht
+genauso aus wie ein aufgeräumter. Richten Sie deshalb das Postfach ein,
+in dem die Post am Ende <i>liegt</i>, nicht das, durch das sie
+hindurchgeht.</p>
+
 <h3>Wenn das gewohnte Passwort nicht angenommen wird</h3>
 
 <p><b>Das ist der häufigste Grund, warum eine Einrichtung scheitert</b> –

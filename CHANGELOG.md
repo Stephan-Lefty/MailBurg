@@ -58,6 +58,19 @@ dorthin kamen fünf Fehler heraus, und keiner davon steckte im Abruf.
   Postfach zugeordnet«. Derselbe Fehler war am 27.08. schon einmal da und
   wurde nur im Anlege-Zweig behoben; dieser hier blieb liegen.
 
+- **Eine Weiterleitung mit Löschen macht das Archiv lückenhaft** – und
+  MailBurg kann das nicht bemerken. Steht jetzt in der Anleitung und im
+  Handbuch.
+
+  Aufgefallen bei zwei Testmails an drei eigene Gmail-Konten: Im Archiv
+  kamen sie nur zweimal statt dreimal an. Der Abruf war korrekt – zwei
+  der Konten leiteten an ein anderes Postfach weiter und löschten
+  danach. Übrig blieben die gesendeten Nachrichten.
+
+  Das ist das Tückische: Das Archiv füllt sich, die Prüfung meldet
+  »alles in Ordnung«, die Zahlen sehen plausibel aus. Ein leerer
+  Posteingang sieht eben genauso aus wie ein aufgeräumter.
+
 ### Hinzugefügt
 
 - **`werkzeuge/schwaerzen.py`** – legt graue, deckende Balken über

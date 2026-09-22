@@ -80,6 +80,30 @@ sudo apt install gnome-keyring python3-keyring
 sudo pacman -S gnome-keyring python-keyring
 ```
 
+## Wenn die Post weitergeleitet und danach gelöscht wird
+
+**Dann archivieren Sie das falsche Postfach.** Wer bei seinem Anbieter eine
+Weiterleitung eingerichtet hat, die eingehende Post an eine andere Adresse
+schickt und anschließend hier löscht, hat ein Postfach, durch das die Mails
+nur hindurchfallen. MailBurg holt, was da ist – und da ist nichts mehr.
+
+Übrig bleiben die **gesendeten** Nachrichten, denn die Weiterleitung betrifft
+nur den Posteingang. Das ist das Tückische daran: Das Archiv füllt sich, die
+Prüfung meldet »alles in Ordnung«, und die Zahlen sehen plausibel aus. Nur
+fehlt die Hälfte.
+
+**MailBurg kann das nicht bemerken.** Ein leerer Posteingang sieht genauso
+aus wie ein aufgeräumter.
+
+Archivieren Sie deshalb **das Postfach, in dem die Post am Ende liegt** – im
+Beispiel oben also das Ziel der Weiterleitung, nicht die Quelle. Die
+gesendeten Nachrichten der Quelladresse holen Sie zusätzlich, wenn Sie sie
+brauchen.
+
+Aufgefallen am 22.09.2026: Zwei Testmails an drei eigene Gmail-Konten kamen
+im Archiv nur zweimal statt dreimal an. Der Abruf war korrekt – zwei der
+Konten leiteten an Proton weiter und löschten danach.
+
 ## App-Passwörter
 
 Die großen Anbieter lassen das Kennwort der Weboberfläche für den Zugriff von
