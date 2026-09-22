@@ -96,6 +96,26 @@ Knopf braucht. Die vorhandenen Tests fingen `QMessageBox.information` ab – ohn
 Anpassung wäre `exec()` gelaufen. **Ein blockierender Dialog sieht im Testlauf
 nicht nach einem Fehler aus, sondern nach einem hängenden Rechner.**
 
+### Und eine Auskunft über die eigene Umgebung, die zweimal falsch war
+
+Ich sagte Stephan zweimal, seine Installation laufe noch auf der alten Fassung
+und das heute Gebaute sei »im Repo, aber noch nicht bei dir«. **Beides war
+falsch.** Seine venv unter `~/.local/share/mailburg/venv` ist ein
+*editierbarer* Install und zeigt direkt auf den Repo-Ordner – jede gespeicherte
+Datei ist beim nächsten Programmstart aktiv.
+
+Das ist mehr als eine Ungenauigkeit: Der Satz verleitet dazu, eine halbfertige
+Datei liegen zu lassen, weil sie ja »noch niemanden erreicht«. Bei einem
+Archivprogramm, das derselbe Mensch nebenher benutzt, ist das ein echtes
+Risiko.
+
+Nachsehen statt annehmen:
+
+```bash
+~/.local/share/mailburg/venv/bin/python3 -c \
+  "import mailburg, pathlib; print(pathlib.Path(mailburg.__file__).parent)"
+```
+
 1984 Tests, `lesbarkeit.py` ohne Befund.
 
 ## Hier war Schluss (Stand 2026-09-21, Montag) – 1.5.0 bis 1.6.0
