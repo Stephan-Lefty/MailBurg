@@ -96,6 +96,42 @@ Knopf braucht. Die vorhandenen Tests fingen `QMessageBox.information` ab – ohn
 Anpassung wäre `exec()` gelaufen. **Ein blockierender Dialog sieht im Testlauf
 nicht nach einem Fehler aus, sondern nach einem hängenden Rechner.**
 
+### Der Abgleich steht endlich im Menü – und fand am ersten Tag etwas
+
+`mailburg abgleich` gibt es seit dem 25.08. Er fragt jedes Postfach, was dort
+vor einem Stichtag liegt, und hält **jede Nummer** gegen das Archiv. Einen
+Monat lang gab es ihn nur auf der Kommandozeile; wer MailBurg über das Fenster
+benutzt – fast jeder –, kam nie an ihn heran.
+
+**Er beantwortet die Frage, die `mailburg pruefen` nicht beantworten kann.**
+Die Prüfung sagt, ob das Archiv heil ist. Ob darin *alles* liegt, kann sie
+nicht wissen: Ein Archiv kann nicht prüfen, was es nie gesehen hat. Genau
+diese Lücke hat der Nummernwechsel-Fehler ausgenutzt – zwei Tage lang kam
+Post nicht an, während die Prüfung zu Recht »alles in Ordnung« meldete.
+
+Beim ersten Lauf an sechs echten Postfächern kamen drei Dinge heraus:
+
+1. **Proton ist wieder vollständig** (979 bzw. 1.363 Nachrichten) – die
+   Gegenprobe zum Fehler des Tages, bestanden.
+2. **Ein Fehler im Abgleich selbst:** Zwei Postfächer meldeten
+   »0 – vollständig«. Null verglichen, und daneben eine
+   Unbedenklichkeitsbescheinigung. Bei den Ordnern darunter stand es von
+   Anfang an richtig – wieder zwei Stellen, eine nachgezogen, die andere
+   nicht.
+3. **Ein Befund, den niemand gesucht hat:** Zwei Postfächer lieferten für
+   »älter als 3 Monate« exakt dieselbe Zahl wie für »älter als 6 Monate«
+   (754 und 185). Dort war seit spätestens März nichts mehr liegen geblieben.
+   Ursache harmlos – eine Weiterleitung mit Löschen –, aber dieselbe
+   Beobachtung passt auf einen abgelaufenen Zugang oder einen Abruf, der seit
+   Wochen scheitert. **Ein Archiv kann gesund aussehen, während die Zufuhr
+   abgerissen ist.** Steht als Aufgabe in der TODO.
+
+**Die eine Regel, die nicht aufgeweicht werden sollte:** Ein einziges stummes
+Postfach kippt das Gesamturteil, auch wenn alle übrigen vollständig sind. Wer
+aufräumt, weil neun von zehn in Ordnung waren, verliert die Post des zehnten
+an beiden Stellen. Ein Befund, der nicht erhoben werden konnte, ist kein guter
+Befund. Dafür gibt es einen eigenen Test.
+
 ### Eine Korrektur, die selbst falsch war
 
 Ich sagte Stephan, seine Installation laufe noch auf der alten Fassung und das
@@ -1225,9 +1261,15 @@ aus wie ein falscher Wert und ist in Wahrheit ein fehlender Aufruf.
 QT_QPA_PLATFORM=offscreen python3 werkzeuge/lesbarkeit.py
 ```
 
-Öffnet **jedes Fenster der Oberfläche** – seit dem 2026-09-12 alle
-einunddreißig statt zehn –, misst nach, meldet abgeschnittenen Text und
-Rollbalken, die es nicht geben dürfte. Bei 9 bis 24 pt ohne Befund.
+Öffnet **jedes Fenster der Oberfläche** – seit dem 2026-09-12 alle statt
+zehn –, misst nach, meldet abgeschnittenen Text und Rollbalken, die es nicht
+geben dürfte. Bei 9 bis 24 pt ohne Befund.
+
+**Die Zahl steht hier bewusst nicht mehr.** Sie stand als »einunddreißig« da
+und wanderte von einem Release-Text in den nächsten, während längst ein
+Fenster dazugekommen war. Wie viele es sind, sagt `BAUPLAENE` – und der
+Wächtertest hält die Tabelle vollständig. Eine abgeschriebene Zahl tut das
+nicht.
 
 Gemessen werden Auswahlfelder, Eingabefelder, umbrechende Texte,
 einzeilige Beschriftungen und Spaltenüberschriften. Die letzten beiden

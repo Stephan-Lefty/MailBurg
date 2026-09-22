@@ -7,7 +7,7 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.7.2] – 2026-09-22
 
 ### Hinzugefügt
 
@@ -38,6 +38,33 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Zwei Fehler im neuen Fenster fanden die Werkzeuge, bevor es jemand
   gesehen hat: ein zu schmaler Spaltenkopf bei 24 pt und ein doppelt
   vergebener Name, der das halbe Layout verschluckte.
+
+### Behoben
+
+- **»0 geprüft« ist kein »vollständig«.** Beim ersten echten Einsatz an
+  sechs Postfächern meldeten zwei davon »0 – vollständig«: Null
+  verglichen, und daneben eine Unbedenklichkeitsbescheinigung. Wo nichts
+  war, wurde nichts verglichen – das ist die Abwesenheit eines Befunds,
+  nicht einer.
+
+  Bei den Ordnern darunter stand es von Anfang an richtig (»nichts so
+  altes vorhanden«). Zwei Stellen, eine nachgezogen, die andere nicht.
+  Dieselbe Frage eine Ebene höher gleich mit: Wären alle Postfächer
+  leer, stünde dort »Alle 0 Nachrichten sind im Archiv, Sie können sie
+  gefahrlos aufräumen lassen«.
+
+### Geändert
+
+- **Die Warnung vor Weiterleitungen war zu absolut.** Sie behauptete,
+  durch ein weiterleitendes Postfach fielen die Mails »nur hindurch« und
+  es sei nichts mehr da. Der Abgleich zeigte am selben Tag die andere
+  Hälfte: In zwei solchen Postfächern lagen 754 und 185 ältere
+  Nachrichten, alle vollständig archiviert.
+
+  Eine Weiterleitung wirkt nur auf das, was **nach** ihrer Einrichtung
+  eintrifft. Der Altbestand bleibt liegen – und genau deshalb sieht ein
+  solches Postfach gut gefüllt aus, während seit Monaten nichts Neues
+  dazukommt. Die Warnung bleibt richtig, ihre Begründung war es nicht.
 
 ## [1.7.1] – 2026-09-22
 
