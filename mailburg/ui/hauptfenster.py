@@ -389,6 +389,30 @@ class Hauptfenster(QMainWindow):
         post.addAction(self.rueckspielen_aktion)
 
         post.addSeparator()
+        # **Der Nachweis vor dem Aufräumen.** Gebaut am 2026-08-25 für
+        # die Kommandozeile und dort einen Monat lang unsichtbar
+        # geblieben – für alle, die MailBurg über das Fenster benutzen,
+        # also fast alle.
+        #
+        # Er beantwortet die Frage, die »Archiv prüfen« nicht
+        # beantworten kann: Die Prüfung sagt, ob das Archiv heil ist.
+        # Ob darin *alles* liegt, kann sie nicht wissen – ein Archiv
+        # kann nicht prüfen, was es nie gesehen hat.
+        #
+        # Nachgeholt am 2026-09-22, nachdem zwei Tage lang Post nicht
+        # ankam, während das Archiv kerngesund war und die Prüfung zu
+        # Recht »alles in Ordnung« meldete. Gefunden hat es ein Mensch,
+        # dem auffiel, dass im Postfach etwas lag, was im Archiv fehlte.
+        self.abgleich_aktion = QAction("Ist alles im Archiv? …", self)
+        self.abgleich_aktion.setStatusTip(
+            "Jedes Postfach fragen, was dort älter als ein Stichtag ist, "
+            "und gegen das Archiv halten – der Nachweis, bevor Sie im "
+            "Mailprogramm aufräumen lassen."
+        )
+        self.abgleich_aktion.triggered.connect(self._abgleich)
+        post.addAction(self.abgleich_aktion)
+
+        post.addSeparator()
         # Mit der Zahl im Text: Ein eingescanntes PDF meldet sich nicht
         # von selbst. Wer nicht weiß, dass ein Teil seines Archivs
         # unauffindbar ist, sucht diesen Menüpunkt auch nicht.
@@ -2536,6 +2560,19 @@ class Hauptfenster(QMainWindow):
         if self.archiv is None:
             return
         Rueckspieldialog(self.archiv, self.suchfeld.text().strip(), self).exec()
+
+    def _abgleich(self) -> None:
+        """Hält Postfach und Archiv gegeneinander."""
+        from mailburg.core.accounts import Kontenliste
+        from mailburg.ui.abgleich import Abgleichdialog
+
+        if self.archiv is None:
+            return
+        # Nur die Postfächer dieses Archivs, und nur die aktiven: Ein
+        # Konto, das hierher gar nicht abgerufen wird, kann hier auch
+        # nichts vermissen lassen.
+        konten = Kontenliste().fuer_archiv(self.archiv.uuid)
+        Abgleichdialog(self.archiv, konten, self).exec()
 
     def _texterkennung(self) -> None:
         from mailburg.ui.texterkennung import Texterkennungsdialog

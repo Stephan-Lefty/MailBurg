@@ -7169,3 +7169,111 @@ class ZuletztGesuchtImMenueTest(SuchordnerImBaumTest):
 
         self.fenster._historie_leeren()
         self.assertEqual(suchordner.zuletzt_gesucht(self.kennung), [])
+
+
+class AbgleichdialogTest(OberflaechenTest):
+    """Der Nachweis vor dem Aufräumen – jetzt auch im Fenster.
+
+    Gebaut war der Abgleich seit dem 2026-08-25, aber nur für die
+    Kommandozeile. Wer MailBurg über das Fenster benutzt – also fast
+    jeder –, kam nie an den einen Befehl, der beantwortet, ob wirklich
+    alles archiviert ist.
+    """
+
+    def _dialog(self, befunde=None, konten=None):
+        import tempfile
+        from unittest import mock
+
+        from mailburg.core.accounts import Konto
+        from mailburg.core.archive import Archive
+        from mailburg.ui.abgleich import Abgleichdialog
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        ort = pathlib.Path(ordner.name) / "Archiv"
+        archiv = Archive.create(ort)
+        self.addCleanup(archiv.close)
+
+        if konten is None:
+            konten = [Konto(name="Firma", server="imap.example.org",
+                            benutzer="post@example.org")]
+        dialog = Abgleichdialog(archiv, konten)
+        self.addCleanup(dialog.close)
+        if befunde is not None:
+            with mock.patch.object(dialog, "fertig"):
+                dialog._auswerten(befunde)
+        return dialog
+
+    def _befund(self, **abweichend):
+        from datetime import date
+
+        from mailburg.core.abgleich import Befund
+
+        werte = {"konto": "Firma", "stichtag": date(2026, 3, 26)}
+        werte.update(abweichend)
+        return Befund(**werte)
+
+    def _ordner(self, **abweichend):
+        from mailburg.core.abgleich import Ordnerbefund
+
+        werte = {"ordner": "INBOX", "auf_dem_server": 10, "im_archiv": 10}
+        werte.update(abweichend)
+        return Ordnerbefund(**werte)
+
+    def test_ohne_postfaecher_gibt_es_nichts_zu_pruefen(self):
+        """Und das steht da, statt eines leeren Fensters."""
+        dialog = self._dialog(konten=[])
+        self.assertFalse(dialog.starten.isEnabled())
+        self.assertIn("kein Postfach", dialog.stand.text())
+
+    def test_vollstaendig_heisst_aufraeumen_erlaubt(self):
+        dialog = self._dialog([
+            self._befund(ordner=[self._ordner()])
+        ])
+        self.assertIn("gefahrlos", dialog.stand.text())
+
+    def test_ein_einziges_stummes_postfach_kippt_das_urteil(self):
+        """**Der wichtigste Fall.**
+
+        Wer aufräumt, weil neun von zehn Postfächern vollständig sind,
+        verliert die Post des zehnten an beiden Stellen. Ein Befund, der
+        nicht erhoben werden konnte, ist kein guter Befund.
+        """
+        dialog = self._dialog([
+            self._befund(ordner=[self._ordner()]),
+            self._befund(konto="Proton", fehler="Anmeldung abgelehnt"),
+        ])
+        self.assertNotIn("gefahrlos", dialog.stand.text())
+        self.assertIn("nichts aufgeräumt", dialog.stand.text())
+
+    def test_fehlende_mails_stehen_im_baum(self):
+        dialog = self._dialog([
+            self._befund(ordner=[
+                self._ordner(im_archiv=7, fehlend=[8, 9, 10]),
+            ])
+        ])
+        self.assertIn("3 fehlen", dialog.stand.text() + self._baumtext(dialog))
+
+    def test_geaenderte_nummerierung_wird_nicht_als_vollstaendig_gemeldet(self):
+        """Der Fall vom 2026-09-22, hier als Befund.
+
+        Hat der Server neu nummeriert, vergleicht ein UID-Abgleich Äpfel
+        mit Birnen. Das muss dastehen, nicht »vollständig«.
+        """
+        dialog = self._dialog([
+            self._befund(ordner=[
+                self._ordner(uidvalidity_geaendert=True),
+            ])
+        ])
+        gesamt = dialog.stand.text() + self._baumtext(dialog)
+        self.assertNotIn("gefahrlos", gesamt)
+        self.assertIn("Nummerierung", gesamt)
+
+    def _baumtext(self, dialog) -> str:
+        teile = []
+        for i in range(dialog.liste.topLevelItemCount()):
+            oben = dialog.liste.topLevelItem(i)
+            teile += [oben.text(s) for s in range(3)]
+            for k in range(oben.childCount()):
+                teile += [oben.child(k).text(s) for s in range(3)]
+        return " ".join(teile)

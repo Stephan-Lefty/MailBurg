@@ -974,13 +974,32 @@ entscheidend.</p>
 
 <ol>
 <li><b>Abrufen</b>, bis alles im Archiv ist.</li>
-<li><b>Vergewissern.</b> Auf der Kommandozeile prüft
-<i>mailburg abgleich</i>, ob wirklich jede Mail vor einem Stichtag im
-Archiv liegt. Der Befund lautet nur dann „alle im Archiv", wenn es
-zweifelsfrei stimmt – bei einem Fehler oder einer Unklarheit bleibt er
-offen.</li>
+<li><b>Vergewissern</b> über <i>Post → Ist alles im Archiv? …</i></li>
 <li><b>Erst dann</b> im Mailprogramm oder beim Anbieter aufräumen.</li>
 </ol>
+
+<h3>Ist alles im Archiv?</h3>
+
+<p>Dieser Punkt fragt jedes Postfach, welche Nachrichten dort älter als
+ein Stichtag sind, und hält <b>jede einzelne</b> gegen das Archiv.
+Sie wählen den Zeitraum – drei Monate bis zwei Jahre – und ob alle
+Postfächer geprüft werden oder nur eines.</p>
+
+<p><b>Das ist etwas anderes als <i>Archiv prüfen</i>.</b> Die Prüfung
+sieht sich das Archiv an und sagt, ob es heil ist. Ob darin
+<i>alles</i> liegt, kann sie nicht wissen – ein Archiv kann nicht
+prüfen, was es nie gesehen hat. Genau diese Lücke schließt der
+Abgleich.</p>
+
+<p>Der Befund lautet nur dann „alle im Archiv", wenn es zweifelsfrei
+stimmt. Ist ein Postfach nicht erreichbar oder hat der Server seine
+Nachrichtennummern neu vergeben, bleibt er ausdrücklich offen – dann
+sollten Sie nichts löschen, auch wenn die übrigen Postfächer
+vollständig sind.</p>
+
+<p>Gelesen wird nur; im Postfach ändert sich nichts. Auf der
+Kommandozeile heißt derselbe Befehl <i>mailburg abgleich</i>, dort
+zusätzlich mit frei wählbarem Stichtag.</p>
 
 <p><b>Räumen Sie nicht auf, solange ein Postfach beim Abruf gefehlt
 hat.</b> MailBurg sagt Ihnen nach jedem selbst gestarteten Abruf, ob

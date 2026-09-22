@@ -7,6 +7,38 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **»Ist alles im Archiv?« steht jetzt im Menü** – unter *Post*, gleich
+  bei den anderen Wegen hinein und hinaus.
+
+  Den Abgleich gibt es seit dem 25.08.2026. Er fragt jedes Postfach,
+  welche Nachrichten dort älter als ein Stichtag sind, und hält **jede
+  einzelne** gegen das Archiv. Einen Monat lang gab es ihn nur auf der
+  Kommandozeile – für alle, die MailBurg über das Fenster benutzen, also
+  fast alle, existierte er damit nicht.
+
+  **Er beantwortet die Frage, die `mailburg pruefen` nicht beantworten
+  kann.** Die Prüfung sagt, ob das Archiv heil ist. Ob darin *alles*
+  liegt, kann sie nicht wissen – ein Archiv kann nicht prüfen, was es
+  nie gesehen hat.
+
+  Der Anlass, es nachzuholen, war der Fehler vom selben Tag: Zwei Tage
+  lang kam Post nicht an, das Archiv war dabei kerngesund, und die
+  Prüfung meldete zu Recht »alles in Ordnung«. Gefunden hat es ein
+  Mensch, dem auffiel, dass im Postfach etwas lag, was im Archiv fehlte.
+  **Genau diese Beobachtung macht der Abgleich von selbst.**
+
+  Ein einziges stummes Postfach kippt dabei das Urteil – auch wenn alle
+  übrigen vollständig sind. Wer aufräumt, weil neun von zehn in Ordnung
+  waren, verliert die Post des zehnten an beiden Stellen.
+
+  Zwei Fehler im neuen Fenster fanden die Werkzeuge, bevor es jemand
+  gesehen hat: ein zu schmaler Spaltenkopf bei 24 pt und ein doppelt
+  vergebener Name, der das halbe Layout verschluckte.
+
 ## [1.7.1] – 2026-09-22
 
 ### Behoben

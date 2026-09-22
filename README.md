@@ -352,6 +352,25 @@ holt der nächste genau den Rest. Und eine einzelne Mail, an der sich MailBurg
 verschluckt hat, wird vorgemerkt und beim nächsten Lauf erneut angefordert –
 sonst fehlte sie für immer, ohne dass es je jemand bemerkte.
 
+### Bevor Sie Ihr Postfach aufräumen
+
+**Ist wirklich alles im Archiv?** Diese Frage beantwortet *Post → Ist alles im
+Archiv? …* – oder `mailburg abgleich` auf der Kommandozeile. MailBurg fragt
+dann jedes Postfach, welche Nachrichten dort älter als ein Stichtag sind, und
+hält **jede einzelne** gegen das Archiv.
+
+Das ist etwas anderes als `mailburg pruefen`: Die Prüfung sagt, ob das Archiv
+heil ist. Ob darin *alles* liegt, kann sie nicht wissen – **ein Archiv kann
+nicht prüfen, was es nie gesehen hat.**
+
+Der Befund lautet nur dann »alle im Archiv«, wenn es zweifelsfrei stimmt. Ein
+Postfach, das nicht antwortet, oder ein Server, der seine Nachrichtennummern
+neu vergeben hat, hält ihn offen – auch wenn alle übrigen vollständig sind. Wer
+aufräumt, weil neun von zehn Postfächern in Ordnung waren, verliert die Post
+des zehnten an beiden Stellen.
+
+Der ganze Ablauf steht in [Postfach entlasten](docs/postfach-entlasten.md).
+
 ## Im Browser, wenn mehrere darauf zugreifen
 
 Für den Fall, dass nicht nur eine Person an das Archiv soll – eine Kanzlei,

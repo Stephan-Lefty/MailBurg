@@ -254,6 +254,30 @@ wird nicht gefiltert. Wer »Junk« von Hand anklickt, hat entschieden.
 
 Auf der Kommandozeile ist das `mailburg importieren ARCHIV QUELLE --konto NAME`.
 
+**Ist alles im Archiv? …**
+
+Der Nachweis, bevor Sie Ihr Postfach aufräumen lassen. MailBurg fragt jedes
+Postfach dieses Archivs, welche Nachrichten dort älter als ein Stichtag sind,
+und hält **jede einzelne** gegen das Archiv. Sie wählen den Zeitraum – drei
+Monate bis zwei Jahre – und ob alle Postfächer drankommen oder nur eines.
+
+**Das ist etwas anderes als *Archiv prüfen*.** Die Prüfung sieht sich das
+Archiv an und sagt, ob es heil ist. Ob darin *alles* liegt, kann sie nicht
+wissen – ein Archiv kann nicht prüfen, was es nie gesehen hat.
+
+Das Ergebnis steht Postfach für Postfach und Ordner für Ordner da. Aufgeklappt
+wird nur, wo etwas fehlt oder unklar ist. Darüber ein Satz, was es fürs
+Aufräumen bedeutet.
+
+**Der Befund bleibt offen, sobald irgendetwas ihn stört:** ein Postfach, das
+nicht antwortet, oder ein Server, der seine Nachrichtennummern neu vergeben hat.
+Auch dann, wenn alle übrigen Postfächer vollständig sind. Wer aufräumt, weil
+neun von zehn in Ordnung waren, verliert die Post des zehnten an beiden Stellen.
+
+Es wird nur gelesen; im Postfach ändert sich nichts. Auf der Kommandozeile ist
+das `mailburg abgleich ARCHIV`, dort zusätzlich mit frei wählbarem Stichtag.
+Der ganze Ablauf steht in [Postfach entlasten](postfach-entlasten.md).
+
 **Eingescannte PDF lesen …**
 
 ![Der Dialog für die Texterkennung. Er meldet, dass keine eingescannten PDF warten, und lässt einstellen, wie viele Prozessorkerne die Erkennung gleichzeitig verwenden darf.](bilder/texterkennung.png)

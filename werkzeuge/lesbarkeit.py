@@ -352,6 +352,20 @@ def _konten_erfinden(datei: Path) -> None:
     liste.speichern()
 
 
+def _beispielkonten() -> list:
+    """Erfundene Postfächer für Fenster, die eine Liste bekommen.
+
+    Dieselben wie in den Auswahlfeldern, und aus demselben Grund
+    erfunden: Ein Messwerkzeug zeigt keine echten Adressen. Am
+    2026-09-06 stand in einer Ausgabe eine echte Firmenadresse samt
+    Mailserver – also genau das, was man in einen Fehlerbericht
+    kopiert.
+    """
+    from mailburg.core.accounts import Konto
+
+    return [Konto(**angaben) for angaben in PROBEKONTEN]
+
+
 #: **Die Liste aller Fenster, die geprüft werden – der Prüfauftrag.**
 #:
 #: Bis zum 2026-09-12 stand hier eine Reihe handgeschriebener Aufrufe.
@@ -434,6 +448,11 @@ BAUPLAENE: list[tuple[str, str, object]] = [
     ("mailburg.ui.texterkennung.Texterkennungsdialog",
      "Texterkennung",
      lambda K, w: K(w.archiv)),
+    ("mailburg.ui.abgleich.Abgleichdialog",
+     "Ist alles im Archiv?",
+     # Mit Postfächern, nicht ohne: Bei leerer Liste bliebe die Auswahl
+     # ungemessen, und genau dort steht der längste Text.
+     lambda K, w: K(w.archiv, _beispielkonten())),
     ("mailburg.ui.auskunft.Auskunftsdialog",
      "Auskunft nach DSGVO",
      lambda K, w: K(w.archiv)),

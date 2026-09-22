@@ -317,6 +317,25 @@ exactly the remainder. And a single message MailBurg choked on is flagged and
 requested again next time — otherwise it would be missing forever, with nobody
 any the wiser.
 
+### Before you clear out your mailbox
+
+**Is everything really in the archive?** That question is answered by *Post →
+Ist alles im Archiv? …* in the window, or `mailburg abgleich` on the command
+line. MailBurg then asks every mailbox which messages there are older than a
+cut-off date, and holds **every single one** against the archive.
+
+This is not the same as `mailburg pruefen`: that check tells you whether the
+archive is intact. Whether *everything* is in it, it cannot know — **an archive
+cannot check what it never saw.**
+
+The verdict reads "all present" only when that is beyond doubt. A mailbox that
+does not answer, or a server that has reassigned its message numbers, keeps it
+open — even if every other mailbox is complete. Clear out because nine of ten
+mailboxes looked fine, and you lose the tenth one's mail in both places.
+
+The full procedure is in
+[docs/postfach-entlasten.md](docs/postfach-entlasten.md) (German).
+
 ## In the browser, when more than one person needs access
 
 Where the archive is not for one person alone — a practice, a club, a company —

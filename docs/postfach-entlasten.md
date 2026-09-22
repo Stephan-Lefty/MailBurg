@@ -28,12 +28,20 @@ fangen Sie hier nicht an aufzuräumen** – dessen Mails fehlen im Archiv.
 
 ### 2. Nachweisen
 
+**Im Fenster:** *Post → Ist alles im Archiv? …* Dort wählen Sie den Zeitraum –
+drei Monate bis zwei Jahre – und ob alle Postfächer geprüft werden oder nur
+eines. Das Ergebnis steht als Liste da, Postfach für Postfach und Ordner für
+Ordner, mit einem Satz darüber, was es fürs Aufräumen bedeutet.
+
+**Auf der Kommandozeile**, dort zusätzlich mit frei wählbarem Stichtag:
+
 ```bash
 mailburg abgleich ~/Archiv --aelter-als 180
 ```
 
-Der Befehl fragt jeden Server, welche Mails älter als der Stichtag sind, und
-hält jede einzelne gegen das Archiv. Was dabei herauskommt, sieht so aus:
+Beide Wege tun dasselbe: Sie fragen jeden Server, welche Mails älter als der
+Stichtag sind, und halten jede einzelne gegen das Archiv. Auf der
+Kommandozeile sieht das so aus:
 
 ```
 Stichtag: 01.01.2026
