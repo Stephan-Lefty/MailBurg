@@ -8,6 +8,58 @@ wurde.
 
 ## Offen
 
+- [ ] **Aus einem Suchordner heraus die Maske vorfüllen.** Von joka63
+  gemeldet (22.09.2026): Wer im Dialog *Suchordner bearbeiten* auf
+  »Ausführlich suchen« geht, erwartet die Felder gefüllt – gefüllt mit
+  dem, was im gespeicherten Suchausdruck steht. Heute stehen sie leer da.
+
+  **Er hat es selbst gebaut und war mit der Lösung unzufrieden:** Sie
+  legte die Feldwerte zusätzlich in einem eigenen Wörterbuch ab, also
+  doppelt neben dem Ausdruck. Sein Vorschlag stattdessen: die
+  **Umkehrfunktion zu `search.maske.ausdruck()`** – Ausdruck hinein,
+  Felder heraus. Das ist richtig, und sein Einwand gegen die doppelte
+  Ablage auch: Zwei Quellen für dieselbe Sache laufen auseinander.
+
+  **Die Falle steckt woanders, und sie ist die eigentliche Arbeit:** Die
+  Umkehrung ist nicht vollständig möglich. Die Maske kennt jedes Feld
+  genau einmal, ein Suchausdruck darf dasselbe Wort aber mehrfach
+  enthalten (`von:a von:b`), und von Hand geschriebene Ausdrücke können
+  Dinge enthalten, für die es kein Feld gibt.
+
+  **Was dann passiert, muss vor dem Bauen entschieden sein.** Wird die
+  Maske mit OK geschlossen, schreibt sie den Ausdruck neu – und alles,
+  was sie nicht abbilden konnte, wäre stillschweigend weg. An einem
+  Suchordner, den jemand sich zurechtgelegt hat, ist das kein
+  Schönheitsfehler mehr.
+
+  Gangbar wäre: Was passt, wird in die Felder übernommen; der Rest
+  bleibt sichtbar stehen (etwa im Freitextfeld) oder die Maske sagt,
+  dass sie diesen Ausdruck nicht vollständig abbilden kann und deshalb
+  nichts überschreibt.
+
+  Abzusichern mit einer Rundreise: `felder(ausdruck(x)) == x` für jede
+  Kombination, die die Maske erzeugen kann.
+
+- [ ] **Fedora 45 ersetzt den GNOME-Schlüsselbund durch »oo7«.** Von
+  joka63 vorgewarnt (22.09.2026), er betreibt MailBurg in einer
+  Fedora-Toolbox.
+
+  MailBurg spricht über das Paket `keyring` mit der
+  Secret-Service-Schnittstelle auf D-Bus. Solange oo7 dieselbe
+  Schnittstelle bedient, ändert sich am Zugriff nichts – **geprüft ist
+  das aber nicht.**
+
+  Eine Stelle ist sicher betroffen: `accounts._secretservice_anbieter()`
+  erkennt den Dienst am Prozessnamen und kennt nur `ksecret`, `kwallet`
+  und `gnome`. oo7 fiele auf das allgemeine »Schlüsselbund« zurück. Das
+  ist kein Fehler, macht die Meldung bei zwei laufenden Diensten aber
+  weniger hilfreich – und genau die hat am 07.09. und 16.09. Stunden
+  gespart.
+
+  Zu klären, sobald jemand Fedora 45 hat: Kommen Passwörter an, die
+  unter dem alten Dienst abgelegt wurden? Verhält sich ein gesperrter
+  Schlüsselbund gleich? joka63 wäre der naheliegende Tester.
+
 - [ ] **Volltextsuche im Handbuch – und das Handbuch dafür ausbauen.**
   Stephans Wunsch vom 22.09.2026: Im Hilfefenster soll man suchen
   können.

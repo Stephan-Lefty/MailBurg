@@ -7,6 +7,53 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **Prefill the search mask from a saved search.** Reported by
+  joka63 (2026-09-22): opening "Ausführlich suchen" from the *Suchordner
+  bearbeiten* dialog should show the fields filled in from the stored
+  query. Today they come up empty.
+
+  **He built it himself and was unhappy with the result:** it stored the
+  field values in a dictionary of their own, redundantly alongside the
+  query. His proposal instead: the **inverse of
+  `search.maske.ausdruck()`** — query in, fields out. That is right, and
+  so is his objection to storing it twice: two sources for the same
+  thing drift apart.
+
+  **The trap lies elsewhere, and it is the actual work:** the inverse is
+  not total. The mask knows each field exactly once, whereas a query may
+  repeat a keyword (`von:a von:b`), and hand-written queries can contain
+  things the mask has no field for.
+
+  **What happens then must be decided before building.** Closing the
+  mask with OK rewrites the query — and anything it could not represent
+  would silently be gone. On a saved search someone has tuned to their
+  liking, that stops being a cosmetic issue.
+
+  Workable: take over what fits, leave the rest visible (in the free-text
+  field, say), or have the mask state that it cannot represent this query
+  in full and therefore overwrites nothing.
+
+  To be secured by a round trip: `felder(ausdruck(x)) == x` for every
+  combination the mask can produce.
+
+- [ ] **Fedora 45 replaces the GNOME keyring with "oo7".** Flagged by
+  joka63 (2026-09-22), who runs MailBurg in a Fedora toolbox.
+
+  MailBurg talks to the Secret Service interface on D-Bus through the
+  `keyring` package. As long as oo7 serves that same interface, nothing
+  changes about access — **but that is unverified.**
+
+  One spot is certainly affected: `accounts._secretservice_anbieter()`
+  identifies the service by process name and only knows `ksecret`,
+  `kwallet` and `gnome`. oo7 would fall back to the generic
+  "Schlüsselbund". Not a fault as such, but it makes the message less
+  useful when two services are running — and that message saved hours on
+  2026-09-07 and 2026-09-16.
+
+  To settle once someone has Fedora 45: do passwords stored under the old
+  service still come through? Does a locked keyring behave the same?
+  joka63 is the obvious tester.
+
 - [ ] **Full-text search in the manual — and expanding the manual for it.**
   Stephan's wish from 2026-09-22: the help window should be searchable.
 
