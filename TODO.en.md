@@ -7,6 +7,25 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **A mailbox where nothing arrives any more should stand out.**
+  Surfaced through the reconciliation on 2026-09-22: two of six
+  mailboxes returned exactly the same count for "older than 3 months"
+  as for "older than 6 months" — 754 and 185. Not a single message had
+  been left there since March at the latest.
+
+  The cause was harmless (a forward that deletes), but the same
+  observation fits an expired credential, a discontinued account, or a
+  fetch that has been failing for weeks. **And the archive looks
+  perfectly healthy meanwhile:** the corpus is complete, the check
+  reports "all in order", the mailbox is well filled. Only nothing new
+  arrives.
+
+  MailBurg knows the date of the newest message per mailbox; "nothing
+  new for six months" follows from that. What needs deciding is where
+  it belongs — the fetch summary, the reconciliation, or the mailbox
+  list — and from when it counts as notable. A mailbox that is
+  deliberately dormant must not nag every time.
+
 - [ ] **The wizard never asks what the archive should be called.** There
   is no name field. The name is derived from the folder name — since
   2026-09-22 at least from the one the user picked, no longer from the

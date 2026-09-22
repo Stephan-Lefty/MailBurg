@@ -8,6 +8,25 @@ wurde.
 
 ## Offen
 
+- [ ] **Ein Postfach, in dem nichts mehr ankommt, sollte auffallen.**
+  Am 2026-09-22 im Abgleich sichtbar geworden: Zwei von sechs
+  Postfächern lieferten für »älter als 3 Monate« exakt dieselbe Zahl
+  wie für »älter als 6 Monate« – 754 und 185. Dort war seit spätestens
+  März keine einzige Nachricht mehr liegen geblieben.
+
+  Die Ursache war harmlos (eine Weiterleitung mit Löschen), aber
+  dieselbe Beobachtung passt auf einen abgelaufenen Zugang, ein
+  stillgelegtes Konto oder einen Abruf, der seit Wochen scheitert.
+  **Und das Archiv sieht dabei kerngesund aus:** Der Bestand ist
+  vollständig, die Prüfung meldet »alles in Ordnung«, das Postfach ist
+  gut gefüllt. Nur kommt nichts mehr dazu.
+
+  MailBurg kennt das Datum der jüngsten Mail je Postfach; »seit sechs
+  Monaten nichts Neues« ist daraus ablesbar. Zu klären wäre, wo es
+  hingehört – in die Abrufmeldung, in den Abgleich oder in die
+  Postfachliste – und ab wann es auffällig ist. Ein Postfach, das
+  bewusst ruht, darf nicht jedes Mal mahnen.
+
 - [ ] **Der Assistent fragt nicht, wie das Archiv heißen soll.** Es gibt
   kein Namensfeld. Der Name entsteht aus dem Ordnernamen – seit dem
   2026-09-22 immerhin aus dem, den der Anwender selbst gewählt hat, und
