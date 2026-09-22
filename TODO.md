@@ -8,6 +8,39 @@ wurde.
 
 ## Offen
 
+- [ ] **Volltextsuche im Handbuch.** Stephans Wunsch vom 22.09.2026: Im
+  Hilfefenster soll man suchen können – und wahlweise mit einem Häkchen
+  auch in den Anleitungen aus `docs/`.
+
+  **Die erste Hälfte ist naheliegend.** Die Kapitel liegen als Text im
+  Programm (`hilfe.py`), eine `Suchleiste` gibt es bereits für die
+  geöffnete Nachricht. Was fehlt, ist die Suche **über alle Kapitel**
+  statt nur im angezeigten: ein Feld über der Kapitelliste, darunter die
+  Treffer mit Kapitelnamen und Textausschnitt, ein Klick springt hin.
+  Die Fundstelle sollte hervorgehoben werden, sonst sucht man im Kapitel
+  weiter.
+
+  **Die zweite Hälfte hat eine Hürde:** `docs/` ist gar nicht
+  mitinstalliert. `pyproject.toml` nimmt nur `mailburg*` mit – bei
+  Stephan liegen die Dateien im Repo-Ordner, bei jedem anderen Anwender
+  gibt es sie nicht, und in der `.exe` und im AppImage ebenso wenig. Ein
+  Häkchen dafür fände also bei fast allen nichts.
+
+  Zwei Wege, und das ist zu entscheiden, bevor jemand anfängt:
+
+  1. **`docs/*.md` ins Paket aufnehmen** (216 KB ohne die Bilder, mit
+     Bildern 1,9 MB). Dann läuft die Suche offline und überall gleich.
+     Zu klären: nur die Markdown-Dateien oder auch `docs/bilder/`, und
+     ob die Anleitungen dann in zwei Fassungen auseinanderlaufen können
+     – die im Paket und die auf GitHub.
+  2. **Nur einen Verweis anbieten** (»Weitersuchen in den Anleitungen«,
+     öffnet GitHub). Billig, aber braucht Internet und verlässt das
+     Programm.
+
+  Für einen Anwender, der gerade nicht weiterkommt, spricht viel für
+  Weg 1: Wer im Programm sitzt und Hilfe sucht, hat womöglich gerade
+  kein Netz – oder keine Lust, in einem Repository zu suchen.
+
 - [ ] **Ein Postfach, in dem nichts mehr ankommt, sollte auffallen.**
   Am 2026-09-22 im Abgleich sichtbar geworden: Zwei von sechs
   Postfächern lieferten für »älter als 3 Monate« exakt dieselbe Zahl

@@ -7,6 +7,38 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **Full-text search in the manual.** Stephan's wish from
+  2026-09-22: the help window should be searchable — optionally, via a
+  checkbox, across the guides in `docs/` as well.
+
+  **The first half is straightforward.** The chapters live as text
+  inside the program (`hilfe.py`), and a `Suchleiste` already exists for
+  the opened message. What is missing is searching **across all
+  chapters** rather than just the visible one: a field above the chapter
+  list, hits below it with chapter name and a snippet, one click jumps
+  there. The hit should be highlighted, otherwise you go on hunting
+  inside the chapter.
+
+  **The second half has an obstacle:** `docs/` is not installed at all.
+  `pyproject.toml` only picks up `mailburg*` — on Stephan's machine the
+  files sit in the repository folder, for every other user they do not
+  exist, and neither the `.exe` nor the AppImage carry them. A checkbox
+  for it would find nothing for almost everyone.
+
+  Two routes, to be decided before anyone starts:
+
+  1. **Ship `docs/*.md` with the package** (216 KB without images, 1.9 MB
+     with them). Search then works offline and identically everywhere.
+     To settle: markdown only or `docs/bilder/` too, and whether the
+     guides can then drift apart in two versions — the packaged one and
+     the one on GitHub.
+  2. **Offer a link only** ("continue searching in the guides", opens
+     GitHub). Cheap, but needs a connection and leaves the program.
+
+  For a user who is stuck right now, route 1 has the stronger case:
+  whoever sits in the program looking for help may well have no network
+  — or no appetite for searching a repository.
+
 - [ ] **A mailbox where nothing arrives any more should stand out.**
   Surfaced through the reconciliation on 2026-09-22: two of six
   mailboxes returned exactly the same count for "older than 3 months"
