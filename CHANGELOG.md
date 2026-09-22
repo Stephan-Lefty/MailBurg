@@ -7,6 +7,73 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+**Der erste Durchlauf mit einem echten Google-Konto.** Bis zum
+22.09.2026 hatte niemand MailBurg an einem Gmail-Postfach eingerichtet –
+weder Stephan noch ich. Der Abruf läuft seitdem, 567 Mails. Auf dem Weg
+dorthin kamen fünf Fehler heraus, und keiner davon steckte im Abruf.
+
+### Behoben
+
+- **Die Anleitung für Gmail führte ins Leere.** Sie nannte den Pfad
+  *Sicherheit → Bestätigung in zwei Schritten → App-Passwörter*. Google
+  hat den Punkt umbenannt (*2-Faktor-Authentifizierung*) und die
+  App-Passwörter **ganz aus dem Menü genommen** – auch von der Seite zur
+  Zwei-Faktor-Anmeldung. Erreichbar sind sie nur noch über die Adresse
+  `myaccount.google.com/apppasswords`.
+
+  Der ganze Ablauf steht jetzt Schritt für Schritt in
+  [postfaecher-einrichten.md](docs/postfaecher-einrichten.md) – und
+  **erstmals auch im Handbuch des Programms**, wo App-Passwörter bis
+  dahin mit keinem Wort vorkamen. Das ist der häufigste Grund, warum
+  eine Einrichtung scheitert, und wer im Programm auf *Hilfe* ging, fand
+  dazu nichts.
+
+- **Ein Archiv konnte in einem Archiv landen.** Aus zwei für sich
+  harmlosen Regeln: Wer denselben Ordner ein zweites Mal wählt, findet
+  ihn nicht mehr leer vor – dort liegt ja das Archiv vom ersten Mal –,
+  und daraufhin hängt der Assistent seinen Vorgabenamen an. So entstanden
+  bei Stephan zwei Archive im Abstand von sieben Minuten, das zweite im
+  ersten.
+
+  Harmlos ist das nicht: `sicherung.packen()` liest den Archivordner mit
+  `rglob("*")`. Eine Sicherung des äußeren Archivs enthielte das innere
+  samt dessen Journal und Hash-Kette. Der Assistent prüft jetzt bis zur
+  Wurzel hinauf und lehnt ab.
+
+- **Der Assistent vergab jedem Archiv denselben Namen.** Wer *Gmail-Test*
+  wählte, bekam ein Archiv namens *Mailarchiv* – den Vorgabenamen des
+  angehängten Unterordners. Der Name kommt jetzt aus dem Ordner, den der
+  Anwender selbst gewählt hat.
+
+- **Der Zuordnungsdialog zeigte nur Namen.** Er entscheidet darüber, ob
+  Geschäftspost im Privatarchiv landet, und warnt davor in drei Zeilen –
+  zeigte aber zwei Archive namens »Mailarchiv« nebeneinander, ohne
+  Unterscheidungsmerkmal. Jetzt steht der Pfad unter jedem Namen.
+
+- **Ein weiterverwendetes Archiv bekam keine Kennung gemerkt.** Damit
+  lief die Zuordnung am Ende des Assistenten ins Leere, und der Anwender
+  stand nach der vollständigen Einrichtung vor »Diesem Archiv ist kein
+  Postfach zugeordnet«. Derselbe Fehler war am 27.08. schon einmal da und
+  wurde nur im Anlege-Zweig behoben; dieser hier blieb liegen.
+
+### Hinzugefügt
+
+- **`werkzeuge/schwaerzen.py`** – legt graue, deckende Balken über
+  Mailadressen, Mailserver, Telefonnummern, IBAN sowie Steuer- und
+  Aktenzeichen in einem Bildschirmfoto. Für Fehlerberichte und
+  Anleitungen.
+
+  Balken und kein Weichzeichner: Weichgezeichnete Schrift lässt sich
+  zurückrechnen, und bei etwas so Formathaftem wie einer Mailadresse ist
+  das keine Theorie.
+
+  Das Werkzeug meldet am Ende **nicht** »sauber«, sondern wonach es
+  gesucht hat. Ein Name im Betreff passt auf kein Muster – im Prüfbild
+  blieb »Kündigung Müller« stehen. Ein Schwärzwerkzeug, dem man blind
+  vertraut, ist gefährlicher als keines.
+
 ## [1.6.0] – 2026-09-21
 
 **Die Fassung vor dem ersten Firmeneinsatz.** Stephans Ansage dazu war
