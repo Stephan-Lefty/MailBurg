@@ -32,13 +32,32 @@ wurde.
   Suchordner, den jemand sich zurechtgelegt hat, ist das kein
   Schönheitsfehler mehr.
 
-  Gangbar wäre: Was passt, wird in die Felder übernommen; der Rest
-  bleibt sichtbar stehen (etwa im Freitextfeld) oder die Maske sagt,
-  dass sie diesen Ausdruck nicht vollständig abbilden kann und deshalb
-  nichts überschreibt.
+  **Die Lösung kommt von joka63 (23.09.2026) und ist besser als meine
+  beiden Vorschläge:** Den Knopf *Ausführlich …* nur anbieten, wenn der
+  Ausdruck sich in Felder umwandeln lässt – sonst ausgrauen.
 
-  Abzusichern mit einer Rundreise: `felder(ausdruck(x)) == x` für jede
-  Kombination, die die Maske erzeugen kann.
+  Meine Vorschläge (Rest im Freitextfeld lassen; oder warnen und nichts
+  überschreiben) verlangen beide, dass der Anwender einen Sonderfall
+  versteht. **Seine macht den Sonderfall unmöglich:** Wo die Umwandlung
+  nicht geht, gibt es den Weg gar nicht.
+
+  Seine Beobachtung dahinter trägt das: *»Ein GUI-Nutzer wird die
+  Suchausdrücke in der Regel mit der Maske erstellen. Ein Power-User,
+  der eigene Suchausdrücke mit dem Texteditor erstellt, kann dann auch
+  auf die Maske verzichten.«* Die Rundreise ist für den Maskenweg
+  vollständig – sie ist es nur für von Hand Geschriebenes nicht, und
+  dort braucht sie niemand.
+
+  **Ein ausgegrauter Knopf muss sagen, warum.** Sonst hält man ihn für
+  kaputt. Dazu gehört ein Tooltip in der Art: »Dieser Suchausdruck
+  lässt sich in der Maske nicht abbilden – bearbeiten Sie ihn direkt im
+  Feld darüber.«
+
+  Abzusichern mit einer Rundreise in beide Richtungen:
+  `felder(ausdruck(x)) == x` für jede Kombination, die die Maske
+  erzeugen kann, und `ausdruck(felder(y)) == y` für jeden Ausdruck, den
+  `felder()` als umwandelbar meldet. Der zweite Test ist der
+  wichtigere: Er ist die Zusage, auf die sich der Knopf verlässt.
 
 - [ ] **Fedora 45 ersetzt den GNOME-Schlüsselbund durch »oo7«.** Von
   joka63 vorgewarnt (22.09.2026), er betreibt MailBurg in einer

@@ -29,12 +29,30 @@ down, with the date they were completed.
   would silently be gone. On a saved search someone has tuned to their
   liking, that stops being a cosmetic issue.
 
-  Workable: take over what fits, leave the rest visible (in the free-text
-  field, say), or have the mask state that it cannot represent this query
-  in full and therefore overwrites nothing.
+  **The solution comes from joka63 (2026-09-23) and beats both of my
+  proposals:** only offer the *Ausführlich …* button when the query can
+  be converted into fields — otherwise grey it out.
 
-  To be secured by a round trip: `felder(ausdruck(x)) == x` for every
-  combination the mask can produce.
+  My proposals (leave the remainder in the free-text field; or warn and
+  overwrite nothing) both require the user to understand a special case.
+  **His removes the special case:** where the conversion does not work,
+  the route does not exist.
+
+  His observation carries it: *"A GUI user will normally build queries
+  with the mask. A power user writing his own queries in a text editor
+  can do without the mask anyway."* The round trip is complete for the
+  mask route — it only fails for hand-written queries, and there nobody
+  needs it.
+
+  **A greyed-out button must say why**, or it reads as broken. It needs
+  a tooltip along the lines of: "This query cannot be represented in the
+  mask — edit it directly in the field above."
+
+  To be secured by a round trip in both directions:
+  `felder(ausdruck(x)) == x` for every combination the mask can produce,
+  and `ausdruck(felder(y)) == y` for every query `felder()` reports as
+  convertible. The second matters more: it is the promise the button
+  relies on.
 
 - [ ] **Fedora 45 replaces the GNOME keyring with "oo7".** Flagged by
   joka63 (2026-09-22), who runs MailBurg in a Fedora toolbox.
