@@ -360,9 +360,22 @@ class ImapSource(Source):
 
     def _verbinden(self, passwort: str) -> None:
         if not passwort:
+            # **Hier steht nicht, warum es fehlt.** Bis zum 2026-09-23
+            # stand da »Es steht weder im Schlüsselbund noch wurde eines
+            # angegeben« – eine Vermutung über einen Grund, den diese
+            # Stelle nicht kennen kann. Sie bekommt eine leere
+            # Zeichenkette, mehr nicht.
+            #
+            # Aufgefallen bei einem Lauf, dem der Schlüsselbund selbst
+            # fehlte: Darüber stand richtig »das Paket keyring fehlt«,
+            # und direkt darunter widersprach diese Meldung. Zwei
+            # Auskünfte zu derselben Lage, und die untere war falsch.
+            #
+            # Wer den Grund kennt, hat ihn schon gesagt – siehe
+            # ``accounts.KeinSchluesselbund`` und die Fänger in
+            # ``__main__`` und ``ui/arbeit``.
             raise ImapFehler(
-                f"Für '{self.konto.name}' liegt kein Passwort vor. Es steht "
-                f"weder im Schlüsselbund noch wurde eines angegeben."
+                f"Für '{self.konto.name}' liegt kein Passwort vor."
             )
         kontext = self._tls_kontext()
         try:
