@@ -9,6 +9,41 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Behoben
+
+- **»Kein Schlüsselbund« ist etwas anderes als »kein Passwort«.** Fehlt
+  auf einem Rechner der Schlüsselbund – oder das Paket dafür –, meldete
+  MailBurg für jedes Postfach »liegt kein Passwort im Schlüsselbund«.
+  Das nennt einen Grund, den es nicht gibt: Es gab keinen Speicher, in
+  dem etwas hätte liegen können.
+
+  Von einer Anwenderin gemeldet (23.09.2026), die daraufhin ihre
+  Passwörter neu eingegeben hätte – in einen Speicher, den es auf ihrem
+  Rechner nicht mehr gab. Der wahre Grund stand die ganze Zeit in
+  `schluesselbund_lage()`; `passwort_holen()` warf ihn weg, zwei Zeilen
+  unter einem Docstring, der genau davor warnt.
+
+- **`python3-keyring` ist jetzt erforderlich, nicht bloß empfohlen.**
+  Was empfohlen ist, darf `apt autoremove` wegräumen – und tut es
+  gelegentlich, ohne dass jemand es merkt. Bei derselben Anwenderin war
+  das Paket verschwunden, ohne dass sie etwas getan hätte.
+
+  Ohne Schlüsselbund ist MailBurg im Alltag unbenutzbar: Jedes Passwort
+  wird bei jedem Abruf neu erfragt, und ein Abruf im Hintergrund läuft
+  gar nicht. Der Einwand, ein Server brauche das nicht, wiegt weniger –
+  dort gibt es den Tresor, und das Paket ist klein.
+
+- **Die IMAP-Quelle spekuliert nicht mehr über den Grund.** »Für 'X'
+  liegt kein Passwort vor. Es steht weder im Schlüsselbund noch wurde
+  eines angegeben« – diese Stelle bekommt eine leere Zeichenkette und
+  kann nicht wissen, warum. Bei einem Lauf ohne Schlüsselbund stand
+  darüber richtig »das Paket keyring fehlt«, und direkt darunter
+  widersprach diese Meldung.
+
+- **Die Meldung zum fehlenden `keyring` nannte nur den pip-Weg.** Wer
+  das Debian-Paket benutzt, hat kein pip und braucht
+  `python3-keyring` – derselbe Fehler wie am Vortag bei Zstandard.
+
 ### Hinzugefügt
 
 - **Die Maske zeigt jetzt, was im Suchordner steht.** Wer im Dialog

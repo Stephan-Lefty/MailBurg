@@ -132,6 +132,29 @@ class ImDebianPaket(unittest.TestCase):
             "lässt sich kein zst-gepacktes Archiv mehr lesen",
         )
 
+    def test_keyring_ist_erforderlich(self) -> None:
+        """**Nicht bloß empfohlen** – seit dem 2026-09-23.
+
+        Was empfohlen ist, darf `apt autoremove` wegräumen. Genau das
+        ist einer Anwenderin passiert: Das Paket verschwand ohne ihr
+        Zutun, danach meldete MailBurg für jedes Postfach »liegt kein
+        Passwort im Schlüsselbund«, und sie hätte alle neu eingetippt –
+        in einen Speicher, den es nicht mehr gab.
+        """
+        import importlib.util
+        import pathlib
+
+        quelle = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "werkzeuge" / "deb_bauen.py"
+        )
+        spec = importlib.util.spec_from_file_location("deb_bauen", quelle)
+        modul = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modul)
+
+        self.assertIn("python3-keyring", modul.DEPENDS)
+        self.assertNotIn("python3-keyring", modul.RECOMMENDS)
+
 
 if __name__ == "__main__":
     unittest.main()

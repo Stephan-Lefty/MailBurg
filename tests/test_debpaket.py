@@ -39,22 +39,33 @@ class SteuerdatenTest(unittest.TestCase):
     def setUp(self):
         self.werkzeug = _werkzeug()
 
-    def test_der_kern_haengt_an_nichts_ausser_python(self):
+    def test_kein_qt_unter_den_erforderlichen(self):
         """**Die Zusage des Projekts, auch im Paket.**
 
         Wer nur die Kommandozeile braucht – etwa auf einem Server –,
-        soll sich kein Qt installieren müssen. Alles andere steht unter
-        Recommends und lässt sich abwählen.
+        soll sich kein Qt installieren müssen. Die Oberfläche steht
+        deshalb unter Recommends und lässt sich abwählen.
+
+        **Der Schlüsselbund stand hier bis zum 2026-09-23 ebenfalls**,
+        mit derselben Begründung. Sie trägt bei ihm nicht: Qt braucht
+        wirklich nur, wer ein Fenster will – ohne Schlüsselbund dagegen
+        wird jedes Passwort bei jedem Abruf neu erfragt, auch auf der
+        Kommandozeile, und ein Abruf im Hintergrund läuft gar nicht.
+
+        Den Ausschlag gab, dass ein bloß empfohlenes Paket von
+        ``apt autoremove`` weggeräumt werden darf. Genau das ist einer
+        Anwenderin passiert; sie hätte daraufhin ihre Passwörter neu
+        eingetippt – in einen Speicher, den es nicht mehr gab. Ein
+        kleines, auf manchen Servern unnötiges Paket wiegt weniger.
         """
         self.assertIn("python3", self.werkzeug.DEPENDS)
-        for unerwuenscht in ("pyside", "qt", "keyring"):
+        for unerwuenscht in ("pyside", "qt", "tesseract"):
             with self.subTest(paket=unerwuenscht):
                 self.assertNotIn(unerwuenscht, self.werkzeug.DEPENDS.lower())
 
     def test_die_oberflaeche_wird_empfohlen(self):
         """Sonst installiert apt ein MailBurg ohne Fenster."""
         self.assertIn("pyside6", self.werkzeug.RECOMMENDS)
-        self.assertIn("keyring", self.werkzeug.RECOMMENDS)
 
     def test_die_texterkennung_ist_nur_ein_vorschlag(self):
         """tesseract wiegt schwer und wird selten gebraucht."""

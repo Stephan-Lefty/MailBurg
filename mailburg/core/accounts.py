@@ -468,10 +468,27 @@ def schluesselbund_lage() -> tuple[bool, str]:
         import keyring
         from keyring.backends import fail
     except ImportError:
+        # **Der Paketname hängt davon ab, wie MailBurg installiert
+        # wurde.** Bis zum 2026-09-23 stand hier nur der pip-Weg. Wer
+        # das Debian-Paket benutzt, hat kein pip und braucht
+        # ``python3-keyring`` – derselbe Fehler wie am Vortag bei
+        # Zstandard, wo eine Anwenderin daraufhin das falsche Paket
+        # installierte.
+        from pathlib import Path
+
+        if "dist-packages" in str(Path(__file__).resolve()):
+            weg = (
+                "Nachrüsten unter Debian, Ubuntu und GuideOS:\n"
+                "    sudo apt install python3-keyring\n"
+                "Unter Fedora heißt es python3-keyring, unter Arch "
+                "python-keyring."
+            )
+        else:
+            weg = 'Nachrüsten mit  pip install "mailburg[imap]"'
         return False, (
             "Zum Speichern von Passwörtern fehlt das Paket »keyring«. "
-            "Das liegt nicht am Rechner, sondern an der Installation: "
-            "Nachrüsten mit  pip install \"mailburg[imap]\""
+            "Das liegt nicht am Rechner, sondern an der Installation.\n\n"
+            + weg
         )
 
     # keyring liefert einen Platzhalter, wenn nichts Passendes gefunden
@@ -692,6 +709,25 @@ class SchluesselbundZu(RuntimeError):
     """
 
 
+class KeinSchluesselbund(SchluesselbundZu):
+    """Es gibt auf diesem Rechner gar keinen Schlüsselbund.
+
+    **Die dritte Lage, und sie braucht einen dritten Rat.** Bei »nichts
+    hinterlegt« tippt man das Passwort neu ein, bei »gesperrt« entsperrt
+    man einmal – hier hilft beides nicht. Entweder fehlt das Paket
+    ``keyring``, oder es findet auf diesem System keinen Speicher.
+
+    Eigene Klasse und nicht bloß eine andere Meldung: Der Fänger im
+    Abruf hängt bei :class:`SchluesselbundZu` ein »Entsperren Sie ihn
+    und rufen Sie erneut ab« an. Das wäre hier ein Rat ins Leere – und
+    genau die Sorte Fehler, die diese Ausnahme behebt.
+
+    Gemeldet am 2026-09-23 von einer Anwenderin, deren MailBurg für zwei
+    Postfächer »liegt kein Passwort im Schlüsselbund« sagte. Sie hätte
+    beide neu eingegeben – in einen Speicher, den es nicht gibt.
+    """
+
+
 def passwort_holen(konto: Konto, *, streng: bool = False) -> str | None:
     """Holt das Passwort – aus dem Tresor oder dem Schlüsselbund.
 
@@ -704,7 +740,21 @@ def passwort_holen(konto: Konto, *, streng: bool = False) -> str | None:
     if tresor.verfuegbar():
         return tresor.holen(konto.schluessel)
 
-    if not schluesselbund_verfuegbar():
+    # **Kein Schlüsselbund ist etwas anderes als kein Passwort.** Bis zum
+    # 2026-09-23 stand hier ein nacktes ``return None`` – zwei Zeilen
+    # unter dem Docstring, der genau davor warnt. Der Aufrufer machte
+    # daraus »Für 'Gmail' liegt kein Passwort im Schlüsselbund«, und das
+    # nennt einen Grund, den es nicht gibt: Es gab gar keinen
+    # Schlüsselbund, in dem etwas hätte liegen können.
+    #
+    # Von einer Anwenderin gemeldet, die daraufhin ihre Passwörter neu
+    # eingegeben hätte – in einen Speicher, den es auf ihrem Rechner
+    # nicht gibt. Der wahre Grund steht in ``schluesselbund_lage()``, er
+    # wurde hier nur weggeworfen.
+    brauchbar, warum = schluesselbund_lage()
+    if not brauchbar:
+        if streng:
+            raise KeinSchluesselbund(warum)
         return None
     import keyring
 

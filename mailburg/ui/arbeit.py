@@ -236,6 +236,15 @@ class Abruflauf(Auftrag):
                 # Entsperren gereicht hätte.
                 try:
                     passwort = accounts.passwort_holen(konto, streng=True)
+                except accounts.KeinSchluesselbund as fehlt:
+                    # **Hier hilft kein Entsperren.** Die Meldung bringt
+                    # ihren Rat selbst mit – je nachdem, ob das Paket
+                    # fehlt oder das System gar keinen Speicher hat.
+                    # Der Nachsatz unten wäre an dieser Stelle einer von
+                    # der Sorte, die ins Leere führt.
+                    ergebnisse[konto.name] = ImapFehler(str(fehlt))
+                    self.konto_fertig.emit(konto.name, ergebnisse[konto.name])
+                    continue
                 except accounts.SchluesselbundZu as zu:
                     ergebnisse[konto.name] = ImapFehler(
                         f"{zu} Entsperren Sie ihn und rufen Sie erneut ab; "

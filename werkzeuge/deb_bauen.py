@@ -33,21 +33,42 @@ sys.path.insert(0, str(WURZEL))
 
 from mailburg import __version__  # noqa: E402
 
-#: Was ohne MailBurg selbst nicht läuft. Bewusst kurz gehalten: Der Kern
-#: kommt ohne jedes Fremdpaket aus, und wer nur die Kommandozeile
-#: braucht, soll sich kein Qt installieren müssen.
+#: Was ohne MailBurg nicht läuft. Bewusst kurz gehalten: Der Kern kommt
+#: ohne Fremdpakete aus, und wer nur die Kommandozeile braucht, soll
+#: sich kein Qt installieren müssen.
 #:
-#: ``python3`` deckt die Kommandozeile ab. Alles andere steht unter
-#: *Recommends* – apt installiert es von Haus aus mit, wer es nicht
-#: will, kann es abwählen.
-DEPENDS = "python3 (>= 3.11)"
+#: **Zwei Einträge, und der zweite stand bis zum 2026-09-23 unter
+#: Recommends.** Der Unterschied ist nicht akademisch: Was empfohlen
+#: ist, darf ``apt autoremove`` wieder wegräumen – und tut es
+#: gelegentlich, ohne dass jemand es bemerkt. Alles Übrige steht weiter
+#: unter *Recommends*; das installiert apt mit, und wer es nicht will,
+#: kann es abwählen.
+DEPENDS = ", ".join((
+    "python3 (>= 3.11)",
+    # **Seit dem 2026-09-23 hier und nicht mehr unter Recommends.**
+    # Ohne Schlüsselbund ist MailBurg im Alltag unbenutzbar: Jedes
+    # Passwort wird bei jedem Abruf neu erfragt, und ein Abruf im
+    # Hintergrund läuft gar nicht.
+    #
+    # Der Anlass war eine Anwenderin, bei der das Paket verschwand,
+    # ohne dass sie etwas getan hätte – vermutlich durch ein
+    # »apt autoremove«, das ein bloß empfohlenes Paket wegräumen darf.
+    # Danach meldete MailBurg »liegt kein Passwort im Schlüsselbund«
+    # für jedes Postfach, und sie hätte alle neu eingetippt: in einen
+    # Speicher, den es nicht mehr gab.
+    #
+    # Der Einwand, ein Server brauche keinen Schlüsselbund, wiegt
+    # weniger: Dort gibt es den Tresor, und dieses Paket ist klein.
+    # Eine Empfehlung, die stillschweigend verschwinden kann, ist für
+    # etwas so Tragendes die falsche Stufe.
+    "python3-keyring",
+))
 
 #: Die übliche Ausstattung eines Arbeitsplatzes. **Recommends und nicht
 #: Depends**, damit MailBurg auch auf einen Server passt, auf dem es
 #: kein Qt gibt – die Server-Variante braucht keine Oberfläche.
 RECOMMENDS = ", ".join((
     "python3-pyside6.qtwidgets",   # die Oberfläche
-    "python3-keyring",             # Passwörter, sonst jedes Mal neu
     "python3-cryptography",        # verschlüsselte Archive und Tresor
     "python3-pypdf",               # PDF-Anhänge durchsuchbar
     "poppler-utils",               # pdftotext, der schnellere Weg

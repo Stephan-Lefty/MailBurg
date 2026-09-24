@@ -355,6 +355,11 @@ def _passwort_besorgen(konto: Konto, *, fragen: bool = True) -> str:
     """
     try:
         passwort = accounts.passwort_holen(konto, streng=True)
+    except accounts.KeinSchluesselbund as fehlt:
+        # Kein Speicher vorhanden – Entsperren hilft hier nicht. Die
+        # Meldung bringt ihren eigenen Rat mit.
+        print(str(fehlt), file=sys.stderr)
+        return ""
     except accounts.SchluesselbundZu as zu:
         print(
             f"{zu}\nEntsperren Sie ihn und versuchen Sie es erneut – neu "
