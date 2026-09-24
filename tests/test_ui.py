@@ -7304,3 +7304,67 @@ class AbgleichdialogTest(OberflaechenTest):
             for k in range(oben.childCount()):
                 teile += [oben.child(k).text(s) for s in range(3)]
         return " ".join(teile)
+
+
+class SuchordnerMaskenknopfTest(OberflaechenTest):
+    """Der Knopf »Ausführlich …« nur dort, wo er zurückführt.
+
+    **joka63s Lösung (2026-09-23), und sie ist besser als meine.** Die
+    Maske schreibt zurück: Wer sie mit OK schließt, ersetzt den Ausdruck
+    durch das, was in ihren Feldern steht. Was sie nicht darstellen
+    kann, wäre danach still weg – an einem Suchordner, den jemand sich
+    über Monate zurechtgelegt hat.
+
+    Ich hatte vorgeschlagen, den Rest stehen zu lassen oder zu warnen.
+    Beides verlangt, dass der Anwender einen Sonderfall versteht. Sein
+    Vorschlag macht den Sonderfall unmöglich.
+    """
+
+    def _dialog(self, ausdruck: str):
+        import tempfile
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.suchordner import Suchordnerdialog
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        ort = pathlib.Path(ordner.name) / "Archiv"
+        archiv = Archive.create(ort)
+        self.addCleanup(archiv.close)
+
+        dialog = Suchordnerdialog(archiv, name="Probe", ausdruck=ausdruck)
+        self.addCleanup(dialog.close)
+        return dialog
+
+    def test_bei_einem_maskenausdruck_ist_der_knopf_da(self):
+        dialog = self._dialog("von:telekom betreff:Rechnung")
+        self.assertTrue(dialog.maske_knopf.isEnabled())
+
+    def test_bei_handarbeit_ist_er_aus(self):
+        """»rechnung müller« sind zwei Bedingungen, die Maske kann eine."""
+        dialog = self._dialog("rechnung müller")
+        self.assertFalse(dialog.maske_knopf.isEnabled())
+
+    def test_der_ausgegraute_knopf_sagt_warum(self):
+        """Sonst liest er sich als kaputt und wird gemeldet."""
+        dialog = self._dialog("ist:ungelesen")
+        self.assertFalse(dialog.maske_knopf.isEnabled())
+        self.assertIn("nicht abbilden", dialog.maske_knopf.toolTip())
+
+    def test_beim_tippen_zieht_er_mit(self):
+        """Aus abbildbar kann unabbildbar werden – und zurück."""
+        dialog = self._dialog("von:telekom")
+        self.assertTrue(dialog.maske_knopf.isEnabled())
+
+        dialog.ausdruck.setText("von:a von:b")
+        dialog._pruefen()
+        self.assertFalse(dialog.maske_knopf.isEnabled())
+
+        dialog.ausdruck.setText("von:a")
+        dialog._pruefen()
+        self.assertTrue(dialog.maske_knopf.isEnabled())
+
+    def test_ein_leeres_feld_erlaubt_die_maske(self):
+        """Wer neu anlegt, soll sie gerade benutzen können."""
+        dialog = self._dialog("")
+        self.assertTrue(dialog.maske_knopf.isEnabled())

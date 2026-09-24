@@ -7,6 +7,38 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- **Die Maske zeigt jetzt, was im Suchordner steht.** Wer im Dialog
+  *Suchordner bearbeiten* auf *Ausführlich …* geht, findet die Felder
+  gefüllt. Bisher landete davon nur ein einzelnes Wort im Begriffsfeld –
+  und auch das nur, wenn es weder Leerzeichen noch Doppelpunkt enthielt.
+
+  Von joka63 gemeldet, der es zuerst selbst gebaut hatte: Er legte die
+  Feldwerte zusätzlich ab, also doppelt neben dem Ausdruck, und war
+  damit unzufrieden. Zu Recht – zwei Quellen für dieselbe Sache laufen
+  auseinander. Stattdessen gibt es jetzt `search.maske.felder()`, die
+  Umkehrung zu `ausdruck()`.
+
+  **Und der Knopf erscheint nur, wo er zurückführt.** Auch das kommt von
+  joka63 und ist besser als alles, was ich vorgeschlagen hatte. Die
+  Maske schreibt zurück: Was sie nicht darstellen kann, wäre nach einem
+  OK still weg. Man könnte das erklären – besser ist, es unmöglich zu
+  machen. Wo die Umwandlung nicht gelingt, ist der Knopf ausgegraut und
+  sagt im Tooltip, warum.
+
+  Das betrifft Ausdrücke, die niemals aus der Maske kamen: zwei freie
+  Wörter (`rechnung müller` sind zwei Bedingungen, die Maske hat ein
+  Feld), dasselbe Wort zweimal (`von:a von:b`), oder etwas, für das es
+  kein Feld gibt (`ist:ungelesen`). Wer so etwas von Hand schreibt,
+  braucht die Maske ohnehin nicht.
+
+  Abgesichert ist das mit der Rundreise in beide Richtungen – vor allem
+  mit `ausdruck(felder(y)) == y`. Das ist die Zusage, auf die sich der
+  Knopf verlässt: Meldet er »geht«, darf nichts verlorengehen.
+
 ## [1.7.4] – 2026-09-22
 
 ### Behoben

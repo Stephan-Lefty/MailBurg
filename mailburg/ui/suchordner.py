@@ -68,16 +68,12 @@ class Suchordnerdialog(QDialog):
         self.ausdruck.setPlaceholderText("von:telekom betreff:Rechnung")
         self.ausdruck.textChanged.connect(self._tippen)
 
-        maske = QPushButton("Ausführlich …")
-        maske.setToolTip(
-            "Die Suche zusammenklicken statt sie zu tippen – das Ergebnis "
-            "landet im Feld daneben."
-        )
-        maske.clicked.connect(self._maske)
+        self.maske_knopf = QPushButton("Ausführlich …")
+        self.maske_knopf.clicked.connect(self._maske)
 
         zeile = QHBoxLayout()
         zeile.addWidget(self.ausdruck, 1)
-        zeile.addWidget(maske)
+        zeile.addWidget(self.maske_knopf)
 
         felder = QFormLayout()
         felder.addRow("Name:", self.name)
@@ -112,11 +108,49 @@ class Suchordnerdialog(QDialog):
         self.tipp_uhr.start(TIPPAUSE)
 
     def _maske(self) -> None:
+        from mailburg.search import maske as kern_maske
         from mailburg.ui.suchmaske import Suchmaske
 
-        maske = Suchmaske(self.archiv, self.ausdruck.text().strip(), self)
+        text = self.ausdruck.text().strip()
+        werte = kern_maske.felder(text)
+        maske = Suchmaske(self.archiv, text, self)
+        if werte:
+            maske.werte_setzen(werte)
         if maske.exec() == QDialog.Accepted:
             self.ausdruck.setText(maske.ausdruck())
+
+    def _maske_anbieten(self) -> None:
+        """Den Knopf nur freigeben, wenn die Maske zurückführt.
+
+        **joka63s Lösung, und sie ist besser als jede Teilübernahme.**
+        Die Maske schreibt zurück: Wer sie mit OK schließt, ersetzt den
+        Ausdruck durch das, was in ihren Feldern steht. Was sie nicht
+        darstellen kann, wäre danach still weg – an einem Suchordner,
+        den sich jemand zurechtgelegt hat.
+
+        Man könnte das erklären. Besser ist, es unmöglich zu machen: Wo
+        die Umwandlung nicht geht, gibt es den Weg nicht.
+
+        Sein Argument dazu (23.09.2026): *»Ein GUI-Nutzer wird die
+        Suchausdrücke in der Regel mit der Maske erstellen. Ein
+        Power-User, der eigene Suchausdrücke mit dem Texteditor
+        erstellt, kann dann auch auf die Maske verzichten.«*
+
+        **Ein ausgegrauter Knopf muss sagen, warum** – sonst liest er
+        sich als kaputt, und jemand meldet ihn als Fehler.
+        """
+        from mailburg.search import maske as kern_maske
+
+        geht = kern_maske.felder(self.ausdruck.text().strip()) is not None
+        self.maske_knopf.setEnabled(geht)
+        self.maske_knopf.setToolTip(
+            "Die Suche zusammenklicken statt sie zu tippen – das Ergebnis "
+            "landet im Feld daneben."
+            if geht else
+            "Dieser Suchausdruck lässt sich in der Maske nicht abbilden – "
+            "sie käme nicht vollständig dorthin zurück. Bearbeiten Sie ihn "
+            "deshalb direkt im Feld daneben."
+        )
 
     def _pruefen(self) -> None:
         """Sagt, ob das so geht – und wie viele Treffer es gerade gibt."""
@@ -125,6 +159,9 @@ class Suchordnerdialog(QDialog):
         farbe = "" if gut else " color:palette(mid);"
         self.befund.setText(f"<span style='{farbe}'>{meldung}</span>")
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(gut)
+        # Der Ausdruck kann sich beim Tippen von abbildbar zu nicht
+        # abbildbar wandeln – der Knopf muss mitziehen.
+        self._maske_anbieten()
 
     def _befund(self) -> tuple[bool, str]:
         try:

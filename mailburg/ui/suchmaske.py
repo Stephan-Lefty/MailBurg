@@ -306,6 +306,66 @@ class Suchmaske(QDialog):
             "ohne": self.ohne.text(),
         }
 
+    def werte_setzen(self, werte: dict[str, str]) -> None:
+        """Füllt die Felder – das Gegenstück zu :meth:`werte`.
+
+        **Damit ein gespeicherter Suchordner sich bearbeiten lässt.** Wer
+        auf *Ausführlich …* geht, erwartet zu sehen, was er gespeichert
+        hat. Bis zum 2026-09-23 landete davon nur ein einzelnes Wort im
+        Begriffsfeld, und auch das nur, wenn es weder Leerzeichen noch
+        Doppelpunkt enthielt.
+
+        Was hier ankommt, hat ``maske.felder()`` bereits geprüft: Es
+        lässt sich vollständig darstellen. Diese Methode darf deshalb
+        einfach setzen.
+        """
+        from PySide6.QtCore import QDate
+
+        self.begriff.setText(werte.get("begriff", ""))
+        self.von.setText(werte.get("von", ""))
+        self.an.setText(werte.get("an", ""))
+        self.betreff.setText(werte.get("betreff", ""))
+        self.datei.setText(werte.get("datei", ""))
+        self.archiviert.setText(werte.get("archiviert", ""))
+        self.typ.setText(werte.get("typ", ""))
+        self.ohne.setText(werte.get("ohne", ""))
+        self.mit_anhang.setChecked(bool(werte.get("mit_anhang")))
+
+        for name in ("konto", "ordner", "wichtigkeit"):
+            kasten = getattr(self, name)
+            wert = werte.get(name, "")
+            stelle = kasten.findData(wert) if wert else 0
+            if stelle < 0:
+                # **Ein Postfach, das es nicht mehr gibt.** Ein
+                # Suchordner überdauert das Konto, auf das er zeigt.
+                # Dann bleibt das Feld auf »alle«, statt den Wert
+                # stillschweigend zu verschlucken – geändert wird der
+                # Ausdruck ohnehin erst, wenn jemand OK drückt.
+                stelle = 0
+            kasten.setCurrentIndex(stelle)
+
+        jahr = werte.get("jahr", "")
+        von, bis = jahr.split("-", 1) if "-" in jahr else (jahr, jahr)
+        self.jahr_von.setValue(int(von) if von.isdigit() else 0)
+        self.jahr_bis.setValue(int(bis) if bis.isdigit() else 0)
+
+        seit, his = werte.get("seit", ""), werte.get("bis", "")
+        self.zeitraum_an.setChecked(bool(seit or his))
+        for feld, text in ((self.datum_von, seit), (self.datum_bis, his)):
+            datum = QDate.fromString(text, "dd.MM.yyyy")
+            if datum.isValid():
+                feld.setDate(datum)
+
+        groesse = werte.get("groesse", "")
+        if groesse[:1] in ("<", ">"):
+            stelle = self.groesse_art.findData(groesse[0])
+            if stelle >= 0:
+                self.groesse_art.setCurrentIndex(stelle)
+            groesse = groesse[1:]
+        self.groesse_wert.setText(groesse)
+
+        self._vorschau_erneuern()
+
     def ausdruck(self) -> str:
         """Der Suchausdruck aus den Feldern."""
         from mailburg.search.maske import ausdruck as bauen

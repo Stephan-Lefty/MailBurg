@@ -126,3 +126,106 @@ def ausdruck(werte: dict[str, str]) -> str:
 def leer(werte: dict[str, str]) -> bool:
     """Ob die Maske nichts eingrenzt – dann fände sie alles."""
     return not ausdruck(werte).strip()
+
+
+def felder(text: str) -> dict[str, str] | None:
+    """Zerlegt einen Suchausdruck zurück in Maskenfelder.
+
+    Gibt ``None`` zurück, wenn das nicht geht – dann lässt sich dieser
+    Ausdruck in der Maske nicht darstellen.
+
+    **Wozu die Umkehrung gebraucht wird.** Wer einen gespeicherten
+    Suchordner bearbeitet und auf *Ausführlich …* geht, erwartet die
+    Felder gefüllt. Von joka63 gemeldet (2026-09-22), der es zuerst
+    anders gebaut hatte: Er legte die Feldwerte zusätzlich ab, also
+    doppelt neben dem Ausdruck – und war damit selbst unzufrieden. Zwei
+    Quellen für dieselbe Sache laufen auseinander.
+
+    **Warum ``None`` und nicht »so gut es geht«.** Die Maske *schreibt
+    zurück*: Wer sie mit OK schließt, ersetzt den Ausdruck durch das,
+    was in den Feldern steht. Alles, was hier verloren ginge, wäre
+    danach still weg – an einem Suchordner, den sich jemand über Monate
+    zurechtgelegt hat.
+
+    Deshalb joka63s Lösung, und sie ist besser als jede Teilübernahme:
+    Der Knopf *Ausführlich …* wird nur angeboten, wenn diese Funktion
+    etwas zurückgibt. **Wo die Umwandlung nicht geht, gibt es den Weg
+    gar nicht** – der Sonderfall wird nicht erklärt, sondern unmöglich
+    gemacht.
+
+    **Streng ist hier richtig.** Zwei freie Wörter (``rechnung
+    müller``) sind etwas anderes als eine Phrase (``"rechnung
+    müller"``), und die Maske erzeugt nur die Phrase. Ein Ausdruck mit
+    beidem kam nie aus ihr heraus; wer ihn von Hand geschrieben hat,
+    braucht sie auch nicht.
+    """
+    from mailburg.search.query import _TERM_RE
+
+    text = (text or "").strip()
+    werte: dict[str, str] = {}
+    if not text:
+        return werte
+
+    nach_schluessel = {
+        f.schluessel.lower(): f for f in FELDER
+        if f.schluessel and f.art != "haken" and f.name != "ohne"
+    }
+    haken = {f.schluessel.lower(): f for f in FELDER if f.art == "haken"}
+    freitext = next((f for f in FELDER if not f.schluessel), None)
+    ohne: list[str] = []
+
+    for treffer in _TERM_RE.finditer(text):
+        wert = treffer.group("quoted")
+        gequotet = wert is not None
+        if not gequotet:
+            wert = treffer.group("bare") or ""
+        wert = wert.strip()
+        if not wert:
+            continue
+
+        schluessel = (treffer.group("field") or "").lower()
+        verneint = bool(treffer.group("neg"))
+
+        if verneint:
+            if schluessel or gequotet:
+                # »-von:x« und »-"a b"« erzeugt die Maske nicht.
+                return None
+            ohne.append(wert)
+            continue
+
+        ganz = f"{schluessel}:{wert}".lower() if schluessel else ""
+        if ganz in haken:
+            feld = haken[ganz]
+            if feld.name in werte:
+                return None
+            werte[feld.name] = "1"
+            continue
+
+        if not schluessel:
+            if freitext is None or freitext.name in werte:
+                return None
+            werte[freitext.name] = wert
+            continue
+
+        feld = nach_schluessel.get(schluessel)
+        if feld is None or feld.name in werte:
+            # Ein Wort der Suchsprache, für das es kein Feld gibt, oder
+            # dasselbe Feld zweimal – beides kann die Maske nicht.
+            return None
+        werte[feld.name] = wert
+
+    if ohne:
+        werte["ohne"] = " ".join(ohne)
+
+    # **Die Probe aufs Exempel, und sie ist der eigentliche Wächter.**
+    # Der Knopf verlässt sich darauf, dass nichts verloren geht – das
+    # lässt sich hier ausrechnen, statt es zu versprechen. Weicht der
+    # neu gebaute Ausdruck ab, war die Zerlegung nicht verlustfrei, und
+    # dann wird lieber nichts angeboten.
+    #
+    # Verglichen wird wortweise: Die Reihenfolge der Felder liegt in
+    # FELDER fest, und ein Ausdruck, der sie anders anordnet, ergäbe
+    # dieselbe Suche. Das ist kein Verlust.
+    if sorted(ausdruck(werte).split()) != sorted(text.split()):
+        return None
+    return werte
