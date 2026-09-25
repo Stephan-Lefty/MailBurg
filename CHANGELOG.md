@@ -7,6 +7,25 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **`python3-zstandard` ist jetzt erforderlich, nicht bloß empfohlen** –
+  die dritte Stufe in drei Tagen, und die ersten beiden reichten nicht.
+
+  Am 22.09. stand es noch unter *Suggests*, dann unter *Recommends*. Der
+  Grund, warum auch das zu wenig war, kam aus einer beiläufigen Bemerkung
+  derselben Anwenderin: **Sie richtet MailBurg ein, indem sie die
+  heruntergeladene Datei anklickt.** Das ist der normale Weg für jeden,
+  der nicht am Terminal arbeitet – und grafische Paketinstaller ziehen
+  Empfehlungen oft nicht mit.
+
+  Damit hängt auch ihr erster Fehlerbericht daran: Sie konnte keine
+  einzige Mail öffnen, weil das Paket zum Auspacken fehlte. Zwei
+  Meldungen, eine Ursache – und ich habe sie einzeln behandelt, ohne das
+  Gemeinsame zu sehen.
+
 ## [1.7.5] – 2026-09-23
 
 ### Behoben

@@ -68,6 +68,22 @@ DEPENDS = ", ".join((
     # keinen Schlüsselbund, wiegt dagegen wenig – dort gibt es den
     # Tresor, und dieses Paket ist klein.
     "python3-keyring",
+    # **Und aus demselben Grund seit dem 2026-09-25 auch dieses.** Es
+    # stand bis zum 22.09. unter *Suggests*, dann unter *Recommends* –
+    # beide Male reichte es nicht. Dieselbe Anwenderin konnte deshalb
+    # keine einzige Mail öffnen: Ihr Archiv enthält mit Zstandard
+    # gepackte Nachrichten, das Paket zum Auspacken fehlte.
+    #
+    # Sie richtet MailBurg ein, indem sie die heruntergeladene Datei
+    # anklickt. Das ist der normale Weg für jeden, der nicht am
+    # Terminal arbeitet – und grafische Paketinstaller ziehen
+    # Empfehlungen oft nicht mit.
+    #
+    # Ab Python 3.14 ist Zstandard eingebaut und dieses Paket
+    # überflüssig; Debian 13 liefert aber 3.13. Solange das so ist,
+    # entscheidet es darüber, ob sich ein Archiv überhaupt lesen lässt –
+    # und das ist keine Empfehlung, sondern eine Voraussetzung.
+    "python3-zstandard",
 ))
 
 #: Die übliche Ausstattung eines Arbeitsplatzes. **Recommends und nicht
@@ -78,18 +94,6 @@ RECOMMENDS = ", ".join((
     "python3-cryptography",        # verschlüsselte Archive und Tresor
     "python3-pypdf",               # PDF-Anhänge durchsuchbar
     "poppler-utils",               # pdftotext, der schnellere Weg
-    # **Hier und nicht unter Suggests.** Bis zum 2026-09-22 stand
-    # Zstandard bei den Vorschlägen, die apt nicht mitinstalliert – mit
-    # der Begründung, es packe ja nur besser. Das stimmt beim
-    # *Schreiben*. Beim *Lesen* ist es keine Kür: Wer ein Archiv hat, in
-    # dem .zst-Dateien liegen – etwa von einer venv-Installation oder
-    # von einem Rechner mit Python 3.14 –, bekommt ohne dieses Paket
-    # keine einzige Nachricht mehr angezeigt.
-    #
-    # Genau so ist es einer Anwenderin am 2026-09-22 ergangen: Klick auf
-    # eine Mail, Traceback. Ab Python 3.14 ist Zstandard eingebaut und
-    # das Paket überflüssig – Debian 13 liefert aber 3.13.
-    "python3-zstandard",
 ))
 
 #: Was den Funktionsumfang abrundet, aber selten gebraucht wird.

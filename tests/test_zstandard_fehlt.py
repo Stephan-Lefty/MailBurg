@@ -113,7 +113,19 @@ class MitZstandard(unittest.TestCase):
 class ImDebianPaket(unittest.TestCase):
     """Das Paket muss mitbringen, was zum Lesen nötig ist."""
 
-    def test_zstandard_ist_keine_blosse_empfehlung_mehr(self) -> None:
+    def test_zstandard_ist_erforderlich(self) -> None:
+        """**Zwei Stufen in drei Tagen, und beide reichten nicht.**
+
+        Bis zum 2026-09-22 stand es unter *Suggests* – das installiert
+        apt gar nicht mit. Dann unter *Recommends*. Auch das genügte
+        nicht: Dieselbe Anwenderin richtet MailBurg ein, indem sie die
+        heruntergeladene Datei anklickt, und grafische Paketinstaller
+        ziehen Empfehlungen oft nicht mit.
+
+        Ohne dieses Paket lässt sich ein Archiv mit `.zst`-Dateien nicht
+        öffnen – keine einzige Nachricht. Das ist keine Empfehlung,
+        sondern eine Voraussetzung.
+        """
         import importlib.util
         import pathlib
 
@@ -125,12 +137,9 @@ class ImDebianPaket(unittest.TestCase):
         modul = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(modul)
 
-        self.assertIn("python3-zstandard", modul.RECOMMENDS)
-        self.assertNotIn(
-            "python3-zstandard", modul.SUGGESTS,
-            "Unter Suggests installiert apt es nicht mit – und dann "
-            "lässt sich kein zst-gepacktes Archiv mehr lesen",
-        )
+        self.assertIn("python3-zstandard", modul.DEPENDS)
+        for schwaecher in (modul.RECOMMENDS, modul.SUGGESTS):
+            self.assertNotIn("python3-zstandard", schwaecher)
 
     def test_keyring_ist_erforderlich(self) -> None:
         """**Nicht bloß empfohlen** – seit dem 2026-09-23.
