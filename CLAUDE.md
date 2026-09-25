@@ -16,10 +16,20 @@ Stephans Vorgabe vom 25.09.2026:
 
 > Wir sammeln jetzt einfach mal die nächsten Meldungen und bringen dann eine
 > neue Version raus, wenn wirklich ein Fehler behoben wird oder nach 4 Wochen.
+> […] Mache den Stichtag zum ersten eines Monats.
 
 Also: **Ein Fehler, der Anwender trifft, geht sofort raus** – besonders die
 stille Sorte, bei der Post ausbleibt, ohne dass jemand es merkt. Alles andere
-wird gesammelt; der Stichtag liegt bei **ungefähr dem 23.10.2026**.
+wird gesammelt und erscheint **am Ersten des Monats**.
+
+Der nächste Termin ist damit der **1. November 2026**; der 1. Oktober liegt
+sechs Tage nach der 1.7.6 und wäre keine Sammlung, sondern ein Nachschlag.
+
+**Ein fester Kalendertag statt »vier Wochen später«**, weil ein gleitender
+Termin nach zwei Verschiebungen niemand mehr im Kopf hat – und weil Anwender
+sich darauf einstellen können. Ein Monat ohne Meldungen heißt: keine Fassung.
+Es gibt keinen Grund, eine Nummer zu vergeben, nur weil ein Datum erreicht
+ist.
 
 **Sammeln hat einen eigenen Wert, und das ist nicht bloß Ruhe.** Michaelas
 zwei Fehlerberichte hingen zusammen – dieselbe Ursache, drei Tage
