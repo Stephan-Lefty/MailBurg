@@ -10,6 +10,27 @@ auch für die Anwender. Wer jeden zweiten Tag aktualisiert, findet keine Fehler,
 sondern jagt Fassungen hinterher. Ein Stand, der ein paar Wochen steht, zeigt
 erst, was im Alltag trägt.
 
+### Wann die nächste Fassung kommt
+
+Stephans Vorgabe vom 25.09.2026:
+
+> Wir sammeln jetzt einfach mal die nächsten Meldungen und bringen dann eine
+> neue Version raus, wenn wirklich ein Fehler behoben wird oder nach 4 Wochen.
+
+Also: **Ein Fehler, der Anwender trifft, geht sofort raus** – besonders die
+stille Sorte, bei der Post ausbleibt, ohne dass jemand es merkt. Alles andere
+wird gesammelt; der Stichtag liegt bei **ungefähr dem 23.10.2026**.
+
+**Sammeln hat einen eigenen Wert, und das ist nicht bloß Ruhe.** Michaelas
+zwei Fehlerberichte hingen zusammen – dieselbe Ursache, drei Tage
+auseinander. Gesehen habe ich das erst, als beide nebeneinander lagen. Wer
+jede Meldung sofort einzeln abarbeitet, repariert Symptome und übersieht das
+Muster.
+
+Zwischendurch darf weitergebaut werden; es landet nur nicht gleich in einer
+Fassung. `main` bleibt dabei jederzeit veröffentlichbar – wer aus dem
+Quelltext einrichtet, bekommt ohnehin den aktuellen Stand.
+
 ### Drei Fassungen aus zwei Rückmeldungen
 
 **Von Michaela kamen zwei Fehlerberichte, die ich für unabhängig hielt.** Am
