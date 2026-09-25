@@ -24,9 +24,14 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   unter einem Docstring, der genau davor warnt.
 
 - **`python3-keyring` ist jetzt erforderlich, nicht bloß empfohlen.**
-  Was empfohlen ist, darf `apt autoremove` wegräumen – und tut es
-  gelegentlich, ohne dass jemand es merkt. Bei derselben Anwenderin war
-  das Paket verschwunden, ohne dass sie etwas getan hätte.
+  Bei derselben Anwenderin fehlte es – und zwar von Anfang an: Ihr
+  apt-Protokoll zeigt kein einziges »Remove«, das Paket kam bei der
+  Einrichtung nie mit. Der wahrscheinlichste Weg dorthin ist `dpkg -i`
+  statt `apt install ./datei.deb`; dpkg zieht nichts nach.
+
+  Als Abhängigkeit wird ein solches Fehlen wenigstens **sichtbar** –
+  dpkg meldet es, `apt install -f` holt es nach. Eine fehlende
+  Empfehlung verschwindet lautlos.
 
   Ohne Schlüsselbund ist MailBurg im Alltag unbenutzbar: Jedes Passwort
   wird bei jedem Abruf neu erfragt, und ein Abruf im Hintergrund läuft

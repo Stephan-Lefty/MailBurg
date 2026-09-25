@@ -135,11 +135,18 @@ class ImDebianPaket(unittest.TestCase):
     def test_keyring_ist_erforderlich(self) -> None:
         """**Nicht bloß empfohlen** – seit dem 2026-09-23.
 
-        Was empfohlen ist, darf `apt autoremove` wegräumen. Genau das
-        ist einer Anwenderin passiert: Das Paket verschwand ohne ihr
-        Zutun, danach meldete MailBurg für jedes Postfach »liegt kein
-        Passwort im Schlüsselbund«, und sie hätte alle neu eingetippt –
-        in einen Speicher, den es nicht mehr gab.
+        Bei einer Anwenderin fehlte das Paket, und MailBurg meldete für
+        jedes Postfach »liegt kein Passwort im Schlüsselbund«. Sie hätte
+        alle neu eingetippt – in einen Speicher, den es nicht gab.
+
+        **Die erste Erklärung dafür war falsch:** Ich vermutete ein
+        `apt autoremove`, das Empfehlungen wegräumen darf. Ihr
+        apt-Protokoll zeigte kein einziges »Remove« – das Paket war nie
+        installiert, es kam bei der Einrichtung nicht mit.
+
+        Als Abhängigkeit wird ein solches Fehlen sichtbar: `dpkg -i`
+        meldet es, `apt install -f` holt es nach. Eine fehlende
+        Empfehlung verschwindet dagegen lautlos.
         """
         import importlib.util
         import pathlib

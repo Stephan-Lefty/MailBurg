@@ -50,17 +50,23 @@ DEPENDS = ", ".join((
     # Passwort wird bei jedem Abruf neu erfragt, und ein Abruf im
     # Hintergrund läuft gar nicht.
     #
-    # Der Anlass war eine Anwenderin, bei der das Paket verschwand,
-    # ohne dass sie etwas getan hätte – vermutlich durch ein
-    # »apt autoremove«, das ein bloß empfohlenes Paket wegräumen darf.
-    # Danach meldete MailBurg »liegt kein Passwort im Schlüsselbund«
-    # für jedes Postfach, und sie hätte alle neu eingetippt: in einen
-    # Speicher, den es nicht mehr gab.
+    # **Der Anlass, und die erste Erklärung dafür war falsch.** Bei
+    # einer Anwenderin fehlte das Paket; ich vermutete ein
+    # »apt autoremove«, das Empfehlungen wegräumen darf. Ihr
+    # apt-Protokoll widerlegte das: Dort steht kein einziges »Remove«.
+    # Das Paket war **nie installiert** – es kam bei der Einrichtung
+    # nicht mit.
     #
-    # Der Einwand, ein Server brauche keinen Schlüsselbund, wiegt
-    # weniger: Dort gibt es den Tresor, und dieses Paket ist klein.
-    # Eine Empfehlung, die stillschweigend verschwinden kann, ist für
-    # etwas so Tragendes die falsche Stufe.
+    # Der wahrscheinlichste Weg dorthin ist ``dpkg -i`` statt
+    # ``apt install ./datei.deb``. **dpkg zieht gar nichts nach**, weder
+    # Empfehlungen noch Abhängigkeiten – es *meldet* aber fehlende
+    # Abhängigkeiten, und ``apt install -f`` holt sie dann. Eine
+    # fehlende Empfehlung verschwindet dagegen lautlos.
+    #
+    # Genau deshalb steht es hier: Als Abhängigkeit wird das Fehlen
+    # sichtbar, als Empfehlung nicht. Der Einwand, ein Server brauche
+    # keinen Schlüsselbund, wiegt dagegen wenig – dort gibt es den
+    # Tresor, und dieses Paket ist klein.
     "python3-keyring",
 ))
 
