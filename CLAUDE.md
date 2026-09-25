@@ -31,6 +31,20 @@ sich darauf einstellen können. Ein Monat ohne Meldungen heißt: keine Fassung.
 Es gibt keinen Grund, eine Nummer zu vergeben, nur weil ein Datum erreicht
 ist.
 
+**Und das ist keine interne Notiz mehr.** Stephan hat es den Anwendern am
+25.09.2026 so zugesagt:
+
+> Für die Zukunft werde ich nur dann eine neue Version raus bringen, wenn
+> tatsächlich Fehler auftauchen. Alle anderen Dinge die kommen werden
+> gesammelt und dann gibt es einmal im Monat ein Update. Wenn es denn
+> notwendig ist! Dann kommt auch etwas Ruhe in die Sache und Ihr könnt
+> MailBurg in Ruhe nutzen & testen.
+
+Wer hier eine Fassung außer der Reihe erwägt, prüft zuerst gegen diesen Satz.
+Eine Zusage, die man selbst zuerst bricht, ist danach keine mehr – und in
+einem Projekt, dessen Verkaufsargument Verlässlichkeit ist, wiegt das
+schwerer als jede einzelne Verbesserung.
+
 **Sammeln hat einen eigenen Wert, und das ist nicht bloß Ruhe.** Michaelas
 zwei Fehlerberichte hingen zusammen – dieselbe Ursache, drei Tage
 auseinander. Gesehen habe ich das erst, als beide nebeneinander lagen. Wer
