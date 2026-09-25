@@ -751,10 +751,18 @@ def passwort_holen(konto: Konto, *, streng: bool = False) -> str | None:
     # eingegeben hätte – in einen Speicher, den es auf ihrem Rechner
     # nicht gibt. Der wahre Grund steht in ``schluesselbund_lage()``, er
     # wurde hier nur weggeworfen.
-    brauchbar, warum = schluesselbund_lage()
-    if not brauchbar:
+    # **Gefragt wird über ``schluesselbund_verfuegbar``, nicht direkt
+    # über ``schluesselbund_lage``.** Beide beantworten dieselbe Frage,
+    # aber nur das eine ist die Stelle, an der Aufrufer und Tests
+    # ansetzen. Am 2026-09-23 stand hier kurz ``schluesselbund_lage()``
+    # – lokal grün, in der CI rot: Auf dem Bauserver gibt es keinen
+    # Schlüsselbund, und die Tests hängen ihren Ersatz an die andere
+    # Stelle.
+    #
+    # Die Begründung wird erst geholt, wenn sie gebraucht wird.
+    if not schluesselbund_verfuegbar():
         if streng:
-            raise KeinSchluesselbund(warum)
+            raise KeinSchluesselbund(schluesselbund_lage()[1])
         return None
     import keyring
 
