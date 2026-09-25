@@ -3,6 +3,71 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-09-25, Freitag) – 1.7.4 bis 1.7.6
+
+**MailBurg ruht jetzt erst einmal.** Sechs Fassungen in vier Tagen sind viel –
+auch für die Anwender. Wer jeden zweiten Tag aktualisiert, findet keine Fehler,
+sondern jagt Fassungen hinterher. Ein Stand, der ein paar Wochen steht, zeigt
+erst, was im Alltag trägt.
+
+### Drei Fassungen aus zwei Rückmeldungen
+
+**Von Michaela kamen zwei Fehlerberichte, die ich für unabhängig hielt.** Am
+Montag konnte sie keine Mail öffnen (Zstandard fehlte), am Mittwoch meldete
+MailBurg für alle Postfächer »kein Passwort im Schlüsselbund« (keyring
+fehlte). Beide Male habe ich einzeln repariert.
+
+**Die Ursache stand erst im letzten Nebensatz:** *»Ich lade mir immer die
+.deb-Datei herunter und installiere sie dann, indem ich darauf klicke.«*
+Grafische Paketinstaller ziehen *Recommends* oft nicht mit – und dort standen
+beide Pakete.
+
+Vorher hatte ich zweimal geraten: erst `apt autoremove`, dann `dpkg -i`. Beides
+hat ihr apt-Protokoll widerlegt. **Die Lösung stimmte jedes Mal, die Begründung
+zweimal nicht** – und eine falsche Begründung im Code lenkt die nächste Suche
+an den falschen Ort. Sie steht jetzt richtig in `deb_bauen.py`.
+
+Daraus die Regel: **Was MailBurg zum Laufen braucht, gehört unter `Depends`.**
+`Recommends` erreicht nur den, der über apt installiert. Ausnahme bleibt Qt –
+dort greift stattdessen das `postinst`.
+
+**Von joka63 kam eine Lösung, die besser war als meine beiden.** Der Knopf
+*Ausführlich …* im Suchordnerdialog soll nur erscheinen, wenn sich der
+Suchausdruck in Maskenfelder umwandeln lässt. Ich hatte vorgeschlagen, den Rest
+stehen zu lassen oder zu warnen – beides verlangt, dass der Anwender einen
+Sonderfall versteht. **Seine Lösung macht den Sonderfall unmöglich.**
+
+### Vier eigene Fehler, die hierher gehören
+
+1. **Die CI war zwölf Stunden rot, und ich habe es nicht gesehen.** Gepusht,
+   »lokal grün« gedacht, weitergemacht – auf demselben Stand ging die 1.7.5
+   raus. Steht jetzt als Regel im Gedächtnis: nach dem Push nachsehen, vor
+   einem Release Pflicht.
+2. **Ein Befehl aus dem Gedächtnis.** `mailburg kettenvermerk --stelle` gibt es
+   nicht, die Option heißt `--nummer`. Stephan meldete »Befehl ist durch« – und
+   erst der Blick ins Journal zeigte, dass nichts geschrieben worden war.
+   **»Durch« heißt, dass die Eingabeaufforderung zurückkam.**
+3. **Zweimal hat automatisches Ersetzen Unsinn gebaut:** einmal über veraltete
+   Zeilennummern, einmal durch eine verdoppelte `RECOMMENDS`-Definition, bei der
+   die zweite die erste überschrieb. Aufgefallen nur, weil ich danach ins
+   gebaute Paket geschaut habe statt in den Quelltext.
+4. **Release-Notes im Scratchpad.** `/tmp` wird beim Neustart geleert; am
+   nächsten Morgen fehlte die Datei. Sie liegen jetzt neben dem Repo unter
+   `../.mailburg-releasetexte/`.
+
+### Was dabei gebaut wurde
+
+`mailburg abrufen --alle` (durch jedes bekannte Archiv), `compress.
+ensure_readable()` (die Prüfung beim Öffnen, die der Modulkopf seit jeher
+behauptete und die es nie gab), `accounts.KeinSchluesselbund` (kein Speicher
+ist etwas anderes als kein Passwort), `search.maske.felder()` samt
+Rundreisetests in beide Richtungen.
+
+**Der Vorbehalt zu `--alle` ist erledigt:** an drei echten Archiven gelaufen,
+dabei kamen 176 Mails nach, von denen niemand wusste, dass sie fehlten.
+
+2032 Tests, alle Pakete gebaut, CI grün.
+
 ## Hier war Schluss (Stand 2026-09-22, Dienstag) – 1.7.0 bis 1.7.3
 
 **Der erste Gmail-Durchlauf, und er ging anders aus als geplant.** Vorgesehen
