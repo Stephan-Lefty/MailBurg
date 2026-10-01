@@ -346,9 +346,12 @@ def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
             )
             eingabe = f'<select name="{feld.name}">{stuecke}</select>'
         else:
+            platzhalter = (
+                ' placeholder="TT.MM.JJJJ"' if feld.art == "datum" else ""
+            )
             eingabe = (
                 f'<input name="{feld.name}" value="{html.escape(wert)}"'
-                f'{" placeholder=\"TT.MM.JJJJ\"" if feld.art == "datum" else ""}>'
+                f"{platzhalter}>"
             )
 
         zeilen.append(
