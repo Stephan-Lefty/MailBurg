@@ -416,24 +416,14 @@ def _parse_date(message: Message, defects: list[str]) -> datetime | None:
     return None
 
 
-def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
-    """Zerlegt eine Mail.
+def _kopf_lesen(message: Message, defects: list[str]) -> ParsedMessage:
+    """Liest die Kopffelder in ein ``ParsedMessage``.
 
-    ``with_payloads`` behält die Anhangsdaten im Speicher – nötig, wenn
-    anschließend deren Text herausgezogen werden soll, sonst
-    Verschwendung.
+    Hier - und nur hier - werden strukturierte Kopfzeilen gefaltet; das ist
+    die Stelle, die unter der strengen Policy auf Python 3.11 an einem krummen
+    Header wirft. ``parse`` fängt das ab und ruft erneut mit der nachsichtigen
+    Auslegung auf, deshalb steht der Zugriff gebündelt in einer Funktion.
     """
-    defects: list[str] = []
-
-    # Die strenge Auslegung liefert die besseren Ergebnisse, verschluckt sich
-    # aber an manchen alten Mails. Dann die nachsichtige von 1999.
-    message: Message
-    try:
-        message = email.message_from_bytes(raw, policy=email.policy.default)
-    except Exception as exc:  # noqa: BLE001
-        defects.append(f"Strenge Auslegung fehlgeschlagen: {exc}")
-        message = email.message_from_bytes(raw, policy=email.policy.compat32)
-
     result = ParsedMessage(
         subject=_header(message, "Subject"),
         message_id=_header(message, "Message-ID"),
@@ -453,6 +443,40 @@ def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
         result.from_addr = addr
 
     result.date = _parse_date(message, defects)
+    return result
+
+
+def parse(raw: bytes, *, with_payloads: bool = False) -> ParsedMessage:
+    """Zerlegt eine Mail.
+
+    ``with_payloads`` behält die Anhangsdaten im Speicher – nötig, wenn
+    anschließend deren Text herausgezogen werden soll, sonst
+    Verschwendung.
+    """
+    defects: list[str] = []
+
+    # Die strenge Auslegung liefert die besseren Ergebnisse, verschluckt sich
+    # aber an manchen alten Mails. Dann die nachsichtige von 1999.
+    message: Message
+    try:
+        message = email.message_from_bytes(raw, policy=email.policy.default)
+    except Exception as exc:  # noqa: BLE001
+        defects.append(f"Strenge Auslegung fehlgeschlagen: {exc}")
+        message = email.message_from_bytes(raw, policy=email.policy.compat32)
+
+    # Der strenge Parser faltet strukturierte Kopfzeilen erst beim Zugriff,
+    # nicht schon beim Einlesen oben. Auf Python 3.11 wirft dieses Falten bei
+    # einer ungültigen Message-ID oder References-Zeile (ab 3.12 bleibt es ein
+    # Defect). Dann greift dieselbe nachsichtige Auslegung von 1999 - sie
+    # liefert reine Zeichenketten, die nicht gefaltet werden. Ohne diesen
+    # zweiten Anlauf bliebe eine Mail mit krummem Kopf beim Abruf stillschwei-
+    # gend als "fehlgeschlagen" draußen, obwohl der Rumpf tadellos ist.
+    try:
+        result = _kopf_lesen(message, defects)
+    except Exception as exc:  # noqa: BLE001
+        defects.append(f"Strenger Kopf unlesbar: {exc}")
+        message = email.message_from_bytes(raw, policy=email.policy.compat32)
+        result = _kopf_lesen(message, defects)
 
     body_parts: list[str] = []
     html_parts: list[str] = []

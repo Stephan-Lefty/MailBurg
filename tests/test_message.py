@@ -6,8 +6,11 @@ Tests halten ihn fest, indem sie überwiegend kaputte Mails einspeisen.
 
 from __future__ import annotations
 
+import email.errors
 import unittest
+from unittest import mock
 
+from mailburg.extract import message as message_mod
 from mailburg.extract.message import html_to_text, parse
 
 
@@ -333,3 +336,44 @@ class BlindkopieTest(unittest.TestCase):
     def test_ohne_bcc_leer(self):
         roh = b"From: a@example.org\r\nTo: b@example.org\r\n\r\nText\r\n"
         self.assertEqual(parse(roh).bcc_addrs, [])
+
+
+class KrummerKopfTest(unittest.TestCase):
+    """Eine ungültige Message-ID darf eine Mail nicht aus dem Archiv halten.
+
+    Der strenge Parser faltet strukturierte Kopfzeilen erst beim Zugriff. Auf
+    Python 3.11 wirft das bei einer Message-ID wie ``<[SPAM]-...>`` (ab 3.12
+    bleibt es ein Defect). Beim Abruf zählte der Importer solche Mails als
+    »fehlgeschlagen« und nahm sie nie auf - still, denn der Rumpf ist heil.
+
+    Hier plattformunabhängig nachgestellt: 3.12+ wirft gar nicht erst, also
+    wird die 3.11-Ausnahme künstlich im strengen Durchlauf ausgelöst. Ohne den
+    Rückfall auf die nachsichtige Auslegung in ``parse`` ginge sie durch und
+    ``parse`` selbst flöge - genau das, was den Abruf stolpern ließ.
+    """
+
+    def test_wirft_der_strenge_kopf_greift_die_nachsichtige_auslegung(self):
+        roh = (
+            "From: a@example.org\r\n"
+            "Subject: Angebot 4711\r\n"
+            "Message-ID: <[SPAM]-Werbung@example.org>\r\n\r\nText\r\n"
+        ).encode("utf-8")
+
+        echt = message_mod._kopf_lesen
+        aufrufe: list[object] = []
+
+        def erst_werfen(message, defects):
+            aufrufe.append(message)
+            if len(aufrufe) == 1:
+                raise email.errors.HeaderParseError("künstlich wie unter 3.11")
+            return echt(message, defects)
+
+        with mock.patch.object(message_mod, "_kopf_lesen", erst_werfen):
+            zerlegt = parse(roh)
+
+        # Der zweite Anlauf wurde genommen, parse() ist nicht geflogen.
+        self.assertEqual(len(aufrufe), 2)
+        self.assertEqual(zerlegt.subject, "Angebot 4711")
+        # Die Message-ID bleibt roh erhalten, statt verloren zu gehen.
+        self.assertIn("[SPAM]", zerlegt.message_id)
+        self.assertTrue(any("Strenger Kopf" in d for d in zerlegt.defects))
