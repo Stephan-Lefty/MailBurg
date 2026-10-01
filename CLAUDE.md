@@ -3,6 +3,67 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-10-01, Donnerstag) – zwei Fehler auf Python 3.11
+
+**Der Monatscheck zum Ersten hat keine Sammelfassung gebracht, sondern zwei
+echte Fehler – beide nur auf Python 3.11, der ältesten Fassung, die wir
+bewerben.** Seit der 1.7.6 waren nur vier Doku-Commits aufgelaufen; eine
+Fassung außer der Reihe stand nicht zur Debatte. Der Anstoß kam von der CI.
+
+### Der erste Fehler, und warum ihn ein Monat lang niemand sah
+
+Der wöchentliche Montagslauf war rot. `mailburg/server/seiten.py` baute ein
+`placeholder`-Attribut in einem f-string mit Backslash im Ausdrucksteil –
+erlaubt erst ab Python 3.12 (PEP 701). Auf 3.11 ist das ein `SyntaxError`,
+und das Modul lässt sich nicht einmal importieren: Die Weboberfläche startet
+dort gar nicht.
+
+**Der Fehler steckte seit der 1.0.0 drin.** Gesehen hat ihn niemand, weil der
+Push-Lauf nur Python 3.13/3.14 fährt und erst der Montagslauf 3.11 mitprüft –
+und weil bis dahin niemand den Browser-Zugang unter 3.11 betrieben hat. Die
+Lehre ist dieselbe wie beim Zwölf-Stunden-Rot der 1.7.5, eine Stufe weiter:
+**Eine Mindestversion, die man zusagt, muss auch im Alltagslauf geprüft
+werden – sonst ist die Zusage eine Vermutung.** (Fix: Commit 36b348c.)
+
+### Der zweite Fehler lag hinter dem ersten
+
+Erst als der f-string-Fix den `compileall`-Abbruch beseitigte, lief der
+Testlauf auf 3.11 überhaupt durch – und war sofort wieder rot, aus einem
+ganz anderen Grund. `extract/message.py` liest Mails mit der strengen Policy
+(`email.policy.default`). Die **faltet strukturierte Kopfzeilen erst beim
+Zugriff**, nicht beim Einlesen – und auf 3.11 wirft dieses Falten bei einer
+ungültigen Message-ID (ab 3.12 bleibt es ein Defect). Der Zugriff lag
+**außerhalb** des try/except, das nur `message_from_bytes` absicherte. Die
+Ausnahme lief bis in den Importer, der die Mail als »fehlgeschlagen« zählte
+und nie aufnahm.
+
+Aufgedeckt hat es die Testhilfe, die die Message-ID aus dem Betreff baut:
+`[SPAM] …` wird zu `<[SPAM]-…>`. In echter Post kommen solche krummen Köpfe
+über Spam und fehlerhafte Mailprogramme vor – und auf 3.11 wäre jede solche
+Mail still liegengeblieben. Genau die teure Sorte: **»fehlgeschlagen« sieht
+aus wie ein Befund, ist aber ein Dauerausfall**, denn die Mail wird
+vorgemerkt und scheitert beim nächsten Lauf wieder.
+
+Die Kopf-Lesung steht jetzt gebündelt in `_kopf_lesen()`; wirft sie, fällt
+`parse()` auf die nachsichtige Auslegung von 1999 zurück und nimmt die Mail
+auf – die Message-ID bleibt roh erhalten. (Fix: Commit 6d4687b.)
+
+**Zwei Lehren, beide neu in dieser Sammlung:**
+
+1. **Ein Fehler kann einen zweiten verdecken.** Der `compileall`-Abbruch
+   stand *vor* dem Testlauf; solange er rot war, lief kein einziger Test auf
+   3.11. Wer beim ersten roten Schritt aufhört, hält das für das ganze
+   Problem.
+2. **Ein try/except deckt nur, was in seinem Block *ausgeführt* wird.** Bei
+   einer lazy auswertenden Bibliothek passiert die Arbeit erst beim Zugriff –
+   und der lag hier zwei Funktionsaufrufe später.
+
+Beide Fassungen sind lokal nicht nachstellbar – hier läuft nur Python 3.14,
+und das verdeckt genau diese Fehler. Verifiziert wurde über
+`gh workflow run Tests --ref main` (Python-Matrix 3.11/3.14), Lauf grün.
+Release-Texte und der ausführliche Befund liegen unter
+`../.mailburg-releasetexte/`.
+
 ## Hier war Schluss (Stand 2026-09-25, Freitag) – 1.7.4 bis 1.7.6
 
 **MailBurg ruht jetzt erst einmal.** Sechs Fassungen in vier Tagen sind viel –

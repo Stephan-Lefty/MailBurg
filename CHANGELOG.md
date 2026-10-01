@@ -7,6 +7,30 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **Die Weboberfläche lief auf Python 3.11 nicht an.** Ein Platzhalter in
+  der Browser-Suchmaske war so geschrieben, dass Python 3.11 die Datei nicht
+  einlesen konnte – ein Sprachdetail, das erst Python 3.12 erlaubt. Auf 3.12
+  und neuer (etwa im Debian-Paket oder unter Windows) war nie etwas kaputt.
+
+  Betroffen war allein »Das Archiv im Browser« unter Python 3.11, etwa auf
+  Debian 12 aus dem Quelltext; dort brach der Dienst beim Start mit einem
+  Syntaxfehler ab. Der Fehler steckte still seit der 1.0.0.
+
+- **Eine Mail mit krummem Kopf blieb auf Python 3.11 aus dem Archiv.** Beim
+  Abruf verschluckte sich die strenge Auslegung der Kopfzeilen an einer
+  ungültigen Message-ID (oder einer kaputten *References*-Zeile), wie sie in
+  Spam und von fehlerhaften Mailprogrammen vorkommt. Auf Python 3.11 warf das
+  eine Ausnahme; die Mail wurde als »fehlgeschlagen« gezählt und bei jedem
+  Lauf erneut übergangen – still, denn ihr Rumpf war tadellos.
+
+  MailBurg fällt jetzt auf die nachsichtige Auslegung zurück, wenn sich der
+  Kopf streng nicht lesen lässt, und nimmt die Mail auf. Auf Python 3.12 und
+  neuer trat der Fehler nie auf.
+
 ## [1.7.6] – 2026-09-25
 
 ### Behoben
