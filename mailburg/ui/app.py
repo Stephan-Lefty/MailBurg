@@ -47,9 +47,9 @@ def _qt_fehlt() -> str:
         # gebaut. ``pip install`` hilft dagegen nicht, und ``apt`` auch
         # nicht – beides führte den Anwender in eine Sackgasse.
         #
-        # Am 2026-09-16 im Prüflauf gesehen: Das AppImage meldete »pip
-        # install 'mailburg[oberflaeche]'«, weil ``aus_systempaket()``
-        # nur ``dist-packages`` kennt und ein AppImage keines ist.
+        # Am 2026-09-16 im Prüflauf gesehen: Das AppImage riet zum
+        # Nachrüsten per pip, weil ``aus_systempaket()`` nur
+        # ``dist-packages`` kennt und ein AppImage keines ist.
         return (
             "Für die grafische Oberfläche fehlt PySide6 – in einem "
             "AppImage, das sie\nmitbringen sollte. Damit stimmt etwas mit "
@@ -79,7 +79,7 @@ def _qt_fehlt() -> str:
         )
     return (
         "Für die grafische Oberfläche fehlt PySide6.\n"
-        "Nachrüsten mit:  pip install 'mailburg[oberflaeche]'\n"
+        "Nachrüsten mit:  pip install PySide6-Essentials\n"
         "Die Kommandozeile läuft auch ohne:  mailburg --help"
     )
 

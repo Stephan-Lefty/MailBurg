@@ -49,7 +49,8 @@ ABKLINGEN = 30
 def _fehlt() -> None:
     print(
         "Für den Windows-Dienst fehlt pywin32.\n"
-        "Nachrüsten mit:  pip install 'mailburg[server-windows]'",
+        "Nachrüsten mit:  pip install pywin32\n"
+        "Danach einmal:   py Scripts\\pywin32_postinstall.py -install",
         file=sys.stderr,
     )
 

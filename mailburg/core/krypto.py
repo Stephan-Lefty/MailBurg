@@ -97,7 +97,7 @@ def _aesgcm():
         raise KryptoFehler(
             "Für ein verschlüsseltes Archiv fehlt das Paket "
             "»cryptography«. Nachrüsten mit:\n"
-            "    pip install 'mailburg[verschluesselung]'\n\n"
+            "    pip install cryptography\n\n"
             "Ihre Mails sind davon nicht betroffen – sie liegen "
             "unversehrt im Archiv und warten auf das Paket."
         ) from fehler

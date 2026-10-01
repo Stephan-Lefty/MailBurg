@@ -86,9 +86,9 @@ Server (siehe unten). Bei zwei Repositorys läge der
 sicherheitsentscheidende Teil im jeweils anderen.
 
 Und das Muster gibt es schon. Die Desktop-Oberfläche ist auch nur ein
-Zusatz – `pip install "mailburg[oberflaeche]"`, hundertfünfzig Megabyte
+Zusatz – `pip install ".[oberflaeche]"`, hundertfünfzig Megabyte
 PySide6, und trotzdem kein eigenes Repo. Der Server wird das dritte
-Frontend nach demselben Muster: `mailburg[server]`.
+Frontend nach demselben Muster, als Zusatz `server`.
 
 **Getrennt wird trotzdem, nur an der richtigen Stelle:**
 
@@ -268,7 +268,7 @@ anmelden soll, lässt sich nicht vor diesem Programm verstecken.
 
 **Ohne `cryptography` gibt es keinen Rückfall auf Klartext**, sondern
 eine Absage. Eine Datei, die aussieht wie ein Tresor und keiner ist,
-wäre schlimmer als gar keine. Das Paket kommt mit `mailburg[server]`.
+wäre schlimmer als gar keine. Das Paket kommt mit dem Zusatz `server`.
 
 **Was der systemd-Weg noch beitragen kann:** `LoadCredential=` reicht
 den Hauptschlüssel an den Dienst durch, ohne dass er im Dateisystem des
@@ -336,7 +336,7 @@ Bleiben drei Wege, und die Wahl gehört Stephan:
   Archivprogramm wäre eine unerprobte Abhängigkeit ein Risiko.
 
 **Entschieden am 2026-08-31: pywin32**, als eigenes Extra
-`mailburg[server-windows]`. Gebaut in
+dem Zusatz `server-windows`. Gebaut in
 `mailburg/server/windows_dienst.py`:
 
 ```
@@ -420,7 +420,7 @@ Projekt.
   Was das Programm anzeigt, bringt es mit.
 * **argon2-cffi** (MIT) für die Passwörter der Benutzer. Dasselbe
   Verfahren steht ohnehin für die Archivverschlüsselung im Plan.
-* Als eigener Zusatz: `pip install "mailburg[server]"`. Wer den Server
+* Als eigener Zusatz: `pip install ".[server]"`. Wer den Server
   nicht braucht, installiert ihn nicht.
 
 ## Reihenfolge

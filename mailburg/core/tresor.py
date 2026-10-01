@@ -35,7 +35,7 @@ werden, nur weil eine Datei existiert.
 
 **Und ohne ``cryptography`` gibt es keinen Rückfall auf Klartext.**
 Lieber eine klare Ansage als eine Datei, von der jemand annimmt, sie
-sei geschützt. Das Paket kommt mit ``mailburg[server]``.
+sei geschützt. Das Paket kommt mit dem Zusatz ``server``.
 """
 
 from __future__ import annotations
@@ -113,7 +113,7 @@ def _fernet_klasse():
     except ImportError as fehler:
         raise TresorFehler(
             "Für den Tresor fehlt das Paket »cryptography«. "
-            "Nachrüsten mit:  pip install 'mailburg[server]'\n\n"
+            "Nachrüsten mit:  pip install cryptography\n\n"
             "Ohne es werden keine Passwörter abgelegt – eine Datei im "
             "Klartext, die aussieht wie ein Tresor, wäre schlimmer als "
             "gar keine."

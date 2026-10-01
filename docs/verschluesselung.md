@@ -208,8 +208,11 @@ Im Fenster gibt es dafür das Häkchen *Eingabe anzeigen*.
 MailBurg ohne das Zusatzpaket eingerichtet. Nachrüsten:
 
 ```bash
-pip install 'mailburg[verschluesselung]'
+pip install cryptography
 ```
+
+Unter Debian, Ubuntu und GuideOS heißt es `sudo apt install
+python3-cryptography`.
 
 Ihre Mails sind davon nicht betroffen — sie liegen unversehrt im Archiv und
 warten auf das Paket.

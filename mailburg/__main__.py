@@ -2685,7 +2685,7 @@ def cmd_server(args: argparse.Namespace) -> int:
     except ImportError:
         print(
             "Für den Dienst fehlen Pakete.\n"
-            "Nachrüsten mit:  pip install 'mailburg[server]'",
+            "Nachrüsten mit:  pip install starlette uvicorn cryptography",
             file=sys.stderr,
         )
         return 2

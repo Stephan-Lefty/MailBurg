@@ -7,6 +7,34 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- **Jeder Rat zum Nachrüsten eines Pakets nannte einen Befehl, der nirgends
+  läuft.** An zwölf Stellen stand `pip install "mailburg[…]"` – in fünf
+  Anleitungen, vor allem aber in sechs Meldungen des Programms selbst. Wer
+  darauf stieß, hatte bereits ein Problem (ein fehlendes Paket) und bekam
+  dazu einen Befehl, der mit *No matching distribution found* abbricht:
+  **MailBurg wird nicht über PyPI verteilt**, sondern über `git clone`, das
+  Debian-Paket, das AppImage und die `.exe`.
+
+  Genannt wird jetzt überall das **Fremdpaket** mit seinem eigenen Namen –
+  `pip install keyring`, `pip install cryptography`, `pip install pywin32`,
+  `pip install PySide6-Essentials` – und in den Anleitungen der Weg über das
+  geladene Verzeichnis (`pip install ".[…]"`). Betroffen waren die Meldungen
+  bei fehlendem Schlüsselbund, fehlender Verschlüsselung, fehlendem Tresor,
+  fehlender Oberfläche, beim Start des Dienstes und beim Windows-Dienst.
+
+  Aufgefallen beim ersten Einrichtungsversuch auf einem Windows Server. Die
+  Lehre stand schon im Code: `compress.py` nennt seit dem 22.09.2026 richtig
+  `zstandard` statt MailBurg. An den übrigen Stellen war sie nur zur Hälfte
+  angekommen – der apt-Zweig stimmte, der pip-Zweig nicht.
+
+- **Die Windows-Anleitung ließ drei Schritte aus.** Sie begann mit `pip
+  install` ohne vorheriges `git clone`, verschwieg die Nachregistrierung von
+  pywin32 und den Umstand, dass `setx` erst in neu geöffneten Fenstern wirkt.
+
 ## [1.7.7] – 2026-10-01
 
 ### Behoben

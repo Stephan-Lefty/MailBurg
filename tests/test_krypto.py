@@ -315,7 +315,16 @@ class OhneDasPaketTest(unittest.TestCase):
                 krypto._aesgcm()
 
         text = str(gefangen.exception)
-        self.assertIn("mailburg[verschluesselung]", text)
+        # **Auf den Sinn prüfen, nicht auf den Wortlaut.** Bis zum
+        # 2026-10-01 stand hier ``assertIn("mailburg[verschluesselung]")``
+        # und hielt damit einen Befehl fest, der bei niemandem läuft –
+        # MailBurg liegt nicht auf PyPI. Als der Rat korrigiert wurde,
+        # ging dieser Test rot und wäre beinahe als Grund durchgegangen,
+        # die Korrektur zurückzunehmen. Derselbe Fall wie am 2026-09-07
+        # bei »Microsoft-Konten gehen derzeit nicht«.
+        self.assertIn("pip install", text)
+        self.assertIn("cryptography", text)
+        self.assertNotIn("mailburg[", text)
         # Und der Satz, auf den es ankommt.
         self.assertIn("Ihre Mails sind davon nicht betroffen", text)
 

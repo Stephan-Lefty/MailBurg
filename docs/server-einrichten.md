@@ -248,13 +248,27 @@ Dateisystem des Dienstes steht.
 
 *Ungeprüft – siehe den Hinweis oben.*
 
+In einer PowerShell **als Administrator**, nach `git clone` und im
+entstandenen Verzeichnis:
+
 ```
-pip install "mailburg[server-windows]"
+py -m pip install ".[server-windows,imap,anhaenge,packen]"
+py Scripts\pywin32_postinstall.py -install
 setx /M MAILBURG_ARCHIV C:\MailBurg\Archiv
 setx /M MAILBURG_SCHLUESSELDATEI C:\MailBurg\schluessel
-python -m mailburg.server.windows_dienst install
-python -m mailburg.server.windows_dienst start
+py -m mailburg.server.windows_dienst install
+py -m mailburg.server.windows_dienst start
 ```
+
+**Der Punkt vor dem Schrägstrich ist auch hier wichtig** – MailBurg liegt
+nicht auf PyPI, ein `pip install "mailburg[…]"` findet nichts. Die zweite
+Zeile meldet die DLLs von pywin32 systemweit an; ohne sie startet
+erfahrungsgemäß kein Dienst.
+
+**`setx` wirkt erst in neu geöffneten Fenstern.** Zwischen den beiden
+`setx`-Zeilen und `install` gehört deshalb ein frisches
+Administrator-Fenster – sonst sucht der Dienst ein Archiv, von dem er
+nichts weiß.
 
 Der Dienst erscheint danach in `services.msc` als *MailBurg Server
 Edition*. Neustart nach einem Absturz richtet man dort ein oder mit

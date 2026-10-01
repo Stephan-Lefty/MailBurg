@@ -484,7 +484,15 @@ def schluesselbund_lage() -> tuple[bool, str]:
                 "python-keyring."
             )
         else:
-            weg = 'Nachrüsten mit  pip install "mailburg[imap]"'
+            # **Das Fremdpaket nennen, nicht MailBurg selbst.** Bis zum
+            # 2026-10-01 stand hier ``pip install "mailburg[…]"`` – ein
+            # Befehl, der bei niemandem läuft, denn MailBurg liegt nicht
+            # auf PyPI; pip bricht mit »No matching distribution found«
+            # ab. ``compress.py`` macht es seit dem 2026-09-22 richtig und
+            # nennt ``zstandard``. Hier war die Lehre nur zur Hälfte
+            # übernommen worden: der apt-Zweig darüber stimmte, der
+            # pip-Zweig nicht.
+            weg = "Nachrüsten mit  pip install keyring"
         return False, (
             "Zum Speichern von Passwörtern fehlt das Paket »keyring«. "
             "Das liegt nicht am Rechner, sondern an der Installation.\n\n"

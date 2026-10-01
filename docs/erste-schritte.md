@@ -174,9 +174,14 @@ benutzt, wählt sie selbst:
 | `packen` | kleinere Sicherungen (Zstandard) |
 
 ```bash
-pip install "mailburg[alles]"        # alles auf einmal
-pip install "mailburg[oberflaeche,imap]"   # nur Fenster und Abruf
+pip install ".[alles]"               # alles auf einmal
+pip install ".[oberflaeche,imap]"    # nur Fenster und Abruf
 ```
+
+**Der Punkt vor dem Schrägstrich ist wichtig** – er meint das Verzeichnis, in
+das Sie MailBurg geladen haben, und `pip` muss darin aufgerufen werden. Ein
+`pip install "mailburg[…]"` ohne ihn sucht auf PyPI und bricht mit *No
+matching distribution found* ab: Dort liegt MailBurg nicht.
 
 **`oberflaeche` allein genügt nicht zum Abrufen.** Heraus käme ein Programm,
 das Postfächer einrichten kann, aber keine Passwörter behält – dafür sorgt
