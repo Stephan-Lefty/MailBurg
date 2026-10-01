@@ -7,7 +7,7 @@ Alle nennenswerten Änderungen an MailBurg stehen hier.
 Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.7.7] – 2026-10-01
 
 ### Behoben
 
@@ -2904,6 +2904,14 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.7.7]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.6...v1.7.7
+[1.7.6]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.5...v1.7.6
+[1.7.5]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.4...v1.7.5
+[1.7.4]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.3...v1.7.4
+[1.7.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.2...v1.7.3
+[1.7.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.5.0...v1.5.1
