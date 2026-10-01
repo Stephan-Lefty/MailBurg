@@ -960,6 +960,27 @@ behoben – der vierte ist Geschmack und braucht eine Entscheidung.
 
 ### Beim nächsten Mal zuerst
 
+- [ ] **Die Mindest-Python-Version im Alltagslauf prüfen, nicht nur montags.**
+  (aufgekommen am 2026-10-01, mit der 1.7.7) Zwei Fehler steckten auf Python
+  3.11 – der beworbenen Untergrenze, auf der auch das AppImage gebaut wird –
+  und blieben wochenlang unbemerkt: Der Push-Lauf fährt nur 3.14, die Matrix
+  mit 3.11 läuft erst im wöchentlichen Montagslauf. Ein f-string mit Backslash
+  (seit der 1.0.0) brach `server/seiten.py` auf 3.11, und dahinter verborgen
+  verschluckte die strenge Auslegung in `extract/message.py` Mails mit krummem
+  Kopf.
+
+  **Billig abzufangen:** `compileall` auf der Mindestversion kostet Sekunden
+  und fängt die Syntaxklasse sofort beim Push. Zu überlegen, ob der ganze
+  Testlauf auf 3.11 in den Push-Lauf gehört – gegen die Actions-Minuten
+  gerechnet (ein zusätzlicher Linux-Job je Push). Der Montagslauf bleibt die
+  breite Absicherung für macOS und Windows.
+
+  Und der Montagslauf hat weiter offene Befunde, die nichts mit 3.11 zu tun
+  haben: drei macOS-Testfehler (Symlink `/private/var`, »die Tests schreiben
+  ins echte Datenverzeichnis«) und ein Windows-Testfehler in `test_archive.py`
+  – beide auf den ohnehin unerprobten Plattformen, kein Anwenderfehler, aber
+  irgendwann aufzuräumen.
+
 - [x] **Das rote Wappen in der Weboberfläche.** (2026-09-04, in der 1.3.0)
   `werkzeuge/server_logo.py` erzeugte es, `assets/server/` enthielt es in
   allen Größen samt `.ico` – benutzt wurde es an keiner einzigen Stelle.

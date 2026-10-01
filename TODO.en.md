@@ -884,6 +884,26 @@ The first report from outside. Four points, three fixed straight away.
 
 ### Next session, first
 
+- [ ] **Check the minimum Python version in the everyday run, not just on
+  Mondays.** (surfaced 2026-10-01, with 1.7.7) Two bugs lived on Python 3.11 –
+  the advertised floor, the same one the AppImage is built on – and went
+  unnoticed for weeks: the push run only uses 3.14, the matrix with 3.11 runs
+  only in the weekly Monday job. An f-string with a backslash (since 1.0.0)
+  broke `server/seiten.py` on 3.11, and hidden behind it the strict parsing in
+  `extract/message.py` swallowed mail with a malformed header.
+
+  **Cheap to catch:** `compileall` on the minimum version takes seconds and
+  catches the syntax class right at push time. Worth considering whether the
+  full test run on 3.11 belongs in the push run – weighed against the Actions
+  minutes (one extra Linux job per push). The Monday run stays the broad net
+  for macOS and Windows.
+
+  And the Monday run still has open findings unrelated to 3.11: three macOS
+  test failures (the `/private/var` symlink, "the tests write into the real
+  data directory") and one Windows failure in `test_archive.py` – both on the
+  as-yet untested platforms, not a user-facing bug, but to be cleaned up
+  eventually.
+
 - [x] **The red crest in the web interface.** (2026-09-04, in 1.3.0)
   `werkzeuge/server_logo.py` produced it, `assets/server/` held it in
   every size including an `.ico` — and not a single place used it.
