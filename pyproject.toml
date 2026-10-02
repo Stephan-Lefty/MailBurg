@@ -112,5 +112,20 @@ mailburg-server-einrichten = "mailburg.ui.servereinrichtung:starten"
 [tool.setuptools.packages.find]
 include = ["mailburg*"]
 
+# **Was das Programm ausliefert, gehört ins Paket.**
+#
+# Am 2026-10-02 fehlte im Browser das Wappen oben links – ein zerbrochenes
+# Bild auf jeder Seite. Grund: Die Grafiken liegen in `assets/` neben dem
+# Paket, und `pip install` nimmt nur mit, was *im* Paket steht. Auf einem
+# Rechner mit Quelltext daneben fiel das nie auf; auf dem Server, wo nur
+# das installierte Paket liegt, sofort.
+#
+# Deshalb die Trennung: Die drei Dateien, die der Dienst über HTTP
+# ausliefert (siehe `server.dienst.WAPPEN`), liegen unter
+# `mailburg/assets/server/`. Die Banner für README und Anleitungen bleiben
+# in `assets/` – die zeigt GitHub, nicht das Programm.
+[tool.setuptools.package-data]
+mailburg = ["assets/server/*"]
+
 [tool.setuptools.dynamic]
 version = {attr = "mailburg.__version__"}

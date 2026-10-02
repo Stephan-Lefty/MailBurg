@@ -259,7 +259,13 @@ def bauen(ziel: Path) -> Path:
     # **Die Bilder gehören mit.** Sie liegen im Quellbaum unter
     # ``assets/`` und werden über ``mailburg/bilder.py`` gesucht; ohne
     # sie hat die Weboberfläche kein Wappen und das Fenster kein Banner.
-    shutil.copytree(WURZEL / "assets", dist / "assets")
+    #
+    # ``dirs_exist_ok``, weil ``mailburg/assets/server/`` seit dem
+    # 2026-10-02 schon im Paket liegt und mit der Zeile darüber
+    # mitgekommen ist. Die drei Dateien sind in beiden Bäumen dieselben
+    # (``server_logo.py`` hält sie gleich); hier kommt der Rest dazu –
+    # die Banner, die das Fenster braucht und das Paket nicht mitbringt.
+    shutil.copytree(WURZEL / "assets", dist / "assets", dirs_exist_ok=True)
     _saeubern(dist / "assets")
 
     # --- Startbefehle --------------------------------------------------

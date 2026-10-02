@@ -192,8 +192,33 @@ def main() -> int:
         check=True, capture_output=True,
     )
 
+    # **Was der Dienst ausliefert, muss ins Paket.**
+    #
+    # ``pip install`` nimmt nur mit, was *im* Paket liegt – ``assets/``
+    # daneben kommt nicht mit. Am 2026-10-02 fehlte deshalb auf einem
+    # frisch eingerichteten Windows Server das Wappen in jeder Seite der
+    # Weboberfläche. Auf einem Rechner mit Quelltext daneben fällt das
+    # nie auf: Dort findet ``bilder.finden()`` es im Repo.
+    #
+    # Kopiert statt verschoben, weil beide Orte einen Zweck haben: Die
+    # Banner unter ``assets/server/`` zeigt GitHub in README und
+    # Anleitungen, die drei Dateien im Paket liefert der Dienst aus.
+    # Und kopiert **hier**, damit sie nicht auseinanderlaufen – wer die
+    # Grafiken erneuert, erneuert beide.
+    from mailburg.server.dienst import WAPPEN
+
+    im_paket = WURZEL / "mailburg" / "assets" / "server"
+    im_paket.mkdir(parents=True, exist_ok=True)
+    for name, _ in WAPPEN.values():
+        quelle = ASSETS / name
+        shutil.copyfile(quelle, im_paket / quelle.name)
+
     anzahl = len(list(ZIEL.iterdir()))
     print(f"{anzahl} Dateien in {ZIEL.relative_to(WURZEL)} erneuert.")
+    print(
+        f"{len(WAPPEN)} davon ins Paket kopiert "
+        f"({im_paket.relative_to(WURZEL)}) – von dort liefert sie der Dienst."
+    )
     return 0
 
 

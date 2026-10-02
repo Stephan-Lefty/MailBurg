@@ -920,6 +920,34 @@ class WappenTest(unittest.TestCase):
 
         self.kunde = Kunde(anwendung(Serverlage(archiv=self.wo)))
 
+    def test_jedes_wappen_liegt_im_paket(self):
+        """**Was der Dienst ausliefert, muss ins Paket.**
+
+        Am 2026-10-02 fehlte auf einem frisch eingerichteten Windows
+        Server das Wappen in jeder Seite – ein zerbrochenes Bild oben
+        links. Grund: Die Grafiken lagen in ``assets/`` *neben* dem
+        Paket, und ``pip install`` nimmt nur mit, was darin steht.
+
+        **Auf einem Rechner mit Quelltext daneben fällt das nie auf.**
+        Dort findet ``bilder.finden()`` die Datei im Repo, und der
+        vorhandene Test unten wird grün – obwohl beim Anwender nichts
+        ankommt. Deshalb prüft dieser Test nicht, ob die Datei *irgendwo*
+        liegt, sondern ob sie im Paketverzeichnis liegt: dem einzigen
+        Ort, der mitinstalliert wird.
+        """
+        from mailburg import bilder
+        from mailburg.server.dienst import WAPPEN
+
+        im_paket = Path(bilder.__file__).resolve().parent / "assets"
+
+        for url, (datei, _) in WAPPEN.items():
+            with self.subTest(wappen=url):
+                self.assertTrue(
+                    (im_paket / datei).is_file(),
+                    f"{datei} fehlt unter mailburg/assets/ – beim Anwender "
+                    f"bliebe {url} leer",
+                )
+
     def test_das_wappen_wird_ausgeliefert(self):
         antwort = self.kunde.get("/wappen.png")
 
