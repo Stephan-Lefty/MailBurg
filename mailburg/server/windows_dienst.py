@@ -5,11 +5,19 @@
     python -m mailburg.server.windows_dienst stop
     python -m mailburg.server.windows_dienst remove
 
-**Nicht geprüft.** Hier steht kein Windows-Rechner zur Verfügung. Der
-Aufbau folgt dem Muster aus den pywin32-Beispielen, nachgeschlagen am
-2026-08-31 – aber gelaufen ist er nie. Wer ihn zum ersten Mal einrichtet,
-sollte damit rechnen, dass etwas klemmt, und `mailburg server` von Hand
-danebenlaufen lassen, um die Einstellungen zu prüfen.
+**Am 2026-10-02 zum ersten Mal auf einem Windows Server 2025 gelaufen –
+und sofort gestorben.** uvicorns Vorgabe-Protokoll setzt eine
+Standardausgabe voraus, die ein Dienst nicht hat; die Einzelheiten
+stehen bei :func:`uvicorn_einstellungen`. Behoben, aber der Weg dorthin
+ist lehrreich: Der Dienst meldete sich im Ereignisprotokoll als
+*gestartet* und war eine Sekunde später wieder unten. In `services.msc`
+sah das aus wie »lässt sich nicht starten«.
+
+**Was darüber hinaus ungeprüft bleibt:** Ob er über einen Neustart
+hinweg oben bleibt, und ob er als LocalSystem an den Tresor kommt – er
+hat kein Benutzerprofil und damit kein `%APPDATA%`. Wer ihn einrichtet,
+lässt vorher `mailburg server` von Hand laufen: Geht das, liegt ein
+Fehler danach am Dienstgerüst und nicht an MailBurg.
 
 Derselbe Vermerk steht in `docs/server.md` und gilt so lange, wie er
 stimmt.
@@ -30,6 +38,7 @@ ab, bleibt er unten.
 
 from __future__ import annotations
 
+import logging
 import sys
 
 #: Wie der Dienst in ``services.msc`` heißt.
@@ -44,6 +53,44 @@ BESCHREIBUNG = (
 #: Wie lange auf ein sauberes Ende gewartet wird, bevor abgebrochen wird.
 #: Großzügig: Läuft gerade eine Anfrage, soll sie zu Ende gehen.
 ABKLINGEN = 30
+
+
+def uvicorn_einstellungen(lage):
+    """Die uvicorn-Einstellungen für den Dienstbetrieb.
+
+    **Ein Dienst hat keine Standardausgabe.** Unter pywin32 ist
+    ``sys.stdout`` schlicht ``None``. uvicorns Vorgabe-Protokoll baut
+    einen Formatter, der sich fragt, ob die Ausgabe ein Terminal ist –
+    und stolpert über None. Das Ergebnis ist eine Meldung, die nicht im
+    Entferntesten nach der Ursache klingt::
+
+        ValueError: Unable to configure formatter 'default'
+
+    Am 2026-10-02 auf einem Windows Server 2025 aufgelaufen, beim ersten
+    Startversuch überhaupt. Der Dienst meldete sich im Ereignisprotokoll
+    als gestartet und starb eine Sekunde später.
+
+    Deshalb ``log_config=None``. Damit uvicorns Meldungen danach nicht
+    einfach verschwinden – darunter die, die einen belegten Port nennt –,
+    hängt :func:`_protokoll_einrichten` sie ans Ereignisprotokoll.
+
+    **Eigene Funktion, damit sie ohne Windows prüfbar ist.** Der Fehler
+    tritt überall auf, wo keine Standardausgabe da ist; ein Test kann
+    das nachstellen, ohne dass ein Windows-Rechner danebensteht.
+    """
+    import uvicorn
+
+    from mailburg.server.dienst import anwendung
+
+    return uvicorn.Config(
+        anwendung(lage),
+        host=lage.adresse,
+        port=lage.anschluss,
+        # Kein Zugriffsprotokoll: Es wüchse im Ereignisprotokoll mit
+        # jedem Aufruf. Wer es braucht, bekommt es vom Reverse Proxy.
+        access_log=False,
+        log_config=None,
+    )
 
 
 def _fehlt() -> None:
@@ -64,6 +111,43 @@ except ImportError:  # pragma: no cover – nur auf Windows vorhanden
     HAT_PYWIN32 = False
 else:
     HAT_PYWIN32 = True
+
+    class _Ereignisprotokoll(logging.Handler):
+        """Hängt Python-Protokollmeldungen ins Windows-Ereignisprotokoll.
+
+        Ohne ihn verlöre der Dienst mit ``log_config=None`` jede Meldung
+        von uvicorn – auch die über einen belegten Port. **Ein Fehler,
+        den niemand lesen kann, ist keiner, der gemeldet wurde.**
+        """
+
+        def emit(self, satz: logging.LogRecord) -> None:
+            try:
+                text = self.format(satz)
+                if satz.levelno >= logging.ERROR:
+                    servicemanager.LogErrorMsg(text)
+                elif satz.levelno >= logging.WARNING:
+                    servicemanager.LogWarningMsg(text)
+                else:
+                    servicemanager.LogInfoMsg(text)
+            except Exception:  # noqa: BLE001
+                # **Hier ist das weite Fangen richtig**, anders als sonst
+                # in diesem Projekt: Ein Protokollhandler, der wirft,
+                # reißt den Dienst mit, den er beschreiben soll.
+                # ``handleError`` ist der dafür vorgesehene Weg.
+                self.handleError(satz)
+
+    def _protokoll_einrichten() -> None:
+        """uvicorns Meldungen ins Ereignisprotokoll umhängen."""
+        handler = _Ereignisprotokoll()
+        handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+
+        # Nur »uvicorn«: Seine übrigen Protokolle (``uvicorn.error``,
+        # ``uvicorn.access``) hängen darunter und reichen nach oben
+        # durch. Ein zweiter Handler dort schriebe jede Zeile doppelt.
+        logger = logging.getLogger("uvicorn")
+        logger.handlers = [handler]
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
 
     class MailBurgDienst(win32serviceutil.ServiceFramework):
         """Der Dienst selbst."""
@@ -112,18 +196,11 @@ else:
 
             import uvicorn
 
-            from mailburg.server.dienst import anwendung
             from mailburg.server.einstellungen import Serverlage
 
             lage = Serverlage.aus_umgebung()
-            self.server = uvicorn.Server(
-                uvicorn.Config(
-                    anwendung(lage),
-                    host=lage.adresse,
-                    port=lage.anschluss,
-                    access_log=False,
-                )
-            )
+            _protokoll_einrichten()
+            self.server = uvicorn.Server(uvicorn_einstellungen(lage))
 
             # **In einem eigenen Faden.** uvicorn.run() kehrt erst zurück,
             # wenn der Server endet - dieser Faden muss aber frei bleiben,

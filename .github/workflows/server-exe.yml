@@ -1,0 +1,114 @@
+# Baut das Einrichtungsfenster für den Serverdienst als eine Datei.
+#
+# **Getrennt von windows-exe.yml, aus demselben Grund wie die eigene
+# .spec:** Der Inhalt ist ein anderer. Hier pywin32, starlette und
+# uvicorn, dort poppler und tesseract. Zusammengelegt trüge jede Fassung
+# den Ballast der anderen.
+#
+# Wie dort gilt: nicht bei jedem Push. Wer die Datei braucht, ruft sie –
+# über die Actions-Oberfläche oder mit
+#
+#     gh workflow run server-exe.yml --ref main
+#
+name: Server-Einrichtung (Windows)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  exe:
+    name: MailBurg-Server-Einrichten.exe bauen
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Abhängigkeiten
+        # **Wer ein Extra hinzufügt, gehört auch in diese Zeile.**
+        # Dieselbe Lehre wie bei der MailBurg.exe am 2026-08-31: Dort
+        # blieb die Zeile stehen, als die Verschlüsselung dazukam, und
+        # die fertige Datei konnte kein verschlüsseltes Archiv öffnen.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[oberflaeche,server,server-windows,imap,packen,verschluesselung]"
+          pip install pyinstaller
+
+      - name: Fassungsnummer erzeugen
+        run: python werkzeuge/fassung_erzeugen.py werkzeuge/fassung.txt
+
+      - name: Bauen
+        run: pyinstaller --clean --noconfirm werkzeuge/server_einrichten.spec
+
+      - name: Läuft sie überhaupt?
+        # Der wichtigste Schritt. Eine .exe, die sich bauen lässt und
+        # beim Start über ein fehlendes Modul stolpert, fällt sonst erst
+        # dem Anwender auf - und der hat kein Terminal, um nachzusehen.
+        #
+        # Geprüft wird über ``--pruefen``, weil das Fenster auf einem
+        # Bauserver auf einen Klick warten würde, den niemand macht.
+        # Genau daran blieb am 2026-08-28 ein Prüfschritt hängen.
+        shell: pwsh
+        run: |
+          $ausgabe = & ".\dist\MailBurg-Server-Einrichten.exe" --pruefen 2>&1 | Out-String
+          Write-Host $ausgabe
+          if ($ausgabe -notmatch "Python") {
+            Write-Error "Die gepackte Fassung gibt keine Prüfliste aus."
+            exit 1
+          }
+          if ($ausgabe -notmatch "Pakete für den Dienst") {
+            Write-Error "Die Paketprüfung fehlt - dann prüft sie das Falsche."
+            exit 1
+          }
+
+      - name: Findet sie pywin32?
+        # **Der eigentliche Beweis.** Ohne pywin32 kann das Fenster
+        # keinen Dienst anlegen, und genau dafür ist es da. In der
+        # gepackten Fassung gibt es kein pip zum Nachrüsten: Fehlt es
+        # hier, ist die Datei nutzlos und sagt es erst beim Anwender.
+        shell: pwsh
+        run: |
+          $ausgabe = & ".\dist\MailBurg-Server-Einrichten.exe" --pruefen 2>&1 | Out-String
+          if ($ausgabe -match "pywin32: fehlt") {
+            Write-Error "pywin32 ist nicht mit eingepackt."
+            exit 1
+          }
+
+      - name: Größe nennen
+        run: |
+          $mb = [math]::Round((Get-Item ".\dist\MailBurg-Server-Einrichten.exe").Length / 1MB, 1)
+          Write-Host "MailBurg-Server-Einrichten.exe: $mb MB"
+          if ($mb -gt 150) {
+            Write-Warning "Ungewöhnlich groß - stimmen die Ausschlüsse noch?"
+          }
+
+      - name: Prüfsumme
+        run: |
+          $d = ".\dist\MailBurg-Server-Einrichten.exe"
+          $h = (Get-FileHash $d -Algorithm SHA256).Hash
+          Write-Host $h
+          "$h  MailBurg-Server-Einrichten.exe" |
+            Out-File -Encoding ascii "$d.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MailBurg-Server-Einrichten
+          path: |
+            dist/MailBurg-Server-Einrichten.exe
+            dist/MailBurg-Server-Einrichten.exe.sha256
+
+      - name: An das Release hängen
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/MailBurg-Server-Einrichten.exe
+            dist/MailBurg-Server-Einrichten.exe.sha256

@@ -1331,10 +1331,16 @@ verschieben! Das kann ich vorher nicht testen!«
 Beides ist gebaut oder vorbereitet – nur eben nie gelaufen. Bis zur
 Prüfung steht es hier und nicht in der laufenden Liste.
 
-- [ ] **Der Windows-Dienst.** `mailburg/server/windows_dienst.py` über
-  pywin32, mit `mailburg[server-windows]`. Geschrieben nach dem Muster
-  aus den pywin32-Beispielen, nachgeschlagen am 2026-08-31 – aber auf
-  keinem Windows gelaufen.
+- [x] **Der Windows-Dienst.** `mailburg/server/windows_dienst.py` über
+  pywin32. Am 02.10.2026 auf einem Windows Server 2025 zum ersten Mal
+  gelaufen – und sofort gestorben: uvicorns Vorgabe-Protokoll setzt eine
+  Standardausgabe voraus, die ein Dienst nicht hat. Behoben, samt
+  Umhängen der Meldungen ins Ereignisprotokoll.
+
+  **Offen bleiben zwei Punkte**, und beide treffen uns erst im echten
+  Betrieb: ob der Dienst einen Neustart des Servers übersteht, und ob er
+  als LocalSystem an den Tresor kommt – er hat kein Benutzerprofil und
+  damit kein `%APPDATA%`.
 
   Zwei Befunde der Recherche, die die Wahl bestimmt haben: Die
   Aufgabenplanung startet ein Programm auch ohne angemeldeten

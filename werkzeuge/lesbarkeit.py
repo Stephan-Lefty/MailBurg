@@ -471,6 +471,11 @@ BAUPLAENE: list[tuple[str, str, object]] = [
     ("mailburg.ui.lesefenster.Lesefenster",
      "Mail lesen",
      lambda K, w: K(w.treffer[0], w.archiv)),
+    ("mailburg.ui.servereinrichtung.Einrichtungsfenster",
+     "Serverdienst einrichten",
+     # Ohne Argumente: Es liest seinen Stand aus der Umgebung und prüft
+     # sich beim Aufbau selbst. Genau so geht es beim Anwender auch auf.
+     lambda K, w: K()),
 ]
 
 #: Ein Notschlüssel ist so lang wie jeder andere, und **erfunden**: Er

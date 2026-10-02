@@ -134,13 +134,59 @@ class ServerTest(unittest.TestCase):
                     f"{datei.relative_to(WURZEL)} importiert PySide6",
                 )
 
+    #: **Was die Oberfläche aus dem Server kennen darf, und warum.**
+    #: Eine Ausnahme braucht einen Grund, der hier steht – sonst ist sie
+    #: keine Entscheidung, sondern ein Loch, durch das nach und nach
+    #: alles wandert.
+    DARF_DEN_SERVER_KENNEN = {
+        "servereinrichtung.py":
+            "Das Einrichtungsfenster *für* den Dienst. Es ohne Wissen "
+            "über ihn zu bauen hieße, jede Prüfung zweimal zu schreiben – "
+            "und die zweite liefe auf einem Linux-Rechner nie, weil sie "
+            "von Windows-Diensten handelt.",
+    }
+
     def test_die_oberflaeche_kennt_den_server_nicht(self):
         for datei in _dateien("ui"):
+            if datei.name in self.DARF_DEN_SERVER_KENNEN:
+                continue
             with self.subTest(datei=datei.name):
                 self.assertFalse(
                     any(m.startswith("mailburg.server") for m in _importe(datei)),
                     f"{datei.relative_to(WURZEL)} importiert aus mailburg.server",
                 )
+
+    def test_jede_ausnahme_hat_einen_grund_und_eine_datei(self):
+        """Eine Ausnahme auf eine gelöschte Datei ist eine Lücke.
+
+        Dieselbe Vorsorge wie bei ``AUSGENOMMEN`` in ``lesbarkeit.py``:
+        Was nicht geprüft wird, muss benannt sein – und der Eintrag muss
+        mitwandern, wenn die Datei verschwindet.
+        """
+        vorhanden = {d.name for d in _dateien("ui")}
+        for name, grund in self.DARF_DEN_SERVER_KENNEN.items():
+            self.assertIn(name, vorhanden, f"Ausnahme »{name}« gibt es nicht mehr")
+            self.assertGreater(len(grund), 40, f"»{name}« ohne echten Grund")
+
+    def test_das_einrichtungsfenster_braucht_keine_serverpakete(self):
+        """**Der eigentliche Gehalt der Regel.**
+
+        Die Grenze zwischen Fenster und Dienst gibt es, damit keines das
+        andere mitschleppt. Beim Einrichtungsfenster zählt die Richtung
+        besonders: Es soll gerade *melden*, dass starlette und uvicorn
+        fehlen – also muss es ohne sie aufgehen.
+        """
+        from mailburg.server import einrichtung
+
+        quelle = (
+            WURZEL / "mailburg" / "ui" / "servereinrichtung.py"
+        ).read_text(encoding="utf-8")
+
+        for paket in ("starlette", "uvicorn"):
+            self.assertNotIn(f"import {paket}", quelle)
+        # Und der Kern dahinter holt sie auch nicht beim Laden.
+        for modul in _importe(Path(einrichtung.__file__)):
+            self.assertFalse(modul.startswith(("starlette", "uvicorn")))
 
 
 if __name__ == "__main__":

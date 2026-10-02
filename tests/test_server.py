@@ -10,6 +10,7 @@ dazukommt.
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -298,6 +299,55 @@ class WindowsDienstTest(unittest.TestCase):
         self.assertTrue(windows_dienst.ANZEIGE)
         self.assertIn("MAILBURG_ARCHIV", windows_dienst.BESCHREIBUNG)
 
+    def test_er_kommt_ohne_standardausgabe_aus(self):
+        """**Der Fehler, der den ersten Startversuch umbrachte.**
+
+        Ein Dienst unter pywin32 hat keine Konsole; ``sys.stdout`` ist
+        dort ``None``. uvicorns Vorgabe-Protokoll baut einen Formatter,
+        der fragt, ob die Ausgabe ein Terminal ist – und bricht ab mit
+        ``Unable to configure formatter 'default'``, einer Meldung, die
+        nicht entfernt nach der Ursache klingt.
+
+        Am 2026-10-02 auf Windows Server 2025 aufgelaufen. **Der Test
+        braucht kein Windows**: Es fehlt nur die Standardausgabe, und
+        die lässt sich überall wegnehmen.
+        """
+        try:
+            import uvicorn  # noqa: F401
+        except ImportError:
+            self.skipTest("uvicorn ist nicht installiert")
+
+        from mailburg.server import windows_dienst
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        wo = Path(ordner.name) / "Archiv"
+        Archive.create(wo, name="Probe", mode=Mode.GESCHAEFTLICH).close()
+
+        echtes_aus, echtes_fehler = sys.stdout, sys.stderr
+        sys.stdout = sys.stderr = None
+        try:
+            einstellungen = windows_dienst.uvicorn_einstellungen(
+                lage.Serverlage(archiv=wo)
+            )
+        finally:
+            sys.stdout, sys.stderr = echtes_aus, echtes_fehler
+
+        self.assertEqual(einstellungen.port, lage.STANDARD_ANSCHLUSS)
+        # Ein Zugriffsprotokoll wüchse im Ereignisprotokoll endlos mit.
+        self.assertFalse(einstellungen.access_log)
+
+    def test_uvicorns_meldungen_gehen_nicht_verloren(self):
+        """``log_config=None`` allein wäre die halbe Reparatur.
+
+        Ohne eigenen Handler verschwänden danach alle Meldungen von
+        uvicorn – auch die über einen belegten Port. Der Dienst liefe
+        nicht und sagte nicht, warum.
+        """
+        self.assertIn("log_config=None", self.quelle)
+        self.assertIn("_protokoll_einrichten", self.quelle)
+        self.assertIn("LogErrorMsg", self.quelle)
+
     def test_uvicorn_laeuft_in_einem_eigenen_faden(self):
         """Sonst könnte SvcStop nichts ausrichten.
 
@@ -321,8 +371,24 @@ class WindowsDienstTest(unittest.TestCase):
         self.assertIn("LogErrorMsg", self.quelle)
 
     def test_der_vermerk_ueber_die_fehlende_pruefung_steht_da(self):
-        """Er gilt, bis jemand es wirklich ausprobiert hat."""
-        self.assertIn("Nicht geprüft", self.quelle)
+        """Was hier erprobt ist und was nicht, muss am Modul stehen.
+
+        **Geprüft wird der Sinn, nicht der Wortlaut.** Bis zum
+        2026-10-02 stand hier ``assertIn("Nicht geprüft", …)`` – und als
+        der Dienst zum ersten Mal wirklich lief, wurde dieser Test zum
+        Bremsklotz gegen die Korrektur, die er schützen sollte. Dieselbe
+        Falle wie am 2026-09-07 bei »Microsoft-Konten gehen derzeit
+        nicht«, dort nachzulesen in CLAUDE.md.
+
+        Verlangt wird deshalb nur: Der Kopf sagt, dass etwas offen ist,
+        und er benennt die beiden Punkte, die es wirklich sind.
+        """
+        kopf = self.quelle.split('"""')[1]
+
+        self.assertIn("ungeprüft", kopf.lower())
+        # Die zwei offenen Punkte, auf die es am 15.10. ankommt.
+        self.assertIn("LocalSystem", kopf)
+        self.assertIn("Tresor", kopf)
 
 
 class StartmeldungTest(unittest.TestCase):

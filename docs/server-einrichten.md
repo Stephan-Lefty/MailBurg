@@ -20,10 +20,42 @@ ihnen zugeordnet sind. Post geholt wird weiterhin im Hintergrund.
 Zurücklegen ins Postfach bleiben vorerst der Kommandozeile und dem
 Fenster vorbehalten.
 
-> **Der Windows-Teil ist ungeprüft.** Für Debian ist dieser Ablauf
-> durchgespielt; unter Windows Server steht er hier nach bestem Wissen,
-> aber niemand hat ihn ausgeführt. Die Prüfung ist für Oktober 2026
-> verabredet.
+> **Stand der Erprobung.** Für Debian ist dieser Ablauf durchgespielt.
+> Unter Windows Server 2025 lief er am 02.10.2026 zum ersten Mal – und
+> förderte zwei Fehler zutage, die inzwischen behoben sind. Ungeprüft
+> bleibt, ob der Dienst einen Neustart übersteht und ob er als
+> LocalSystem an den Tresor kommt.
+
+## Unter Windows geht es auch ohne Befehle
+
+Es gibt ein Fenster, das alles von dieser Seite abfragt, prüft und
+einrichtet:
+
+```
+mailburg-server-einrichten
+```
+
+Oder, wenn Sie die fertige Datei geladen haben, ein Doppelklick auf
+`MailBurg-Server-Einrichten.exe` – **mit Rechtsklick → »Als
+Administrator ausführen«**, sonst bleiben Dienst und systemweite
+Einstellungen gesperrt.
+
+Das Fenster zeigt eine Prüfliste: Betriebssystem, Python, Pakete,
+Rechte, Archiv, Zugänge, Dienst, Weboberfläche. Wo etwas fehlt, steht
+der Knopf daneben, der es behebt. Und es holt die Meldungen des Dienstes
+aus dem Windows-Ereignisprotokoll – dort steht, warum ein Start
+fehlschlägt, und bis dahin musste man wissen, dass es dieses Protokoll
+überhaupt gibt.
+
+Für Skripte und Fehlerberichte gibt es dieselbe Liste als Text:
+
+```
+MailBurg-Server-Einrichten.exe --pruefen
+```
+
+**Der Rest dieser Seite beschreibt denselben Weg von Hand.** Er gilt
+weiterhin: unter Linux, wo der Dienst über systemd läuft, und überall
+dort, wo jemand lieber sieht, was passiert.
 
 ## Vorweg: Wo das Archiv herkommt
 

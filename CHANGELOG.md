@@ -9,6 +9,27 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Neu
+
+- **Ein Fenster, das den Serverdienst einrichtet.** Bis hierher ging das
+  nur über die Kommandozeile: zehn Schritte, acht davon ein abgetippter
+  PowerShell-Befehl aus einer Anleitung. Startete der Dienst danach
+  nicht, stand der Grund in einem Windows-Ereignisprotokoll, das man mit
+  einem weiteren Befehl durchsucht – man musste nur wissen, dass es das
+  gibt.
+
+  Das Fenster zeigt stattdessen eine Prüfliste: Betriebssystem, Python,
+  Pakete, Rechte, Archiv, Zugänge, Dienst, Weboberfläche. Wo etwas
+  fehlt, steht der Knopf daneben, der es behebt. Und es holt die
+  Meldungen des Dienstes aus dem Ereignisprotokoll gleich mit.
+
+  Zu erreichen über `mailburg-server-einrichten`, unter Windows als
+  eigene Datei `MailBurg-Server-Einrichten.exe`. Dieselbe Liste gibt es
+  als Text (`--pruefen`) – für Skripte und für Fehlerberichte.
+
+  **Ohne Texterkennung gepackt.** poppler und tesseract wären 150 MB für
+  etwas, das ein Einrichtungsprogramm nie aufruft.
+
 ### Behoben
 
 - **Jeder Rat zum Nachrüsten eines Pakets nannte einen Befehl, der nirgends
@@ -53,6 +74,27 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Python-3.11-Fehler vom Vortag: **Ein `try/except` deckt nur, was in seinem
   Block ausgeführt wird** – bei einem verzögerten Import passiert die Arbeit
   erst zwei Funktionsaufrufe später.
+
+- **Der Windows-Dienst startete überhaupt nicht.** Er meldete sich im
+  Ereignisprotokoll als gestartet und war eine Sekunde später wieder unten;
+  in `services.msc` las sich das als »lässt sich nicht starten«. Im Protokoll
+  stand `ValueError: Unable to configure formatter 'default'` – eine Meldung,
+  die nicht entfernt nach der Ursache klingt.
+
+  Die Ursache: **Ein Dienst hat keine Standardausgabe.** uvicorns
+  Vorgabe-Protokoll baut einen Formatter, der fragt, ob die Ausgabe ein
+  Terminal ist; unter pywin32 ist sie schlicht nicht vorhanden. Damit war der
+  Windows-Dienst seit seinem Einbau am 31.08.2026 nie lauffähig – gemerkt hat
+  es niemand, weil ihn bis zum 02.10. niemand gestartet hat.
+
+  Behoben, und zwar vollständig: Zusätzlich hängen uvicorns Meldungen jetzt
+  am Ereignisprotokoll. Nur den Formatter abzuschalten hätte den Dienst zum
+  Laufen gebracht und dabei jede weitere Meldung verschluckt – auch die über
+  einen belegten Port. **Ein Fehler, den niemand lesen kann, ist keiner, der
+  gemeldet wurde.**
+
+  Der Test dazu braucht kein Windows: Es fehlt nur die Standardausgabe, und
+  die lässt sich überall wegnehmen.
 
 ## [1.7.7] – 2026-10-01
 

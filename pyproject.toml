@@ -104,6 +104,10 @@ mailburg = "mailburg.__main__:main"
 
 [project.gui-scripts]
 mailburg-gui = "mailburg.ui.app:main"
+# Das Einrichtungsfenster für den Serverdienst. Ein eigener Befehl, weil
+# es ein anderer Mensch zu einer anderen Zeit benutzt: der Administrator
+# einmal beim Aufsetzen, nicht der Anwender täglich.
+mailburg-server-einrichten = "mailburg.ui.servereinrichtung:starten"
 
 [tool.setuptools.packages.find]
 include = ["mailburg*"]

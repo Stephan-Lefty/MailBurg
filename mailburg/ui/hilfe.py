@@ -343,6 +343,14 @@ nichts.</b> Wer am Rechner sitzt, hat das Archiv ohnehin; eine Anmeldung
 davor wäre Theater. Die Zugänge greifen, sobald das Archiv über einen
 Server erreichbar ist und mehrere Menschen darauf zugreifen.</p>
 
+<p><b>Das Archiv im Browser einrichten.</b> Dafür gibt es ein eigenes
+Fenster – unter Windows als <i>MailBurg-Server-Einrichten.exe</i>, sonst
+über den Befehl <code>mailburg-server-einrichten</code>. Es prüft der
+Reihe nach, was fehlt (Pakete, Rechte, Archiv, Zugänge, Dienst), und
+richtet es ein. Unter Windows holt es außerdem die Meldungen des
+Dienstes aus dem Ereignisprotokoll: Startet er nicht, steht der Grund
+dort und nirgendwo sonst.</p>
+
 <p><b>Zwei Rechte, und sie sind nicht dasselbe.</b></p>
 
 <p><i>Darf Zugänge verwalten</i> heißt: Diese Person legt Zugänge an,

@@ -1224,9 +1224,15 @@ messages moves to mid-October, because he cannot test it before then.
 Both are built or prepared — they have simply never run. Until the test
 they sit here and not in the running list.
 
-- [ ] **The Windows service.** `mailburg/server/windows_dienst.py` via
-  pywin32, as `mailburg[server-windows]`. Written to the pattern from the
-  pywin32 examples, looked up on 2026-08-31 — but never run on Windows.
+- [x] **The Windows service.** `mailburg/server/windows_dienst.py` via
+  pywin32. Run on a Windows Server 2025 for the first time on 2026-10-02 —
+  and died immediately: uvicorn's default logging assumes a standard
+  output that a service does not have. Fixed, including routing its
+  messages into the event log.
+
+  **Two points remain open**, and both only matter in real operation:
+  whether the service survives a reboot, and whether it reaches the vault
+  as LocalSystem — it has no user profile and therefore no `%APPDATA%`.
 
   Two findings drove the choice: Task Scheduler will start a program
   without a logged-in user but will not keep it alive — if it crashes, it
