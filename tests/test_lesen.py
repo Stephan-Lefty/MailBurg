@@ -475,6 +475,50 @@ class WebTest(unittest.TestCase):
         self.assertIn("attachment", antwort.headers["content-disposition"])
         self.assertEqual(antwort.headers["x-content-type-options"], "nosniff")
 
+    def test_zwei_wege_aus_der_nachricht_hinaus(self):
+        """Speichern und Öffnen stehen beide auf der Seite.
+
+        **Der Unterschied ist eine Kopfzeile.** Mit ``attachment`` legt
+        der Browser die Datei in den Download-Ordner; ohne das überlässt
+        er dem Betriebssystem die Frage, womit ``message/rfc822`` zu
+        öffnen sei – und das ist das eingerichtete Mailprogramm.
+
+        Stephans Wunsch vom 2026-10-02 aus dem Betrieb am Windows-PC:
+        Der Weg über den Download-Ordner funktionierte, kostete aber
+        jedes Mal einen Dialog und einen zweiten Klick.
+        """
+        anna, kennung = self._mit_anhang()
+
+        seite = anna.get(f"/nachricht/{kennung}").text
+
+        self.assertIn(f"/nachricht/{kennung}/oeffnen", seite)
+        self.assertIn(f"/nachricht/{kennung}/datei", seite)
+
+    def test_oeffnen_laedt_nicht_herunter(self):
+        anna, kennung = self._mit_anhang()
+
+        antwort = anna.get(f"/nachricht/{kennung}/oeffnen")
+
+        self.assertEqual(antwort.status_code, 200)
+        self.assertIn("inline", antwort.headers["content-disposition"])
+        self.assertNotIn("attachment", antwort.headers["content-disposition"])
+        self.assertEqual(antwort.headers["content-type"], "message/rfc822")
+
+    def test_auch_beim_oeffnen_wird_nicht_geraten(self):
+        """**Der Grund, warum das kein Freibrief ist.**
+
+        Ohne ``nosniff`` könnte ein Browser den Inhalt für HTML halten
+        und darstellen – samt allem, was ein fremder Absender
+        hineingeschrieben hat, im Kontext dieses Servers. Beim
+        Herunterladen war das abgesichert; beim Öffnen wiegt es
+        schwerer, weil dort gerade *nicht* heruntergeladen wird.
+        """
+        anna, kennung = self._mit_anhang()
+
+        antwort = anna.get(f"/nachricht/{kennung}/oeffnen")
+
+        self.assertEqual(antwort.headers["x-content-type-options"], "nosniff")
+
     def test_ein_gefaehrlicher_dateiname_wird_entschaerft(self):
         """Er kommt von einem Fremden – Pfade und Zeilenumbrüche gehen nicht."""
         anna, kennung = self._mit_anhang("../../etc/passwd")

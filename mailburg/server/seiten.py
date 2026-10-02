@@ -415,7 +415,9 @@ def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
 <dl class="kopf">{zeilen}</dl>
 {gespraech}
 {anhangsliste}
-<p><a href="/nachricht/{html.escape(kennung)}/datei">Die ganze Nachricht
+<p><a href="/nachricht/{html.escape(kennung)}/oeffnen">Im Mailprogramm
+   öffnen</a> &middot;
+   <a href="/nachricht/{html.escape(kennung)}/datei">Die ganze Nachricht
    als Datei (.eml)</a></p>
 <hr>
 <pre class="text">{html.escape(text)}</pre>

@@ -290,7 +290,22 @@ def routen(lage, sitzungen):
             },
         )
 
-    async def datei(anfrage):
+    def _nachricht_ausliefern(anfrage, *, herunterladen: bool):
+        """Die Rohnachricht – zum Speichern oder zum Öffnen.
+
+        **Der Unterschied ist eine einzige Kopfzeile, und er ist groß.**
+        Mit ``attachment`` legt der Browser die Datei in den
+        Download-Ordner, und wer sie lesen will, sucht sie dort und
+        klickt sie an. Ohne das überlässt er dem Betriebssystem die
+        Frage, womit ``message/rfc822`` zu öffnen sei – und das ist das
+        eingerichtete Mailprogramm.
+
+        **Was ein Browser nicht kann**, und das soll hier stehen, damit
+        es niemand für einen Fehler hält: Er startet kein Programm von
+        sich aus. Je nach Browser und Einstellung erscheint ein Dialog
+        »Öffnen mit …«, oder die Datei landet doch im Download-Ordner.
+        Beides ist richtig; der Browser entscheidet, nicht wir.
+        """
         kennung = anfrage.path_params["kennung"]
         with _archiv(lage) as archiv:
             benutzer = _angemeldet(anfrage, archiv)
@@ -303,17 +318,30 @@ def routen(lage, sitzungen):
 
             rohdaten = archiv.store.get(treffer.hash, treffer.bucket)
 
+        # Der Dateiname als reine Kennung: Ein Betreff kann alles
+        # enthalten, und ein Dateiname mit Anführungszeichen oder
+        # Zeilenumbruch darin ist ein eigenes Problem.
+        name = f'{kennung[:16]}.eml'
+        art = "attachment" if herunterladen else "inline"
+
         return Response(
             rohdaten,
             media_type="message/rfc822",
             headers={
-                # Der Dateiname als reine Kennung: Ein Betreff kann alles
-                # enthalten, und ein Dateiname mit Anführungszeichen oder
-                # Zeilenumbruch darin ist ein eigenes Problem.
-                "Content-Disposition":
-                    f'attachment; filename="{kennung[:16]}.eml"',
+                "Content-Disposition": f'{art}; filename="{name}"',
+                # **Auch beim Öffnen kein Raten.** ``message/rfc822``
+                # bleibt, was es ist; ohne diese Zeile könnte ein Browser
+                # den Inhalt für HTML halten und ihn darstellen – samt
+                # allem, was ein Absender hineingeschrieben hat.
+                "X-Content-Type-Options": "nosniff",
             },
         )
+
+    async def datei(anfrage):
+        return _nachricht_ausliefern(anfrage, herunterladen=True)
+
+    async def oeffnen(anfrage):
+        return _nachricht_ausliefern(anfrage, herunterladen=False)
 
     return [
         Route("/", suchen),
@@ -323,6 +351,7 @@ def routen(lage, sitzungen):
         Route("/maske", maske),
         Route("/nachricht/{kennung}", nachricht),
         Route("/nachricht/{kennung}/datei", datei),
+        Route("/nachricht/{kennung}/oeffnen", oeffnen),
         Route("/nachricht/{kennung}/anhang/{nummer}", anhang),
     ]
 

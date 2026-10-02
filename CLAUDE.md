@@ -3,6 +3,125 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-10-02, Freitag) – der Server lief zum ersten Mal
+
+**Der Windows-Dienst ist an diesem Tag zum ersten Mal gestartet worden, und
+er hatte seit seinem Einbau am 31.08. nie funktioniert.** Fünf Wochen lang
+stand in `windows_dienst.py` »nicht geprüft« – der Satz war richtig, und
+niemand hat gefragt, was er wert ist.
+
+Am Ende des Tages lief der ganze Weg: Installation auf einem frischen Windows
+Server 2025, Dienst, Anmeldung im Browser, Suche mit sechs Treffern (dieselbe
+Zahl wie im Linux-Durchlauf), Anhang, Zugriff vom Arbeitsplatz. Dazwischen
+lagen fünf echte Fehler.
+
+### Die zwei, die den 15.10. gekippt hätten
+
+**Erstens: uvicorns Protokoll setzt eine Bildschirmausgabe voraus.** Unter
+pywin32 ist `sys.stdout` schlicht `None`; der Vorgabe-Formatter fragt, ob die
+Ausgabe ein Terminal ist, und stirbt daran. Im Ereignisprotokoll stand
+`ValueError: Unable to configure formatter 'default'` – eine Meldung, die
+nicht entfernt nach der Ursache klingt. Der Dienst meldete sich als
+*gestartet* und war eine Sekunde später unten; in `services.msc` las sich das
+als »lässt sich nicht starten«.
+
+Nachgestellt wurde das **unter Linux**, ohne Windows: Es fehlt nur die
+Standardausgabe, und die lässt sich überall wegnehmen. Der Test dazu braucht
+kein Windows – das ist der Grund, warum `uvicorn_einstellungen()` eine eigene
+Funktion ist.
+
+Behoben mit `log_config=None` **plus** einem Handler ans Ereignisprotokoll.
+Nur den Formatter abzuschalten hätte den Dienst zum Laufen gebracht und dabei
+jede weitere Meldung verschluckt, auch die über einen belegten Port.
+
+**Zweitens, und das ist der lehrreichere: Der Dienst fand den Suchindex nicht
+– und sagte es nicht.** Er läuft als LocalSystem und hat damit ein anderes
+`%LOCALAPPDATA%` als der Mensch, der das Archiv angelegt hat. Der Index liegt
+außerhalb des Archivs, an einem Ort, der am Benutzer hängt.
+
+**Wie es aussah, ist der ganze Punkt:** Die Anmeldung ging – Zugänge liegen
+*im* Archiv, Mails kommen *aus* dem Index. Die Statusseite meldete null Mails
+bei 27 im Archiv. Jede Suche blieb leer. Nichts davon sieht nach einer
+Störung aus; es sieht aus wie ein Archiv, in dem nichts ist. Mit 70.000
+echten Mails hätte das niemand als Fehler erkannt, und die Mitarbeiter hätten
+drei Tage lang gesucht, bevor jemand fragt.
+
+Zwei Dinge dagegen, und das zweite wiegt schwerer als das erste:
+`MAILBURG_DATEN` legt den Index-Ort für beide fest. **Und die Statusseite
+hält jetzt Index und Journal gegeneinander** – ist der Index leer, während im
+Journal Einträge stehen, steht das unter »Sorgen«. Der Satz »Das Journal ist
+die Wahrheit, der Index ist Beiwerk« steht seit jeher weiter unten in dieser
+Datei; hier wird er zum ersten Mal *nachgeprüft* statt behauptet.
+
+### Drei Bedienfallen, alle aus derselben Wurzel
+
+**Der Dienst überstand keinen Neustart.** pywin32 legt Dienste ohne Angabe
+als `manual` an – das steht in seiner eigenen Hilfe (`--startup … default =
+manual`), und niemand hatte nachgesehen. Er läuft jetzt als `delayed`:
+verzögert, weil eine zweite Platte oder eine Freigabe zu Beginn des
+Hochfahrens noch nicht da ist.
+
+**Das Einrichtungsfenster ließ den Dienst anlegen, ohne dass die
+Einstellungen geschrieben waren.** Er nahm den Wert aus der Registry von
+vorgestern, fand dort kein Archiv und starb – mit einem Pfad im
+Ereignisprotokoll, den im Fenster niemand mehr sah. **Was *gewählt* ist und
+was *gilt*, sind zwei Dinge**, und sie sahen gleich aus.
+
+**Der Knopf »Ereignisprotokoll holen« zeigte Zeitstempel ohne Texte.**
+Derselbe Filter von Hand in einer PowerShell zeigte sie vollständig. Woran es
+lag, ist nicht geklärt; geklärt ist, welcher Weg nachweislich geht
+(`Format-List`), und den nehmen wir. Ein Protokollknopf, der schweigt, ist
+schlimmer als keiner – er sieht aus, als hätte er nachgesehen.
+
+### Was an diesem Tag neu gebaut wurde
+
+`mailburg-server-einrichten` (`ui/servereinrichtung.py` plus
+`server/einrichtung.py`): eine Prüfliste statt zehn abgetippter
+PowerShell-Befehle. **Die Prüfungen liegen im Kern, nicht im Fenster** – sie
+handeln fast ausschließlich von Dingen, die nur unter Windows passieren;
+lägen sie im Fenster, liefe hier kein einziger Test, und der erste Durchlauf
+wäre wieder der am echten Server.
+
+Dafür gibt es eine **enge Ausnahme** von der Schichtenregel »Oberfläche und
+Server fassen einander nicht an«, mit Begründung im Test und zwei Wächtern
+daneben: dass jede Ausnahme auf eine Datei zeigt, die es noch gibt, und dass
+das Fenster ohne starlette und uvicorn aufgeht – es soll ja gerade melden,
+dass sie fehlen.
+
+Dazu `werkzeuge/server_einrichten.spec` und `.github/workflows/server-exe.yml`
+für eine eigene `MailBurg-Server-Einrichten.exe`, **ohne** Texterkennung: 150
+MB für etwas, das ein Einrichtungsprogramm nie aufruft.
+
+### Drei eigene Fehler auf dem Weg dorthin
+
+1. **Ein Wächtertest hielt wieder einen Wortlaut fest.** `assertIn("Nicht
+   geprüft", …)` am Modulkopf – und als der Dienst zum ersten Mal lief, wurde
+   dieser Test zum Bremsklotz gegen die Korrektur, die er schützen sollte.
+   Dritte Instanz derselben Klasse nach dem 07.09. Er prüft jetzt den Sinn.
+2. **`lesbarkeit.py` fand im neuen Fenster sofort zwei Befunde** bei allen
+   fünf Schriftgrößen: ein `QLabel` mit `setWordWrap` statt eines
+   `Fliesstext`, und ein Fenster, das kleiner aufging als sein Inhalt. Beides
+   steht seit dem 31.08. in dieser Datei.
+3. **`konsolenkodierung()` gibt ein dict zurück, keinen String.** Ich hatte
+   `encoding=werkzeuge.konsolenkodierung()` geschrieben. Aufgefallen beim
+   Nachsehen, nicht im Betrieb – die Regel »Befehle nachsehen, nicht
+   erinnern« hat hier direkt gegriffen.
+
+### Was offen bleibt
+
+**Der Neustart.** Stephan konnte den Server im Tagesbetrieb nicht neu
+starten; der Test steht für den 03.10. an. Bis dahin ist `delayed` eine
+Einstellung und kein Befund.
+
+**Der Tresor als LocalSystem.** Für den Abruf alle 30 Minuten braucht der
+Dienst die Postfach-Passwörter, und er hat kein Benutzerprofil. **Dieselbe
+Bauart wie beim Index** – nur ist ein fehlender Index reparierbar und ein
+fehlendes Passwort nicht. Das ist der nächste Punkt vor dem 15.10.
+
+2087 Tests, `lesbarkeit.py` ohne Befund, CI grün (Commits `225c9d9`,
+`7eb6ee3`, `c9fe4fa`). Die Anleitung für den Umzug liegt als PDF auf Stephans
+Arbeitsfläche, Quelle in `../.mailburg-releasetexte/`.
+
 ## Hier war Schluss (Stand 2026-10-01, Donnerstag) – zwei Fehler auf Python 3.11
 
 **Der Monatscheck zum Ersten hat keine Sammelfassung gebracht, sondern zwei
