@@ -66,8 +66,14 @@ KNOEPFE = {
     "pakete": ("Pakete nachrüsten …", "Zeigt den Befehl zum Kopieren."),
     "archiv": ("Archiv wählen …", "Einen vorhandenen Archivordner suchen."),
     "zugang": ("Zugänge …", "Wer sich anmelden darf."),
+    "uebernehmen": ("Übernehmen", "Schreibt die Einstellungen für den Dienst."),
     "dienst_anlegen": ("Dienst einrichten", "Meldet ihn bei Windows an."),
     "dienst_start": ("Dienst starten", "Startet den eingerichteten Dienst."),
+    "starttyp": (
+        "Automatisch starten",
+        "Baut den Dienst ab und richtet ihn so ein, dass er nach einem "
+        "Neustart von selbst wiederkommt.",
+    ),
 }
 
 
@@ -224,6 +230,13 @@ class Einrichtungsfenster(QMainWindow):
             )
             dienstzeile.addWidget(knopf)
         dienstzeile.addStretch(1)
+        symbole = QPushButton("Symbole anlegen")
+        symbole.setToolTip(
+            "Zwei Verknüpfungen auf dem Schreibtisch aller Benutzer: "
+            "die Weboberfläche und dieses Fenster."
+        )
+        symbole.clicked.connect(self._verknuepfungen)
+        dienstzeile.addWidget(symbole)
         nachsehen = QPushButton("Neu prüfen")
         nachsehen.clicked.connect(self.auffrischen)
         dienstzeile.addWidget(nachsehen)
@@ -314,10 +327,14 @@ class Einrichtungsfenster(QMainWindow):
             self._zugaenge()
         elif was == "pakete":
             self._pakete()
+        elif was == "uebernehmen":
+            self._uebernehmen()
         elif was == "dienst_anlegen":
             self._dienst("anlegen")
         elif was == "dienst_start":
             self._dienst("starten")
+        elif was == "starttyp":
+            self._starttyp_richten()
 
     def _archiv_waehlen(self) -> None:
         ordner = QFileDialog.getExistingDirectory(
@@ -430,11 +447,53 @@ class Einrichtungsfenster(QMainWindow):
         self._melden(f"Dienst {was} …")
         geklappt, ausgabe = handlung()
         self._melden(ausgabe or ("fertig." if geklappt else "ohne Ausgabe."))
+
+        # **Nach dem Einrichten die Werte nachziehen.** Den Dienstschlüssel
+        # gibt es erst jetzt; ein »Übernehmen« davor konnte ihn nicht
+        # beschreiben. Wer sich darauf verlässt, dass der Mensch ein
+        # zweites Mal drückt, baut auf eine Reihenfolge, die nirgends
+        # steht – am 2026-10-02 hat genau das eine halbe Stunde gekostet.
+        if geklappt and was == "anlegen" and self.umgebung.archiv:
+            try:
+                for zeile in einrichtung.variablen_setzen(self.umgebung):
+                    self._melden(f"  {zeile}")
+            except OSError as fehler:
+                self._melden(f"  Einstellungen nicht geschrieben: {fehler}")
+
         if not geklappt:
             self._melden(
                 "Der Grund steht meistens im Ereignisprotokoll – "
                 "der Knopf darunter holt es."
             )
+        self.auffrischen()
+
+    def _verknuepfungen(self) -> None:
+        self.umgebung = self._aus_den_feldern()
+        self._melden("Lege Symbole an …")
+        for zeile in einrichtung.verknuepfungen_anlegen(self.umgebung):
+            self._melden(zeile)
+
+    def _starttyp_richten(self) -> None:
+        """Den Dienst neu anlegen, diesmal automatisch startend.
+
+        Einen vorhandenen Dienst umzustellen ginge über ``sc config``;
+        ihn abzubauen und neu anzulegen geht denselben Weg wie das erste
+        Einrichten und hat damit einen Fehlerfall weniger.
+        """
+        self._melden("Dienst abbauen und neu einrichten …")
+        for schritt in ("stoppen", "entfernen", "anlegen"):
+            geklappt, ausgabe = {
+                "stoppen": einrichtung.dienst_stoppen,
+                "entfernen": einrichtung.dienst_entfernen,
+                "anlegen": einrichtung.dienst_anlegen,
+            }[schritt]()
+            self._melden(f"  {schritt}: {ausgabe.strip() or 'fertig'}")
+            if schritt == "anlegen" and geklappt and self.umgebung.archiv:
+                try:
+                    for zeile in einrichtung.variablen_setzen(self.umgebung):
+                        self._melden(f"  {zeile}")
+                except OSError as fehler:
+                    self._melden(f"  Einstellungen: {fehler}")
         self.auffrischen()
 
     def _ereignisse(self) -> None:

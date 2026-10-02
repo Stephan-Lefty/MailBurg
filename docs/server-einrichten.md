@@ -53,6 +53,34 @@ Für Skripte und Fehlerberichte gibt es dieselbe Liste als Text:
 MailBurg-Server-Einrichten.exe --pruefen
 ```
 
+### Der Suchindex gehört beiden
+
+**Das ist der Punkt, an dem ein Serverbetrieb still scheitert.** Der
+Suchindex liegt nicht im Archiv, sondern in einem Ordner, der am
+*Benutzer* hängt. Auf einem Arbeitsplatz ist das richtig. Auf einem
+Server legt aber ein Mensch das Archiv an, und ein Dienst liest es – und
+unter Windows läuft der als `LocalSystem`, mit einem eigenen Profil tief
+unter `C:\Windows\System32`.
+
+Die Folge: Der Dienst findet einen leeren Index. Die Anmeldung geht, denn
+die Zugänge liegen im Archiv. Jede Suche bleibt leer. **Nichts daran
+sieht nach einem Fehler aus** – es sieht aus wie ein Archiv, in dem
+nichts ist.
+
+Deshalb gibt es `MAILBURG_DATEN`. Wer sie setzt, legt den Index-Ort fest,
+und zwar für beide:
+
+```
+MAILBURG_DATEN=C:\MailBurg-Daten
+```
+
+Diese Zeile gehört zu den Umgebungsvariablen des Dienstes. Und wer
+danach `mailburg neuaufbau` laufen lässt, setzt sie vorher auch in seiner
+eigenen Sitzung – sonst baut er den Index wieder an seinen eigenen Platz.
+
+Die Statusseite meldet es inzwischen von selbst: Ist der Index leer,
+während im Journal Einträge stehen, erscheint das unter »Sorgen«.
+
 **Der Rest dieser Seite beschreibt denselben Weg von Hand.** Er gilt
 weiterhin: unter Linux, wo der Dienst über systemd läuft, und überall
 dort, wo jemand lieber sieht, was passiert.

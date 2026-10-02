@@ -71,6 +71,36 @@ def _zustand(lage) -> dict[str, Any]:
             bericht["mails"] = archiv.index.statistics()["mails"]
             bericht["postfaecher"] = len(archiv.index.account_totals())
 
+            # **Ein leerer Index sieht aus wie ein leeres Archiv.** Die
+            # Zugänge liegen *im* Archiv, die Mails kommen aus dem Index –
+            # wer sich anmeldet, kommt also herein und bekommt auf jede
+            # Suche eine leere Liste. Nichts daran sieht nach einer
+            # Störung aus; es sieht aus wie ein Archiv, in dem nichts ist.
+            #
+            # Am 2026-10-02 auf einem Windows Server passiert: Der Dienst
+            # läuft als LocalSystem und hat ein anderes ``%LOCALAPPDATA%``
+            # als der Mensch, der das Archiv angelegt hat. Der Index liegt
+            # außerhalb des Archivs (siehe ``paths.index_path``) – also sah
+            # der Dienst einen leeren und schwieg dazu.
+            #
+            # »Das Journal ist die Wahrheit, der Index ist Beiwerk« steht
+            # seit jeher in CLAUDE.md. Hier werden die beiden zum ersten
+            # Mal gegeneinandergehalten.
+            if not bericht["mails"] and archiv.journal.count > 1:
+                from mailburg.core import paths
+
+                bericht["sorgen"].append(
+                    f"Der Suchindex ist leer, das Archiv aber nicht "
+                    f"({sprache.eintraege(archiv.journal.count)} im "
+                    f"Journal). Wer sich anmeldet, kommt herein und findet "
+                    f"nichts – ohne dass irgendwo ein Fehler steht. Der "
+                    f"Index liegt außerhalb des Archivs, unter "
+                    f"»{paths.index_path(archiv.uuid).parent}«, und dieser "
+                    f"Ort hängt an dem Benutzer, unter dem der Dienst "
+                    f"läuft. Abhilfe: einmal »mailburg neuaufbau« unter "
+                    f"demselben Benutzer."
+                )
+
             zugaenge = archiv.benutzer
             bericht["zugaenge"] = len(zugaenge)
             bericht["verwalter"] = len(zugaenge.verwalter)

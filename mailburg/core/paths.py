@@ -15,8 +15,37 @@ from pathlib import Path
 from mailburg import APP_NAME
 
 
+#: Ein ausdrücklich gewählter Ort für die Suchindizes.
+#:
+#: **Warum es das gibt.** Der Index liegt außerhalb des Archivs, an einem
+#: Ort, der am *Benutzer* hängt. Auf einem Arbeitsplatz ist das richtig.
+#: Auf einem Server nicht: Dort legt ein Mensch das Archiv an, und ein
+#: Dienst liest es – unter Windows als ``LocalSystem``, mit einem eigenen
+#: ``%LOCALAPPDATA%`` tief unter ``C:\\Windows\\System32``.
+#:
+#: Am 2026-10-02 auf einem Windows Server aufgelaufen, und es sah nicht
+#: nach einem Fehler aus: Die Anmeldung ging, das Archiv meldete null
+#: Mails, jede Suche blieb leer. Mit 70.000 echten Mails wäre das ein
+#: Archiv gewesen, das aussieht wie fertig und auf alles schweigt.
+#:
+#: Wer diese Variable setzt, legt den Ort fest – für den Dienst über
+#: seine Umgebung, für den Menschen in derselben Sitzung, in der er
+#: ``mailburg neuaufbau`` laufen lässt.
+DATEN = "MAILBURG_DATEN"
+
+
 def _base(kind: str) -> Path:
     """Grundverzeichnis für ``config``, ``data`` oder ``cache``."""
+    # **Nur für die Daten, nicht für Einstellungen und Zwischenspeicher.**
+    # Der Index ist das Einzige, was sich zwei Benutzer teilen müssen.
+    # Die Kontenliste gehört dem Menschen, der sie gepflegt hat, und der
+    # Zwischenspeicher enthält geöffnete Mails – beides umzuhängen wären
+    # eigene Entscheidungen mit anderen Folgen.
+    if kind == "data":
+        gewaehlt = os.environ.get(DATEN, "").strip()
+        if gewaehlt:
+            return Path(gewaehlt).expanduser()
+
     if sys.platform == "win32":
         # Windows trennt nur zwischen wanderndem und lokalem Profil.
         # Einstellungen dürfen mitwandern, der Index nicht – der kann

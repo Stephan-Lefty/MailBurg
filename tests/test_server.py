@@ -461,6 +461,63 @@ class StartmeldungTest(unittest.TestCase):
         self.assertNotIn("keine Anmeldung", sorgen)
 
 
+class LeererIndexTest(unittest.TestCase):
+    """Ein leerer Index sieht aus wie ein leeres Archiv.
+
+    **Der schwerste Befund vom 2026-10-02.** Der Dienst lief als
+    LocalSystem und hatte damit ein anderes ``%LOCALAPPDATA%`` als der
+    Mensch, der das Archiv angelegt hatte. Der Index liegt außerhalb des
+    Archivs – also sah der Dienst einen leeren.
+
+    Die Anmeldung ging trotzdem: Zugänge liegen *im* Archiv, Mails kommen
+    aus dem Index. Wer sich anmeldete, kam herein und bekam auf jede
+    Suche eine leere Liste. **Nichts daran sieht nach einer Störung aus**,
+    und mit 70.000 echten Mails hätte das niemand als Fehler erkannt.
+    """
+
+    def setUp(self):
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name) / "Archiv"
+        Archive.create(self.wo, name="Probe", mode=Mode.GESCHAEFTLICH).close()
+
+    def _bericht(self, mails: int, journal: int) -> dict:
+        """Zustand mit erfundenen Zahlen – Index gegen Journal."""
+        echtes_open = Archive.open
+
+        def gefaelscht(*args, **kwargs):
+            archiv = echtes_open(*args, **kwargs)
+            archiv.index.statistics = lambda: {"mails": mails}
+            archiv.index.account_totals = lambda: {}
+            type(archiv.journal).count = property(lambda self: journal)
+            return archiv
+
+        with mock.patch.object(Archive, "open", gefaelscht):
+            return _zustand(lage.Serverlage(archiv=self.wo))
+
+    def test_ein_leerer_index_bei_vollem_archiv_wird_gemeldet(self):
+        sorgen = " ".join(self._bericht(mails=0, journal=28)["sorgen"])
+
+        self.assertIn("Suchindex ist leer", sorgen)
+        # Der Weg hinaus gehört dazu, sonst ist es nur eine Feststellung.
+        self.assertIn("neuaufbau", sorgen)
+
+    def test_ein_frisches_archiv_wird_nicht_angemeckert(self):
+        """Beim Anlegen steht ein Eintrag im Journal und nichts im Index.
+
+        Das ist der Normalfall und keine Störung – wer hier warnte,
+        erschreckte jeden, der gerade ein Archiv angelegt hat.
+        """
+        sorgen = " ".join(self._bericht(mails=0, journal=1)["sorgen"])
+
+        self.assertNotIn("Suchindex ist leer", sorgen)
+
+    def test_ein_gefuellter_index_schweigt(self):
+        sorgen = " ".join(self._bericht(mails=27, journal=28)["sorgen"])
+
+        self.assertNotIn("Suchindex", sorgen)
+
+
 class FehlendePaketeTest(unittest.TestCase):
     """Wenn starlette oder uvicorn fehlen.
 

@@ -372,16 +372,125 @@ def pruefe_dienst() -> Befund:
     return Befund("Dienst", zustand, text, abhilfe=abhilfe)
 
 
-def _dienst_befehl(was: str) -> tuple[bool, str]:
+def pruefe_einstellungen(umgebung: Umgebung) -> Befund:
+    """Ob das, was im Fenster steht, auch dort steht, wo der Dienst liest.
+
+    **Der Fehler, der am 2026-10-02 eine halbe Stunde gekostet hat.** Man
+    konnte im Fenster ein Archiv wählen, den Dienst einrichten und
+    starten – ohne »Übernehmen« dazwischen. Der Dienst nahm dann den
+    Wert, der seit vorgestern in der Registry stand, fand dort kein
+    Archiv und starb. Im Ereignisprotokoll stand ein Pfad, den im Fenster
+    niemand mehr sah.
+
+    Zwei Dinge sind hier verschieden und sehen gleich aus: was *gewählt*
+    ist und was *gilt*. Diese Zeile hält sie auseinander.
+    """
+    gesetzt = gesetzte_variablen()
+    soll = umgebung.als_variablen()
+
+    if not gesetzt.get(lage.ARCHIV, "").strip():
+        return Befund(
+            "Einstellungen",
+            Lage.FEHLT,
+            "Noch nichts übernommen – der Dienst weiß nicht, welches "
+            "Archiv er ausliefern soll.",
+            abhilfe="uebernehmen",
+        )
+
+    anders = [
+        name for name, wert in soll.items()
+        if wert and gesetzt.get(name, "").strip() != wert
+    ]
+    if anders:
+        return Befund(
+            "Einstellungen",
+            Lage.FEHLT,
+            f"Hier steht etwas anderes als beim Dienst "
+            f"(Archiv: »{gesetzt.get(lage.ARCHIV, '')}«). Ohne Übernehmen "
+            f"startet er mit dem alten Wert.",
+            abhilfe="uebernehmen",
+            einzelheiten="Abweichend: " + ", ".join(anders),
+        )
+
+    return Befund("Einstellungen", Lage.GUT, "Übernommen.")
+
+
+#: Was in der Registry unter ``Start`` steht. Aus der Windows-Doku zum
+#: Dienstschlüssel; ``sc qc`` zeigt dieselben Werte in Worten.
+STARTARTEN = {
+    0: ("Treiber (Systemstart)", True),
+    1: ("Treiber (System)", True),
+    2: ("Automatisch", True),
+    3: ("Manuell", False),
+    4: ("Deaktiviert", False),
+}
+
+
+def pruefe_starttyp() -> Befund:
+    """Ob der Dienst einen Neustart des Servers übersteht.
+
+    **Die teuerste Vorgabe in diesem ganzen Aufbau.** pywin32 legt
+    Dienste ohne Angabe als ``manual`` an. Der Dienst läuft dann, solange
+    niemand den Server neu startet – und danach nie wieder, ohne dass
+    irgendwo ein Fehler steht. Ein Archiv, das montags nicht mehr
+    erreichbar ist, sucht niemand beim Starttyp.
+
+    Gelesen wird die Registry, nicht die eigene Erinnerung: Wer die
+    eigene Kopie liest, prüft, was er gemeint hat – nicht, was gilt.
+    """
+    if not ist_windows():
+        return Befund("Start beim Hochfahren", Lage.UNKLAR, "Nur unter Windows.")
+
+    import winreg
+
+    pfad = rf"SYSTEM\CurrentControlSet\Services\{DIENSTNAME}"
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, pfad) as schluessel:
+            wert = winreg.QueryValueEx(schluessel, "Start")[0]
+            try:
+                verzoegert = winreg.QueryValueEx(
+                    schluessel, "DelayedAutostart"
+                )[0]
+            except FileNotFoundError:
+                verzoegert = 0
+    except OSError:
+        return Befund(
+            "Start beim Hochfahren", Lage.UNKLAR, "Der Dienst ist nicht da."
+        )
+
+    name, kommt_wieder = STARTARTEN.get(wert, (f"unbekannt ({wert})", False))
+    if kommt_wieder:
+        if verzoegert:
+            name += " (verzögert)"
+        return Befund(
+            "Start beim Hochfahren", Lage.GUT,
+            f"{name} – er kommt nach einem Neustart von selbst wieder.",
+        )
+    return Befund(
+        "Start beim Hochfahren",
+        Lage.FEHLT,
+        f"{name}. Nach einem Neustart des Servers bleibt der Dienst unten, "
+        f"und niemand bekommt eine Meldung darüber.",
+        abhilfe="starttyp",
+        einzelheiten="Abhilfe: Dienst entfernen und neu einrichten.",
+    )
+
+
+def _dienst_befehl(was: str, *zusatz: str) -> tuple[bool, str]:
     """Ruft ``windows_dienst`` in einem eigenen Prozess auf.
 
     **Nicht im eigenen**: ``HandleCommandLine`` beendet den Prozess, in
     dem es läuft. Ein Fenster, das sich beim Starten des Dienstes selbst
     schließt, wäre eine denkwürdige Bedienung.
+
+    ``zusatz`` steht **vor** dem Befehl – so will es pywin32: Optionen
+    wie ``--startup`` sind Vorsatz, nicht Nachsatz.
     """
     from mailburg.core import werkzeuge
 
-    befehl = [sys.executable, "-m", "mailburg.server.windows_dienst", was]
+    befehl = [
+        sys.executable, "-m", "mailburg.server.windows_dienst", *zusatz, was,
+    ]
     try:
         lauf = subprocess.run(
             befehl, capture_output=True, text=True, timeout=120,
@@ -399,7 +508,23 @@ def _dienst_befehl(was: str) -> tuple[bool, str]:
 
 
 def dienst_anlegen() -> tuple[bool, str]:
-    return _dienst_befehl("install")
+    """Legt den Dienst an – **und zwar automatisch startend.**
+
+    pywin32 setzt ohne Angabe ``manual``; das steht in seiner eigenen
+    Hilfe (``--startup [manual|auto|disabled|delayed] … default =
+    manual``). Ein Archivdienst, der nach jedem Neustart des Servers
+    unten bleibt, ist genau die Sorte Fehler, die dieses Projekt sonst
+    bei anderen findet: Nichts ist kaputt, es läuft nur nichts mehr, und
+    auffallen wird es dem, der montags vergeblich sucht.
+
+    ``delayed`` statt ``auto``: Windows startet verzögerte Dienste, wenn
+    das System oben ist. Liegt das Archiv auf einer zweiten Platte oder
+    einer Freigabe, ist die zu Beginn des Hochfahrens noch nicht da – und
+    der Dienst stirbt daran, bevor jemand ihn gebraucht hätte. Die
+    Verzögerung kostet eine knappe Minute nach dem Hochfahren; dafür
+    läuft er dann auch.
+    """
+    return _dienst_befehl("install", "--startup", "delayed")
 
 
 def dienst_starten() -> tuple[bool, str]:
@@ -470,11 +595,23 @@ def ereignisse(anzahl: int = 20) -> list[str]:
     if not powershell:
         return ["PowerShell nicht gefunden."]
 
+    # **``Format-List``, nicht selbst zusammengebaut.** Die erste Fassung
+    # setzte die Zeile als "$($_.TimeCreated)  $($_.Message)" zusammen –
+    # und lieferte am 2026-10-02 auf dem echten Server nur Zeitstempel,
+    # die Texte blieben leer. Derselbe Filter von Hand in einer
+    # PowerShell zeigte sie vollständig.
+    #
+    # Woran es lag, ist nicht geklärt; naheliegend ist die Auflösung der
+    # Meldungstexte, die in einem nicht-interaktiven Unterprozess anders
+    # ausgehen kann. Geklärt ist nur, welcher Weg nachweislich geht –
+    # und den nehmen wir. Ein Protokollknopf, der Zeitstempel ohne Text
+    # zeigt, ist schlimmer als keiner: Er sieht aus, als hätte er
+    # nachgesehen.
     skript = (
         f"Get-WinEvent -LogName Application -MaxEvents 200 "
         f"| Where-Object {{ $_.ProviderName -eq '{DIENSTNAME}' }} "
         f"| Select-Object -First {anzahl} "
-        f"| ForEach-Object {{ \"$($_.TimeCreated)  $($_.Message)\" }}"
+        f"| Format-List TimeCreated, Id, Message"
     )
     from mailburg.core import werkzeuge
 
@@ -488,8 +625,98 @@ def ereignisse(anzahl: int = 20) -> list[str]:
     except (OSError, subprocess.SubprocessError) as fehler:
         return [f"Nicht lesbar: {fehler}"]
 
+    # Leerzeilen bleiben weg, Einrückungen nicht: ``Format-List`` bricht
+    # einen Traceback über viele Zeilen um, und der ist der Grund, warum
+    # jemand hier nachsieht.
     zeilen = [z.rstrip() for z in lauf.stdout.splitlines() if z.strip()]
     return zeilen or ["Keine Einträge – der Dienst hat noch nichts gemeldet."]
+
+
+# -------------------------------------------------- Verknüpfungen
+
+
+#: Wie die Verknüpfungen heißen. Als Tabelle, damit ein Aufräumen
+#: dieselben Namen findet wie das Anlegen.
+VERKNUEPFUNGEN = {
+    "MailBurg im Browser": "die Weboberfläche im Standardbrowser",
+    "MailBurg einrichten": "dieses Fenster",
+}
+
+
+def verknuepfungen_anlegen(umgebung: Umgebung) -> list[str]:
+    """Zwei Symbole auf dem Schreibtisch aller Benutzer.
+
+    **Warum auf den öffentlichen Schreibtisch.** Auf einem Server
+    wechseln die Menschen, die sich anmelden; eine Verknüpfung im Profil
+    des Administrators sieht der nächste nicht. ``%PUBLIC%\\Desktop``
+    gilt für alle.
+
+    **Und warum zwei.** Das Einrichtungsfenster braucht man einmal, die
+    Weboberfläche täglich. Beides hinter ein Symbol zu legen hieße, dass
+    einer von beiden Wegen der falsche ist.
+
+    Der Dienst selbst braucht kein Symbol – er läuft. Wäre er nur über
+    ein Symbol zu starten, wäre er kein Dienst.
+    """
+    if not ist_windows():
+        return ["Verknüpfungen gibt es nur unter Windows."]
+
+    import os.path
+
+    oeffentlich = os.environ.get("PUBLIC", r"C:\Users\Public")
+    schreibtisch = Path(oeffentlich) / "Desktop"
+    if not schreibtisch.is_dir():
+        return [f"»{schreibtisch}« gibt es nicht."]
+
+    adresse = (
+        "127.0.0.1" if umgebung.adresse in ("0.0.0.0", "::")  # noqa: S104
+        else umgebung.adresse
+    )
+    ziel_browser = f"http://{adresse}:{umgebung.anschluss}/"
+
+    # PowerShell statt pywin32-COM: Dieselbe Sprache wie der Rest der
+    # Windows-Arbeit hier, und sie läuft auch, wenn pywin32 klemmt – was
+    # ausgerechnet der Fall ist, in dem jemand ein Symbol sucht.
+    skript = f"""
+$w = New-Object -ComObject WScript.Shell
+$a = $w.CreateShortcut("{schreibtisch}\\MailBurg im Browser.lnk")
+$a.TargetPath = "{ziel_browser}"
+$a.Description = "Das Archiv im Browser"
+$a.Save()
+$b = $w.CreateShortcut("{schreibtisch}\\MailBurg einrichten.lnk")
+$b.TargetPath = "{sys.executable}"
+$b.Arguments = "-m mailburg.ui.servereinrichtung"
+$b.WorkingDirectory = "{Path(sys.executable).parent}"
+$b.Description = "Den Serverdienst einrichten und nachsehen"
+$b.Save()
+"""
+
+    from mailburg.core import werkzeuge
+
+    powershell = shutil.which("powershell") or shutil.which("pwsh")
+    if not powershell:
+        return ["PowerShell nicht gefunden."]
+    try:
+        lauf = subprocess.run(
+            [powershell, "-NoProfile", "-Command", skript],
+            capture_output=True, text=True, timeout=60,
+            **werkzeuge.konsolenkodierung(),
+            **werkzeuge.lautlos(),
+        )
+    except (OSError, subprocess.SubprocessError) as fehler:
+        return [f"Ging nicht: {fehler}"]
+
+    if lauf.returncode:
+        return [(lauf.stderr or lauf.stdout).strip() or "Ging nicht."]
+
+    getan = [f"Auf {schreibtisch}:"]
+    getan += [f"  {name} – {wozu}" for name, wozu in VERKNUEPFUNGEN.items()]
+    getan.append(
+        "Das Symbol für den Browser zeigt auf 127.0.0.1 – es gilt auf dem "
+        "Server selbst. Von einem Arbeitsplatz aus gehört der Servername "
+        "in die Adresse."
+    )
+    return getan
 
 
 # ----------------------------------------------------------- Zusammen
@@ -521,6 +748,11 @@ def alles_pruefen(umgebung: Umgebung) -> Gesamtbild:
     befunde.append(pruefe_archiv(umgebung.archiv))
     befunde.append(pruefe_zugaenge(umgebung.archiv))
     if ist_windows():
+        # **Vor dem Dienst, nicht danach.** Was der Dienst liest, steht
+        # fest, bevor er startet; ein Fehler hier macht jede Meldung
+        # darunter zu einer Folgeerscheinung.
+        befunde.append(pruefe_einstellungen(umgebung))
         befunde.append(pruefe_dienst())
+        befunde.append(pruefe_starttyp())
     befunde.append(erreichbar(umgebung))
     return Gesamtbild(befunde)

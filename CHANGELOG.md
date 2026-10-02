@@ -30,6 +30,51 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   **Ohne Texterkennung gepackt.** poppler und tesseract wären 150 MB für
   etwas, das ein Einrichtungsprogramm nie aufruft.
 
+- **Ein Ort für den Suchindex, den sich Dienst und Mensch teilen können**
+  (`MAILBURG_DATEN`). Dazu zwei Verknüpfungen auf dem Schreibtisch aller
+  Benutzer – eine für die Weboberfläche, eine für das Einrichtungsfenster.
+
+### Behoben (Serverbetrieb unter Windows)
+
+Aus dem ersten vollständigen Durchlauf auf einem Windows Server 2025 am
+02.10.2026. Alle drei hätten den Umzug des Firmenarchivs getroffen.
+
+- **Der Dienst fand den Suchindex nicht – und sagte es nicht.** Er läuft
+  als `LocalSystem` und hat damit ein anderes Benutzerprofil als der
+  Mensch, der das Archiv angelegt hat. Der Index liegt außerhalb des
+  Archivs, in einem Ordner, der am Benutzer hängt.
+
+  **Das Tückische ist, wie es aussah:** Die Anmeldung ging – Zugänge
+  liegen im Archiv. Die Statusseite meldete null Mails. Jede Suche blieb
+  leer. Nichts davon sieht nach einer Störung aus; es sieht aus wie ein
+  Archiv, in dem nichts ist. Mit 70.000 echten Mails hätte das niemand
+  als Fehler erkannt.
+
+  Jetzt gibt es `MAILBURG_DATEN` für einen gemeinsamen Ort – **und die
+  Statusseite hält Index und Journal gegeneinander.** Ist der Index leer,
+  während im Journal Einträge stehen, steht das unter »Sorgen«, samt dem
+  Weg hinaus. »Das Journal ist die Wahrheit, der Index ist Beiwerk« stand
+  seit jeher im Entwurf; hier wird es zum ersten Mal nachgeprüft.
+
+- **Der Dienst überstand keinen Neustart des Servers.** pywin32 legt
+  Dienste ohne ausdrückliche Angabe als »manuell« an – das steht in seiner
+  eigenen Hilfe, und niemand hatte hingesehen. Der Dienst lief, bis der
+  Server das nächste Mal hochfuhr, und danach nie wieder. Er wird jetzt
+  als »automatisch (verzögert)« eingerichtet: verzögert, weil eine zweite
+  Platte oder eine Freigabe zu Beginn des Hochfahrens noch nicht da ist.
+  Die Prüfliste zeigt den Starttyp und bietet an, ihn geradezuziehen.
+
+- **Im Einrichtungsfenster ließ sich der Dienst anlegen, ohne dass die
+  Einstellungen geschrieben waren.** Er nahm dann den Wert, der noch von
+  vorher in der Registry stand, fand dort kein Archiv und starb – mit
+  einem Pfad im Ereignisprotokoll, den im Fenster niemand mehr sah. Die
+  Liste prüft jetzt, ob das Gewählte und das Geltende übereinstimmen, und
+  nach dem Einrichten werden die Werte von selbst nachgezogen.
+
+- **Der Knopf »Ereignisprotokoll holen« zeigte Zeitstempel ohne Texte.**
+  Ein Protokollknopf, der schweigt, ist schlimmer als keiner: Er sieht
+  aus, als hätte er nachgesehen.
+
 ### Behoben
 
 - **Jeder Rat zum Nachrüsten eines Pakets nannte einen Befehl, der nirgends
