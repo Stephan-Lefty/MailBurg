@@ -393,10 +393,40 @@ Server ohne Bildschirm sieht man ihn deshalb über einen SSH-Tunnel
 Reverse Proxy mit TLS. Ein Archivdienst, der beim ersten Start ungefragt im
 ganzen Netz steht, wäre eine böse Überraschung.
 
-Der Weg vom leeren Rechner bis dahin steht in
-[docs/server-einrichten.md](docs/server-einrichten.md), die Überlegungen
-dahinter in [docs/server.md](docs/server.md). Für Debian ist er durchgespielt;
-der Windows-Dienst ist gebaut, aber noch nicht erprobt.
+### Blau oder rot – welche Fassung ist die richtige?
+
+Es gibt dasselbe Programm in zwei Gestalten. Erkennbar sind sie am Wappen:
+**blau** am Arbeitsplatz, **rot** im Browser.
+
+| | <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icon-64.png"><img src="assets/icon-64.png" width="22"></picture> **MailBurg** | <img src="assets/server/icon-64.png" width="22"> **MailBurg SERVER** |
+|---|---|---|
+| Wo es läuft | auf dem eigenen Rechner | auf einem Server, der durchläuft |
+| Wie man hinkommt | Programmfenster | Browser, von jedem Arbeitsplatz |
+| Wer darauf zugreift | einer | mehrere, jeder mit eigenen Rechten |
+| Post abrufen | ja | ja |
+| Suchen und lesen | ja | ja |
+| Einstufen, löschen, zurücklegen | ja | **nein** – das schreibt ins Journal |
+| Installation auf den Arbeitsplätzen | je Rechner | **keine** |
+| Aktualisieren | je Rechner | einmal auf dem Server, für alle |
+
+**Beide arbeiten am selben Archivformat.** Ein Archiv, das am Arbeitsplatz
+entstanden ist, lässt sich auf einen Server kopieren und umgekehrt – es ist
+ein gewöhnlicher Ordner.
+
+**Nicht beides gleichzeitig am selben Archiv.** Zwei Programme, die darin
+schreiben, reißen die Hash-Kette; wer den Serverbetrieb wählt, schaltet den
+Abruf am Arbeitsplatz ab. Welche Gestalt die richtige ist, entscheidet also
+weniger der Funktionsumfang als die Frage, wie viele Menschen hineinsehen.
+
+Der Weg vom leeren Rechner bis dahin:
+
+* [Das Archiv im Browser einrichten](docs/server-einrichten.md) – Debian und
+  andere Linux-Systeme, Dienst über systemd. Durchgespielt.
+* [MailBurg auf einem Windows Server](docs/server-windows.md) – mit
+  Einrichtungsfenster statt abgetippter Befehle. Am 02.10.2026 auf Windows
+  Server 2025 durchgespielt, einschließlich Neustart.
+* [Der Entwurf dahinter](docs/server.md) – welche Entscheidungen warum so
+  gefallen sind.
 
 ## Zu Nextcloud
 

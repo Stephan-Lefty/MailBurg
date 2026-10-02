@@ -358,10 +358,38 @@ without a screen you therefore reach it through an SSH tunnel
 reverse proxy with TLS. An archive service that stands on the whole network
 unasked at first start would be a nasty surprise.
 
-The path from a bare machine is in
-[docs/server-einrichten.md](docs/server-einrichten.md) (German), the reasoning
-in [docs/server.md](docs/server.md) (German). It has been walked through on
-Debian; the Windows service is built but not yet exercised.
+### Blue or red – which one do you need?
+
+The same program comes in two guises, told apart by the crest: **blue** on a
+workstation, **red** in the browser.
+
+| | <img src="assets/icon-64.png" width="22"> **MailBurg** | <img src="assets/server/icon-64.png" width="22"> **MailBurg SERVER** |
+|---|---|---|
+| Where it runs | on your own machine | on a server that stays up |
+| How you reach it | a window | a browser, from any desk |
+| Who uses it | one person | several, each with their own rights |
+| Fetching mail | yes | yes |
+| Searching and reading | yes | yes |
+| Classifying, deleting, putting back | yes | **no** – those write to the journal |
+| Install on each desk | yes | **none** |
+| Updating | per machine | once on the server, for everyone |
+
+**Both work on the same archive format.** An archive created on a workstation
+can be copied to a server and back – it is an ordinary folder.
+
+**Not both on the same archive at once.** Two programs writing into it break
+the hash chain; whoever moves to a server turns off fetching on the
+workstation. So the choice is less about features than about how many people
+need to look inside.
+
+The path from a bare machine:
+
+* [Setting up the archive in the browser](docs/server-einrichten.md) (German) –
+  Debian and other Linux systems, service via systemd. Walked through.
+* [MailBurg on a Windows Server](docs/server-windows.md) (German) – with a
+  setup window instead of typed commands. Walked through on Windows Server
+  2025 on 2026-10-02, including a reboot.
+* [The reasoning behind it](docs/server.md) (German).
 
 ## On Nextcloud
 
