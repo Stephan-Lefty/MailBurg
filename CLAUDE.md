@@ -3,6 +3,96 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-10-02, Freitagabend) – der Server trägt
+
+**Der Umzug des Firmenarchivs ist vorbereitet, nicht vollzogen.** Die
+Sicherungsdatei (11,8 GB, Prüfsumme `7a33d58b25bc87c0…`) lädt über die
+Nextcloud zum Server; Stephan meldet sich Samstag oder Sonntag. Was dann
+zu tun ist, steht unten unter *Was am Wochenende ansteht* – die
+Reihenfolge dort ist nicht beliebig.
+
+**Sieben Fehler an einem Tag, und keiner war vorhersehbar.** Alle kamen
+aus dem ersten echten Betrieb. Der Abschnitt darunter beschreibt den
+Vormittag; hier steht, was danach noch dazukam.
+
+### Die drei, die den 15.10. gekippt hätten
+
+**Der Dienst fand den Suchindex nicht – und sagte es nicht.** Er läuft
+als LocalSystem und hat ein anderes `%LOCALAPPDATA%` als der Mensch, der
+das Archiv anlegt. Die Anmeldung ging trotzdem (Zugänge liegen *im*
+Archiv), jede Suche blieb leer. **Nichts daran sieht nach einer Störung
+aus.** Gelöst über `MAILBURG_DATEN` – und die Statusseite hält jetzt
+Index gegen Journal, was den Satz »Das Journal ist die Wahrheit, der
+Index ist Beiwerk« zum ersten Mal nachprüft statt behauptet.
+
+**Der Abruf wäre sonntagabends nie gelaufen.** `aufgabenplanung.py`
+trägt `<LogonType>InteractiveToken</LogonType>`: Die Aufgabe läuft nur
+bei angemeldetem Benutzer. Auf einem Server ist niemand angemeldet – sie
+stünde in der Liste und täte nichts. **Aufgefallen durch einen Satz
+Stephans** (»es muss am Sonntag Abend auf dem Server laufen«), nicht
+durch einen Test. Der Abruf liegt jetzt im Dienst (`server/abruf.py`),
+und damit schreibt genau ein Prozess ins Archiv – die Lehre vom 21.09.,
+diesmal von vornherein eingebaut.
+
+**Das Wappen fehlte beim Anwender.** `pip install` nimmt nur mit, was
+*im* Paket steht; `assets/` lag daneben. **Auf einem Rechner mit
+Quelltext fällt das nie auf** – dort findet `bilder.finden()` es im
+Repo, der Test wird grün, und beim Anwender kommt nichts an. Dieselbe
+Klasse wie der Messfehler vom 22.09.: Eine Prüfung, die die fragliche
+Umgebung nicht nachstellt, misst etwas anderes.
+
+### Zwei weitere aus dem Betrieb
+
+**»Übernehmen« warf zweimal weg, was es nicht kannte.** Es überschrieb
+den ganzen `Environment`-Wert am Dienstschlüssel statt ihn zu ergänzen –
+erst Stephans `LOCALAPPDATA`, später die Adresse. Beim Tresor stand es
+von Anfang an richtig (»dazu, nicht statt«); hier nicht. Zwei Stellen,
+eine nachgezogen, die andere nicht.
+
+**Der Rat zum Tresorschlüssel zeigt auf `/etc/mailburg`**, einen
+Serverpfad, und legt das Verzeichnis nicht an. Offen, siehe TODO.
+
+### Was dabei entstanden ist
+
+`mailburg-server-einrichten` – eine Prüfliste statt zehn abgetippter
+Befehle, mit Knöpfen für Archiv, Zugänge, Dienst, Starttyp, Tresor,
+Abruf, Symbole und Updates. **Die Prüfungen liegen im Kern**
+(`server/einrichtung.py`), nicht im Fenster: Sie handeln von Dingen, die
+nur unter Windows passieren, und wären sonst nirgends prüfbar. Dafür gibt
+es eine enge Ausnahme von der Schichtenregel, mit Begründung im Test und
+zwei Wächtern daneben. `anlauf.py` musste dagegen nach `mailburg/`
+wandern – der Server darf die Oberfläche nicht kennen.
+
+In der Weboberfläche: Werkzeugleiste mit SVG-Symbolen, zweizeilige
+Trefferliste (wie MailStore, das die Mitarbeiter kennen), Postfächer
+links als Spalte, Hilfe, Einstellungen mit Hell/Dunkel, Lizenzseite,
+»Im Mailprogramm öffnen«. Dazu `mailburg betriebsart` – Stephans
+Firmenarchiv stand ein Jahr auf `privat` – und `docs/server-windows.md`,
+eine Anleitung, in der jeder Schritt gelaufen ist.
+
+**Fünfmal schlug ein Wächtertest an, der einen Wortlaut festhielt statt
+seinen Sinn.** Die Regel steht seit dem 07.09. hier; an einem Tag mit
+viel Umbau zeigt sich, wie oft sie gebraucht wird.
+
+### Was am Wochenende ansteht
+
+1. Prüfsumme der Sicherungsdatei vergleichen
+2. `wiederherstellen` auf das RAID des Servers (Pfad im Gedächtnis, nicht
+   hier – das Repo ist öffentlich)
+3. **Betriebsart auf geschäftlich** – steht noch auf `privat`
+4. Index bauen, `MAILBURG_DATEN` vorher setzen
+5. `~/konten-fuer-den-server.json` (7 von 18 Konten, die privaten
+   draußen) und `tresor.json` hinüber – **der Schlüssel auf einem
+   anderen Weg**
+6. Abruf: 30 Minuten, Ruhe `17:10-04:00`
+7. Sechs Zugänge
+
+**Zwei Dinge sind gebaut und nie gelaufen:** der Tresor im echten Abruf
+und die Abrufschleife. Dieser Tag hat gezeigt, was ein ungeprüfter
+Dienst wert ist.
+
+2156 Tests, `lesbarkeit.py` ohne Befund, CI grün.
+
 ## Hier war Schluss (Stand 2026-10-02, Freitag) – der Server lief zum ersten Mal
 
 **Der Windows-Dienst ist an diesem Tag zum ersten Mal gestartet worden, und
