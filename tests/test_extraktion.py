@@ -8,6 +8,7 @@ sind hier vor allem kaputte, gelogene und leere Dateien versammelt.
 from __future__ import annotations
 
 import io
+import logging
 import unittest
 import zipfile
 
@@ -108,6 +109,75 @@ class TestPdf(unittest.TestCase):
         self.assertTrue(pdf.ist_wohl_gescannt(gross, ""))
         self.assertFalse(pdf.ist_wohl_gescannt(gross, "viel Text " * 100))
         self.assertFalse(pdf.ist_wohl_gescannt(b"klein", ""))
+
+
+class MeldungenBuendelnTest(unittest.TestCase):
+    """pypdfs Meldungen sammeln, statt sie zeilenweise durchzulassen.
+
+    Ohne das meldet pypdf jedes PDF ohne EOF-Marke einzeln. Gemessen am
+    2026-10-02: 15 Zeilen bei 15 Mails – über 70.000 wären es 70.000,
+    und dazwischen ginge unter, was wirklich gemeldet werden wollte.
+
+    Geprüft wird ohne pypdf: Der Logger heißt so, wie er heißt, auch
+    wenn das Paket fehlt. Ein Test, der ein Extra voraussetzt, läuft in
+    der CI nicht – und genau dort soll er laufen.
+    """
+
+    def setUp(self):
+        self.logger = logging.getLogger(pdf._PYPDF_LOGGER)
+
+    def test_eine_meldung_wird_gezaehlt_statt_ausgegeben(self) -> None:
+        mitgehoert = io.StringIO()
+        zeuge = logging.StreamHandler(mitgehoert)
+        wurzel = logging.getLogger()
+        wurzel.addHandler(zeuge)
+        self.addCleanup(wurzel.removeHandler, zeuge)
+
+        with pdf.meldungen_buendeln() as gezaehlt:
+            for _ in range(3):
+                self.logger.warning("EOF marker not found")
+
+        self.assertEqual(gezaehlt["EOF marker not found"], 3)
+        self.assertEqual(mitgehoert.getvalue(), "")
+
+    def test_verschiedene_meldungen_bleiben_auseinander(self) -> None:
+        with pdf.meldungen_buendeln() as gezaehlt:
+            self.logger.warning("EOF marker not found")
+            self.logger.warning("EOF marker not found")
+            self.logger.warning("Ignoring wrong pointing object")
+
+        self.assertEqual(len(gezaehlt), 2)
+        self.assertEqual(gezaehlt.most_common(1)[0][1], 2)
+
+    def test_danach_ist_der_logger_wieder_wie_vorher(self) -> None:
+        """Wer MailBurg einbindet, hat vielleicht ein eigenes Protokoll."""
+        eigener = logging.StreamHandler(io.StringIO())
+        self.logger.addHandler(eigener)
+        self.logger.propagate = True
+        self.addCleanup(self.logger.removeHandler, eigener)
+
+        with pdf.meldungen_buendeln():
+            pass
+
+        self.assertIn(eigener, self.logger.handlers)
+        self.assertTrue(self.logger.propagate)
+
+    def test_auch_nach_einem_fehler_im_block(self) -> None:
+        """Sonst bliebe das Protokoll des Aufrufers dauerhaft verstellt."""
+        vorher = list(self.logger.handlers)
+
+        with self.assertRaises(ValueError):
+            with pdf.meldungen_buendeln():
+                raise ValueError("etwas ging schief")
+
+        self.assertEqual(self.logger.handlers, vorher)
+
+    def test_unterlogger_zaehlen_mit(self) -> None:
+        """Die EOF-Meldung kommt aus ``pypdf._reader``, nicht aus ``pypdf``."""
+        with pdf.meldungen_buendeln() as gezaehlt:
+            logging.getLogger("pypdf._reader").warning("EOF marker not found")
+
+        self.assertEqual(gezaehlt["EOF marker not found"], 1)
 
 
 class TestDispatcher(unittest.TestCase):

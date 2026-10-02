@@ -55,6 +55,20 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - **Eine Weiche am Kopf der Startseite.** Blau oder rot – wer die eine
   Fassung benutzt, soll nicht durch die Anleitungen der anderen müssen.
 
+### Geändert
+
+- **`mailburg neuaufbau` bündelt die Meldungen aus den PDF-Anhängen.**
+  Wird der Text über `pypdf` geholt – auf einem Windows Server der
+  Normalfall, weil poppler dort fehlt –, meldet es jedes PDF ohne
+  Schlusszeile einzeln. Gemessen: 15 Zeilen bei 15 Mails. Über 70.000
+  wären es 70.000, und dazwischen ginge unter, was wirklich gemeldet
+  werden wollte.
+
+  Jetzt steht am Ende eine Zusammenfassung – was wie oft vorkam, mit dem
+  Zusatz, dass die betroffenen Mails archiviert sind und gefunden werden;
+  nur der Text aus diesen Anhängen fehlt im Index. Gezählt, nicht
+  unterdrückt.
+
 ### Behoben (Serverbetrieb unter Windows)
 
 Aus dem ersten vollständigen Durchlauf auf einem Windows Server 2025 am

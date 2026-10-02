@@ -1796,6 +1796,8 @@ def cmd_neuaufbau(args: argparse.Namespace) -> int:
     # ausgerechnet der Befehl, auf den die Meldung verweist, käme nicht
     # an das Archiv heran. Verloren geht nichts: Die Zeilen darunter
     # bauen ihn ohnehin von Grund auf neu.
+    from mailburg.extract import pdf as pdf_modul
+
     with oeffnen(Path(args.archiv), index_verwerfen=True) as archive:
         print("Baue den Suchindex neu. Das Archiv selbst wird dabei nur gelesen.")
         started = time.monotonic()
@@ -1803,11 +1805,53 @@ def cmd_neuaufbau(args: argparse.Namespace) -> int:
         def progress(done: int, total: int) -> None:
             print(f"  … {done} von {total}", end="\r", flush=True)
 
-        count = archive.rebuild_index(progress=progress)
+        # **Die Meldungen von pypdf bündeln, nicht durchlassen.** Es
+        # meldet jedes PDF ohne EOF-Marke einzeln; über zehntausende
+        # Mails sind das hunderte Zeilen, zwischen denen die
+        # Fortschrittsanzeige zerfasert und eine echte Meldung untergeht.
+        # Gezählt statt unterdrückt – am Ende steht, was wie oft war.
+        with pdf_modul.meldungen_buendeln() as pdf_meldungen:
+            count = archive.rebuild_index(progress=progress)
+
         print(" " * 60, end="\r")
         print(f"Fertig: {sprache.mails(count)} in "
               f"{time.monotonic() - started:.1f} s indiziert.")
+        _pdf_befund_melden(pdf_meldungen)
     return 0
+
+
+#: Wie viele verschiedene PDF-Meldungen einzeln genannt werden. Mehr
+#: wäre wieder die Liste, die hier gerade vermieden wird.
+PDF_MELDUNGEN_ZEIGEN = 5
+
+
+def _pdf_befund_melden(gezaehlt) -> None:
+    """Nennt gebündelt, was beim Lesen der PDF-Anhänge auffiel.
+
+    **Die Zahl ist die der Meldungen, nicht die der Dateien** – ein
+    einzelnes PDF kann mehrere auslösen. Das steht so dabei, denn eine
+    Zahl, die nach Dateien aussieht und keine sind, führt bei der
+    nächsten Prüfung in die Irre.
+    """
+    if not gezaehlt:
+        return
+
+    gesamt = sum(gezaehlt.values())
+    print()
+    print(
+        f"Beim Lesen der PDF-Anhänge gab es "
+        f"{sprache.anzahl(gesamt, 'Hinweis', 'Hinweise')} "
+        f"(nicht Dateien – ein PDF kann mehrere auslösen):"
+    )
+    for text, wieoft in gezaehlt.most_common(PDF_MELDUNGEN_ZEIGEN):
+        print(f"  {wieoft}× {text}")
+    übrig = len(gezaehlt) - PDF_MELDUNGEN_ZEIGEN
+    if übrig > 0:
+        print(f"  … und {sprache.anzahl(übrig, 'weitere Art', 'weitere Arten')}")
+    print(
+        "\nDie betroffenen Mails sind archiviert und werden gefunden –\n"
+        "nur der Text aus diesen Anhängen fehlt im Index."
+    )
 
 
 def _nur_verschluesselt(pfad: Path) -> bool:

@@ -21,9 +21,12 @@ und würde dieses MIT-Projekt anstecken, sobald es mitgeliefert wird.
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import shutil
 import subprocess
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 from mailburg.core import werkzeuge
@@ -66,6 +69,69 @@ def _mit_poppler(daten: bytes) -> str:
     # Auch bei Rückgabewert ungleich null kann brauchbarer Text dabei sein:
     # poppler meldet Fehler für einzelne Seiten, liefert die übrigen aber.
     return ergebnis.stdout.decode("utf-8", errors="replace")
+
+
+#: Der Logger, über den pypdf seine Befunde meldet. Nicht
+#: ``pypdf._reader``, obwohl die EOF-Meldung von dort kommt: Die
+#: Unterlogger reichen nach oben durch, und am Elternlogger hängen auch
+#: die Meldungen der übrigen Teile.
+_PYPDF_LOGGER = "pypdf"
+
+
+@contextlib.contextmanager
+def meldungen_buendeln():
+    """Sammelt pypdfs Meldungen, statt sie zeilenweise durchzulassen.
+
+    **Wozu.** pypdf meldet jede Unregelmäßigkeit über ``logging`` –
+    allen voran ``EOF marker not found`` bei PDF, deren letzte Zeile
+    fehlt. Das ist bei abgeschnittenen Anhängen der Normalfall und
+    gelegentlich auch bei tadellosen Dateien aus betagten Programmen.
+    Hat niemand das Protokoll eingerichtet, landet jede dieser Meldungen
+    über Pythons ``lastResort`` auf der Fehlerausgabe.
+
+    Bei einem einzelnen Anhang ist das eine Zeile. Beim Neuaufbau über
+    70.000 Mails sind es hunderte, und dazwischen geht unter, was
+    wirklich gemeldet werden wollte. **Eine Meldung, die in Lärm
+    untergeht, ist keine, die angekommen ist** – derselbe Grund, aus dem
+    der Windows-Dienst sein Protokoll umhängt statt es abzuschalten.
+
+    Nicht unterdrückt, sondern gezählt: Der Aufrufer bekommt einen
+    ``Counter`` und kann am Ende sagen, was wie oft vorkam.
+
+    **Nur dieser Logger, und der alte Zustand kommt zurück.** Wer
+    MailBurg als Bibliothek benutzt, hat vielleicht ein eigenes
+    Protokoll eingerichtet; das darf ein Aufruf hier nicht dauerhaft
+    verstellen.
+
+    Betrifft nur den Weg über pypdf. ``pdftotext`` schreibt auf seine
+    eigene Fehlerausgabe, die ``_mit_poppler`` ohnehin einfängt.
+    """
+    gezaehlt: Counter[str] = Counter()
+
+    class _Sammler(logging.Handler):
+        def emit(self, satz: logging.LogRecord) -> None:
+            try:
+                gezaehlt[satz.getMessage()] += 1
+            except Exception:  # noqa: BLE001
+                # Ein Protokollhandler, der wirft, reißt den Lauf mit,
+                # den er beschreiben soll. ``handleError`` ist der dafür
+                # vorgesehene Weg – dieselbe Überlegung wie im
+                # Ereignisprotokoll des Windows-Dienstes.
+                self.handleError(satz)
+
+    logger = logging.getLogger(_PYPDF_LOGGER)
+    vorher_handler = logger.handlers[:]
+    vorher_weiter = logger.propagate
+    vorher_stufe = logger.level
+    logger.handlers = [_Sammler()]
+    logger.propagate = False
+    logger.setLevel(logging.WARNING)
+    try:
+        yield gezaehlt
+    finally:
+        logger.handlers = vorher_handler
+        logger.propagate = vorher_weiter
+        logger.setLevel(vorher_stufe)
 
 
 def _mit_pypdf(daten: bytes) -> str:

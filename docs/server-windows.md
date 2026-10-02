@@ -145,6 +145,37 @@ Benutzerprofil, und der Dienst sieht ihn nicht.
 
 Bei 70.000 Mails rechnen Sie mit Minuten, nicht Sekunden.
 
+### Der Text in den PDF-Anhängen
+
+MailBurg liest PDF-Anhänge mit, damit auch Rechnungsnummern gefunden
+werden, die nirgends im Mailtext stehen. Dafür gibt es zwei Wege:
+
+| | |
+|---|---|
+| `pdftotext` aus poppler | deutlich schneller, in C geschrieben – wird genommen, wenn vorhanden |
+| `pypdf` | der Rückfall in Python, kommt mit dem Extra `anhaenge` |
+
+Auf einem frischen Windows Server ist nur `pypdf` da. Das genügt, nur
+dauert der Neuaufbau länger. Wer ein großes Archiv mit vielen
+PDF-Rechnungen überträgt, legt besser poppler dazu und nimmt den
+schnellen Weg – welche Fassung dafür die richtige ist, hängt am Server
+und steht in dieser Anleitung bewusst nicht aus dem Gedächtnis.
+
+**Am Ende des Laufs steht, was auffiel** – gebündelt, nicht Zeile für
+Zeile:
+
+```
+Beim Lesen der PDF-Anhänge gab es 312 Hinweise (nicht Dateien – ein PDF kann mehrere auslösen):
+  298× EOF marker not found
+   14× Ignoring wrong pointing object
+
+Die betroffenen Mails sind archiviert und werden gefunden –
+nur der Text aus diesen Anhängen fehlt im Index.
+```
+
+`EOF marker not found` heißt: Dem PDF fehlt die Schlusszeile. Bei
+Mailanhängen ist das häufig und meistens harmlos.
+
 ## 8. Zugänge
 
 Im Fenster über *Zugänge …* – einen je Mensch, mit den Postfächern, die
