@@ -338,6 +338,94 @@ class UebernehmenTest(Umgebung):
         self.assertIsNone(tresor.holen(self.einfach.token_schluessel))
 
 
+class SchluesselAblegenTest(Umgebung):
+    """»mailburg tresor schluessel --datei« – ablegen statt abtippen.
+
+    **Was der Befehl vorher riet, ging an drei Stellen schief:**
+
+        install -m 600 /dev/null /etc/mailburg/schluessel
+        echo 'ZW4PjJ…' > /etc/mailburg/schluessel
+
+    Das Verzeichnis gibt es nicht – genau daran scheiterte Stephan am
+    2026-10-02 beim ersten Versuch. ``/etc`` gehört root, auf einem
+    Arbeitsplatz also der falsche Ort. Und unter Windows ergibt der
+    ganze Rat keinen Sinn.
+
+    **Das Schwerste stand aber in der zweiten Zeile.** Nach ihr steht
+    der Hauptschlüssel im Klartext in der Zeilenhistorie der Shell – in
+    einer Datei, die mitgesichert wird, und neben der die Tresordatei
+    nichts mehr schützt.
+
+    Diese Tests kommen ohne ``cryptography`` aus: Das Ablegen ist
+    Dateiarbeit und hat mit dem Verschlüsseln nichts zu tun. So laufen
+    sie auch in der CI, wo die Extras fehlen.
+    """
+
+    def _ablegen(self, ziel: Path, schluessel: str = "probe-schluessel="):
+        import contextlib
+        import io
+
+        from mailburg import __main__ as cli
+
+        aus, fehler = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(aus), \
+                contextlib.redirect_stderr(fehler):
+            code = cli._schluessel_ablegen(schluessel, ziel, tresor)
+        return aus.getvalue() + fehler.getvalue(), code
+
+    def test_der_ordner_entsteht_mit(self) -> None:
+        """Daran scheiterte der alte Rat: /etc/mailburg gab es nicht."""
+        ziel = Path(self.ordner.name) / "gibtsnochnicht" / "schluessel"
+
+        _, code = self._ablegen(ziel)
+
+        self.assertEqual(code, 0)
+        self.assertTrue(ziel.is_file())
+
+    def test_nur_der_eigene_benutzer_darf_lesen(self) -> None:
+        ziel = Path(self.ordner.name) / "schluessel"
+
+        self._ablegen(ziel)
+
+        self.assertEqual(ziel.stat().st_mode & 0o777, 0o600)
+
+    def test_der_schluessel_steht_wirklich_drin(self) -> None:
+        ziel = Path(self.ordner.name) / "schluessel"
+
+        self._ablegen(ziel, "ganz-bestimmter-wert=")
+
+        self.assertEqual(ziel.read_text(encoding="ascii").strip(),
+                         "ganz-bestimmter-wert=")
+
+    def test_ein_vorhandener_wird_nicht_ueberschrieben(self) -> None:
+        """Sonst wären alle Passwörter im Tresor auf einen Schlag weg."""
+        ziel = Path(self.ordner.name) / "schluessel"
+        ziel.write_text("der-alte=\n", encoding="ascii")
+
+        ausgabe, code = self._ablegen(ziel, "der-neue=")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(ziel.read_text(encoding="ascii").strip(), "der-alte=")
+        self.assertIn("verloren", ausgabe)
+
+    def test_der_schluessel_steht_nicht_in_der_ausgabe(self) -> None:
+        """Er soll gerade nicht durch die Shell und ihre Historie gehen."""
+        ziel = Path(self.ordner.name) / "schluessel"
+
+        ausgabe, _ = self._ablegen(ziel, "geheimer-wert=")
+
+        self.assertNotIn("geheimer-wert=", ausgabe)
+
+    def test_der_vorgeschlagene_ort_ist_kein_systemverzeichnis(self) -> None:
+        """``/etc`` gehört root – auf einem Arbeitsplatz der falsche Ort."""
+        from mailburg import __main__ as cli
+
+        ort = cli._schluesselort()
+
+        self.assertFalse(str(ort).startswith("/etc"))
+        self.assertEqual(ort.name, "schluessel")
+
+
 @unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class PruefenTest(Umgebung):
     """»mailburg tresor pruefen« – reicht, was hier liegt?

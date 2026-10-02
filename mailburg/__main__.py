@@ -2881,6 +2881,84 @@ def cmd_betriebsart(args: argparse.Namespace) -> int:
     return 0
 
 
+def _schluesselort() -> Path:
+    """Wo der Hauptschlüssel sinnvollerweise liegt – auf *diesem* Rechner.
+
+    **Bis zum 2026-10-02 stand hier fest ``/etc/mailburg/schluessel``**,
+    und der Rat dazu lautete ``install -m 600 /dev/null`` in dieses
+    Verzeichnis. Das ging an drei Stellen schief:
+
+    * Das Verzeichnis gibt es nicht. Der Befehl bricht ab mit »reguläre
+      Datei kann nicht angelegt werden« – genau so passiert, als Stephan
+      ihn zum ersten Mal ausführte.
+    * ``/etc`` gehört root. Auf dem eigenen Arbeitsplatz ist das weder
+      nötig noch richtig; der Schlüssel gehört dorthin, wo auch der
+      Tresor liegt.
+    * Unter Windows ergibt der ganze Rat keinen Sinn – dort gibt es
+      weder ``/etc`` noch ``install`` noch ``export``.
+
+    Deshalb der Ort neben der Tresordatei. Wer den Schlüssel für einen
+    Systemdienst woanders braucht, gibt ihn mit ``--datei`` an.
+    """
+    from mailburg.core import paths
+
+    return paths.config_dir() / "schluessel"
+
+
+def _schluessel_ablegen(neu: str, ziel: Path, tresor) -> int:
+    """Schreibt den Hauptschlüssel – ohne Umweg über die Shell.
+
+    **Der eigentliche Grund für diesen Weg ist die Zeilenhistorie.** Der
+    alte Rat lautete ``echo 'ZW4PjJ…' > datei``. Danach steht der
+    Hauptschlüssel im Klartext in ``~/.bash_history`` oder
+    ``~/.zsh_history`` – in einer Datei, die gesichert und mitgenommen
+    wird, und neben der die Tresordatei dann nichts mehr wert ist.
+
+    Ein vorhandener Schlüssel wird nicht überschrieben: Damit wären die
+    Passwörter im Tresor auf einen Schlag unlesbar, und zwar ohne
+    Rückweg.
+    """
+    if ziel.exists():
+        print(
+            f"{ziel} gibt es schon – dort liegt vermutlich der Schlüssel,\n"
+            f"mit dem der Tresor verschlüsselt ist. Würde er überschrieben,\n"
+            f"wären alle abgelegten Passwörter verloren.\n\n"
+            f"Wenn das Absicht ist, benennen Sie die Datei vorher um.",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        # **Erst anlegen, dann füllen.** Zwischen ``write_text`` und
+        # ``chmod`` läge die Datei einen Augenblick lang mit den
+        # üblichen Rechten da – lesbar für jeden, der im selben Moment
+        # hinsieht. Auf einem Server mit mehreren Konten ist das kein
+        # theoretischer Fall.
+        ziel.touch(mode=0o600, exist_ok=False)
+        ziel.write_text(neu + "\n", encoding="ascii")
+    except OSError as fehler:
+        print(f"Konnte {ziel} nicht anlegen: {fehler}", file=sys.stderr)
+        return 1
+
+    print(f"Der Hauptschlüssel liegt jetzt in:\n\n  {ziel}\n")
+    print("Damit MailBurg ihn findet, muss diese Variable gesetzt sein:\n")
+    if os.name == "nt":
+        print(f'  setx {tresor.UMGEBUNG_DATEI} "{ziel}"\n')
+        print("Für den Dienst gehört sie an den Dienstschlüssel, nicht an")
+        print("Ihr Benutzerkonto – das Einrichtungsfenster erledigt das.")
+    else:
+        print(f"  export {tresor.UMGEBUNG_DATEI}={ziel}\n")
+        print("Dauerhaft gehört sie in die Dienstbeschreibung (bei systemd")
+        print("als »Environment=«), nicht in die Datei Ihrer Shell – ein")
+        print("Dienst liest die nicht.")
+    print()
+    print("**Bewahren Sie ihn zusätzlich außerhalb dieses Rechners auf.**")
+    print("Ohne ihn sind die abgelegten Passwörter verloren. Zum Ansehen:")
+    print(f"\n  cat {ziel}" if os.name != "nt" else f"\n  type {ziel}")
+    return 0
+
+
 def _tresor_gegen_konten(eintraege: list[str]) -> int:
     """Hält den Tresorinhalt gegen die eingerichteten Postfächer.
 
@@ -2978,13 +3056,17 @@ def cmd_tresor(args: argparse.Namespace) -> int:
             print(fehler, file=sys.stderr)
             return 1
 
+        if getattr(args, "datei", None):
+            return _schluessel_ablegen(neu, Path(args.datei), tresor)
+
         print("Ein neuer Hauptschlüssel:\n")
         print(f"  {neu}\n")
-        print("Legen Sie ihn dorthin, wo der Dienst ihn findet – und sonst")
-        print("niemand. Zum Beispiel:\n")
-        print("  install -m 600 /dev/null /etc/mailburg/schluessel")
-        print(f"  echo '{neu}' > /etc/mailburg/schluessel")
-        print(f"  export {tresor.UMGEBUNG_DATEI}=/etc/mailburg/schluessel\n")
+        print("Er ist noch nirgends gespeichert. Am einfachsten legt ihn")
+        print("MailBurg selbst ab – dann steht er nirgends sonst:\n")
+        print(f"  mailburg tresor schluessel --datei {_schluesselort()}\n")
+        print("Das erzeugt einen *neuen* Schlüssel und schreibt ihn mit")
+        print("Rechten, die nur Sie lesen können. Den oben stehenden")
+        print("brauchen Sie dann nicht mehr.\n")
         print("**Bewahren Sie ihn zusätzlich außerhalb dieses Rechners auf.**")
         print("Ohne ihn sind die abgelegten Passwörter verloren – dann müssen")
         print("sie alle neu eingegeben werden.")
@@ -4327,7 +4409,18 @@ def build_parser() -> argparse.ArgumentParser:
     unter = p.add_subparsers(dest="was", required=True)
 
     u = unter.add_parser(
-        "schluessel", help="einen neuen Hauptschlüssel erzeugen")
+        "schluessel", help="einen neuen Hauptschlüssel erzeugen",
+        description=(
+            "Ohne Angabe wird er nur angezeigt. Mit --datei legt MailBurg "
+            "ihn selbst ab – das ist der sicherere Weg, denn ein von Hand "
+            "abgetippter »echo … > datei«-Befehl hinterlässt den Schlüssel "
+            "im Klartext in der Zeilenhistorie der Shell."
+        ),
+    )
+    u.add_argument(
+        "--datei",
+        help="den Schlüssel gleich hierhin schreiben (Rechte 600)",
+    )
     u.set_defaults(func=cmd_tresor)
 
     u = unter.add_parser(

@@ -57,6 +57,28 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Geändert
 
+- **`mailburg tresor schluessel --datei` legt den Hauptschlüssel selbst
+  ab.** Der bisherige Rat lautete `install -m 600 /dev/null
+  /etc/mailburg/schluessel` und danach `echo '…' > …`. Das ging an drei
+  Stellen schief: Das Verzeichnis gibt es nicht, `/etc` gehört root –
+  auf einem Arbeitsplatz also der falsche Ort –, und unter Windows
+  ergibt der ganze Rat keinen Sinn.
+
+  **Das Schwerste stand in der zweiten Zeile.** Danach steht der
+  Hauptschlüssel im Klartext in `~/.bash_history`, in einer Datei, die
+  mitgesichert wird und neben der die Tresordatei nichts mehr schützt.
+
+  Jetzt schreibt MailBurg die Datei selbst, legt den Ordner an, setzt
+  die Rechte und nennt die Umgebungsvariable – unter Windows mit `setx`,
+  sonst mit `export`. Einen vorhandenen Schlüssel überschreibt er nicht.
+  Ohne `--datei` schlägt der Befehl einen Ort neben der Tresordatei vor
+  statt `/etc`.
+
+  In `docs/server-einrichten.md` stand derselbe Schritt als
+  `mailburg tresor schluessel | tail -n +3 | head -1 | sudo tee …` –
+  ein Befehl, der daran hängt, in welcher Zeile der Schlüssel steht.
+  Auch der ist ersetzt.
+
 - **`mailburg neuaufbau` bündelt die Meldungen aus den PDF-Anhängen.**
   Wird der Text über `pypdf` geholt – auf einem Windows Server der
   Normalfall, weil poppler dort fehlt –, meldet es jedes PDF ohne

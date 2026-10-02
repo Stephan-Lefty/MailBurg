@@ -133,18 +133,26 @@ Der Schlüsselbund des Betriebssystems hängt an einer Anmeldesitzung –
 ein Dienst läuft ohne. Ohne Tresor läuft MailBurg, holt aber nichts.
 
 ```bash
-mailburg tresor schluessel
-```
-
-Der Befehl gibt einen Schlüssel aus und sagt, wohin damit. Kurz gefasst:
-
-```bash
 sudo install -d -o root -g mailburg -m 750 /etc/mailburg
-mailburg tresor schluessel | tail -n +3 | head -1 | sudo tee /etc/mailburg/schluessel
-sudo chmod 640 /etc/mailburg/schluessel
+sudo mailburg tresor schluessel --datei /etc/mailburg/schluessel
 sudo chown root:mailburg /etc/mailburg/schluessel
+sudo chmod 640 /etc/mailburg/schluessel
 export MAILBURG_SCHLUESSELDATEI=/etc/mailburg/schluessel
 ```
+
+**`--datei` statt abtippen oder durchleiten**, und das aus zwei Gründen.
+Ein `echo 'ZW4PjJ…' > datei` hinterlässt den Hauptschlüssel im Klartext
+in `~/.bash_history` – in einer Datei, die mitgesichert wird und neben
+der die Tresordatei nichts mehr schützt. Und ein
+`… | tail -n +3 | head -1 | sudo tee …`, wie es hier bis zum 02.10.2026
+stand, hängt daran, in welcher Zeile der Schlüssel steht: Kommt ein Satz
+dazu, schreibt derselbe Befehl stillschweigend etwas anderes in die
+Datei.
+
+Der Befehl legt die Datei mit `600` an; die beiden Zeilen danach nehmen
+die Gruppe `mailburg` hinzu, damit der Dienst mitlesen darf. Einen
+vorhandenen Schlüssel überschreibt er nicht – damit wären alle
+abgelegten Passwörter auf einen Schlag unlesbar.
 
 > **Bewahren Sie den Schlüssel zusätzlich außerhalb des Servers auf.**
 > Ohne ihn sind die abgelegten Passwörter verloren, und alle Postfächer
