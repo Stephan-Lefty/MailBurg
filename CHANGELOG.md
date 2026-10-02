@@ -34,6 +34,27 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   (`MAILBURG_DATEN`). Dazu zwei Verknüpfungen auf dem Schreibtisch aller
   Benutzer – eine für die Weboberfläche, eine für das Einrichtungsfenster.
 
+- **`mailburg tresor pruefen` hält den Tresor gegen die Postfächer.**
+  Bisher beantwortete der Befehl nur die halbe Frage: ob sich öffnen
+  lässt, was da liegt. Jetzt auch die, auf die es ankommt – ob für jedes
+  eingerichtete Postfach eine Anmeldung dabei ist, und ob Einträge
+  mitgekommen sind, zu denen hier kein Postfach gehört.
+
+  Auf einem Arbeitsplatz fragt MailBurg nach, wenn ein Passwort fehlt.
+  Ein Dienst kann das nicht; er überspringt das Postfach und läuft
+  weiter. Ein Archiv, das nichts mehr dazubekommt, sieht aber aus wie
+  eines, in dem gerade nichts ankam – der Unterschied zeigt sich erst
+  nach Wochen.
+
+- **Bilder der Weboberfläche in der Anleitung** – Anmeldung,
+  Trefferliste, geöffnete Nachricht, Einstellungen, Hilfe und die dunkle
+  Darstellung. Sie entstehen wie die Fensterbilder aus erfundener Post
+  (`werkzeuge/screenshots_server.py`), gerendert ohne Bildschirm, und
+  laufen durch dieselbe Texterkennung, die nach echten Daten sucht.
+
+- **Eine Weiche am Kopf der Startseite.** Blau oder rot – wer die eine
+  Fassung benutzt, soll nicht durch die Anleitungen der anderen müssen.
+
 ### Behoben (Serverbetrieb unter Windows)
 
 Aus dem ersten vollständigen Durchlauf auf einem Windows Server 2025 am

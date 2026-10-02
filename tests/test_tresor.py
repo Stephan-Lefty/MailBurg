@@ -338,6 +338,100 @@ class UebernehmenTest(Umgebung):
         self.assertIsNone(tresor.holen(self.einfach.token_schluessel))
 
 
+class PruefenTest(Umgebung):
+    """»mailburg tresor pruefen« – reicht, was hier liegt?
+
+    Bis zum 2026-10-02 beantwortete der Befehl nur die halbe Frage: ob
+    sich öffnen lässt, was da ist. Ob es für die eingerichteten
+    Postfächer *reicht*, blieb offen – und genau das entscheidet, ob ein
+    Dienst Post holt oder stumm bleibt.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.oauth = Konto(name="Firma", server="outlook.office365.com",
+                           benutzer="post@example.org",
+                           oauth_anbieter="microsoft", oauth_kennung="abc")
+        self.einfach = Konto(name="Privat", server="imap.example.net",
+                             benutzer="ich@example.net")
+
+    def _pruefen(self, konten: list, inhalt: dict[str, str]) -> tuple[str, int]:
+        import argparse
+        import contextlib
+        import io
+
+        from mailburg import __main__ as cli
+
+        liste = accounts.Kontenliste()
+        liste.konten = konten
+        liste.speichern()
+        for name, wert in inhalt.items():
+            tresor.setzen(name, wert)
+
+        aus, fehler = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(aus), \
+                contextlib.redirect_stderr(fehler):
+            code = cli.cmd_tresor(argparse.Namespace(was="pruefen"))
+        return aus.getvalue() + fehler.getvalue(), code
+
+    def test_ein_vollstaendiger_tresor_wird_als_solcher_gemeldet(self):
+        self._einrichten()
+
+        ausgabe, code = self._pruefen(
+            [self.einfach], {self.einfach.schluessel: "geheim"}
+        )
+
+        self.assertEqual(code, 0)
+        self.assertIn("Alle", ausgabe)
+
+    def test_ein_postfach_ohne_eintrag_wird_genannt(self):
+        """Der Fall, der sonst erst nach Wochen auffällt."""
+        self._einrichten()
+
+        ausgabe, code = self._pruefen(
+            [self.einfach, self.oauth], {self.einfach.schluessel: "geheim"}
+        )
+
+        self.assertEqual(code, 1)
+        self.assertIn("Firma", ausgabe)
+        self.assertNotIn("Alle", ausgabe)
+
+    def test_ein_oauth2_token_zaehlt_als_anmeldung(self):
+        """Es ersetzt das Passwort – sonst wäre die Meldung falsch."""
+        self._einrichten()
+
+        ausgabe, code = self._pruefen(
+            [self.oauth], {self.oauth.token_schluessel: '{"zugriff": "x"}'}
+        )
+
+        self.assertEqual(code, 0)
+        self.assertNotIn("Firma", ausgabe.split("ohne zugehöriges")[0]
+                         .replace("Alle", ""))
+
+    def test_ein_eintrag_ohne_postfach_wird_gemeldet(self):
+        """Ein fremdes Passwort, das mitgereist ist – kein Fehler, aber
+        auf einem Rechner mit mehreren Zugriffen gehört es gesagt."""
+        self._einrichten()
+
+        ausgabe, code = self._pruefen(
+            [self.einfach],
+            {self.einfach.schluessel: "geheim",
+             "fremd@woanders.example@imap.woanders.example": "x"},
+        )
+
+        self.assertEqual(code, 0)
+        self.assertIn("fremd@woanders.example", ausgabe)
+
+    def test_ohne_eingerichtete_postfaecher_wird_nichts_behauptet(self):
+        """Es gibt nichts zu vergleichen – dann auch keine Entwarnung."""
+        self._einrichten()
+
+        ausgabe, code = self._pruefen([], {"irgendwas": "x"})
+
+        self.assertEqual(code, 0)
+        self.assertNotIn("Alle", ausgabe)
+
+
 class OhneKryptoTest(Umgebung):
     """Fehlt ``cryptography``, gibt es keinen Rückfall auf Klartext."""
 

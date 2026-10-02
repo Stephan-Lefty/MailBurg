@@ -31,15 +31,30 @@ WURZEL = pathlib.Path(__file__).resolve().parent.parent
 BILDER = WURZEL / "docs" / "bilder"
 
 
+#: Beide Schreibweisen, mit denen ein Bild in einer Seite stehen kann.
+#:
+#: **Die zweite fehlte bis zum 2026-10-02.** Markdown kann ein Bild weder
+#: in der Breite begrenzen noch zentrieren; wo das gebraucht wird – auf
+#: der Startseite –, steht deshalb ein ``<img>``-Element. Der Test sah
+#: davon nichts und meldete sieben frisch eingebundene Bilder als »liegt
+#: unbenutzt herum«. Ein Wächter, der die halbe Wirklichkeit kennt,
+#: meldet die andere Hälfte als Fehler.
+_EINBINDUNG = (
+    re.compile(r"\]\(([^)]*bilder/[^)]+)\)"),      # ![…](…/bilder/…)
+    re.compile(r"""<img[^>]+src=["']([^"']*bilder/[^"']+)["']"""),
+)
+
+
 def _einbindungen() -> dict[pathlib.Path, list[pathlib.Path]]:
     """Jedes eingebundene Bild mit den Dateien, die es einbinden."""
     gefunden: dict[pathlib.Path, list[pathlib.Path]] = {}
     seiten = list(WURZEL.glob("docs/**/*.md")) + list(WURZEL.glob("*.md"))
     for seite in seiten:
         text = seite.read_text(encoding="utf-8")
-        for ziel in re.findall(r"\]\(([^)]*bilder/[^)]+)\)", text):
-            pfad = (seite.parent / ziel).resolve()
-            gefunden.setdefault(pfad, []).append(seite)
+        for muster in _EINBINDUNG:
+            for ziel in muster.findall(text):
+                pfad = (seite.parent / ziel).resolve()
+                gefunden.setdefault(pfad, []).append(seite)
     return gefunden
 
 

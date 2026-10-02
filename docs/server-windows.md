@@ -212,6 +212,30 @@ Dann von einem Arbeitsplatz `http://SERVERNAME:8383/`.
 Browser, mehr nicht – und ein Update auf dem Server erreicht alle
 gleichzeitig.
 
+### Was die Mitarbeiter zu sehen bekommen
+
+Zuerst die Anmeldung. Mehr steht dort nicht – wer nicht angemeldet ist,
+erfährt nicht einmal, wie das Archiv heißt.
+
+![Die Anmeldeseite: Kopfzeile mit rotem Wappen und dem Schriftzug MailBurg SERVER, rechts der Umschalter System · Hell · Dunkel. In der Mitte zwei Felder für Anmeldename und Passwort mit einer Schaltfläche Anmelden.](bilder/server-anmelden.png)
+
+Nach der Anmeldung die Suche. Links stehen nur die Postfächer, die
+dieser Zugang sehen darf; die Zahl dahinter ist die der Nachrichten
+darin.
+
+![Die Trefferliste nach einer Suche nach »rechnung«: oben die Werkzeugleiste, darunter das Suchfeld mit der Trefferzahl, links die Postfachspalte und rechts drei Treffer, je zwei Zeilen mit Absender, Betreff, Datum und einer Büroklammer für den Anhang.](bilder/server-trefferliste.png)
+
+Unter **Einstellungen** stellt jeder für sich ein, wie es aussehen soll.
+Die Einstellung hängt am Browser, nicht am Zugang – wer sich von einem
+anderen Rechner anmeldet, fängt wieder bei der Vorgabe an.
+
+![Die Einstellungsseite mit dem Abschnitt »Helligkeit« und drei Feldern zur Auswahl: »Wie das System«, »Hell« und »Dunkel«, jedes mit einer Zeile Erklärung. Das erste ist rot umrandet, weil es gerade gilt. Darunter der Hinweis, dass es mehr noch nicht einzustellen gibt.](bilder/server-einstellungen.png)
+
+Und eine **Hilfe**, die im Programm steht und nicht in einer Datei, die
+niemand findet:
+
+![Die Hilfeseite im Browser mit drei Abschnitten. »Wie man sucht« führt die Suchausdrücke auf – von einem einfachen Wort über Absender und Empfänger bis zu Zeitangaben, Dateinamen und Ausschlüssen, jeder mit einem Beispiel und einer Erklärung daneben. »Was hier nicht geht« hält fest, dass die Oberfläche nur liest. »Eine Mail weiterverwenden« erklärt die beiden Knöpfe in jeder geöffneten Nachricht.](bilder/server-hilfe.png)
+
 ## 12. Post abrufen: der Tresor
 
 Nur nötig, wenn der Server selbst Postfächer abrufen soll.
@@ -234,6 +258,19 @@ Server kopieren.
 
 > **Schlüsseldatei und Tresordatei nie zusammen weitergeben und nie
 > zusammen sichern.** Wer beides hat, hat die Postfächer.
+
+Und auf dem Server nachsehen, ob es für alle reicht:
+
+```
+mailburg tresor pruefen
+```
+
+Der Befehl sagt nicht nur, ob sich die Einträge öffnen lassen, sondern
+auch, **ob für jedes eingerichtete Postfach eine Anmeldung dabei ist** –
+und ob Einträge mitgekommen sind, zu denen hier kein Postfach gehört.
+Das ist wichtiger, als es klingt: Ein Postfach ohne Passwort wird beim
+Abruf übersprungen, ohne dass etwas rot wird. Der Dienst läuft weiter,
+die Statusseite ist grün, und es kommt nur nichts mehr an.
 
 ## Ohne Internet auf dem Server
 

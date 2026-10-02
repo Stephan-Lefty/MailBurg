@@ -2837,6 +2837,88 @@ def cmd_betriebsart(args: argparse.Namespace) -> int:
     return 0
 
 
+def _tresor_gegen_konten(eintraege: list[str]) -> int:
+    """Hält den Tresorinhalt gegen die eingerichteten Postfächer.
+
+    **Lesbar heißt nicht vollständig.** Bis zum 2026-10-02 beantwortete
+    ``pruefen`` nur die Frage »lässt sich öffnen, was hier liegt« – nicht
+    die, auf die es ankommt: »reicht das für die Postfächer, die dieser
+    Rechner abrufen soll«. Ein Tresor, dem die Hälfte fehlt, bekam
+    dieselbe Auskunft wie ein vollständiger.
+
+    Das wiegt auf einem Server schwerer als auf einem Arbeitsplatz. Dort
+    fragt MailBurg nach, wenn ein Passwort fehlt; ein Dienst kann das
+    nicht. Er überspringt das Postfach und läuft weiter – und ein Archiv,
+    das nichts mehr dazubekommt, sieht aus wie eines, in dem gerade
+    nichts ankam. Der Unterschied zeigt sich erst nach Wochen.
+
+    Deshalb beide Richtungen:
+
+    * **Postfächer ohne Eintrag** können nicht abgerufen werden.
+    * **Einträge ohne Postfach** sind fremde Passwörter. Sie stammen von
+      einem anderen Rechner und haben dort, wo mehrere Zugriff haben,
+      nichts verloren. Das ist kein Fehler, aber es gehört gesagt.
+
+    Ohne eingerichtete Postfächer gibt es nichts zu vergleichen; dann
+    bleibt es bei dem, was vorher schon geprüft wurde.
+    """
+    from mailburg.core import accounts
+
+    konten = accounts.Kontenliste().konten
+    if not konten:
+        return 0
+
+    vorhanden = set(eintraege)
+    übrig = set(vorhanden)
+    ohne = []
+    for konto in konten:
+        hat = konto.schluessel in vorhanden
+        übrig.discard(konto.schluessel)
+        if konto.per_oauth2:
+            # Eine OAuth2-Anmeldung ersetzt das Passwort – ein Konto mit
+            # Token und ohne Passwort ist vollständig.
+            hat = hat or konto.token_schluessel in vorhanden
+            übrig.discard(konto.token_schluessel)
+        if not hat:
+            ohne.append(konto.name)
+
+    if ohne:
+        print(
+            f"\nOhne Anmeldung im Tresor: "
+            f"{sprache.anzahl(len(ohne), 'Postfach', 'Postfächer')} "
+            f"von {len(konten)}.",
+            file=sys.stderr,
+        )
+        for name in ohne:
+            print(f"  {name}", file=sys.stderr)
+        print(
+            "\nDiese Postfächer kann der Dienst nicht abrufen. Er meldet "
+            "das nicht als Fehler –\nes kommt einfach keine Post an. "
+            "Nachtragen auf dem Rechner, auf dem die\nPostfächer "
+            "eingerichtet sind:\n\n  mailburg tresor uebernehmen\n",
+            file=sys.stderr,
+        )
+
+    if übrig:
+        print(
+            f"\n{sprache.anzahl(len(übrig), 'Eintrag', 'Einträge')} "
+            f"ohne zugehöriges Postfach:"
+        )
+        for name in sorted(übrig):
+            print(f"  {name}")
+        print(
+            "\nSie stammen von einem anderen Rechner. Wo mehrere Menschen "
+            "Zugriff haben,\ngehören fremde Passwörter nicht hin."
+        )
+
+    if not ohne and not übrig:
+        print(
+            f"\nAlle {sprache.anzahl(len(konten), 'Postfach', 'Postfächer')} "
+            f"haben eine Anmeldung im Tresor."
+        )
+    return 1 if ohne else 0
+
+
 def cmd_tresor(args: argparse.Namespace) -> int:
     """Passwörter auf einem Rechner ohne Schlüsselbund."""
     # ``paths`` fehlte hier bis zum 2026-09-06: Die Schlussmeldung von
@@ -2895,14 +2977,14 @@ def cmd_tresor(args: argparse.Namespace) -> int:
 
         if not eintraege:
             print("Im Tresor liegt nichts.")
-        elif schlecht:
+        if schlecht:
             print(
                 f"\n{sprache.anzahl(schlecht, 'Eintrag', 'Einträge')} "
                 f"nicht lesbar. Vermutlich der falsche Hauptschlüssel.",
                 file=sys.stderr,
             )
             return 1
-        return 0
+        return _tresor_gegen_konten(eintraege)
 
     # uebernehmen
     if not tresor.verfuegbar():

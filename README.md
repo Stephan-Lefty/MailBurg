@@ -31,7 +31,21 @@ Fassungsnummer – solange es keines gibt, bleibt dieser Absatz stehen.
   <img src="assets/uebersicht-2000.png" alt="Übersicht: Postfächer über IMAP oder JMAP, lokale Ordner aus Thunderbird, Evolution oder KMail und die Proton-Bridge werden nur gelesen; MailBurg legt jede Mail bytegenau in einem Archiv ab, dessen Ort frei wählbar ist, mit Protokoll und Hash-Kette. Der Suchindex liegt außerhalb des Archivs und ist jederzeit neu erzeugbar. Gesucht wird im Volltext samt Anhängen, Wiederkehrendes lässt sich als Suchordner ablegen. Zugriff über Oberfläche und Kommandozeile." width="960">
 </p>
 
-**Neu hier?** [Erste Schritte](docs/erste-schritte.md) führt mit Bildern von der Installation bis zum ersten durchsuchbaren Archiv. [Die Oberfläche](docs/oberflaeche.md) erklärt jedes Fenster und jeden Menüpunkt.
+## Zwei Gestalten – welche ist Ihre?
+
+Dasselbe Programm, dasselbe Archivformat, zwei Wege hinein. Erkennbar am
+Wappen: **blau** am eigenen Rechner, **rot** im Browser. Wer die eine
+benutzt, braucht über die andere nichts zu wissen.
+
+| | <img src="assets/icon-64.png" width="20" align="top"> **MailBurg** | <img src="assets/server/icon-64.png" width="20" align="top"> **MailBurg SERVER** |
+|---|---|---|
+| **Für wen** | eine Person an ihrem Rechner | mehrere, die auf dasselbe Archiv sehen – Kanzlei, Verein, Firma |
+| **Zugang** | Programmfenster | Browser, von jedem Arbeitsplatz aus |
+| **Loslegen** | **[Erste Schritte](docs/erste-schritte.md)** – mit Bildern von der Installation bis zum ersten durchsuchbaren Archiv | **[Auf einem Windows Server](docs/server-windows.md)** · **[Auf Linux](docs/server-einrichten.md)** |
+| **Und weiter** | [Die Oberfläche](docs/oberflaeche.md) · [Postfächer einrichten](docs/postfaecher-einrichten.md) · [Unter Windows](docs/windows.md) | [Das Archiv im Browser](#im-browser-wenn-mehrere-darauf-zugreifen) · [Der Entwurf dahinter](docs/server.md) |
+
+Die Unterschiede im Einzelnen – was die rote Fassung *nicht* kann und warum –
+stehen unter [Blau oder rot](#blau-oder-rot--welche-fassung-ist-die-richtige).
 
 ## Warum
 
@@ -377,6 +391,24 @@ Für den Fall, dass nicht nur eine Person an das Archiv soll – eine Kanzlei,
 ein Verein, eine Firma –, lässt sich MailBurg als Dienst betreiben. Dann
 liegt das Archiv auf einem Rechner, der läuft, und alle anderen erreichen es
 über den Browser: anmelden, suchen, lesen, Anhänge herunterladen.
+
+<p align="center">
+  <img src="docs/bilder/server-uebersicht.png" alt="Die Weboberfläche nach der Anmeldung: oben eine Werkzeugleiste mit Erweiterte Suche, Neue Suche, Einstellungen, Hilfe und Über. Darunter das Suchfeld, links eine Spalte mit den beiden Postfächern, die dieser Zugang sehen darf, und rechts die Trefferliste – je Nachricht zwei Zeilen mit Absender, Betreff, Datum und einer Büroklammer bei Anhängen." width="900">
+</p>
+
+Eine Nachricht geöffnet – mit Anhang, »Im Mailprogramm öffnen« und
+»Als Datei speichern«:
+
+<p align="center">
+  <img src="docs/bilder/server-lesen.png" alt="Eine geöffnete Nachricht im Browser: Kopfzeilen als Tabelle mit Von, An, Datum, Betreff und Größe, darunter ein Kasten mit dem Anhang Unterlagen.pdf, zwei Schaltflächen »Im Mailprogramm öffnen« und »Als Datei speichern (.eml)« und darunter der Mailtext." width="900">
+</p>
+
+**Hell und dunkel** stellt jeder Zugang für sich ein – oben rechts, oder unter
+*Einstellungen*. Die Vorgabe richtet sich nach dem Betriebssystem.
+
+<p align="center">
+  <img src="docs/bilder/server-dunkel.png" alt="Dieselbe Trefferliste in der dunklen Darstellung: schwarzer Hintergrund, helle Schrift, rotes Wappen und rote Symbole in der Werkzeugleiste." width="900">
+</p>
 
 **Wer was sehen darf, steht im Archiv selbst**, nicht beim Dienst. Ein Zugang
 kann auf bestimmte Postfächer beschränkt sein, und die Einschränkung wirkt

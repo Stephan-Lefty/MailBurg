@@ -33,6 +33,22 @@ version number — until there is one, this paragraph stays.
 
 <sub>Die Grafik ist auf Deutsch – wie die Oberfläche und die Suchsprache.</sub>
 
+## Two guises – which one is yours?
+
+The same program, the same archive format, two ways in. Told apart by the
+crest: **blue** on your own machine, **red** in a browser. Whichever you
+use, you need know nothing about the other.
+
+| | <img src="assets/icon-64.png" width="20" align="top"> **MailBurg** | <img src="assets/server/icon-64.png" width="20" align="top"> **MailBurg SERVER** |
+|---|---|---|
+| **For whom** | one person at their own machine | several people looking into the same archive – a practice, a club, a company |
+| **How you get in** | a program window | a browser, from any desk |
+| **Start here** | **[Getting started](docs/erste-schritte.md)** (German) – from installing to the first searchable archive, with pictures | **[On a Windows Server](docs/server-windows.md)** · **[On Linux](docs/server-einrichten.md)** (German) |
+| **And then** | [The interface](docs/oberflaeche.md) · [Setting up mailboxes](docs/postfaecher-einrichten.md) · [On Windows](docs/windows.md) (German) | [The archive in a browser](#in-the-browser-when-more-than-one-person-needs-access) · [The reasoning](docs/server.md) (German) |
+
+The differences in detail – what the red one deliberately cannot do – are
+under [Blue or red](#blue-or-red--which-one-do-you-need).
+
 ## Why
 
 Good tools exist for this, but they have limits: Windows only, a cap on the
@@ -342,6 +358,26 @@ Where the archive is not for one person alone — a practice, a club, a company 
 MailBurg can run as a service. The archive then sits on a machine that stays on,
 and everyone else reaches it through a browser: sign in, search, read, download
 attachments.
+
+<p align="center">
+  <img src="docs/bilder/server-uebersicht.png" alt="The web interface after signing in: a toolbar across the top with advanced search, new search, settings, help and about. Below it the search box, on the left a column listing the two mailboxes this account may see, and on the right the results – two lines per message with sender, subject, date and a paperclip where there are attachments." width="900">
+</p>
+
+A message opened – with its attachment, »open in mail client« and
+»save as file«:
+
+<p align="center">
+  <img src="docs/bilder/server-lesen.png" alt="An opened message in the browser: the headers as a table with From, To, Date, Subject and Size, below it a box holding the attachment Unterlagen.pdf, two buttons to open the message in a mail client or save it as an .eml file, and underneath the message text." width="900">
+</p>
+
+**Light and dark** is each account's own choice – top right, or under
+*Einstellungen*. The default follows the operating system.
+
+<p align="center">
+  <img src="docs/bilder/server-dunkel.png" alt="The same result list in the dark rendering: black background, light type, the red crest and red toolbar symbols." width="900">
+</p>
+
+<sub>Die Oberfläche ist auf Deutsch – wie die Suchsprache.</sub>
 
 **Who may see what is recorded in the archive itself**, not in the service. An
 account can be restricted to certain mailboxes, and the restriction takes effect
