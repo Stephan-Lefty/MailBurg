@@ -108,6 +108,9 @@ mailburg-gui = "mailburg.ui.app:main"
 # es ein anderer Mensch zu einer anderen Zeit benutzt: der Administrator
 # einmal beim Aufsetzen, nicht der Anwender täglich.
 mailburg-server-einrichten = "mailburg.ui.servereinrichtung:starten"
+# Der Doppelklick, nach dem MailBurg im Browser offen ist: prüft den
+# Dienst, wartet auf einen anlaufenden, öffnet erst dann den Browser.
+mailburg-server = "mailburg.anlauf:haupt"
 
 [tool.setuptools.packages.find]
 include = ["mailburg*"]

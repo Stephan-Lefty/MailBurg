@@ -465,13 +465,39 @@ def variablen_setzen(umgebung: Umgebung) -> list[str]:
     try:
         dienst = rf"SYSTEM\CurrentControlSet\Services\{DIENSTNAME}"
         with winreg.OpenKey(
-            winreg.HKEY_LOCAL_MACHINE, dienst, 0, winreg.KEY_SET_VALUE
+            winreg.HKEY_LOCAL_MACHINE, dienst, 0,
+            winreg.KEY_SET_VALUE | winreg.KEY_QUERY_VALUE,
         ) as schluessel:
-            zeilen = [f"{n}={w}" for n, w in umgebung.als_variablen().items()]
+            # **Dazu, nicht statt.** Die erste Fassung überschrieb den
+            # ganzen Wert – und warf dabei am 2026-10-02 Stephans
+            # ``LOCALAPPDATA`` weg, mit dem der Dienst seinen Suchindex
+            # fand. Danach suchte er wieder im Systemprofil, die Suche
+            # blieb leer, und niemand hätte den Zusammenhang zum Klick
+            # auf »Übernehmen« hergestellt.
+            #
+            # Beim Tresor stand es von Anfang an richtig; hier nicht.
+            # Zwei Stellen, eine nachgezogen, die andere nicht – dieselbe
+            # Klasse wie so oft in diesem Projekt.
+            try:
+                vorhanden = list(
+                    winreg.QueryValueEx(schluessel, "Environment")[0]
+                )
+            except FileNotFoundError:
+                vorhanden = []
+
+            neue = umgebung.als_variablen()
+            behalten = [
+                zeile for zeile in vorhanden
+                if zeile.split("=", 1)[0] not in neue
+            ]
+            zeilen = behalten + [f"{n}={w}" for n, w in neue.items()]
             winreg.SetValueEx(
                 schluessel, "Environment", 0, winreg.REG_MULTI_SZ, zeilen
             )
-            getan.append(f"am Dienst »{DIENSTNAME}«: {len(zeilen)} Werte")
+            getan.append(
+                f"am Dienst »{DIENSTNAME}«: {len(neue)} Werte gesetzt, "
+                f"{len(behalten)} unberührt"
+            )
     except OSError as fehler:
         # Der Dienst ist vielleicht noch gar nicht angelegt – kein Fehler,
         # sondern die normale Reihenfolge beim ersten Einrichten.
@@ -887,6 +913,7 @@ def tresor_einrichten(umgebung: Umgebung) -> list[str]:
 #: Wie die Verknüpfungen heißen. Als Tabelle, damit ein Aufräumen
 #: dieselben Namen findet wie das Anlegen.
 VERKNUEPFUNGEN = {
+    "MailBurg starten": "prüft den Dienst und öffnet den Browser",
     "MailBurg im Browser": "die Weboberfläche im Standardbrowser",
     "MailBurg einrichten": "dieses Fenster",
 }
@@ -923,21 +950,53 @@ def verknuepfungen_anlegen(umgebung: Umgebung) -> list[str]:
     )
     ziel_browser = f"http://{adresse}:{umgebung.anschluss}/"
 
+    # **Das rote Wappen als Symbol.** Ohne ``IconLocation`` nimmt Windows
+    # das Symbol des Zielprogramms – bei einer Adresse ein weißes Blatt,
+    # bei einem Python-Aufruf die Python-Schlange. Beides sagt nichts
+    # über MailBurg, und auf einem Schreibtisch mit zwanzig Symbolen
+    # findet man ein Programm am Bild, nicht am Namen.
+    from mailburg import bilder
+
+    wappen = bilder.finden("server/mailburg-server.ico")
+    symbolzeile = f'$X.IconLocation = "{wappen}"' if wappen else ""
+
     # PowerShell statt pywin32-COM: Dieselbe Sprache wie der Rest der
     # Windows-Arbeit hier, und sie läuft auch, wenn pywin32 klemmt – was
     # ausgerechnet der Fall ist, in dem jemand ein Symbol sucht.
+    # **Ein Startsymbol, zwei Nachschlagewerke.** Das erste ist das, was
+    # Stephan am 02.10. verlangt hat: ein Doppelklick, nach dem MailBurg
+    # offen ist – auch wenn der Dienst gerade erst anläuft. Die beiden
+    # anderen führen direkt zum Ziel, für den, der weiß, was er will.
+    #
+    # ``pythonw.exe`` beim Starter, nicht ``python.exe``: Sonst blitzt
+    # bei jedem Doppelklick ein schwarzes Fenster auf.
+    ohne_fenster = Path(sys.executable).with_name("pythonw.exe")
+    starter = ohne_fenster if ohne_fenster.exists() else Path(sys.executable)
+
     skript = f"""
 $w = New-Object -ComObject WScript.Shell
-$a = $w.CreateShortcut("{schreibtisch}\\MailBurg im Browser.lnk")
-$a.TargetPath = "{ziel_browser}"
-$a.Description = "Das Archiv im Browser"
-$a.Save()
-$b = $w.CreateShortcut("{schreibtisch}\\MailBurg einrichten.lnk")
-$b.TargetPath = "{sys.executable}"
-$b.Arguments = "-m mailburg.ui.servereinrichtung"
-$b.WorkingDirectory = "{Path(sys.executable).parent}"
-$b.Description = "Den Serverdienst einrichten und nachsehen"
-$b.Save()
+
+$X = $w.CreateShortcut("{schreibtisch}\\MailBurg starten.lnk")
+$X.TargetPath = "{starter}"
+$X.Arguments = "-m mailburg.anlauf"
+$X.WorkingDirectory = "{Path(sys.executable).parent}"
+$X.Description = "MailBurg prüfen, notfalls starten und im Browser öffnen"
+{symbolzeile}
+$X.Save()
+
+$X = $w.CreateShortcut("{schreibtisch}\\MailBurg im Browser.lnk")
+$X.TargetPath = "{ziel_browser}"
+$X.Description = "Das Archiv im Browser"
+{symbolzeile}
+$X.Save()
+
+$X = $w.CreateShortcut("{schreibtisch}\\MailBurg einrichten.lnk")
+$X.TargetPath = "{sys.executable}"
+$X.Arguments = "-m mailburg.ui.servereinrichtung"
+$X.WorkingDirectory = "{Path(sys.executable).parent}"
+$X.Description = "Den Serverdienst einrichten und nachsehen"
+{symbolzeile}
+$X.Save()
 """
 
     from mailburg.core import werkzeuge
