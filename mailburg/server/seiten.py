@@ -65,6 +65,28 @@ _KOPF = """<!doctype html>
             border: 1px solid #97a1ad; border-radius: 4px;
             background: transparent; color: inherit; }}
   .ergebnis {{ color: var(--leise); font-size: .9rem; margin: .2rem 0 1.2rem; }}
+  /* **Die Trefferliste, zweizeilig.** Absender und Datum oben,
+     Betreff darunter - wie in MailStore, das die Mitarbeiter kennen.
+     Ein Betreff bekommt damit die volle Breite statt einer Spalte. */
+  ol.treffer {{ list-style: none; padding: 0; margin: 0; }}
+  ol.treffer li {{ border-bottom: 1px solid #d6dde8; }}
+  ol.treffer a {{ display: grid; gap: 0 1rem; padding: .5rem .2rem;
+                  grid-template-columns: 1fr max-content;
+                  text-decoration: none; color: inherit; }}
+  ol.treffer a:hover {{ background: rgba(127, 127, 127, .12); }}
+  ol.treffer .wer {{ font-weight: 600; }}
+  ol.treffer .wann {{ color: var(--leise); font-size: .88rem;
+                      white-space: nowrap; }}
+  /* Der Betreff über beide Spalten - er ist das Längste und das
+     Wichtigste. In der Farbe eines Links, denn der ganze Eintrag ist
+     einer. */
+  ol.treffer .was {{ grid-column: 1 / -1; color: #0645ad; }}
+  @media (prefers-color-scheme: dark) {{
+    ol.treffer .was {{ color: #6cb6ff; }}
+  }}
+  html[data-thema="hell"] ol.treffer .was {{ color: #0645ad; }}
+  html[data-thema="dunkel"] ol.treffer .was {{ color: #6cb6ff; }}
+  ol.treffer .klammer {{ color: var(--leise); }}
   table {{ width: 100%; border-collapse: collapse; }}
   th, td {{ text-align: left; padding: .45rem .6rem;
             border-bottom: 1px solid #d6dde8; vertical-align: top; }}
@@ -390,21 +412,35 @@ def quoten_wenn_noetig(wert: str) -> str:
 
 
 def _zeile(treffer) -> str:
+    """Ein Treffer: Absender und Datum oben, Betreff darunter.
+
+    **Zweizeilig statt vier Spalten.** So zeigt es MailStore, und die
+    Mitarbeiter kennen es von dort. Es ist auch das bessere Format: Ein
+    Betreff wie »Unterlagen für die Umsatzsteuervoranmeldung« sprengt
+    jede Spalte, über die volle Breite steht er ganz da.
+
+    **Die Größe fällt weg.** Sie stand bis zum 2026-10-02 in einer
+    eigenen Spalte und beantwortete eine Frage, die niemand stellt – in
+    MailStore gibt es sie in der Liste gar nicht. Wer sie braucht,
+    findet sie in der geöffneten Nachricht.
+
+    **Der ganze Eintrag ist der Link**, nicht nur der Betreff. Ein
+    Klickziel von zwei Zeilen Höhe trifft man auch mit einer Maus, die
+    nicht mehr ganz jung ist.
+    """
     from mailburg.core import sprache as s
 
-    # Nur der Tag: In einer Liste kostet jede Spalte Platz, und die
-    # Uhrzeit steht in der Nachricht selbst.
+    # Nur der Tag: Die Uhrzeit steht in der Nachricht selbst.
     datum = s.zeitpunkt(treffer.date or "").split(",")[0]
     absender = treffer.from_name or treffer.from_addr or ""
-    klammer = " 📎" if treffer.has_attachments else ""
+    klammer = ' <span class="klammer">📎</span>' if treffer.has_attachments else ""
+    betreff = treffer.subject or "(ohne Betreff)"
     return (
-        f"<tr>"
-        f'<td class="datum">{html.escape(datum)}</td>'
-        f"<td>{html.escape(absender)}</td>"
-        f'<td><a href="/nachricht/{html.escape(treffer.hash)}">'
-        f"{html.escape(treffer.subject)}</a>{klammer}</td>"
-        f'<td class="groesse">{s.groesse(treffer.size)}</td>'
-        f"</tr>"
+        f'<li><a href="/nachricht/{html.escape(treffer.hash)}">'
+        f'<span class="wer">{html.escape(absender)}</span>'
+        f'<span class="wann">{html.escape(datum)}</span>'
+        f'<span class="was">{html.escape(betreff)}{klammer}</span>'
+        f"</a></li>"
     )
 
 
@@ -420,11 +456,7 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
     """
     if treffer:
         zeilen = "".join(_zeile(t) for t in treffer)
-        tabelle = (
-            "<table><thead><tr><th>Datum</th><th>Absender</th>"
-            "<th>Betreff</th><th>Größe</th></tr></thead>"
-            f"<tbody>{zeilen}</tbody></table>"
-        )
+        tabelle = f'<ol class="treffer">{zeilen}</ol>' 
     elif ausdruck:
         tabelle = '<p class="leer">MailBurg hat nichts gefunden.</p>'
     else:
