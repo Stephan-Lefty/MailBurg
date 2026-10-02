@@ -63,7 +63,7 @@ def routen(lage, sitzungen):
         return RedirectResponse("/anmelden", status_code=303)
 
     async def anmeldeseite(anfrage):
-        return HTMLResponse(seiten.anmeldung())
+        return HTMLResponse(seiten.anmeldung(thema=_thema(anfrage)))
 
     async def anmelden(anfrage):
         # **Selbst zerlegt, nicht über anfrage.form().** Starlette
@@ -82,7 +82,8 @@ def routen(lage, sitzungen):
                 benutzer = sitzungen.anmelden(archiv.benutzer, name, passwort)
             except Anmeldesperre as fehler:
                 return HTMLResponse(
-                    seiten.anmeldung(str(fehler)), status_code=429
+                    seiten.anmeldung(str(fehler), thema=_thema(anfrage)),
+                    status_code=429,
                 )
 
             if benutzer is None:
@@ -91,7 +92,8 @@ def routen(lage, sitzungen):
                 return HTMLResponse(
                     seiten.anmeldung(
                         "Anmeldung fehlgeschlagen. Bitte Name und Passwort "
-                        "prüfen."
+                        "prüfen.",
+                        thema=_thema(anfrage),
                     ),
                     status_code=401,
                 )
@@ -106,6 +108,44 @@ def routen(lage, sitzungen):
             # **Secure nur bei HTTPS.** Fest gesetzt wäre das Cookie im
             # Firmennetz ohne TLS wirkungslos - und niemand käme darauf,
             # warum die Anmeldung nicht hält.
+            secure=anfrage.url.scheme == "https",
+            path="/",
+        )
+        return antwort
+
+    #: Wo die Helligkeitswahl steht. **Kein httponly und kein
+    #: Sitzungsbezug**: Sie ist keine Anmeldung, sondern eine Vorliebe,
+    #: und sie soll die Abmeldung überleben - wer schlecht liest, will
+    #: das nicht bei jeder Anmeldung neu einstellen.
+    THEMAKEKS = "mailburg_thema"
+
+    def _thema(anfrage) -> str:
+        """Die gewählte Helligkeit - oder »system«, der Vorgabe."""
+        wahl = anfrage.cookies.get(THEMAKEKS, "")
+        return wahl if wahl in seiten.THEMEN else "system"
+
+    async def thema_waehlen(anfrage):
+        """Setzt die Helligkeit und führt dorthin zurück, wo man war.
+
+        **Das Ziel wird geprüft, nicht übernommen.** Ein ``weiter``, das
+        aus der Anfrage kommt und ungeprüft in eine Weiterleitung geht,
+        ist eine offene Umleitung: Ein Link auf diesen Server führte dann
+        auf eine fremde Seite, die wie MailBurg aussieht und nach dem
+        Passwort fragt.
+        """
+        wahl = anfrage.query_params.get("wahl", "system")
+        if wahl not in seiten.THEMEN:
+            wahl = "system"
+
+        ziel = anfrage.query_params.get("weiter", "/")
+        if not ziel.startswith("/") or ziel.startswith("//"):
+            ziel = "/"
+
+        antwort = RedirectResponse(ziel, status_code=303)
+        antwort.set_cookie(
+            THEMAKEKS, wahl,
+            max_age=60 * 60 * 24 * 365,
+            samesite="lax",
             secure=anfrage.url.scheme == "https",
             path="/",
         )
@@ -139,6 +179,7 @@ def routen(lage, sitzungen):
             return HTMLResponse(seiten.trefferliste(
                 benutzer, ausdruck, treffer, gesamt, seite_nr, JE_SEITE,
                 postfaecher=archiv.index.account_totals(sicht=blick),
+                thema=_thema(anfrage),
             ))
 
     async def maske(anfrage):
@@ -179,7 +220,8 @@ def routen(lage, sitzungen):
                 ordner.add(ordnername)
 
             return HTMLResponse(seiten.suchmaske(
-                benutzer, werte, konten, sorted(ordner), fertig
+                benutzer, werte, konten, sorted(ordner), fertig,
+                thema=_thema(anfrage),
             ))
 
     def _sichtbarer_treffer(archiv, benutzer, kennung: str):
@@ -208,6 +250,7 @@ def routen(lage, sitzungen):
                         "Diese Nachricht gibt es nicht – oder sie liegt in "
                         "einem Postfach, das Sie nicht sehen dürfen.",
                         benutzer,
+                        thema=_thema(anfrage),
                     ),
                     status_code=404,
                 )
@@ -236,6 +279,7 @@ def routen(lage, sitzungen):
                 # Postfächer laufen, und wer nur eines sehen darf,
                 # bekommt auch nur die Teile daraus.
                 verlauf=archiv.index.verlauf(kennung, sicht=Sicht.fuer(benutzer)),
+                thema=_thema(anfrage),
             ))
 
     async def anhang(anfrage):
@@ -348,6 +392,7 @@ def routen(lage, sitzungen):
         Route("/anmelden", anmeldeseite),
         Route("/anmelden", anmelden, methods=["POST"]),
         Route("/abmelden", abmelden),
+        Route("/thema", thema_waehlen),
         Route("/maske", maske),
         Route("/nachricht/{kennung}", nachricht),
         Route("/nachricht/{kennung}/datei", datei),

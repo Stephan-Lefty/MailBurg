@@ -17,8 +17,17 @@ from typing import Any
 from mailburg import __version__
 from mailburg.core import sprache
 
+#: Die drei Einstellungen für die Helligkeit.
+#:
+#: **»System« ist die Vorgabe und bleibt es.** Wer sein Windows auf
+#: Dunkel gestellt hat, will es meistens überall dunkel – eine Webseite,
+#: die sich darüber hinwegsetzt, fällt unangenehm auf. Die beiden festen
+#: Werte sind für die Fälle, in denen das nicht stimmt: ein heller Raum,
+#: ein schlechter Bildschirm, ein Augenleiden.
+THEMEN = ("system", "hell", "dunkel")
+
 _KOPF = """<!doctype html>
-<html lang="de">
+<html lang="de" data-thema="{thema}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,6 +36,15 @@ _KOPF = """<!doctype html>
 <link rel="icon" href="/wappen-128.png" type="image/png" sizes="128x128">
 <style>
   :root {{ color-scheme: light dark; --marke: #c62828; --leise: #667080; }}
+  /* **Die Wahl des Anwenders schlägt die des Systems.** Ohne Angabe
+     folgt die Seite dem Betriebssystem – das ist die Vorgabe und für
+     die meisten richtig. Wer es anders will, bekommt es: ein heller
+     Raum, ein schlechter Bildschirm, müde Augen. */
+  html[data-thema="hell"] {{ color-scheme: light; }}
+  html[data-thema="dunkel"] {{ color-scheme: dark; }}
+  header .thema {{ color: var(--leise); font-size: .9rem; }}
+  header .thema a {{ text-decoration: none; }}
+  header .thema a.jetzt {{ font-weight: 700; text-decoration: underline; }}
   * {{ box-sizing: border-box; }}
   body {{ font-family: system-ui, sans-serif; margin: 0; line-height: 1.5; }}
   header {{ border-bottom: 1px solid #d6dde8; padding: .8rem 1.5rem;
@@ -92,7 +110,6 @@ _KOPF = """<!doctype html>
   .ausdruck.leise {{ color: var(--leise); }}
   .postfaecher {{ display: flex; flex-wrap: wrap; gap: .5rem;
                   align-items: baseline; margin: .6rem 0 0; }}
-  .postfaecher .was {{ color: var(--leise); font-size: .85rem; }}
   .postfaecher a {{ border: 1px solid #d6dde8; border-radius: 999px;
                     padding: .15rem .7rem; font-size: .88rem;
                     text-decoration: none; }}
@@ -136,19 +153,47 @@ _FUSS = """<footer>MailBurg {fassung}</footer>
 """
 
 
-def _rahmen(titel: str, inhalt: str, benutzer=None) -> str:
+def _themenwahl(thema: str, zurueck: str) -> str:
+    """Drei Links: System, hell, dunkel.
+
+    **Ohne JavaScript.** Jeder Link ist ein gewöhnlicher Aufruf, der
+    einen Keks setzt und zurückführt. Ein Schalter, der ohne Skripte
+    nicht funktioniert, ist auf einem Archivserver eine Zumutung – dort
+    sind Browser oft streng eingestellt.
+    """
+    from urllib.parse import quote
+
+    beschriftung = {"system": "System", "hell": "Hell", "dunkel": "Dunkel"}
+    stuecke = []
+    for wahl in THEMEN:
+        jetzt = ' class="jetzt"' if wahl == thema else ""
+        stuecke.append(
+            f'<a href="/thema?wahl={wahl}&weiter={quote(zurueck)}"{jetzt}>'
+            f"{beschriftung[wahl]}</a>"
+        )
+    return f'<span class="thema">{" · ".join(stuecke)}</span>'
+
+
+def _rahmen(titel: str, inhalt: str, benutzer=None, thema: str = "system",
+            hier: str = "/") -> str:
     if benutzer is not None:
         wer = (
             f'<span class="wer">{html.escape(benutzer.anzeigename or benutzer.name)}'
             f' · <a href="/abmelden">Abmelden</a></span>'
+            + _themenwahl(thema, hier)
         )
     else:
-        wer = ""
+        # Auf der Anmeldeseite auch – wer schlecht liest, soll es
+        # umstellen können, *bevor* er ein Passwort eintippt.
+        wer = f'<span class="wer">{_themenwahl(thema, hier)}</span>'
     # **Das Wappen mit fester Größe im Markup, nicht nur im Stylesheet.**
     # Sonst springt die Kopfzeile, während das Bild noch lädt – und beim
     # ersten Aufruf springt sie bei jedem Anwender.
     return (
-        _KOPF.format(titel=html.escape(titel))
+        _KOPF.format(
+            titel=html.escape(titel),
+            thema=thema if thema in THEMEN else "system",
+        )
         + f'<header><img class="wappen" src="/wappen.png" width="28" '
         f'height="28" alt="">'
         f'<span class="name">MailBurg '
@@ -158,7 +203,7 @@ def _rahmen(titel: str, inhalt: str, benutzer=None) -> str:
     )
 
 
-def anmeldung(fehler: str = "") -> str:
+def anmeldung(fehler: str = "", thema: str = "system") -> str:
     """Die Anmeldeseite.
 
     **Die Fehlermeldung nennt nie, was falsch war.** »Anmeldung
@@ -177,7 +222,7 @@ def anmeldung(fehler: str = "") -> str:
          autocomplete="current-password" required>
   <p><button type="submit">Anmelden</button></p>
 </form>
-""")
+""", thema=thema, hier="/anmelden")
 
 
 def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
@@ -223,9 +268,17 @@ def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
             f"alle Postfächer</a>"
         )
 
+    # **Ohne Vorspann, damit das erste Postfach ganz links steht.** Der
+    # Satz »Sie können suchen in:« stand bis zum 2026-10-02 davor und
+    # schob jeden Knopf um seine Breite nach rechts – bei einem Klick,
+    # den man häufig macht, ist das der falsche Tausch. Was die Leiste
+    # bedeutet, steht jetzt am Element selbst (``title``) und wird von
+    # Vorlesewerkzeugen über ``aria-label`` genannt.
     return (
-        f'<div class="postfaecher"><span class="was">Sie können suchen in:'
-        f"</span>{''.join(stuecke)}{alle}</div>"
+        f'<div class="postfaecher" aria-label="Durchsuchbare Postfächer" '
+        f'title="Diese Postfächer dürfen Sie durchsuchen. '
+        f'Ein Klick grenzt die Suche darauf ein.">'
+        f"{''.join(stuecke)}{alle}</div>"
     )
 
 
@@ -256,7 +309,8 @@ def _zeile(treffer) -> str:
 
 
 def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
-                 seite_nr: int, je_seite: int, postfaecher=None) -> str:
+                 seite_nr: int, je_seite: int, postfaecher=None,
+                 thema: str = "system") -> str:
     """Die Suchseite mit ihrer Trefferliste.
 
     ``postfaecher`` sind die, die dieser Benutzer sehen darf, mit ihrer
@@ -315,11 +369,11 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
    · <a href="/maske?begriff={html.escape(ausdruck)}">Ausführlich suchen</a></p>
 {tabelle}
 {blaettern}
-""", benutzer)
+""", benutzer, thema=thema, hier="/")
 
 
 def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
-              vorschau: str) -> str:
+              vorschau: str, thema: str = "system") -> str:
     """Die ausführliche Suche – dieselben Felder wie im Fenster.
 
     Die Felder stehen in :data:`mailburg.search.maske.FELDER`, damit
@@ -396,11 +450,11 @@ def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
     <a href="/">zur einfachen Suche</a>
   </p>
 </form>
-""", benutzer)
+""", benutzer, thema=thema, hier="/maske")
 
 
 def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
-              anhaenge=(), verlauf=()) -> str:
+              anhaenge=(), verlauf=(), thema: str = "system") -> str:
     """Eine einzelne Nachricht, mit ihren Anhängen zum Herunterladen."""
     zeilen = "".join(
         f"<dt>{html.escape(k)}</dt><dd>{html.escape(str(v))}</dd>"
@@ -435,7 +489,7 @@ def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
 </p>
 <hr>
 <pre class="text">{html.escape(text)}</pre>
-""", benutzer)
+""", benutzer, thema=thema, hier=f"/nachricht/{kennung}")
 
 
 def _verlauf(nachrichten, hier: str) -> str:
@@ -483,9 +537,10 @@ def _verlauf(nachrichten, hier: str) -> str:
     )
 
 
-def fehlerseite(titel: str, text: str, benutzer=None) -> str:
+def fehlerseite(titel: str, text: str, benutzer=None,
+                thema: str = "system") -> str:
     return _rahmen(f"{titel} – MailBurg", f"""
 <h1>{html.escape(titel)}</h1>
 <p>{html.escape(text)}</p>
 <p><a href="/">Zur Suche</a></p>
-""", benutzer)
+""", benutzer, thema=thema)

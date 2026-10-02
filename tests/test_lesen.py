@@ -555,17 +555,85 @@ class WebTest(unittest.TestCase):
             anna.get(f"/nachricht/{fremd}/anhang/0").status_code, 404
         )
 
+    # -- Hell und dunkel ---------------------------------------------------
+
+    def test_ohne_wahl_entscheidet_das_system(self):
+        """Die Vorgabe, und für die meisten die richtige."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        self.assertIn('data-thema="system"', anna.get("/").text)
+
+    def test_die_wahl_haelt_ueber_seiten_hinweg(self):
+        anna = self._als("anna", "ein-anderes-langes")
+
+        anna.get("/thema?wahl=hell")
+        seite = anna.get("/").text
+
+        self.assertIn('data-thema="hell"', seite)
+
+    def test_eine_unbekannte_wahl_faellt_auf_das_system_zurueck(self):
+        """Der Wert kommt aus der Adresszeile – er darf alles sein."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        anna.get("/thema?wahl=lila")
+
+        self.assertIn('data-thema="system"', anna.get("/").text)
+
+    def test_die_wahl_steht_schon_auf_der_anmeldeseite(self):
+        """Wer schlecht liest, soll es umstellen können, *bevor* er sein
+        Passwort eintippt."""
+        roh = Kunde(self.anwendung)
+
+        self.assertIn("/thema?wahl=hell", roh.get("/anmelden").text)
+
+    def test_das_ziel_der_rueckkehr_wird_geprueft(self):
+        """**Sonst wäre das eine offene Umleitung.**
+
+        Ein ``weiter``, das ungeprüft in eine Weiterleitung geht, macht
+        aus einem Link auf diesen Server einen Link auf eine fremde
+        Seite – die dann wie MailBurg aussieht und nach dem Passwort
+        fragt. Bei einem Archivdienst mit Anmeldung ist das kein
+        Schönheitsfehler.
+        """
+        anna = self._als("anna", "ein-anderes-langes")
+
+        for boese in ("https://example.org/", "//example.org/", "javascript:1"):
+            with self.subTest(ziel=boese):
+                antwort = anna.get(f"/thema?wahl=hell&weiter={boese}")
+
+                self.assertEqual(antwort.headers["location"], "/")
+
+    def test_ein_eigenes_ziel_wird_angenommen(self):
+        """Sonst landete man nach jedem Umschalten wieder auf der Suche."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        antwort = anna.get("/thema?wahl=dunkel&weiter=/maske")
+
+        self.assertEqual(antwort.headers["location"], "/maske")
+
     # -- Die Postfachleiste ------------------------------------------------
 
     def test_der_benutzer_sieht_worin_er_suchen_kann(self):
         """Sonst sucht er ins Ungewisse: Gibt es die Mail nicht, oder
-        liegt sie in einem Postfach, das er nicht sieht?"""
+        liegt sie in einem Postfach, das er nicht sieht?
+
+        **Geprüft wird der Sinn, nicht der Wortlaut.** Bis zum
+        2026-10-02 stand hier ``assertIn("Sie können suchen in", …)`` –
+        und als dieser Vorspann wegfiel, damit das erste Postfach ganz
+        links steht, wurde der Test zum Bremsklotz gegen eine Änderung,
+        die nichts an seiner Aussage ändert. Vierte Instanz derselben
+        Falle an einem Tag; die Regel steht in CLAUDE.md.
+
+        Verlangt wird: Das Postfach steht da, es ist anklickbar, und die
+        Leiste sagt, was sie ist.
+        """
         anna = self._als("anna", "ein-anderes-langes")
 
         seite = anna.get("/").text
 
-        self.assertIn("Sie können suchen in", seite)
         self.assertIn("buchhaltung", seite)
+        self.assertIn("konto%3Abuchhaltung", seite)
+        self.assertIn('aria-label="Durchsuchbare Postfächer"', seite)
 
     def test_die_leiste_zeigt_keine_fremden_postfaecher(self):
         anna = self._als("anna", "ein-anderes-langes")
