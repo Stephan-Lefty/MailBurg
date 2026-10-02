@@ -351,6 +351,188 @@ class StarttypTest(unittest.TestCase):
             self.assertIs(einrichtung.pruefe_starttyp().lage, Lage.UNKLAR)
 
 
+class TresorTest(unittest.TestCase):
+    """Ob der Dienst an die Postfach-Passwörter kommt.
+
+    **Ohne sie läuft er und holt keine Post.** Das ist die teuerste
+    Fehlerart in diesem Programm: Es sieht funktionierend aus, und
+    auffallen wird es dem, der in einem Jahr eine Mail aus diesem Monat
+    sucht. Deshalb steht der Tresor in der Prüfliste, auch wenn er für
+    das reine Lesen nicht gebraucht wird.
+    """
+
+    def setUp(self):
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name) / "gemeinsam"
+
+        # **Die Umgebung zurücklegen.** ``tresor_einrichten`` setzt
+        # MAILBURG_SCHLUESSELDATEI und MAILBURG_EINSTELLUNGEN - mit
+        # Absicht, denn die Prüfung danach soll den neuen Stand sehen.
+        # Ohne dieses Aufräumen sah der nächste Test im selben Lauf einen
+        # Hauptschlüssel, den es für ihn nicht geben darf. Die drei
+        # Fehlschläge in test_tresor.py traten nur in der *vollen* Suite
+        # auf, nie beim Einzellauf - die unangenehmste Sorte.
+        import os
+
+        umgebung = mock.patch.dict(os.environ, {}, clear=False)
+        umgebung.start()
+        self.addCleanup(umgebung.stop)
+
+    def _ohne_alles(self):
+        """Weder Schlüssel noch Einträge."""
+        return mock.patch.multiple(
+            einrichtung.tresor,
+            verfuegbar=mock.Mock(return_value=False),
+            eintraege=mock.Mock(return_value=[]),
+        )
+
+    def _mit(self, *, schluessel: bool, passwoerter: int):
+        return mock.patch.multiple(
+            einrichtung.tresor,
+            verfuegbar=mock.Mock(return_value=schluessel),
+            eintraege=mock.Mock(return_value=["a"] * passwoerter),
+        )
+
+    def test_ohne_tresor_ist_es_eine_warnung_kein_fehler(self):
+        """Wer nur liest, braucht ihn nicht – das darf nicht rot sein."""
+        with self._ohne_alles():
+            befund = einrichtung.pruefe_tresor(Umgebung())
+
+        self.assertIs(befund.lage, Lage.ACHTUNG)
+        self.assertIn("holt aber keine neue Post", befund.text)
+
+    def test_passwoerter_ohne_schluessel_sind_ein_fehler(self):
+        """Sie liegen da und lassen sich nicht öffnen."""
+        with mock.patch.object(Path, "is_file", return_value=True), \
+                self._mit(schluessel=False, passwoerter=3):
+            befund = einrichtung.pruefe_tresor(Umgebung())
+
+        self.assertIs(befund.lage, Lage.FEHLT)
+        self.assertIn("Hauptschlüssel", befund.text)
+
+    def test_der_stille_fall_wird_erkannt(self):
+        """**Alles eingerichtet, und der Dienst sucht woanders.**
+
+        Der Mensch hat Schlüssel und Passwörter, beides liegt in seinem
+        Profil – und der Dienst als Systemkonto sieht nichts davon. Es
+        schlägt nichts fehl; es kommt nur keine Post.
+        """
+        with mock.patch.object(einrichtung, "ist_windows", return_value=True), \
+                mock.patch.object(Path, "is_file", return_value=True), \
+                self._mit(schluessel=True, passwoerter=5):
+            befund = einrichtung.pruefe_tresor(Umgebung(einstellungen=None))
+
+        self.assertIs(befund.lage, Lage.FEHLT)
+        self.assertIn("sucht sie dort nicht", befund.text)
+
+    def test_mit_gemeinsamem_ordner_ist_es_gut(self):
+        with mock.patch.object(einrichtung, "ist_windows", return_value=True), \
+                mock.patch.object(Path, "is_file", return_value=True), \
+                self._mit(schluessel=True, passwoerter=5):
+            befund = einrichtung.pruefe_tresor(
+                Umgebung(einstellungen=self.wo)
+            )
+
+        self.assertIs(befund.lage, Lage.GUT)
+
+    def test_einrichten_verlangt_den_gemeinsamen_ordner(self):
+        zeilen = einrichtung.tresor_einrichten(Umgebung())
+
+        self.assertEqual(len(zeilen), 1)
+        self.assertIn("gemeinsamen Ort", zeilen[0])
+
+    def test_einrichten_legt_den_schluessel_an(self):
+        try:
+            import cryptography  # noqa: F401
+        except ImportError:
+            self.skipTest("cryptography fehlt")
+
+        with mock.patch.object(einrichtung, "ist_windows", return_value=False):
+            zeilen = einrichtung.tresor_einrichten(
+                Umgebung(einstellungen=self.wo)
+            )
+
+        datei = self.wo / einrichtung.SCHLUESSELDATEI
+        self.assertTrue(datei.is_file())
+        self.assertTrue(datei.read_text("utf-8").strip())
+        self.assertTrue(any("erzeugt" in z for z in zeilen))
+
+    def test_ein_vorhandener_schluessel_wird_nie_ueberschrieben(self):
+        """**Er ist das Einzige, was die Passwörter noch öffnet.**
+
+        Ihn zu ersetzen hieße, sie alle zu verlieren – und zwar stumm,
+        denn die Tresordatei bliebe ja lesbar.
+        """
+        try:
+            import cryptography  # noqa: F401
+        except ImportError:
+            self.skipTest("cryptography fehlt")
+
+        self.wo.mkdir(parents=True)
+        datei = self.wo / einrichtung.SCHLUESSELDATEI
+        datei.write_text("der-alte-schluessel", encoding="utf-8")
+
+        with mock.patch.object(einrichtung, "ist_windows", return_value=False):
+            einrichtung.tresor_einrichten(Umgebung(einstellungen=self.wo))
+
+        self.assertEqual(datei.read_text("utf-8"), "der-alte-schluessel")
+
+    def test_der_hinweis_zum_getrennt_halten_steht_da(self):
+        """Wer Schlüsseldatei und Tresordatei zusammen hat, hat die
+        Postfächer. Das muss dastehen, wo jemand beides anfasst."""
+        try:
+            import cryptography  # noqa: F401
+        except ImportError:
+            self.skipTest("cryptography fehlt")
+
+        with mock.patch.object(einrichtung, "ist_windows", return_value=False):
+            zeilen = einrichtung.tresor_einrichten(
+                Umgebung(einstellungen=self.wo)
+            )
+
+        zusammen = " ".join(zeilen)
+        self.assertIn("nie zusammen", zusammen)
+
+    def test_die_passwoerter_kommen_nicht_von_hier(self):
+        """**Ein Fenster, das fremde Schlüsselbünde ausliest, bauen wir
+        nicht.** Der Weg dafür heißt »mailburg tresor uebernehmen«, und
+        er wird genannt."""
+        try:
+            import cryptography  # noqa: F401
+        except ImportError:
+            self.skipTest("cryptography fehlt")
+
+        with mock.patch.object(einrichtung, "ist_windows", return_value=False):
+            zeilen = einrichtung.tresor_einrichten(
+                Umgebung(einstellungen=self.wo)
+            )
+
+        self.assertIn("tresor uebernehmen", " ".join(zeilen))
+
+
+class GemeinsamerOrtTest(unittest.TestCase):
+    """Einstellungen und Index an einem Ort, den beide erreichen."""
+
+    def test_die_variablen_kommen_nur_wenn_gesetzt(self):
+        """**Eine leere Variable am Dienst wäre schlimmer als keine.**
+
+        Sie überschriebe die Vorgabe mit nichts, und der Dienst suchte
+        in einem Verzeichnis ohne Namen.
+        """
+        from mailburg.core import paths
+
+        ohne = Umgebung(archiv=Path("/a")).als_variablen()
+        mit = Umgebung(
+            archiv=Path("/a"), einstellungen=Path("/b"), daten=Path("/c")
+        ).als_variablen()
+
+        self.assertNotIn(paths.EINSTELLUNGEN, ohne)
+        self.assertNotIn(paths.DATEN, ohne)
+        self.assertEqual(mit[paths.EINSTELLUNGEN], "/b")
+        self.assertEqual(mit[paths.DATEN], "/c")
+
+
 class VerknuepfungTest(unittest.TestCase):
     def test_ohne_windows_gibt_es_keine(self):
         with mock.patch.object(einrichtung, "ist_windows", return_value=False):

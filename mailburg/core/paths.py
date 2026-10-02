@@ -33,16 +33,41 @@ from mailburg import APP_NAME
 #: ``mailburg neuaufbau`` laufen lässt.
 DATEN = "MAILBURG_DATEN"
 
+#: Ein ausdrücklich gewählter Ort für die Einstellungen.
+#:
+#: **Dieselbe Lage wie bei** :data:`DATEN`, **eine Stufe heikler.** Hier
+#: liegen Kontenliste und Tresor – also das, was der Dienst zum Abrufen
+#: braucht. Als ``LocalSystem`` sucht er sie unter
+#: ``C:\\Windows\\System32\\config\\systemprofile``, wo der Mensch sie
+#: nie hingelegt hat. Die Folge wäre ein Dienst, der läuft und keine Post
+#: holt – die Art Fehler, die erst auffällt, wenn Wochen fehlen.
+#:
+#: **Auf einem Arbeitsplatz hat das nichts zu suchen.** Dort gehören
+#: Einstellungen dem angemeldeten Menschen, und ein zweiter Benutzer
+#: soll weder die Kontenliste noch den Tresor eines anderen sehen. Diese
+#: Variable ist für den Serverbetrieb gedacht und sonst nirgends.
+#:
+#: **Der Ordner braucht Rechte.** Im Tresor stehen Postfach-Passwörter,
+#: verschlüsselt mit einem Schlüssel, der woanders liegt. Wer beides
+#: bekommt, bekommt die Postfächer. Ein Ordner, in den jeder hineinsehen
+#: darf, ist dafür der falsche Platz.
+EINSTELLUNGEN = "MAILBURG_EINSTELLUNGEN"
+
+#: Welche Art Verzeichnis sich über welche Variable umlegen lässt.
+_GEWAEHLT = {"data": DATEN, "config": EINSTELLUNGEN}
+
 
 def _base(kind: str) -> Path:
-    """Grundverzeichnis für ``config``, ``data`` oder ``cache``."""
-    # **Nur für die Daten, nicht für Einstellungen und Zwischenspeicher.**
-    # Der Index ist das Einzige, was sich zwei Benutzer teilen müssen.
-    # Die Kontenliste gehört dem Menschen, der sie gepflegt hat, und der
-    # Zwischenspeicher enthält geöffnete Mails – beides umzuhängen wären
-    # eigene Entscheidungen mit anderen Folgen.
-    if kind == "data":
-        gewaehlt = os.environ.get(DATEN, "").strip()
+    """Grundverzeichnis für ``config``, ``data`` oder ``cache``.
+
+    **Der Zwischenspeicher bleibt, wo er ist.** Darin liegen geöffnete
+    Mails und entpackte Anhänge; sie gehören dem Menschen, der sie
+    geöffnet hat, und sind in Minuten wieder da. Ihn umzulegen brächte
+    nichts und machte aus einem benutzereigenen Ordner einen gemeinsamen.
+    """
+    name = _GEWAEHLT.get(kind)
+    if name:
+        gewaehlt = os.environ.get(name, "").strip()
         if gewaehlt:
             return Path(gewaehlt).expanduser()
 

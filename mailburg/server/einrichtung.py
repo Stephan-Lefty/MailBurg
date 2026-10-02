@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+from mailburg.core import paths, tresor
 from mailburg.server import einstellungen as lage
 from mailburg.server.windows_dienst import NAME as DIENSTNAME
 
@@ -76,12 +77,26 @@ class Umgebung:
     adresse: str = lage.STANDARD_ADRESSE
     anschluss: int = lage.STANDARD_ANSCHLUSS
 
+    #: Wo Kontenliste, Tresor und Suchindex liegen – für Mensch und
+    #: Dienst gemeinsam. Leer heißt: jeder dort, wo sein Profil liegt,
+    #: und das ist auf einem Server der Fehler.
+    einstellungen: Path | None = None
+    daten: Path | None = None
+
     def als_variablen(self) -> dict[str, str]:
-        return {
+        werte = {
             lage.ARCHIV: str(self.archiv) if self.archiv else "",
             lage.ADRESSE: self.adresse,
             lage.ANSCHLUSS: str(self.anschluss),
         }
+        # Nur was gesetzt ist: Eine leere Variable am Dienstschlüssel
+        # überschriebe die Vorgabe mit nichts, und der Dienst suchte
+        # dann in einem Verzeichnis ohne Namen.
+        if self.einstellungen:
+            werte[paths.EINSTELLUNGEN] = str(self.einstellungen)
+        if self.daten:
+            werte[paths.DATEN] = str(self.daten)
+        return werte
 
 
 # ---------------------------------------------------------------- Prüfungen
@@ -252,6 +267,80 @@ def pruefe_zugaenge(wo: Path | None) -> Befund:
         )
     return Befund(
         "Zugänge", Lage.GUT, f"{len(mit_passwort)} mit Passwort."
+    )
+
+
+def pruefe_tresor(umgebung: Umgebung) -> Befund:
+    """Kommt der Dienst an die Postfach-Passwörter?
+
+    **Ohne ihn läuft der Dienst und holt keine Post.** Das ist die
+    teuerste Fehlerart in diesem Programm: Es sieht funktionierend aus,
+    und auffallen wird es dem, der in einem Jahr eine Mail aus diesem
+    Monat sucht.
+
+    Der Tresor hat zwei Hälften, die getrennt liegen müssen und beide da
+    sein müssen:
+
+    * die **Datei** mit den verschlüsselten Passwörtern, in den
+      Einstellungen – und die liegen unter Windows im Benutzerprofil,
+      das ``LocalSystem`` nicht hat;
+    * der **Hauptschlüssel**, über ``MAILBURG_SCHLUESSELDATEI`` oder
+      ``MAILBURG_SCHLUESSEL``.
+
+    Geprüft wird hier die Lage für den *Dienst*, nicht für den Menschen,
+    der gerade davorsitzt. Deshalb zählt, ob ein gemeinsamer
+    Einstellungsort gewählt ist – ohne ihn sucht der Dienst woanders als
+    der Mensch, und beide finden jeweils ihre eigene Leere.
+    """
+    hat_schluessel = tresor.verfuegbar()
+    datei = paths.config_dir() / tresor.DATEI
+    eintraege = tresor.eintraege() if datei.is_file() else []
+
+    if not hat_schluessel and not eintraege:
+        return Befund(
+            "Tresor",
+            Lage.ACHTUNG,
+            "Nicht eingerichtet. Der Dienst stellt das Archiv bereit, "
+            "holt aber keine neue Post.",
+            abhilfe="tresor",
+            einzelheiten="Nötig, sobald Postfächer abgerufen werden sollen.",
+        )
+
+    if not hat_schluessel:
+        return Befund(
+            "Tresor",
+            Lage.FEHLT,
+            f"{len(eintraege)} Passwörter liegen da, aber es ist kein "
+            f"Hauptschlüssel eingerichtet – ohne ihn sind sie nicht zu "
+            f"öffnen.",
+            abhilfe="tresor",
+        )
+
+    if not eintraege:
+        return Befund(
+            "Tresor",
+            Lage.ACHTUNG,
+            "Hauptschlüssel ist da, aber es liegt kein Passwort darin.",
+            abhilfe="tresor",
+            einzelheiten=f"Die Datei läge unter »{datei}«.",
+        )
+
+    if ist_windows() and not umgebung.einstellungen:
+        # **Der Fall, der still schiefgeht.** Der Mensch hat alles
+        # eingerichtet, der Dienst sucht nur woanders.
+        return Befund(
+            "Tresor",
+            Lage.FEHLT,
+            f"{len(eintraege)} Passwörter liegen in Ihrem Benutzerprofil. "
+            f"Der Dienst läuft als Systemkonto und sucht sie dort nicht – "
+            f"er holt dann keine Post, ohne dass etwas fehlschlägt.",
+            abhilfe="tresor",
+            einzelheiten=f"Jetzt unter »{datei}«.",
+        )
+
+    return Befund(
+        "Tresor", Lage.GUT,
+        f"{len(eintraege)} Passwörter hinterlegt, Hauptschlüssel ist da.",
     )
 
 
@@ -632,6 +721,103 @@ def ereignisse(anzahl: int = 20) -> list[str]:
     return zeilen or ["Keine Einträge – der Dienst hat noch nichts gemeldet."]
 
 
+# ------------------------------------------------------------- Tresor
+
+#: Wie die Datei mit dem Hauptschlüssel heißt.
+SCHLUESSELDATEI = "tresor-schluessel.txt"
+
+
+def tresor_einrichten(umgebung: Umgebung) -> list[str]:
+    """Hauptschlüssel erzeugen und dem Dienst beibringen, wo er liegt.
+
+    **Was hier passiert und was nicht.** Erzeugt wird ein Schlüssel und
+    eine Datei, die ihn enthält; eingetragen werden die Pfade am
+    Dienstschlüssel. **Die Passwörter selbst kommen nicht von hier** –
+    die trägt ``mailburg tresor uebernehmen`` aus dem Schlüsselbund ein
+    oder ``mailburg konten passwort`` von Hand. Ein Fenster, das
+    Passwörter aus einem fremden Schlüsselbund holt, wäre ein Werkzeug,
+    das man nicht bauen sollte.
+
+    **Ein vorhandener Schlüssel wird nie überschrieben.** Er ist das
+    Einzige, was die hinterlegten Passwörter noch öffnet; ihn zu
+    ersetzen hieße, sie alle zu verlieren – und zwar stumm, denn die
+    Datei bliebe ja lesbar.
+    """
+    getan: list[str] = []
+
+    if not umgebung.einstellungen:
+        return [
+            "Erst einen gemeinsamen Ort für die Einstellungen wählen – "
+            "sonst legt der Dienst den Tresor woanders ab als Sie."
+        ]
+
+    ordner = Path(umgebung.einstellungen)
+    try:
+        ordner.mkdir(parents=True, exist_ok=True)
+    except OSError as fehler:
+        return [f"»{ordner}« ließ sich nicht anlegen: {fehler}"]
+
+    schluesseldatei = ordner / SCHLUESSELDATEI
+    if schluesseldatei.is_file():
+        getan.append(f"Hauptschlüssel liegt schon: {schluesseldatei}")
+    else:
+        try:
+            schluessel = tresor.schluessel_erzeugen()
+        except Exception as fehler:  # noqa: BLE001
+            return [f"Kein Schlüssel zu erzeugen: {fehler}"]
+
+        schluesseldatei.write_text(schluessel, encoding="utf-8")
+        if os.name != "nt":
+            schluesseldatei.chmod(0o600)
+        getan.append(f"Hauptschlüssel erzeugt: {schluesseldatei}")
+
+    # Für diesen Prozess sofort, damit die Prüfung danach etwas sieht.
+    os.environ[tresor.UMGEBUNG_DATEI] = str(schluesseldatei)
+    os.environ[paths.EINSTELLUNGEN] = str(ordner)
+
+    if ist_windows():
+        import winreg
+
+        try:
+            pfad = rf"SYSTEM\CurrentControlSet\Services\{DIENSTNAME}"
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE, pfad, 0,
+                winreg.KEY_SET_VALUE | winreg.KEY_QUERY_VALUE,
+            ) as schluessel_ort:
+                # **Dazu, nicht statt.** Der Wert trägt auch Archivpfad,
+                # Adresse und Port; ihn zu überschreiben nähme dem Dienst
+                # alles andere weg.
+                try:
+                    vorhanden = list(
+                        winreg.QueryValueEx(schluessel_ort, "Environment")[0]
+                    )
+                except FileNotFoundError:
+                    vorhanden = []
+
+                neu = {tresor.UMGEBUNG_DATEI: str(schluesseldatei)}
+                behalten = [
+                    zeile for zeile in vorhanden
+                    if zeile.split("=", 1)[0] not in neu
+                ]
+                winreg.SetValueEx(
+                    schluessel_ort, "Environment", 0, winreg.REG_MULTI_SZ,
+                    behalten + [f"{n}={w}" for n, w in neu.items()],
+                )
+            getan.append(f"Am Dienst eingetragen: {tresor.UMGEBUNG_DATEI}")
+        except OSError as fehler:
+            getan.append(f"Am Dienst noch nicht: {fehler}")
+
+    getan.append(
+        "Noch keine Passwörter darin. Auf dem Rechner, der die Postfächer "
+        "kennt:  mailburg tresor uebernehmen"
+    )
+    getan.append(
+        "WICHTIG: Schlüsseldatei und Tresordatei nie zusammen weitergeben "
+        "und nie zusammen sichern – wer beides hat, hat die Postfächer."
+    )
+    return getan
+
+
 # -------------------------------------------------- Verknüpfungen
 
 
@@ -754,5 +940,6 @@ def alles_pruefen(umgebung: Umgebung) -> Gesamtbild:
         befunde.append(pruefe_einstellungen(umgebung))
         befunde.append(pruefe_dienst())
         befunde.append(pruefe_starttyp())
+    befunde.append(pruefe_tresor(umgebung))
     befunde.append(erreichbar(umgebung))
     return Gesamtbild(befunde)

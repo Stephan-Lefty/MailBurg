@@ -74,6 +74,11 @@ KNOEPFE = {
         "Baut den Dienst ab und richtet ihn so ein, dass er nach einem "
         "Neustart von selbst wiederkommt.",
     ),
+    "tresor": (
+        "Tresor einrichten …",
+        "Erzeugt den Hauptschlüssel, mit dem der Dienst an die "
+        "Postfach-Passwörter kommt.",
+    ),
 }
 
 
@@ -202,6 +207,30 @@ class Einrichtungsfenster(QMainWindow):
         netzzeile.addStretch(1)
         oben.addLayout(netzzeile)
 
+        # -- der gemeinsame Ordner ----------------------------------------
+        gemeinsam = QHBoxLayout()
+        gemeinsam.addWidget(QLabel("Gemeinsamer Ordner:"))
+        self.gemeinsamfeld = QLineEdit(
+            str(self.umgebung.einstellungen)
+            if self.umgebung.einstellungen else ""
+        )
+        self.gemeinsamfeld.setPlaceholderText("z. B. C:\\MailBurg-Daten")
+        self.gemeinsamfeld.setToolTip(
+            "Hier liegen Kontenliste, Tresor und Suchindex – an einem Ort, "
+            "den der Dienst und Sie beide erreichen.\n\n"
+            "Ohne ihn sucht der Dienst in einem Systemprofil, in das Sie "
+            "nie etwas gelegt haben: Die Suche bliebe leer und es käme "
+            "keine Post nach, ohne dass irgendwo ein Fehler steht."
+        )
+        self.gemeinsamfeld.setMinimumWidth(
+            self.fontMetrics().horizontalAdvance("W") * 40
+        )
+        gemeinsam.addWidget(self.gemeinsamfeld, 1)
+        waehlen = QPushButton("Suchen …")
+        waehlen.clicked.connect(self._gemeinsam_waehlen)
+        gemeinsam.addWidget(waehlen)
+        oben.addLayout(gemeinsam)
+
         self.warnung = QLabel()
         self.warnung.setWordWrap(True)
         self.warnung.setStyleSheet(f"color: {FARBEN[Lage.ACHTUNG]};")
@@ -278,20 +307,34 @@ class Einrichtungsfenster(QMainWindow):
         werte = einrichtung.gesetzte_variablen()
         from mailburg.server import einstellungen as lage
 
+        from mailburg.core import paths
+
         ort = werte.get(lage.ARCHIV, "").strip()
         roh = werte.get(lage.ANSCHLUSS, "").strip()
+        gemeinsam = (
+            werte.get(paths.EINSTELLUNGEN, "").strip()
+            or werte.get(paths.DATEN, "").strip()
+        )
         return Umgebung(
             archiv=Path(ort) if ort else None,
             adresse=werte.get(lage.ADRESSE, "").strip() or lage.STANDARD_ADRESSE,
             anschluss=int(roh) if roh.isdigit() else lage.STANDARD_ANSCHLUSS,
+            einstellungen=Path(gemeinsam) if gemeinsam else None,
+            daten=Path(gemeinsam) if gemeinsam else None,
         )
 
     def _aus_den_feldern(self) -> Umgebung:
         ort = self.archivfeld.text().strip()
+        gemeinsam = self.gemeinsamfeld.text().strip()
         return Umgebung(
             archiv=Path(ort) if ort else None,
             adresse=self.netz.currentData(),
             anschluss=self.port.value(),
+            # **Ein Ordner für beides.** Einstellungen und Index getrennt
+            # einstellbar zu machen, wäre zwei Felder für eine
+            # Entscheidung, die niemand getrennt trifft.
+            einstellungen=Path(gemeinsam) if gemeinsam else None,
+            daten=Path(gemeinsam) if gemeinsam else None,
         )
 
     def auffrischen(self) -> None:
@@ -329,6 +372,8 @@ class Einrichtungsfenster(QMainWindow):
             self._pakete()
         elif was == "uebernehmen":
             self._uebernehmen()
+        elif was == "tresor":
+            self._tresor()
         elif was == "dienst_anlegen":
             self._dienst("anlegen")
         elif was == "dienst_start":
@@ -465,6 +510,40 @@ class Einrichtungsfenster(QMainWindow):
                 "Der Grund steht meistens im Ereignisprotokoll – "
                 "der Knopf darunter holt es."
             )
+        self.auffrischen()
+
+    def _gemeinsam_waehlen(self) -> None:
+        ordner = QFileDialog.getExistingDirectory(
+            self, "Ordner für Einstellungen, Tresor und Suchindex",
+            self.gemeinsamfeld.text(),
+        )
+        if ordner:
+            self.gemeinsamfeld.setText(ordner)
+            self.auffrischen()
+
+    def _tresor(self) -> None:
+        """Den Hauptschlüssel anlegen und dem Dienst beibringen."""
+        self.umgebung = self._aus_den_feldern()
+        if self.umgebung.einstellungen is None:
+            QMessageBox.information(
+                self, "Erst der gemeinsame Ordner",
+                "Der Tresor muss dort liegen, wo der Dienst ihn findet. "
+                "Wählen Sie oben einen gemeinsamen Ordner – etwa "
+                "C:\\MailBurg-Daten.",
+            )
+            return
+        if not einrichtung.ist_administrator():
+            QMessageBox.warning(
+                self, "Rechte fehlen",
+                "Den Eintrag am Dienst darf nur ein Administrator "
+                "schreiben. Starten Sie das Programm mit Rechtsklick → "
+                "»Als Administrator ausführen«.",
+            )
+            return
+
+        self._melden("Tresor einrichten …")
+        for zeile in einrichtung.tresor_einrichten(self.umgebung):
+            self._melden(f"  {zeile}")
         self.auffrischen()
 
     def _verknuepfungen(self) -> None:
