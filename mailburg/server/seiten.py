@@ -515,7 +515,7 @@ def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
   <div class="maske">{"".join(zeilen)}</div>
   {gezeigt}
   <p>
-    <button type="submit" name="tun" value="zeigen">Ausdruck zeigen</button>
+    <button type="submit" name="tun" value="zeigen">Suchtext zeigen</button>
     <button type="submit" name="tun" value="suchen">Suchen</button>
     <a href="/">zur einfachen Suche</a>
   </p>

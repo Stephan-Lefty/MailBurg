@@ -205,7 +205,7 @@ def routen(lage, sitzungen):
     async def maske(anfrage):
         """Die ausführliche Suche.
 
-        Zwei Knöpfe, ein Formular: »Ausdruck zeigen« bleibt hier und
+        Zwei Knöpfe, ein Formular: »Suchtext zeigen« bleibt hier und
         zeigt, was zusammenkommt – wie die Vorschau im Fenster. »Suchen«
         geht damit zur Trefferliste.
         """

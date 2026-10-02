@@ -195,12 +195,16 @@ class Suchmaske(QDialog):
 
         self.vorschau = QLineEdit()
         self.vorschau.setReadOnly(True)
-        self.vorschau.setAccessibleName("Daraus entstehender Suchausdruck")
+        self.vorschau.setAccessibleName("Daraus entstehender Suchtext")
         self.vorschau.setStyleSheet("font-family: monospace")
 
+        # **»Suchtext« und nicht »Ausdruck«.** Am 2026-10-02 fragte
+        # Stephan im Browser, was der Knopf »Ausdruck zeigen« bedeute –
+        # auf Deutsch liest man »Ausdruck« zuerst als etwas Gedrucktes.
+        # Gemeint war immer der Text in der Suchsprache.
         erklaerung = QLabel(
-            "Das ist der Ausdruck, der gesucht wird. Sie können ihn kopieren "
-            "und genauso auf der Kommandozeile verwenden."
+            "Das ist der Suchtext, der gesucht wird. Sie können ihn "
+            "kopieren und genauso auf der Kommandozeile verwenden."
         )
         erklaerung.setWordWrap(True)
         erklaerung.setEnabled(False)
