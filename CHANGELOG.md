@@ -35,6 +35,25 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   install` ohne vorheriges `git clone`, verschwieg die Nachregistrierung von
   pywin32 und den Umstand, dass `setx` erst in neu geöffneten Fenstern wirkt.
 
+- **Fehlte dem Dienst ein Paket, stürzte er mit einem Traceback ab – nach
+  seiner eigenen Startmeldung.** `mailburg server` hatte für diesen Fall
+  einen Hinweis, der sagt, was nachzurüsten ist. **Er war unerreichbar.**
+  Geprüft wurde, ob sich das Dienstmodul laden lässt; das gelingt immer, denn
+  es holt `starlette` und `uvicorn` absichtlich erst beim Starten – damit die
+  Kommandozeile ohne sie läuft.
+
+  Die Folge: Auf dem Bildschirm stand zuerst »MailBurg Server 1.7.7 –
+  erreichbar unter http://…«, danach ein Traceback. Das liest sich, als wäre
+  ein laufender Dienst abgestürzt, und schickt die Suche zum Dienst statt zu
+  `pip`. Jetzt werden die Pakete **vor** der Startmeldung nachgesehen und
+  beim Namen genannt: »Für den Dienst fehlen starlette und uvicorn.«
+
+  Aufgefallen beim Durchspielen des Windows-Probelaufs, genau an dem Schritt,
+  an dem der Dienst zum ersten Mal von Hand startet. Dieselbe Klasse wie der
+  Python-3.11-Fehler vom Vortag: **Ein `try/except` deckt nur, was in seinem
+  Block ausgeführt wird** – bei einem verzögerten Import passiert die Arbeit
+  erst zwei Funktionsaufrufe später.
+
 ## [1.7.7] – 2026-10-01
 
 ### Behoben

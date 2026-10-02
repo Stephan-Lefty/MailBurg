@@ -22,6 +22,37 @@ from mailburg.server.dienst import FELDER, _zustand, seite
 
 WURZEL = Path(__file__).resolve().parent.parent
 
+#: Die Pakete, die »mailburg server« vor dem Start nachsieht.
+SERVERPAKETE = ("starlette", "uvicorn")
+
+
+def _spec_vortaeuschen(*fehlend: str):
+    """Ein ``find_spec``, das genau ``fehlend`` als nicht installiert meldet.
+
+    **Die übrigen Serverpakete gelten als vorhanden**, auch wenn sie im
+    Testlauf fehlen. Die CI fährt einen Lauf bewusst ohne Zusatzpakete
+    (siehe CLAUDE.md), und dort soll ein Test über die *Startmeldung*
+    nicht daran scheitern, dass uvicorn nicht da ist – er prüft etwas
+    anderes.
+
+    Alles, was nicht zu den Serverpaketen gehört, geht an das echte
+    ``find_spec``: Ein Platzhalter für jeden Namen träfe auch die
+    Importe, die importlib im Hintergrund selbst macht.
+    """
+    import importlib.util
+
+    echtes = importlib.util.find_spec
+
+    def spec(name, *rest):
+        if name in fehlend:
+            return None
+        if name in SERVERPAKETE:
+            # Geprüft wird nur auf »is None«; der Inhalt ist gleichgültig.
+            return object()
+        return echtes(name, *rest)
+
+    return spec
+
 
 class UmgebungTest(unittest.TestCase):
     """Ein Dienst hat niemanden, den er fragen kann."""
@@ -324,6 +355,7 @@ class StartmeldungTest(unittest.TestCase):
         }
         aus, fehler = io.StringIO(), io.StringIO()
         with mock.patch.dict(os.environ, umgebung), \
+                mock.patch("importlib.util.find_spec", _spec_vortaeuschen()), \
                 mock.patch("mailburg.server.dienst.starten", return_value=0), \
                 mock.patch.object(lage, "anschluss_frei", return_value=True), \
                 contextlib.redirect_stdout(aus), \
@@ -361,6 +393,81 @@ class StartmeldungTest(unittest.TestCase):
 
         self.assertIn("Klartext", sorgen)
         self.assertNotIn("keine Anmeldung", sorgen)
+
+
+class FehlendePaketeTest(unittest.TestCase):
+    """Wenn starlette oder uvicorn fehlen.
+
+    **Der Hinweis dafür war unerreichbar.** ``dienst.py`` holt beide
+    Pakete erst *in* seinen Funktionen – damit die Kommandozeile ohne sie
+    läuft. Der ``try/except ImportError`` um ``from … import starten``
+    fing deshalb nichts: Der Import gelingt immer. Wem uvicorn fehlte,
+    bekam einen Traceback aus ``dienst.py``, Zeile 332 – und zwar *nach*
+    der Startmeldung, was sich liest, als wäre ein laufender Dienst
+    abgestürzt.
+
+    Am 2026-10-02 beim Durchspielen des Windows-Probelaufs aufgefallen,
+    am Schritt, an dem der Dienst zum ersten Mal von Hand startet.
+    """
+
+    def setUp(self):
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.wo = Path(self.ordner.name) / "Archiv"
+        Archive.create(self.wo, name="Probe", mode=Mode.GESCHAEFTLICH).close()
+
+    def _ohne(self, *pakete: str) -> tuple[str, str, int]:
+        """Führt den Befehl aus, als wären ``pakete`` nicht installiert."""
+        import argparse
+        import contextlib
+        import io
+
+        from mailburg import __main__ as cli
+
+        umgebung = {lage.ARCHIV: str(self.wo), lage.ANSCHLUSS: "8383"}
+        aus, fehler = io.StringIO(), io.StringIO()
+        with mock.patch.dict(os.environ, umgebung), \
+                mock.patch("importlib.util.find_spec",
+                           _spec_vortaeuschen(*pakete)), \
+                mock.patch("mailburg.server.dienst.starten", return_value=0), \
+                mock.patch.object(lage, "anschluss_frei", return_value=True), \
+                contextlib.redirect_stdout(aus), \
+                contextlib.redirect_stderr(fehler):
+            code = cli.cmd_server(argparse.Namespace())
+
+        return aus.getvalue(), fehler.getvalue(), code
+
+    def test_fehlendes_uvicorn_wird_vorher_gemeldet(self):
+        """Vorher kam der Traceback erst nach »Erreichbar: http://…«."""
+        aus, fehler, code = self._ohne("uvicorn")
+
+        self.assertEqual(code, 2)
+        self.assertIn("uvicorn", fehler)
+        self.assertIn("pip install uvicorn", fehler)
+        # **Keine Startmeldung.** Wer »Erreichbar« gelesen hat und danach
+        # einen Fehler bekommt, sucht ihn beim Dienst statt bei pip.
+        self.assertNotIn("Erreichbar", aus)
+
+    def test_beide_fehlend_werden_beide_genannt(self):
+        """Zwei Durchläufe à ein Paket sind zwei Fehlschläge zu viel."""
+        _, fehler, code = self._ohne("starlette", "uvicorn")
+
+        self.assertEqual(code, 2)
+        self.assertIn("pip install starlette uvicorn", fehler)
+
+    def test_der_rat_zeigt_nicht_auf_pypi(self):
+        """MailBurg liegt dort nicht – die Lehre vom 2026-10-01."""
+        _, fehler, _ = self._ohne("uvicorn")
+
+        self.assertNotIn("mailburg[", fehler)
+
+    def test_mit_beiden_paketen_laeuft_er_durch(self):
+        """Sonst prüfte der Test nur, dass die Prüfung überhaupt feuert."""
+        aus, fehler, code = self._ohne()
+
+        self.assertEqual(code, 0)
+        self.assertIn("Erreichbar", aus)
+        self.assertNotIn("pip install", fehler)
 
 
 if __name__ == "__main__":

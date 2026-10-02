@@ -2678,17 +2678,37 @@ def _passwort_erfragen(name: str) -> str:
 
 def cmd_server(args: argparse.Namespace) -> int:
     """Startet den Dienst der Server Edition."""
+    import importlib.util
+
     from mailburg.server import einstellungen as serverlage
 
-    try:
-        from mailburg.server.dienst import starten
-    except ImportError:
+    # **Die Pakete werden nachgesehen, nicht der Modulimport abgesichert.**
+    # ``dienst.py`` holt starlette und uvicorn absichtlich erst in seinen
+    # Funktionen – damit die Kommandozeile ohne sie läuft. Ein
+    # ``try/except ImportError`` um ``from … import starten`` fängt deshalb
+    # nichts: Der Import gelingt immer, und der Hinweis darunter war bis
+    # zum 2026-10-02 unerreichbar. Wem die Pakete fehlten, bekam einen
+    # Traceback – und uvicorn erst *nach* der Startmeldung, was sich liest,
+    # als wäre ein laufender Dienst abgestürzt.
+    #
+    # Dieselbe Klasse wie der Python-3.11-Fehler vom Vortag: Ein
+    # try/except deckt nur, was in seinem Block *ausgeführt* wird.
+    fehlend = [
+        name
+        for name in ("starlette", "uvicorn")
+        if importlib.util.find_spec(name) is None
+    ]
+    if fehlend:
         print(
-            "Für den Dienst fehlen Pakete.\n"
-            "Nachrüsten mit:  pip install starlette uvicorn cryptography",
+            f"Für den Dienst {'fehlt' if len(fehlend) == 1 else 'fehlen'} "
+            f"{' und '.join(fehlend)}.\n"
+            f"Nachrüsten mit:  pip install {' '.join(fehlend)}\n\n"
+            "Ist das Archiv verschlüsselt, kommt »cryptography« dazu.",
             file=sys.stderr,
         )
         return 2
+
+    from mailburg.server.dienst import starten
 
     try:
         lage = serverlage.Serverlage.aus_umgebung()
