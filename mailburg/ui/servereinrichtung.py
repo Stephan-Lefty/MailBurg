@@ -79,6 +79,15 @@ KNOEPFE = {
         "Erzeugt den Hauptschlüssel, mit dem der Dienst an die "
         "Postfach-Passwörter kommt.",
     ),
+    "nachsehen": (
+        "Nach Updates sehen",
+        "Fragt GitHub, ob eine neuere Fassung veröffentlicht ist.",
+    ),
+    "aktualisieren": (
+        "Update installieren",
+        "Lädt die neue Fassung und spielt sie ein. Der Dienst wird dabei "
+        "einmal angehalten.",
+    ),
 }
 
 
@@ -132,6 +141,12 @@ class Einrichtungsfenster(QMainWindow):
         super().__init__()
         self.setWindowTitle("MailBurg im Browser – einrichten")
         self.umgebung = self._umgebung_laden()
+
+        #: Was GitHub zuletzt gesagt hat. **Gemerkt, nicht bei jedem
+        #: »Neu prüfen« neu geholt**: Auf einem Server ohne
+        #: Außenverbindung hinge die Liste sonst jedes Mal bis zum
+        #: Zeitablauf, bevor überhaupt etwas erscheint.
+        self.stand = None
 
         mitte = QWidget()
         self.setCentralWidget(mitte)
@@ -340,7 +355,7 @@ class Einrichtungsfenster(QMainWindow):
     def auffrischen(self) -> None:
         """Alles neu prüfen und die Liste neu malen."""
         self.umgebung = self._aus_den_feldern()
-        bild = einrichtung.alles_pruefen(self.umgebung)
+        bild = einrichtung.alles_pruefen(self.umgebung, self.stand)
 
         while self.listenlayout.count():
             altes = self.listenlayout.takeAt(0).widget()
@@ -374,6 +389,10 @@ class Einrichtungsfenster(QMainWindow):
             self._uebernehmen()
         elif was == "tresor":
             self._tresor()
+        elif was == "nachsehen":
+            self._nach_updates_sehen()
+        elif was == "aktualisieren":
+            self._aktualisieren()
         elif was == "dienst_anlegen":
             self._dienst("anlegen")
         elif was == "dienst_start":
@@ -510,6 +529,77 @@ class Einrichtungsfenster(QMainWindow):
                 "Der Grund steht meistens im Ereignisprotokoll – "
                 "der Knopf darunter holt es."
             )
+        self.auffrischen()
+
+    def _nach_updates_sehen(self) -> None:
+        """Einmal fragen und das Ergebnis behalten."""
+        from mailburg.server import aktualisierung
+
+        self._melden("Frage GitHub nach der neuesten Fassung …")
+        self.stand = aktualisierung.nachsehen()
+        if self.stand.fehler:
+            self._melden(f"  {self.stand.fehler}")
+            self._melden(
+                "  Ohne Internet lässt sich das nicht feststellen – "
+                "alles andere läuft weiter."
+            )
+        elif self.stand.neuer:
+            self._melden(
+                f"  {self.stand.draussen} ist draußen, hier läuft "
+                f"{self.stand.hier}."
+            )
+            if self.stand.seite:
+                self._melden(f"  {self.stand.seite}")
+        else:
+            self._melden(f"  {self.stand.hier} ist die neueste.")
+        self.auffrischen()
+
+    def _aktualisieren(self) -> None:
+        """Neue Fassung einspielen – und den Dienst danach durchstarten.
+
+        **In dieser Reihenfolge, mit Grund.** Solange der Dienst läuft,
+        hat er seinen Code im Speicher; eine Installation daneben stört
+        ihn nicht. Ihn vorher anzuhalten hieße: Steht etwas in pip quer,
+        bleibt er unten – und zwar genau dann, wenn gerade jemand sucht.
+        """
+        from mailburg.server import aktualisierung
+
+        if self.stand is None or not self.stand.neuer:
+            self._melden("Nichts einzuspielen – erst nachsehen.")
+            return
+
+        antwort = QMessageBox.question(
+            self, "Update einspielen?",
+            f"Fassung {self.stand.draussen} wird geladen und installiert.\n\n"
+            f"Der Dienst wird dabei einmal angehalten; wer gerade im "
+            f"Browser sucht, muss die Seite neu laden.\n\n"
+            f"Das Archiv wird nicht angefasst.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+        )
+        if antwort != QMessageBox.Yes:
+            self._melden("Abgebrochen.")
+            return
+
+        geklappt = aktualisierung.einspielen(self.stand, melden=self._melden)
+        if not geklappt:
+            self._melden("Es bleibt bei der alten Fassung.")
+            self.auffrischen()
+            return
+
+        if einrichtung.ist_windows():
+            self._melden("Dienst durchstarten …")
+            for schritt, tun in (
+                ("stoppen", einrichtung.dienst_stoppen),
+                ("starten", einrichtung.dienst_starten),
+            ):
+                _, ausgabe = tun()
+                self._melden(f"  {schritt}: {ausgabe.strip() or 'fertig'}")
+
+        self._melden(
+            "Fertig. **Dieses Fenster bitte schließen und neu öffnen** – "
+            "es läuft noch mit dem alten Code im Speicher."
+        )
+        self.stand = None
         self.auffrischen()
 
     def _gemeinsam_waehlen(self) -> None:

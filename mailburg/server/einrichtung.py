@@ -270,6 +270,44 @@ def pruefe_zugaenge(wo: Path | None) -> Befund:
     )
 
 
+def pruefe_fassung(stand=None) -> Befund:
+    """Ob eine neuere Fassung veröffentlicht ist.
+
+    **Der Stand wird übergeben, nicht hier geholt.** Ein Netzaufruf in
+    der Prüfliste hinge bei jedem »Neu prüfen« an der Geduld des
+    Netzwerks – und auf einem Server ohne Außenverbindung jedes Mal bis
+    zum Zeitablauf. Das Fenster fragt einmal und reicht das Ergebnis
+    weiter.
+    """
+    from mailburg import __version__
+
+    if stand is None:
+        return Befund(
+            "Fassung", Lage.UNKLAR, f"{__version__} – noch nicht nachgesehen.",
+            abhilfe="nachsehen",
+        )
+
+    if stand.fehler:
+        # **Kein Fehler, sondern eine Lage.** Ein Archivserver ohne
+        # Außenverbindung ist der Normalfall, nicht die Störung.
+        return Befund(
+            "Fassung", Lage.UNKLAR,
+            f"{stand.hier} – GitHub {stand.fehler}.",
+            einzelheiten="Ohne Internet lässt sich das nicht feststellen. "
+                         "Alles andere läuft davon unberührt weiter.",
+        )
+
+    if stand.neuer:
+        return Befund(
+            "Fassung", Lage.ACHTUNG,
+            f"{stand.hier} läuft, {stand.draussen} ist veröffentlicht.",
+            abhilfe="aktualisieren",
+            einzelheiten=stand.seite,
+        )
+
+    return Befund("Fassung", Lage.GUT, f"{stand.hier} – das ist die neueste.")
+
+
 def pruefe_tresor(umgebung: Umgebung) -> Befund:
     """Kommt der Dienst an die Postfach-Passwörter?
 
@@ -926,9 +964,13 @@ class Gesamtbild:
         return None
 
 
-def alles_pruefen(umgebung: Umgebung) -> Gesamtbild:
-    """Die ganze Liste, in der Reihenfolge, in der sie abzuarbeiten ist."""
-    befunde = [pruefe_system(), pruefe_python()]
+def alles_pruefen(umgebung: Umgebung, stand=None) -> Gesamtbild:
+    """Die ganze Liste, in der Reihenfolge, in der sie abzuarbeiten ist.
+
+    ``stand`` ist das Ergebnis von :func:`aktualisierung.nachsehen` –
+    übergeben statt hier geholt, damit kein »Neu prüfen« am Netz hängt.
+    """
+    befunde = [pruefe_system(), pruefe_python(), pruefe_fassung(stand)]
     befunde.extend(pruefe_pakete())
     befunde.append(pruefe_rechte())
     befunde.append(pruefe_archiv(umgebung.archiv))

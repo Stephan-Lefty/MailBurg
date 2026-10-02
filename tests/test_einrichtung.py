@@ -533,6 +533,94 @@ class GemeinsamerOrtTest(unittest.TestCase):
         self.assertEqual(mit[paths.DATEN], "/c")
 
 
+class AktualisierungTest(unittest.TestCase):
+    """Nachsehen, ob eine neue Fassung da ist.
+
+    **Ohne Internet ist das keine Störung.** Ein Archivserver steht oft
+    in einem Netz ohne Außenverbindung; dann sagt die Zeile »nicht
+    erreichbar« und sonst nichts.
+    """
+
+    def test_fassungen_werden_als_zahlen_verglichen(self):
+        """**Nicht als Text.** Zeichenweise wäre »1.7.10« kleiner als
+        »1.7.7«, und ein Update bliebe genau dann aus, wenn es am
+        nötigsten wäre."""
+        from mailburg.server.aktualisierung import Stand
+
+        self.assertTrue(Stand(hier="1.7.7", draussen="1.7.10").neuer)
+        self.assertTrue(Stand(hier="1.9.0", draussen="1.10.0").neuer)
+        self.assertFalse(Stand(hier="1.7.7", draussen="1.7.7").neuer)
+        self.assertFalse(Stand(hier="1.8.0", draussen="1.7.9").neuer)
+
+    def test_ein_v_davor_stoert_nicht(self):
+        from mailburg.server.aktualisierung import Stand
+
+        self.assertTrue(Stand(hier="1.7.7", draussen="v1.8.0").neuer)
+
+    def test_ohne_antwort_gilt_nichts_als_neuer(self):
+        """Sonst böte das Fenster ein Update auf eine leere Fassung an."""
+        from mailburg.server.aktualisierung import Stand
+
+        self.assertFalse(Stand(hier="1.7.7").neuer)
+        self.assertFalse(
+            Stand(hier="1.7.7", draussen="9.9.9", fehler="weg").neuer
+        )
+
+    def test_ohne_internet_ist_es_unklar_nicht_rot(self):
+        from mailburg.server.aktualisierung import Stand
+
+        befund = einrichtung.pruefe_fassung(
+            Stand(hier="1.7.7", fehler="nicht erreichbar (timed out)")
+        )
+
+        self.assertIs(befund.lage, Lage.UNKLAR)
+        self.assertIsNone(befund.abhilfe)
+
+    def test_eine_neue_fassung_bietet_den_knopf_an(self):
+        from mailburg.server.aktualisierung import Stand
+
+        befund = einrichtung.pruefe_fassung(
+            Stand(hier="1.7.7", draussen="1.8.0", seite="https://example.org")
+        )
+
+        self.assertIs(befund.lage, Lage.ACHTUNG)
+        self.assertEqual(befund.abhilfe, "aktualisieren")
+        self.assertIn("1.8.0", befund.text)
+
+    def test_ohne_nachgesehen_wird_nichts_behauptet(self):
+        """»Unklar« ist richtiger als »aktuell«, wenn niemand gefragt hat."""
+        befund = einrichtung.pruefe_fassung(None)
+
+        self.assertIs(befund.lage, Lage.UNKLAR)
+        self.assertEqual(befund.abhilfe, "nachsehen")
+
+    def test_ohne_bezugsquelle_wird_nichts_eingespielt(self):
+        from mailburg.server import aktualisierung
+        from mailburg.server.aktualisierung import Stand
+
+        zeilen = []
+        geklappt = aktualisierung.einspielen(
+            Stand(hier="1.7.7", draussen="1.8.0"), melden=zeilen.append
+        )
+
+        self.assertFalse(geklappt)
+        self.assertIn("erst nachsehen", " ".join(zeilen).lower())
+
+    def test_die_pruefung_haengt_nicht_am_netz(self):
+        """**Der Grund, warum der Stand übergeben wird.**
+
+        Ein Netzaufruf in ``alles_pruefen`` hinge bei jedem »Neu prüfen«
+        an der Geduld des Netzwerks – auf einem Server ohne
+        Außenverbindung jedes Mal bis zum Zeitablauf.
+        """
+        from mailburg.server import aktualisierung
+
+        with mock.patch.object(
+            aktualisierung, "nachsehen", side_effect=AssertionError("gefragt!")
+        ):
+            einrichtung.alles_pruefen(Umgebung())
+
+
 class VerknuepfungTest(unittest.TestCase):
     def test_ohne_windows_gibt_es_keine(self):
         with mock.patch.object(einrichtung, "ist_windows", return_value=False):
