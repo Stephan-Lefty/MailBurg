@@ -155,6 +155,42 @@ down, with the date they were completed.
   `docs/oberflaeche.md` — and the manual itself, where the chapter is
   simply called "Suchen", which is fine.
 
+- [ ] **Make the language selectable – setup, program, browser.**
+  Stephan on 2026-10-02: whether it can be chosen, "during setup, for
+  administration, in the program as a user, and in the browser". Today
+  it cannot, anywhere. Noted as a wish, not as the next step – he
+  filed it under "later" himself.
+
+  **As things stand: not a line of translation scaffolding.** No `.ts`,
+  no `.po`, no `gettext`, no `tr()`. Every string sits in the code, and
+  `ui/app.py` even forces Qt's own buttons to German, with a reason
+  given: *"The program is German through and through, its messages are,
+  and so is the search language. English buttons alongside would not be
+  a courtesy but a break."* That still holds – it is the argument *for*
+  a complete translation, not against one.
+
+  **The size, counted rather than guessed** (only strings containing an
+  umlaut, so the real figure is higher): `ui/` ~1170, `core/` ~870,
+  command line ~470, `server/` ~260.
+
+  **The hard part is not the buttons but the search language.** `von:`,
+  `betreff:`, `anhang:`, `jahr:` appear in saved search folders and in
+  every guide. An English `from:` would have to apply **in addition**,
+  never instead – otherwise every saved search folder breaks, and
+  silently: the expression stays valid but stops matching. See also the
+  entry on "Suchsprache …" above, where Stephan noticed exactly this
+  ambiguity.
+
+  **Where to start: the web interface.** It is by far the smallest,
+  self-contained, and it is where the people sit who installed nothing
+  and decide nothing – staff who search and read. Whoever looks after
+  the archive uses the window and the command line anyway.
+
+  **Do not start without a reason.** A half-translated interface is
+  worse than a consistently German one, and the guides would still be
+  German. What is needed is an actual person who does not read German –
+  that also settles which language comes first.
+
 - [ ] **A mailbox where nothing arrives any more should stand out.**
   Surfaced through the reconciliation on 2026-09-22: two of six
   mailboxes returned exactly the same count for "older than 3 months"

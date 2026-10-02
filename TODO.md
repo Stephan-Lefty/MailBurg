@@ -166,6 +166,43 @@ wurde.
   `docs/oberflaeche.md` und das Handbuch selbst – dort heißt das Kapitel
   schlicht »Suchen«, das ist in Ordnung.
 
+- [ ] **Die Sprache wählbar machen – Einrichtung, Programm, Browser.**
+  Stephan am 02.10.2026: ob man sie einstellen kann, »bei der
+  Einrichtung, Administration, im Programm als Nutzer und im Browser«.
+  Heute geht das nirgends. Als Wunsch vorgemerkt, nicht als nächster
+  Schritt – er hat ihn selbst »für später« eingeordnet.
+
+  **Stand heute: keine Zeile Übersetzungsgerüst.** Keine `.ts`, keine
+  `.po`, kein `gettext`, kein `tr()`. Jeder Text steht fest im Code, und
+  `ui/app.py` zwingt sogar Qts eigene Knöpfe auf Deutsch, mit
+  Begründung: *»Das Programm ist von Grund auf deutsch, seine Meldungen
+  sind es und die Suchsprache auch. Englische Knöpfe daneben wären kein
+  Entgegenkommen, sondern ein Bruch.«* Das gilt weiterhin – es ist das
+  Argument *für* eine vollständige Übersetzung, nicht gegen eine.
+
+  **Der Umfang, gezählt statt geschätzt** (nur Textstellen mit Umlaut,
+  die echte Zahl liegt höher): `ui/` ~1170, `core/` ~870,
+  Kommandozeile ~470, `server/` ~260.
+
+  **Der harte Teil sind nicht die Knöpfe, sondern die Suchsprache.**
+  `von:`, `betreff:`, `anhang:`, `jahr:` stehen in gespeicherten
+  Suchordnern und in jeder Anleitung. Ein englisches `from:` müsste
+  **zusätzlich** gelten, niemals ersetzend – sonst bricht jeder
+  gespeicherte Suchordner, und zwar still: Der Ausdruck bleibt gültig,
+  findet aber nichts mehr. Siehe auch den Punkt zu »Suchsprache …«
+  weiter oben, wo Stephan genau diese Doppeldeutigkeit aufgefallen ist.
+
+  **Womit anzufangen wäre: der Weboberfläche.** Sie ist mit Abstand die
+  kleinste, in sich abgeschlossen, und dort sitzen die Leute, die nichts
+  installiert haben und nichts entscheiden – Mitarbeiter, die suchen und
+  lesen. Wer das Archiv betreut, benutzt ohnehin Fenster und
+  Kommandozeile.
+
+  **Nicht anfangen ohne Anlass.** Eine halb übersetzte Oberfläche ist
+  schlechter als eine konsequent deutsche, und die Anleitungen wären
+  weiterhin deutsch. Gebraucht wird ein konkreter Mensch, der kein
+  Deutsch kann – dann steht auch fest, welche Sprache zuerst.
+
 - [ ] **Ein Postfach, in dem nichts mehr ankommt, sollte auffallen.**
   Am 2026-09-22 im Abgleich sichtbar geworden: Zwei von sechs
   Postfächern lieferten für »älter als 3 Monate« exakt dieselbe Zahl
