@@ -163,6 +163,7 @@ else:
             # brächte ihn nach seiner Frist hart um.
             self.halt = win32event.CreateEvent(None, 0, 0, None)
             self.server = None
+            self.abruf = None
 
         def SvcStop(self):  # noqa: N802 – von pywin32 so verlangt
             """Wird vom Dienstmanager beim Beenden gerufen."""
@@ -200,6 +201,14 @@ else:
 
             lage = Serverlage.aus_umgebung()
             _protokoll_einrichten()
+
+            # **Der Abruf gehört in den Dienst.** Die Aufgabenplanung
+            # läuft nur bei angemeldetem Benutzer – auf einem Server ist
+            # sonntagabends niemand angemeldet. Siehe ``server/abruf.py``.
+            from mailburg.server.dienst import _abruf_starten
+
+            self.abruf = _abruf_starten(lage)
+
             self.server = uvicorn.Server(uvicorn_einstellungen(lage))
 
             # **In einem eigenen Faden.** uvicorn.run() kehrt erst zurück,
@@ -210,6 +219,14 @@ else:
             faden.start()
 
             win32event.WaitForSingleObject(self.halt, win32event.INFINITE)
+
+            # **Erst den Abruf anhalten, dann den Webserver.** Mitten im
+            # Aufnehmen einer Mail beendet zu werden hinterlässt eine
+            # angefangene Journalzeile; sie wird zwar beim nächsten
+            # Öffnen übersprungen, aber es gibt keinen Grund, sie zu
+            # erzeugen.
+            if self.abruf is not None:
+                self.abruf.anhalten()
             faden.join(timeout=ABKLINGEN)
 
 

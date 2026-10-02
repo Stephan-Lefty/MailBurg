@@ -98,6 +98,13 @@ class Umgebung:
     einstellungen: Path | None = None
     daten: Path | None = None
 
+    #: Wie oft Post geholt wird, in Minuten. 0 heißt: gar nicht.
+    abruf: int = 0
+
+    #: Wann nicht geholt wird, als »HH:MM-HH:MM« – für die nächtliche
+    #: Sicherung.
+    abrufpause: str = ""
+
     def als_variablen(self) -> dict[str, str]:
         werte = {
             lage.ARCHIV: str(self.archiv) if self.archiv else "",
@@ -111,6 +118,12 @@ class Umgebung:
             werte[paths.EINSTELLUNGEN] = str(self.einstellungen)
         if self.daten:
             werte[paths.DATEN] = str(self.daten)
+        if self.abruf:
+            from mailburg.server import abruf as abrufmodul
+
+            werte[abrufmodul.TAKT] = str(self.abruf)
+            if self.abrufpause:
+                werte[abrufmodul.PAUSE] = self.abrufpause
         return werte
 
 
@@ -321,6 +334,42 @@ def pruefe_fassung(stand=None) -> Befund:
         )
 
     return Befund("Fassung", Lage.GUT, f"{stand.hier} – das ist die neueste.")
+
+
+def pruefe_abruf(umgebung: Umgebung) -> Befund:
+    """Ob und wie oft der Dienst Post holt.
+
+    **Ein Archiv, das nichts mehr dazubekommt, sieht aus wie eines, in
+    dem gerade nichts ankam.** Der Unterschied zeigt sich erst nach
+    Wochen – und dann fehlen sie.
+
+    Geprüft wird, was beim *Dienst* steht, nicht was im Fenster gewählt
+    ist: Der Dienst holt die Post, nicht das Fenster.
+    """
+    from mailburg.server import abruf as abrufmodul
+
+    gesetzt = gesetzte_variablen().get(abrufmodul.TAKT, "").strip()
+    try:
+        takt = int(gesetzt) if gesetzt else 0
+    except ValueError:
+        takt = 0
+
+    if takt <= 0:
+        return Befund(
+            "Abruf",
+            Lage.ACHTUNG,
+            "Es wird keine Post geholt. Der Dienst stellt das Archiv "
+            "bereit, aber es wächst nicht mehr.",
+            abhilfe="abruf",
+            einzelheiten="Nötig, sobald der Server selbst abrufen soll. "
+                         "Vorher muss der Tresor stehen.",
+        )
+
+    pause = gesetzte_variablen().get(abrufmodul.PAUSE, "").strip()
+    text = f"Alle {takt} Minuten."
+    if pause:
+        text += f" Ruhe von {pause}."
+    return Befund("Abruf", Lage.GUT, text)
 
 
 def pruefe_tresor(umgebung: Umgebung) -> Befund:
@@ -1067,5 +1116,6 @@ def alles_pruefen(umgebung: Umgebung, stand=None) -> Gesamtbild:
         befunde.append(pruefe_dienst())
         befunde.append(pruefe_starttyp())
     befunde.append(pruefe_tresor(umgebung))
+    befunde.append(pruefe_abruf(umgebung))
     befunde.append(erreichbar(umgebung))
     return Gesamtbild(befunde)

@@ -79,6 +79,10 @@ KNOEPFE = {
         "Erzeugt den Hauptschlüssel, mit dem der Dienst an die "
         "Postfach-Passwörter kommt.",
     ),
+    "abruf": (
+        "Abruf einrichten …",
+        "Wie oft der Dienst Post holt – und wann er dabei Ruhe gibt.",
+    ),
     "nachsehen": (
         "Nach Updates sehen",
         "Fragt GitHub, ob eine neuere Fassung veröffentlicht ist.",
@@ -336,6 +340,9 @@ class Einrichtungsfenster(QMainWindow):
             anschluss=int(roh) if roh.isdigit() else lage.STANDARD_ANSCHLUSS,
             einstellungen=Path(gemeinsam) if gemeinsam else None,
             daten=Path(gemeinsam) if gemeinsam else None,
+            abruf=int(takt) if (takt := werte.get(
+                "MAILBURG_ABRUF", "").strip()).isdigit() else 0,
+            abrufpause=werte.get("MAILBURG_ABRUF_PAUSE", "").strip(),
         )
 
     def _aus_den_feldern(self) -> Umgebung:
@@ -350,6 +357,13 @@ class Einrichtungsfenster(QMainWindow):
             # Entscheidung, die niemand getrennt trifft.
             einstellungen=Path(gemeinsam) if gemeinsam else None,
             daten=Path(gemeinsam) if gemeinsam else None,
+            # **Aus der alten Umgebung übernehmen, nicht aus einem Feld.**
+            # Für den Abruf gibt es keines; er wird über seinen eigenen
+            # Knopf gesetzt. Ohne diese Zeile fiele er bei jedem
+            # »Übernehmen« heraus - derselbe Fehler wie heute Mittag mit
+            # LOCALAPPDATA, nur eine Ebene höher.
+            abruf=self.umgebung.abruf,
+            abrufpause=self.umgebung.abrufpause,
         )
 
     def auffrischen(self) -> None:
@@ -389,6 +403,8 @@ class Einrichtungsfenster(QMainWindow):
             self._uebernehmen()
         elif was == "tresor":
             self._tresor()
+        elif was == "abruf":
+            self._abruf()
         elif was == "nachsehen":
             self._nach_updates_sehen()
         elif was == "aktualisieren":
@@ -634,6 +650,68 @@ class Einrichtungsfenster(QMainWindow):
         self._melden("Tresor einrichten …")
         for zeile in einrichtung.tresor_einrichten(self.umgebung):
             self._melden(f"  {zeile}")
+        self.auffrischen()
+
+    def _abruf(self) -> None:
+        """Takt und Ruhezeit abfragen und beim Dienst eintragen.
+
+        **Zwei Fragen, keine Maske.** Ein eigener Dialog für zwei Zahlen
+        wäre mehr Fenster als Inhalt; Qt bringt für genau das etwas mit.
+        """
+        from PySide6.QtWidgets import QInputDialog
+
+        self.umgebung = self._aus_den_feldern()
+        if not einrichtung.ist_administrator():
+            QMessageBox.warning(
+                self, "Rechte fehlen",
+                "Den Eintrag am Dienst darf nur ein Administrator "
+                "schreiben.",
+            )
+            return
+
+        takt, gut = QInputDialog.getInt(
+            self, "Wie oft Post holen?",
+            "Alle wie viel Minuten soll der Dienst nachsehen?\n\n"
+            "30 ist ein vernünftiger Wert: neu genug, um nichts zu "
+            "verpassen,\nselten genug, um den Mailserver nicht zu "
+            "belästigen.\n\n0 schaltet den Abruf ab.",
+            30, 0, 24 * 60, 5,
+        )
+        if not gut:
+            return
+
+        pause = ""
+        if takt:
+            # **Die Ruhezeit ist kein Beiwerk.** Läuft die nächtliche
+            # Sicherung, während MailBurg ins Journal schreibt, erwischt
+            # das Band einen Zwischenstand.
+            pause, gut = QInputDialog.getText(
+                self, "Wann soll Ruhe sein?",
+                "Zeitraum, in dem nicht geholt wird – für die nächtliche "
+                "Sicherung.\n\nFormat HH:MM-HH:MM, etwa 01:30-03:00. "
+                "Leer lassen heißt: immer holen.",
+                text=self.umgebung.abrufpause or "",
+            )
+            if not gut:
+                return
+
+        self.umgebung.abruf = takt
+        self.umgebung.abrufpause = pause.strip()
+
+        self._melden(
+            f"Abruf: alle {takt} Minuten" if takt else "Abruf: aus"
+        )
+        try:
+            for zeile in einrichtung.variablen_setzen(self.umgebung):
+                self._melden(f"  {zeile}")
+        except OSError as fehler:
+            self._melden(f"  Ging nicht: {fehler}")
+            return
+
+        self._melden(
+            "Der Dienst liest den Takt beim Starten – bitte einmal "
+            "anhalten und starten."
+        )
         self.auffrischen()
 
     def _verknuepfungen(self) -> None:

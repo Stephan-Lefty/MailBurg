@@ -155,6 +155,33 @@ def _zustand(lage) -> dict[str, Any]:
         bericht["tresor"] = "unlesbar"
         bericht["sorgen"].append(f"Der Tresor ließ sich nicht öffnen: {fehler}")
 
+    # **Der Abruf gehört auf die Statusseite.** Ein Archiv, das nichts
+    # mehr dazubekommt, sieht genauso aus wie eines, in dem gerade nichts
+    # ankam – der Unterschied zeigt sich erst nach Wochen.
+    try:
+        from mailburg.server.abruf import Lage as Abruflage
+
+        wie = Abruflage.aus_umgebung()
+        if not wie.an:
+            bericht["abruf"] = "aus"
+            bericht["sorgen"].append(
+                "Es wird keine Post geholt. Der Dienst stellt das Archiv "
+                "bereit, aber es wächst nicht mehr – und das fällt erst "
+                "auf, wenn jemand eine Mail sucht, die nie ankam. "
+                f"Abhilfe: »{Abruflage.__module__.split('.')[-1]}« – die "
+                f"Umgebungsvariable MAILBURG_ABRUF auf einen Takt in "
+                f"Minuten setzen, etwa 30."
+            )
+        else:
+            bericht["abruf"] = f"alle {wie.takt} Minuten"
+            if _SCHLEIFE is not None and _SCHLEIFE.zuletzt:
+                bericht["abruf_zuletzt"] = _SCHLEIFE.zuletzt.isoformat(
+                    timespec="minutes"
+                )
+                bericht["abruf_befund"] = _SCHLEIFE.letzter_befund
+    except Exception:  # noqa: BLE001 – eine Auskunft darf nie selbst scheitern
+        pass
+
     if lage.oeffentlich:
         # **Der Grund hat sich geändert, der Hinweis bleibt.** Bis zum
         # 2026-08-31 stand hier »solange es keine Anmeldung gibt« – die
@@ -364,13 +391,49 @@ def starten(lage=None) -> int:
     from mailburg.server.einstellungen import Serverlage
 
     wo = lage or Serverlage.aus_umgebung()
-    uvicorn.run(
-        anwendung(wo),
-        host=wo.adresse,
-        port=wo.anschluss,
-        # Kein Zugriffsprotokoll auf der Konsole: Es landete sonst in
-        # journald und wüchse dort mit jedem Aufruf. Wer es braucht,
-        # bekommt es vom Reverse Proxy davor.
-        access_log=False,
-    )
+
+    # **Der Abruf läuft im Dienst, nicht in einer zweiten Stelle.**
+    # Unter Windows hängt die Aufgabenplanung an einer angemeldeten
+    # Sitzung; auf einem Server gibt es keine. Und zwei Prozesse, die
+    # ins selbe Archiv schreiben, reißen die Hash-Kette – am 2026-09-21
+    # einmal passiert. Siehe ``server/abruf.py``.
+    schleife = _abruf_starten(wo)
+    try:
+        uvicorn.run(
+            anwendung(wo),
+            host=wo.adresse,
+            port=wo.anschluss,
+            # Kein Zugriffsprotokoll auf der Konsole: Es landete sonst in
+            # journald und wüchse dort mit jedem Aufruf. Wer es braucht,
+            # bekommt es vom Reverse Proxy davor.
+            access_log=False,
+        )
+    finally:
+        if schleife is not None:
+            schleife.anhalten()
     return 0
+
+
+#: Die laufende Abrufschleife – für die Statusseite.
+#:
+#: **Ein Modulzustand, und das ist hier richtig:** Es gibt genau einen
+#: Dienst je Prozess, und ``/zustand`` muss sagen können, wann zuletzt
+#: Post geholt wurde. Der Weg über einen Parameter hieße, ihn durch
+#: jede Route zu reichen, die ihn nie braucht.
+_SCHLEIFE = None
+
+
+def _abruf_starten(lage):
+    """Startet die Abrufschleife, wenn ein Takt eingestellt ist."""
+    global _SCHLEIFE
+
+    from mailburg.server.abruf import Lage as Abruflage
+    from mailburg.server.abruf import Schleife
+
+    wie = Abruflage.aus_umgebung()
+    if not wie.an:
+        return None
+
+    _SCHLEIFE = Schleife(lage.archiv, wie, passwort=lage.passwort)
+    _SCHLEIFE.starten()
+    return _SCHLEIFE
