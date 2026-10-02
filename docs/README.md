@@ -35,7 +35,12 @@
   Thunderbird und Outlook.
 - **[Das Archiv im Browser einrichten](server-einrichten.md)** – vom leeren
   Rechner bis zum Archiv im Browser: Tresor, Zugänge, Dienst, Reverse
-  Proxy. Für Debian durchgespielt, der Windows-Teil noch ungeprüft.
+  Proxy. Für Debian und andere Linux-Systeme, wo der Dienst über systemd
+  läuft.
+- **[MailBurg auf einem Windows Server](server-windows.md)** – derselbe
+  Weg unter Windows, mit dem Einrichtungsfenster statt abgetippter
+  Befehle. Am 02.10.2026 auf Windows Server 2025 durchgespielt,
+  einschließlich Neustart.
 - **[Das Archiv im Browser: der Entwurf](server.md)** – die Überlegungen
   dahinter. Was der Server können muss, welche Entscheidungen warum so
   gefallen sind und was noch offen ist.

@@ -26,6 +26,12 @@ Fenster vorbehalten.
 > bleibt, ob der Dienst einen Neustart übersteht und ob er als
 > LocalSystem an den Tresor kommt.
 
+> **Für Windows gibt es eine eigene Seite.**
+> [MailBurg auf einem Windows Server](server-windows.md) – vom leeren
+> Server bis zum Archiv im Browser, am 02.10.2026 auf Windows Server
+> 2025 durchgespielt. Diese Seite hier beschreibt den Weg unter Debian
+> und anderen Linux-Systemen, wo der Dienst über systemd läuft.
+
 ## Unter Windows geht es auch ohne Befehle
 
 Es gibt ein Fenster, das alles von dieser Seite abfragt, prüft und
