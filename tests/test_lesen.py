@@ -374,15 +374,59 @@ class WebTest(unittest.TestCase):
         self.assertIn("&lt;script&gt;", seite)
 
     def test_die_seite_holt_nichts_von_fremden_servern(self):
-        """Sonst verriete das Archiv jedem dort, wer wann darin liest."""
+        """Sonst verriete das Archiv jedem dort, wer wann darin liest.
+
+        **Geprüft wird das Nachladen, nicht jedes Vorkommen von »https«.**
+        Bis zum 2026-10-02 stand hier schlicht ``assertNotIn("https://")``
+        – und schlug an, als in die Fußzeile ein *Link* auf den Quelltext
+        kam. Ein Link lädt nichts; er wartet darauf, dass jemand ihn
+        anklickt, und verrät dabei nichts, solange ``noreferrer``
+        dabeisteht.
+
+        Gefährlich ist, was der Browser **von sich aus** holt: Schriften,
+        Skripte, Bilder, Stylesheets. Genau danach wird gesucht.
+        """
+        import re
+
         anna = self._als("anna", "ein-anderes-langes")
 
-        for seite in (anna.get("/").text,
-                      Kunde(self.anwendung).get("/anmelden").text):
-            with self.subTest():
-                self.assertNotIn("http://", seite.replace("http://www.w3.org", ""))
-                self.assertNotIn("https://", seite)
+        # src="http…", <link href="http…", @import, url(http…)
+        nachladend = re.compile(
+            r'src\s*=\s*["\']https?://'
+            r'|<link[^>]+href\s*=\s*["\']https?://'
+            r'|@import[^;]*https?://'
+            r'|url\(\s*["\']?https?://',
+            re.IGNORECASE,
+        )
+
+        for name, seite in (
+            ("Suche", anna.get("/").text),
+            ("Anmeldung", Kunde(self.anwendung).get("/anmelden").text),
+            ("Rechtliches", Kunde(self.anwendung).get("/rechtliches").text),
+        ):
+            with self.subTest(seite=name):
+                self.assertIsNone(
+                    nachladend.search(seite),
+                    f"{name} lädt von einem fremden Server",
+                )
                 self.assertNotIn("<script", seite)
+
+    def test_ein_verweis_nach_draussen_gibt_nichts_preis(self):
+        """``target="_blank"`` ohne ``noreferrer`` verrät die Herkunft.
+
+        Die Zielseite erführe sonst die Adresse dieses Servers – bei
+        einem Firmenarchiv ist das schon zu viel. ``noopener`` kommt
+        dazu, damit die neue Seite nicht auf das öffnende Fenster
+        zugreifen kann.
+        """
+        import re
+
+        seite = Kunde(self.anwendung).get("/rechtliches").text
+
+        for verweis in re.findall(r"<a [^>]*target=[\"']_blank[^>]*>", seite):
+            with self.subTest(verweis=verweis[:60]):
+                self.assertIn("noreferrer", verweis)
+                self.assertIn("noopener", verweis)
 
     # -- Die ausführliche Suche -------------------------------------------
 
@@ -554,6 +598,50 @@ class WebTest(unittest.TestCase):
         self.assertEqual(
             anna.get(f"/nachricht/{fremd}/anhang/0").status_code, 404
         )
+
+    # -- Lizenz und Haftung ------------------------------------------------
+
+    def test_die_fusszeile_fuehrt_zu_lizenz_und_quelltext(self):
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/").text
+
+        self.assertIn('href="/rechtliches"', seite)
+        self.assertIn("github.com/Stephan-Lefty/MailBurg", seite)
+
+    def test_rechtliches_geht_ohne_anmeldung(self):
+        """**Was vor der Nutzung gilt, muss vor der Anmeldung lesbar sein.**
+
+        Eine Haftungsfrage, die man erst nach dem Einloggen sieht, ist
+        keine Auskunft, sondern eine Formalie.
+        """
+        roh = Kunde(self.anwendung)
+
+        antwort = roh.get("/rechtliches")
+
+        self.assertEqual(antwort.status_code, 200)
+        self.assertIn("MIT-Lizenz", antwort.text)
+
+    def test_der_text_steht_im_programm_nicht_nur_im_netz(self):
+        """Ein Archivserver steht oft in einem Netz ohne Internet.
+
+        Ein rechtlicher Hinweis, der dort auf eine tote Adresse zeigt,
+        ist keiner. Die Kernaussagen müssen auf der Seite selbst stehen.
+        """
+        seite = Kunde(self.anwendung).get("/rechtliches").text
+
+        self.assertIn("eigene Gefahr", seite)
+        self.assertIn("keine haftung", seite.lower())
+        # Der Satz, der dieses Projekt trägt (siehe RECHTLICHES.md).
+        self.assertIn("stellt ihn nicht her", seite)
+
+    def test_keine_software_ist_gobd_konform(self):
+        """Der Satz muss stehen bleiben, solange er stimmt – und er
+        stimmt. Wer etwas anderes behauptet, macht sich angreifbar."""
+        seite = Kunde(self.anwendung).get("/rechtliches").text
+
+        self.assertIn("GoBD", seite)
+        self.assertIn("Keine Software", seite)
 
     # -- Hell und dunkel ---------------------------------------------------
 

@@ -151,6 +151,26 @@ def routen(lage, sitzungen):
         )
         return antwort
 
+    async def rechtliches(anfrage):
+        """Lizenz und Haftung – **auch ohne Anmeldung.**
+
+        Was vor der Nutzung gilt, muss vor der Anmeldung lesbar sein.
+        Der Angemeldete bekommt trotzdem seine Kopfzeile; dafür wird er
+        nachgeschlagen, wenn eine Sitzung da ist.
+        """
+        benutzer = None
+        try:
+            with _archiv(lage) as archiv:
+                benutzer = _angemeldet(anfrage, archiv)
+        except Exception:  # noqa: BLE001
+            # **Weit gefangen, mit Grund:** Diese Seite muss auch dann
+            # antworten, wenn das Archiv klemmt - gerade dann sucht
+            # jemand nach den Bedingungen.
+            benutzer = None
+        return HTMLResponse(
+            seiten.rechtliches(benutzer, thema=_thema(anfrage))
+        )
+
     async def abmelden(anfrage):
         antwort = RedirectResponse("/anmelden", status_code=303)
         antwort.delete_cookie(COOKIE, path="/")
@@ -393,6 +413,7 @@ def routen(lage, sitzungen):
         Route("/anmelden", anmelden, methods=["POST"]),
         Route("/abmelden", abmelden),
         Route("/thema", thema_waehlen),
+        Route("/rechtliches", rechtliches),
         Route("/maske", maske),
         Route("/nachricht/{kennung}", nachricht),
         Route("/nachricht/{kennung}/datei", datei),

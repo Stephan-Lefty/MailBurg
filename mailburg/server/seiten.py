@@ -147,7 +147,13 @@ _KOPF = """<!doctype html>
 <body>
 """
 
-_FUSS = """<footer>MailBurg {fassung}</footer>
+#: Wo der Quelltext liegt. Eine Konstante, weil sie an zwei Stellen
+#: steht und ein Umzug des Repositorys sonst eine davon vergäße.
+QUELLE = "https://github.com/Stephan-Lefty/MailBurg"
+
+_FUSS = """<footer>MailBurg {fassung} &middot;
+<a href="{quelle}" rel="noopener noreferrer" target="_blank">Quelltext</a>
+&middot; <a href="/rechtliches">Lizenz und Haftung</a></footer>
 </body>
 </html>
 """
@@ -199,8 +205,72 @@ def _rahmen(titel: str, inhalt: str, benutzer=None, thema: str = "system",
         f'<span class="name">MailBurg '
         f'<span class="marke">SERVER</span></span>{wer}</header>\n'
         f"<main>{inhalt}</main>\n"
-        + _FUSS.format(fassung=html.escape(__version__))
+        + _FUSS.format(fassung=html.escape(__version__), quelle=QUELLE)
     )
+
+
+def rechtliches(benutzer=None, thema: str = "system") -> str:
+    """Lizenz, Haftung und der Satz, der dieses Projekt trägt.
+
+    **Der Text steht hier, nicht als Link ins Netz.** Ein Archivserver
+    steht oft in einem Netz ohne Internet; ein rechtlicher Hinweis, der
+    dort auf eine tote Adresse zeigt, ist keiner. Die ausführlichen
+    Fassungen liegen trotzdem verlinkt daneben, für den, der sie liest.
+
+    **Ohne Anmeldung erreichbar**, aus demselben Grund wie die
+    Helligkeitswahl: Was vor der Nutzung gilt, muss vor der Anmeldung
+    lesbar sein.
+    """
+    return _rahmen("Lizenz und Haftung – MailBurg", f"""
+<h1>Lizenz und Haftung</h1>
+
+<h2>Lizenz</h2>
+<p>MailBurg steht unter der <b>MIT-Lizenz</b>. Sie dürfen es benutzen,
+   verändern und weitergeben, auch im Betrieb und auch verändert –
+   solange der Lizenztext und die Urhebernennung mitgehen.</p>
+
+<h2>Keine Gewähr</h2>
+<p><b>Die Nutzung erfolgt auf eigene Gefahr.</b> Die Lizenz sagt es in
+   Juristendeutsch, hier steht es im Klartext: Dieses Programm wird
+   bereitgestellt, wie es ist. Es gibt keine Zusicherung, dass es für
+   einen bestimmten Zweck taugt, und keine Haftung für Schäden, die aus
+   seiner Nutzung entstehen – auch nicht für verlorene Daten.</p>
+<p>Daraus folgt das Wichtigste, was man einem Archiv gegenüber tun
+   kann: <b>Prüfen Sie Ihre Sicherungen.</b> Eine Sicherung, die noch
+   nie zurückgespielt wurde, ist eine Vermutung.</p>
+
+<h2>Keine Software ist GoBD-konform</h2>
+<p>Es gibt keine Zertifizierung, die das bescheinigt – wer etwas anderes
+   behauptet, verkauft Ihnen etwas. Die GoBD betreffen den gesamten
+   Ablauf beim Anwender: wie Belege hereinkommen, wer sie prüft, wie
+   archiviert wird, wie das dokumentiert ist.</p>
+<p>MailBurg <b>unterstützt</b> einen revisionssicheren Betrieb – es
+   <b>stellt ihn nicht her</b>. Was es beiträgt: unveränderbare Ablage,
+   lückenlose Protokollierung, Nachweisbarkeit von Löschungen,
+   Fristenüberwachung. Verantwortlich für die Verfahrensdokumentation
+   bleibt der Steuerpflichtige.</p>
+
+<h2>Kein Rechtsrat</h2>
+<p>Diese Seite fasst den Regelfall zusammen, damit Sie wissen, wonach
+   Sie fragen müssen. Sie ersetzt nicht die Auskunft eines
+   Steuerberaters oder Rechtsanwalts.</p>
+
+<h2>Zum Nachlesen</h2>
+<ul>
+  <li><a href="{QUELLE}/blob/main/RECHTLICHES.md"
+         rel="noopener noreferrer" target="_blank">Rechtliches</a> –
+      ausführlich, mit Fristen und Quellen</li>
+  <li><a href="{QUELLE}/blob/main/LICENSE"
+         rel="noopener noreferrer" target="_blank">Der Lizenztext</a></li>
+  <li><a href="{QUELLE}" rel="noopener noreferrer"
+         target="_blank">Der Quelltext</a></li>
+</ul>
+<p class="hinweis">Diese drei Verweise führen ins Internet. Steht dieser
+   Server in einem abgeschotteten Netz, bleiben sie ohne Antwort – der
+   Text oben gilt trotzdem.</p>
+
+<p><a href="/">Zur Suche</a></p>
+""", benutzer, thema=thema, hier="/rechtliches")
 
 
 def anmeldung(fehler: str = "", thema: str = "system") -> str:
