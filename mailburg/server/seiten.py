@@ -52,6 +52,20 @@ _KOPF = """<!doctype html>
   td.groesse {{ white-space: nowrap; color: var(--leise); text-align: right; }}
   a {{ color: #0645ad; }}
   @media (prefers-color-scheme: dark) {{ a {{ color: #6cb6ff; }} }}
+  /* **Wege aus der Nachricht als Knöpfe, nicht als Links.** Ein Link
+     sieht aus, als führe er irgendwohin; ein Knopf sieht aus, als täte
+     er etwas. Hier tut er etwas – und wer den Download-Dialog des
+     Browsers kennt, erkennt die Form wieder.
+     Dieselben Maße wie ``button``, damit die Oberfläche eine Sprache
+     spricht; die Farben kommen aus derselben Palette. */
+  .wege {{ display: flex; gap: .6rem; flex-wrap: wrap; margin: 1.2rem 0; }}
+  .wege a {{ padding: .55rem 1.1rem; font-size: 1rem;
+             border: 1px solid #97a1ad; border-radius: 4px;
+             background: transparent; color: inherit;
+             text-decoration: none; display: inline-block; }}
+  .wege a:hover {{ border-color: var(--marke); }}
+  /* Der erste ist der, den die meisten wollen. */
+  .wege a:first-child {{ border-color: var(--marke); font-weight: 600; }}
   .leer {{ color: var(--leise); padding: 2rem 0; }}
   .blaettern {{ display: flex; gap: 1rem; margin-top: 1.5rem;
                 align-items: baseline; }}
@@ -415,10 +429,10 @@ def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
 <dl class="kopf">{zeilen}</dl>
 {gespraech}
 {anhangsliste}
-<p><a href="/nachricht/{html.escape(kennung)}/oeffnen">Im Mailprogramm
-   öffnen</a> &middot;
-   <a href="/nachricht/{html.escape(kennung)}/datei">Die ganze Nachricht
-   als Datei (.eml)</a></p>
+<p class="wege">
+   <a href="/nachricht/{html.escape(kennung)}/oeffnen">Im Mailprogramm öffnen</a>
+   <a href="/nachricht/{html.escape(kennung)}/datei">Als Datei speichern (.eml)</a>
+</p>
 <hr>
 <pre class="text">{html.escape(text)}</pre>
 """, benutzer)
