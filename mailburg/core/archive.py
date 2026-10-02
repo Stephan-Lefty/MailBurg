@@ -1190,6 +1190,82 @@ class Archive:
         self.meta["regeln"] = nachher
         self._meta_schreiben()
 
+    def betriebsart_setzen(self, neu: Mode, *, actor: str = "") -> bool:
+        """Stellt privat auf geschäftlich um – oder zurück.
+
+        **Warum das überhaupt gehen muss.** Die Betriebsart wird beim
+        Anlegen gewählt, und dort rät man. Stephans Firmenarchiv stand
+        bis zum 2026-10-02 auf ``privat``, bei 70.000 Geschäftsmails:
+        keine Aufbewahrungsfristen, keine Zeitstempel, Löschen ohne
+        Fristprüfung. Ein Archiv, das man dafür neu aufbauen müsste,
+        wäre in genau dem Fall unbrauchbar, für den es gedacht ist.
+
+        **Rückwärts ist erlaubt, und das ist Absicht.** Wer sich vertippt
+        hat, soll es zurücknehmen können. Die Sicherung liegt nicht im
+        Verbot, sondern im Protokoll: Beide Richtungen stehen im Journal,
+        mit Zeitpunkt und Urheber.
+
+        **Was sich *nicht* ändert, ist wichtiger als das, was sich
+        ändert.** Keine Mail wird angefasst, keine Einstufung
+        überschrieben, keine Frist rückwirkend angewendet. Die Fristen
+        gelten ab jetzt – was vorher ohne Prüfung gelöscht wurde, bleibt
+        gelöscht. Deshalb steht der Zeitpunkt im Journal: Er ist die
+        Grenze zwischen den beiden Zuständen, und danach wird jemand
+        fragen.
+
+        Gibt zurück, ob etwas geändert wurde.
+        """
+        vorher = self.mode
+        if vorher is neu:
+            return False
+
+        # Erst das Journal, dann die Datei – wie bei den Regeln. Bricht
+        # etwas dazwischen ab, steht im Protokoll eine Änderung, die
+        # nicht wirksam wurde; das ist nachvollziehbar. Andersherum
+        # entstünde eine wirksame Änderung ohne Eintrag, und die sieht
+        # aus wie eine Manipulation.
+        self.journal.append(
+            "mode",
+            mode=str(neu),
+            previous=str(vorher),
+            actor=actor or _angemeldeter_benutzer(),
+        )
+        self.journal.flush()
+
+        self.meta["mode"] = str(neu)
+        self._meta_schreiben()
+        return True
+
+    def rechtsraum_setzen(self, neu: Jurisdiction, *, actor: str = "") -> bool:
+        """Nach welchem Recht die Aufbewahrungsfristen gelten.
+
+        **Gehört zur Betriebsart, ist aber nicht dasselbe.** Ein Archiv
+        kann geschäftlich sein und trotzdem im falschen Rechtsraum
+        stehen – die Fristen unterscheiden sich: In Deutschland sechs
+        bzw. acht Jahre, in Österreich sieben, in der Schweiz zehn. Wer
+        beim Anlegen nicht hingesehen hat, rechnet seitdem falsch.
+
+        Wie bei der Betriebsart: Es wirkt ab jetzt, nichts rückwirkend,
+        und der Zeitpunkt steht im Journal.
+        """
+        vorher = self.policy.jurisdiction
+        if vorher is neu:
+            return False
+
+        self.journal.append(
+            "mode",
+            jurisdiction=str(neu),
+            previous=str(vorher),
+            actor=actor or _angemeldeter_benutzer(),
+        )
+        self.journal.flush()
+
+        fristen = dict(self.meta.get("retention", {}))
+        fristen["jurisdiction"] = str(neu)
+        self.meta["retention"] = fristen
+        self._meta_schreiben()
+        return True
+
     @property
     def benutzer(self):
         """Die Zugänge dieses Archivs.

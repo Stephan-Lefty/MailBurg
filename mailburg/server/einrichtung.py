@@ -44,6 +44,21 @@ KUERPAKETE = {
 }
 
 
+#: Wie die Umgebungsvariablen in einer Meldung heißen.
+#:
+#: **Dieselben Wörter wie im Fenster.** ``MAILBURG_ADRESSE`` sagt einem
+#: Menschen nichts; »Erreichbar« steht als Beschriftung über dem Feld, in
+#: dem er es ändert. Wer eine Meldung liest, soll wissen, wohin er
+#: greifen muss.
+WORTE = {
+    lage.ARCHIV: "Archiv",
+    lage.ADRESSE: "Erreichbar",
+    lage.ANSCHLUSS: "Port",
+    paths.EINSTELLUNGEN: "Gemeinsamer Ordner",
+    paths.DATEN: "Gemeinsamer Ordner (Index)",
+}
+
+
 class Lage(Enum):
     """Wie ein Befund ausfällt."""
 
@@ -529,14 +544,24 @@ def pruefe_einstellungen(umgebung: Umgebung) -> Befund:
         if wert and gesetzt.get(name, "").strip() != wert
     ]
     if anders:
+        # **Nennen, was abweicht – nicht irgendetwas.** Die erste Fassung
+        # schrieb immer den Archivpfad in die Meldung, auch wenn der
+        # stimmte und nur die Adresse abwich. Auf Stephans Bildschirm
+        # stand dann »Hier steht etwas anderes (Archiv: C:\MailBurg-
+        # Archiv)« – über einem Feld, in dem genau dieser Pfad stand.
+        # Eine Meldung, die auf etwas zeigt, das in Ordnung ist, schickt
+        # die Suche in die falsche Richtung.
+        teile = [
+            f"{WORTE.get(name, name)}: »{gesetzt.get(name, '')}« statt "
+            f"»{soll[name]}«"
+            for name in anders
+        ]
         return Befund(
             "Einstellungen",
             Lage.FEHLT,
-            f"Hier steht etwas anderes als beim Dienst "
-            f"(Archiv: »{gesetzt.get(lage.ARCHIV, '')}«). Ohne Übernehmen "
-            f"startet er mit dem alten Wert.",
+            f"Beim Dienst steht etwas anderes – {'; '.join(teile)}. "
+            f"Ohne Übernehmen startet er mit dem alten Wert.",
             abhilfe="uebernehmen",
-            einzelheiten="Abweichend: " + ", ".join(anders),
         )
 
     return Befund("Einstellungen", Lage.GUT, "Übernommen.")

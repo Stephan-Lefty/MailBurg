@@ -2767,6 +2767,76 @@ def cmd_server(args: argparse.Namespace) -> int:
     return starten(lage)
 
 
+def cmd_betriebsart(args: argparse.Namespace) -> int:
+    """Betriebsart und Rechtsraum eines bestehenden Archivs ändern.
+
+    **Warum das nötig wurde.** Beim Anlegen wird beides gewählt, und
+    dort rät man. Stephans Firmenarchiv stand ein Jahr lang auf
+    »privat«, bei 70.000 Geschäftsmails – also ohne Aufbewahrungsfristen
+    und ohne Fristprüfung beim Löschen. Aufgefallen ist es erst, als es
+    auf einen Server sollte.
+    """
+    from mailburg.core.retention import Jurisdiction, describe
+
+    archiv_pfad = Path(args.archiv).expanduser().resolve()
+
+    with oeffnen(archiv_pfad, exclusive=True) as archiv:
+        vorher_art = archiv.mode
+        vorher_recht = archiv.policy.jurisdiction
+
+        if not args.modus and not args.land:
+            # Ohne Angabe nur berichten. **Ein Befehl, der ohne
+            # Argumente etwas ändert, ist eine Falle.**
+            print(f"Betriebsart:  {vorher_art}")
+            print(f"Rechtsraum:   {vorher_recht}")
+            print(f"Fristen:      {describe(archiv.policy)}")
+            if vorher_art is Mode.PRIVAT:
+                print(
+                    "\nBei Geschäftspost ist »privat« die falsche "
+                    "Einstellung: Es gelten keine Aufbewahrungsfristen, "
+                    "und gelöscht wird ohne Fristprüfung."
+                )
+                print(f"  mailburg betriebsart {args.archiv} "
+                      f"--modus geschaeftlich")
+            return 0
+
+        geaendert = False
+
+        if args.modus:
+            neu = Mode(args.modus)
+            if archiv.betriebsart_setzen(neu, actor=args.wer):
+                print(f"Betriebsart: {vorher_art} → {neu}")
+                geaendert = True
+            else:
+                print(f"Betriebsart war schon »{neu}«.")
+
+        if args.land:
+            neu_recht = Jurisdiction(args.land)
+            if archiv.rechtsraum_setzen(neu_recht, actor=args.wer):
+                print(f"Rechtsraum:  {vorher_recht} → {neu_recht}")
+                geaendert = True
+            else:
+                print(f"Rechtsraum war schon »{neu_recht}«.")
+
+        if geaendert:
+            print(f"\nFristen jetzt: {describe(archiv.policy)}")
+            # **Der Satz, auf den es ankommt.** Wer ihn nicht liest,
+            # erwartet, dass MailBurg rückwirkend aufräumt.
+            print(
+                "\nGilt ab jetzt. Keine Mail wurde angefasst, keine "
+                "Einstufung geändert, keine Frist rückwirkend angewendet.\n"
+                "Der Zeitpunkt steht im Journal – er ist die Grenze "
+                "zwischen den beiden Zuständen."
+            )
+            if args.modus == "geschaeftlich":
+                print(
+                    "\nWas jetzt sinnvoll ist:\n"
+                    f"  mailburg einstufen {args.archiv} --automatisch\n"
+                    f"  mailburg faellig {args.archiv}"
+                )
+    return 0
+
+
 def cmd_tresor(args: argparse.Namespace) -> int:
     """Passwörter auf einem Rechner ohne Schlüsselbund."""
     # ``paths`` fehlte hier bis zum 2026-09-06: Die Schlussmeldung von
@@ -3786,6 +3856,33 @@ def build_parser() -> argparse.ArgumentParser:
              "mit openssl",
     )
     p.set_defaults(func=cmd_siegel)
+
+    p = subparsers.add_parser(
+        "betriebsart",
+        help="privat oder geschäftlich – und nach welchem Recht",
+        description=(
+            "Zeigt oder ändert, ob ein Archiv privat oder geschäftlich "
+            "geführt wird und nach welchem Recht die Aufbewahrungsfristen "
+            "gelten. Ohne Angabe wird nur berichtet.\n\n"
+            "Die Änderung gilt ab sofort und wirkt nicht zurück: Keine "
+            "Mail wird angefasst, keine Einstufung überschrieben. Der "
+            "Zeitpunkt steht im Journal."
+        ),
+    )
+    p.add_argument("archiv")
+    p.add_argument(
+        "--modus", choices=[str(m) for m in Mode],
+        help="privat oder geschaeftlich",
+    )
+    p.add_argument(
+        "--land", choices=["de", "at", "ch"],
+        help="nach welchem Recht die Fristen gelten",
+    )
+    p.add_argument(
+        "--wer", default="",
+        help="wer die Änderung veranlasst hat (fürs Journal)",
+    )
+    p.set_defaults(func=cmd_betriebsart)
 
     p = subparsers.add_parser("info", help="Kennzahlen des Archivs zeigen")
     p.add_argument("archiv")

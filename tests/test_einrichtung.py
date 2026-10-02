@@ -297,6 +297,42 @@ class EinstellungenTest(unittest.TestCase):
         self.assertIs(befund.lage, Lage.FEHLT)
         self.assertIn("Probearchiv", befund.text)
 
+    def test_genannt_wird_nur_was_abweicht(self):
+        """**Der Befund vom 2026-10-02, aus Stephans Bildschirmfoto.**
+
+        Die Meldung schrieb immer den Archivpfad hinein, auch wenn der
+        stimmte und nur die Adresse abwich. Auf dem Bildschirm stand dann
+        »Hier steht etwas anderes (Archiv: C:\MailBurg-Archiv)« – über
+        einem Feld, in dem genau dieser Pfad stand. Eine Meldung, die auf
+        etwas zeigt, das in Ordnung ist, schickt die Suche in die falsche
+        Richtung.
+        """
+        from mailburg.server import einstellungen as lage
+
+        gesetzt = {
+            lage.ARCHIV: "/archiv",       # stimmt
+            lage.ADRESSE: "0.0.0.0",      # weicht ab  # noqa: S104
+            lage.ANSCHLUSS: "8383",
+        }
+        with self._mit(gesetzt):
+            befund = einrichtung.pruefe_einstellungen(
+                Umgebung(archiv=Path("/archiv"), adresse="127.0.0.1")
+            )
+
+        self.assertIs(befund.lage, Lage.FEHLT)
+        # Das Wort aus dem Fenster, nicht der Variablenname.
+        self.assertIn("Erreichbar", befund.text)
+        self.assertIn("0.0.0.0", befund.text)
+        # Und kein Wort über das Archiv, das in Ordnung ist.
+        self.assertNotIn("/archiv", befund.text)
+
+    def test_die_meldung_spricht_die_sprache_des_fensters(self):
+        """``MAILBURG_ADRESSE`` sagt einem Menschen nichts."""
+        for name, wort in einrichtung.WORTE.items():
+            with self.subTest(variable=name):
+                self.assertFalse(wort.startswith("MAILBURG"))
+                self.assertTrue(wort[0].isupper())
+
     def test_stimmt_alles_ueberein_ist_es_gut(self):
         from mailburg.server import einstellungen as lage
 

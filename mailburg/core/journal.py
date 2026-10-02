@@ -94,6 +94,12 @@ _SEGMENT_RE = re.compile(r"^(\d{6})\.jsonl(\.zst|\.xz)?$")
 OPERATIONS = frozenset({
     "create", "add", "delete", "classify", "seal", "note", "rules",
     "users", "kette",
+    # **Die Betriebsart.** Sie entscheidet über Aufbewahrungsfristen,
+    # Zeitstempel und ob vor dem Löschen geprüft wird – eine Änderung
+    # daran gehört ins Protokoll wie eine Löschung. Wer Jahre später
+    # fragt, warum Fristen erst ab einem bestimmten Tag galten, findet
+    # hier die Antwort: wann umgestellt wurde und von wem.
+    "mode",
 })
 
 
