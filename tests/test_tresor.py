@@ -338,6 +338,7 @@ class UebernehmenTest(Umgebung):
         self.assertIsNone(tresor.holen(self.einfach.token_schluessel))
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
 class PruefenTest(Umgebung):
     """»mailburg tresor pruefen« – reicht, was hier liegt?
 
