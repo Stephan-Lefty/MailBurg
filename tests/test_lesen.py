@@ -599,6 +599,91 @@ class WebTest(unittest.TestCase):
             anna.get(f"/nachricht/{fremd}/anhang/0").status_code, 404
         )
 
+    # -- Die Werkzeugleiste ------------------------------------------------
+
+    def test_die_leiste_steht_auf_jeder_seite(self):
+        """Eine Leiste, die mal da ist und mal nicht, ist keine."""
+        anna = self._als("anna", "ein-anderes-langes")
+        kennung = self._kennungen(anna)[0]
+
+        for wo in ("/", "/maske", "/hilfe", "/einstellungen",
+                   f"/nachricht/{kennung}"):
+            with self.subTest(seite=wo):
+                self.assertIn('class="werkzeuge"', anna.get(wo).text)
+
+    def test_der_erste_eintrag_schaltet_um(self):
+        """**Umschalten statt wegführen.** Zwei Wege für eine Sache wären
+        einer zu viel – und in der Maske stünde sonst ein Knopf, der
+        dorthin führt, wo man schon ist."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        self.assertIn("Erweiterte Suche", anna.get("/").text)
+        self.assertIn("Einfache Suche", anna.get("/maske").text)
+
+    def test_der_suchbegriff_geht_beim_umschalten_mit(self):
+        """Sonst tippt man ihn in der ausführlichen Suche noch einmal."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/?q=rechnung").text
+
+        self.assertIn("/maske?begriff=rechnung", seite)
+
+    def test_in_einer_nachricht_stehen_ihre_zwei_wege_oben(self):
+        """Wie in MailStore, wo »E-Mail öffnen« in der Leiste liegt."""
+        anna = self._als("anna", "ein-anderes-langes")
+        kennung = self._kennungen(anna)[0]
+
+        leiste = anna.get(f"/nachricht/{kennung}").text.split(
+            '<nav class="werkzeuge">')[1].split("</nav>")[0]
+
+        self.assertIn(f"/nachricht/{kennung}/oeffnen", leiste)
+        self.assertIn(f"/nachricht/{kennung}/datei", leiste)
+
+    def test_die_symbole_kommen_aus_dem_dokument(self):
+        """**Nicht nachgeladen und keine Symbolschrift.**
+
+        Eine Symbolschrift von einem fremden Server verriete dort jeden
+        Aufruf – genau das, was die Seite sonst sorgfältig vermeidet.
+        """
+        seite = self._als("anna", "ein-anderes-langes").get("/").text
+
+        self.assertIn("<svg viewBox", seite)
+        self.assertIn("currentColor", seite)
+
+    def test_jedes_symbol_traegt_sein_wort(self):
+        """Zwei Striche unterscheiden »Erweiterte Suche« nicht von
+        »Neue Suche«. MailStore beschriftet seine auch."""
+        import re
+
+        from mailburg.server import seiten
+
+        leiste = seiten.werkzeugleiste("/")
+
+        for eintrag in re.findall(r"<a [^>]*>(.*?)</a>", leiste, re.S):
+            with self.subTest(eintrag=eintrag[:40]):
+                self.assertIn("<svg", eintrag)
+                self.assertRegex(eintrag, r"<span>\w")
+
+    def test_die_einstellungen_haben_die_helligkeit(self):
+        """Sie stand vorher als drei lose Wörter in der Kopfzeile."""
+        seite = Kunde(self.anwendung).get("/einstellungen").text
+
+        self.assertIn("Helligkeit", seite)
+        for wahl in ("system", "hell", "dunkel"):
+            self.assertIn(f"/thema?wahl={wahl}", seite)
+
+    def test_die_hilfe_erklaert_die_suchsprache(self):
+        """Derselbe Text wie auf der Kommandozeile – aus einer Quelle."""
+        from mailburg.search.query import describe_syntax
+
+        seite = Kunde(self.anwendung).get("/hilfe").text
+
+        self.assertIn("von:müller", seite)
+        self.assertIn("hat:anhang", seite)
+        # Was hier nicht geht, gehört auch in die Hilfe.
+        self.assertIn("liest nur", seite)
+        self.assertTrue(describe_syntax())
+
     # -- Lizenz und Haftung ------------------------------------------------
 
     def test_die_fusszeile_fuehrt_zu_lizenz_und_quelltext(self):

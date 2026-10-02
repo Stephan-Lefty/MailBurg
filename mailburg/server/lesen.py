@@ -151,6 +151,28 @@ def routen(lage, sitzungen):
         )
         return antwort
 
+    async def einstellungen(anfrage):
+        """Helligkeit und was später dazukommt."""
+        benutzer = None
+        try:
+            with _archiv(lage) as archiv:
+                benutzer = _angemeldet(anfrage, archiv)
+        except Exception:  # noqa: BLE001
+            benutzer = None
+        return HTMLResponse(
+            seiten.einstellungen(benutzer, thema=_thema(anfrage))
+        )
+
+    async def hilfe(anfrage):
+        """Die Suchhilfe – ohne Anmeldung wie das Rechtliche."""
+        benutzer = None
+        try:
+            with _archiv(lage) as archiv:
+                benutzer = _angemeldet(anfrage, archiv)
+        except Exception:  # noqa: BLE001
+            benutzer = None
+        return HTMLResponse(seiten.hilfeseite(benutzer, thema=_thema(anfrage)))
+
     async def rechtliches(anfrage):
         """Lizenz und Haftung – **auch ohne Anmeldung.**
 
@@ -414,6 +436,9 @@ def routen(lage, sitzungen):
         Route("/abmelden", abmelden),
         Route("/thema", thema_waehlen),
         Route("/rechtliches", rechtliches),
+        Route("/info", rechtliches),
+        Route("/hilfe", hilfe),
+        Route("/einstellungen", einstellungen),
         Route("/maske", maske),
         Route("/nachricht/{kennung}", nachricht),
         Route("/nachricht/{kennung}/datei", datei),

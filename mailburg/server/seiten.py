@@ -64,6 +64,27 @@ _KOPF = """<!doctype html>
   button {{ padding: .55rem 1.1rem; font-size: 1rem; cursor: pointer;
             border: 1px solid #97a1ad; border-radius: 4px;
             background: transparent; color: inherit; }}
+  /* **Die Werkzeugleiste: Symbol oben, Wort darunter.** Wie in
+     MailStore, das die Mitarbeiter kennen - und mit Beschriftung, denn
+     zwei Striche unterscheiden »Erweiterte Suche« nicht von »Neue
+     Suche«. */
+  .werkzeuge {{ display: flex; gap: .3rem; flex-wrap: wrap;
+                border-bottom: 1px solid #d6dde8; padding-bottom: .6rem;
+                margin-bottom: 1rem; }}
+  .werkzeuge a {{ display: flex; flex-direction: column; gap: .15rem;
+                  align-items: center; text-decoration: none;
+                  color: inherit; padding: .4rem .7rem; border-radius: 4px;
+                  min-width: 5.5rem; font-size: .8rem; }}
+  .werkzeuge a:hover {{ background: rgba(127, 127, 127, .12); }}
+  .werkzeuge svg {{ color: var(--marke); }}
+  ul.wahl {{ list-style: none; padding: 0; margin: 0 0 1.5rem;
+             display: grid; gap: .5rem; max-width: 32rem; }}
+  ul.wahl a {{ display: block; border: 1px solid #d6dde8; border-radius: 4px;
+               padding: .6rem .8rem; text-decoration: none; color: inherit; }}
+  ul.wahl a:hover {{ border-color: var(--marke); }}
+  ul.wahl a.gewaehlt {{ border-color: var(--marke); border-width: 2px; }}
+  ul.wahl span {{ display: block; color: var(--leise); font-size: .88rem; }}
+  .hinweis {{ color: var(--leise); font-size: .9rem; }}
   .ergebnis {{ color: var(--leise); font-size: .9rem; margin: .2rem 0 1.2rem; }}
   /* **Die Trefferliste, zweizeilig.** Absender und Datum oben,
      Betreff darunter - wie in MailStore, das die Mitarbeiter kennen.
@@ -228,17 +249,106 @@ def _themenwahl(thema: str, zurueck: str) -> str:
     return f'<span class="thema">{" · ".join(stuecke)}</span>'
 
 
+#: Die Symbole der Werkzeugleiste, als SVG im Dokument.
+#:
+#: **Nicht nachgeladen, nicht als Schriftart.** Dieselbe Haltung wie
+#: beim Rest: Was das Programm anzeigt, bringt es mit. Eine Symbolschrift
+#: von einem fremden Server verriete dort jeden Aufruf; ein Bild je
+#: Symbol wären sechs Anfragen für sechs Striche.
+#:
+#: ``currentColor`` statt fester Farbe – damit sie im dunklen Thema
+#: mitgehen, ohne dass es eine zweite Fassung braucht.
+_STRICH = ('fill="none" stroke="currentColor" stroke-width="1.6" '
+           'stroke-linecap="round" stroke-linejoin="round"')
+
+SYMBOLE = {
+    # Lupe
+    "suche": f'<circle cx="10" cy="10" r="6" {_STRICH}/>'
+             f'<path d="M14.5 14.5 L20 20" {_STRICH}/>',
+    # Fragezeichen im Kreis
+    "hilfe": f'<circle cx="12" cy="12" r="8" {_STRICH}/>'
+             f'<path d="M9.5 9.5a2.5 2.5 0 1 1 3 2.4V14" {_STRICH}/>'
+             f'<path d="M12 17.2v.1" {_STRICH}/>',
+    # Blatt mit Ecke – eine neue, leere Suche
+    "neu": f'<path d="M6 3h8l4 4v14H6z" {_STRICH}/>'
+           f'<path d="M14 3v4h4" {_STRICH}/>',
+    # Zahnrad, vereinfacht: Kreis mit sechs Zacken
+    "einstellungen":
+        f'<circle cx="12" cy="12" r="3.2" {_STRICH}/>'
+        f'<path d="M12 3v2.5M12 18.5V21M4.2 7.5l2.2 1.3M17.6 15.2l2.2 1.3'
+        f'M4.2 16.5l2.2-1.3M17.6 8.8l2.2-1.3" {_STRICH}/>',
+    # Umschlag – die Mail ans Mailprogramm übergeben
+    "brief": f'<rect x="3" y="5.5" width="18" height="13" rx="1.5" '
+             f'{_STRICH}/><path d="M3.6 6.5 12 13l8.4-6.5" {_STRICH}/>',
+    # Blatt mit Pfeil nach unten – als Datei ablegen
+    "ablegen": f'<path d="M6 3h8l4 4v14H6z" {_STRICH}/>'
+               f'<path d="M12 10v6M9.5 13.5 12 16l2.5-2.5" {_STRICH}/>',
+    # »i« im Kreis
+    "info": f'<circle cx="12" cy="12" r="8" {_STRICH}/>'
+            f'<path d="M12 11v5.5" {_STRICH}/>'
+            f'<path d="M12 7.8v.1" {_STRICH}/>',
+}
+
+
+def _symbol(name: str) -> str:
+    """Ein Symbol, 24×24, in der Farbe des Textes."""
+    return (
+        f'<svg viewBox="0 0 24 24" width="24" height="24" '
+        f'aria-hidden="true" focusable="false">{SYMBOLE[name]}</svg>'
+    )
+
+
+def werkzeugleiste(hier: str, ausdruck: str = "", zusatz=()) -> str:
+    """Die Leiste über dem Suchfeld: Symbol und Wort darunter.
+
+    **Mit Beschriftung, nicht nur Symbol.** Ein Zahnrad erkennt jeder,
+    eine Lupe auch – aber »Erweiterte Suche« gegen »Neue Suche« zu
+    unterscheiden, gelingt über zwei Striche nicht. MailStore macht es
+    genauso, und das ist der Grund, warum es dort funktioniert.
+
+    **Der erste Eintrag schaltet um**, statt wegzuführen: Wer in der
+    ausführlichen Suche steht, kommt mit demselben Knopf zurück. Zwei
+    Wege für eine Sache wären einer zu viel.
+    """
+    from urllib.parse import quote
+
+    in_der_maske = hier.startswith("/maske")
+    eintraege = [
+        (
+            "/" if in_der_maske else f"/maske?begriff={quote(ausdruck)}",
+            "suche",
+            "Einfache Suche" if in_der_maske else "Erweiterte Suche",
+            "Zurück zum einen Suchfeld" if in_der_maske
+            else "Nach Absender, Datum, Anhang und mehr suchen",
+        ),
+        ("/", "neu", "Neue Suche", "Alles zurücksetzen"),
+        *zusatz,
+        ("/einstellungen", "einstellungen", "Einstellungen",
+         "Helligkeit und was sonst noch einzustellen ist"),
+        ("/hilfe", "hilfe", "Hilfe", "Wie man sucht"),
+        ("/info", "info", "Über", "Fassung, Lizenz und Haftung"),
+    ]
+
+    stuecke = []
+    for ziel, symbol, wort, warum in eintraege:
+        stuecke.append(
+            f'<a href="{ziel}" title="{html.escape(warum)}">'
+            f"{_symbol(symbol)}<span>{html.escape(wort)}</span></a>"
+        )
+    return f'<nav class="werkzeuge">{"".join(stuecke)}</nav>'
+
+
 def _rahmen(titel: str, inhalt: str, benutzer=None, thema: str = "system",
             hier: str = "/") -> str:
     if benutzer is not None:
         wer = (
             f'<span class="wer">{html.escape(benutzer.anzeigename or benutzer.name)}'
             f' · <a href="/abmelden">Abmelden</a></span>'
-            + _themenwahl(thema, hier)
         )
     else:
-        # Auf der Anmeldeseite auch – wer schlecht liest, soll es
-        # umstellen können, *bevor* er ein Passwort eintippt.
+        # **Auf der Anmeldeseite bleibt die Wahl in der Kopfzeile.** Dort
+        # gibt es keine Werkzeugleiste, und wer schlecht liest, soll die
+        # Helligkeit umstellen können, *bevor* er ein Passwort eintippt.
         wer = f'<span class="wer">{_themenwahl(thema, hier)}</span>'
     # **Das Wappen mit fester Größe im Markup, nicht nur im Stylesheet.**
     # Sonst springt die Kopfzeile, während das Bild noch lädt – und beim
@@ -341,6 +451,85 @@ def anmeldung(fehler: str = "", thema: str = "system") -> str:
   <p><button type="submit">Anmelden</button></p>
 </form>
 """, thema=thema, hier="/anmelden")
+
+
+def einstellungen(benutzer=None, thema: str = "system") -> str:
+    """Was sich einstellen lässt – bisher die Helligkeit.
+
+    **Eine eigene Seite für eine Einstellung.** Das klingt nach zu viel
+    und ist trotzdem richtig: In der Kopfzeile standen die drei Wörter
+    »System · Hell · Dunkel« ohne erkennbaren Zusammenhang neben dem
+    Anmeldenamen. Wer sie nicht suchte, sah sie nicht, und wer sie sah,
+    musste raten, wozu sie gehören. Hinter einem Zahnrad sucht man sie.
+
+    Und sie bleibt nicht allein: Treffer je Seite, Sortierung, Spalten –
+    das kommt dorthin, wenn es kommt.
+    """
+    auswahl = []
+    for wahl, wort, warum in (
+        ("system", "Wie das System",
+         "Folgt der Einstellung von Windows oder macOS."),
+        ("hell", "Hell", "Dunkle Schrift auf hellem Grund."),
+        ("dunkel", "Dunkel", "Helle Schrift auf dunklem Grund."),
+    ):
+        jetzt = ' class="gewaehlt"' if wahl == thema else ""
+        auswahl.append(
+            f'<li><a href="/thema?wahl={wahl}&weiter=/einstellungen"{jetzt}>'
+            f"<b>{wort}</b><span>{html.escape(warum)}</span></a></li>"
+        )
+
+    return _rahmen("Einstellungen – MailBurg", f"""
+{werkzeugleiste("/einstellungen")}
+<h1>Einstellungen</h1>
+
+<h2>Helligkeit</h2>
+<p>Gilt für diesen Browser und bleibt gespeichert – auch über das
+   Abmelden hinaus.</p>
+<ul class="wahl">{"".join(auswahl)}</ul>
+
+<p class="hinweis">Mehr gibt es noch nicht einzustellen. Was Ihnen
+   fehlt, sagen Sie am besten dem, der MailBurg betreut.</p>
+
+<p><a href="/">Zur Suche</a></p>
+""", benutzer, thema=thema, hier="/einstellungen")
+
+
+def hilfeseite(benutzer=None, thema: str = "system") -> str:
+    """Wie man sucht – die Suchsprache, in der Oberfläche.
+
+    **Derselbe Text wie auf der Kommandozeile.** Er steht in
+    :func:`query.describe_syntax`, und von dort holen ihn alle: das
+    Programmfenster, ``mailburg suchhilfe`` und diese Seite. Drei
+    Fassungen derselben Erklärung liefen auseinander, und die seltenst
+    gelesene wäre dann die falsche.
+    """
+    from mailburg.search.query import describe_syntax
+
+    return _rahmen("Hilfe – MailBurg", f"""
+{werkzeugleiste("/hilfe")}
+<h1>Wie man sucht</h1>
+
+<p>Im Suchfeld genügt ein Wort – gesucht wird in Betreff, Text,
+   Absender, Empfänger und in den Anhängen. Wer genauer sucht, schreibt
+   es dazu; die ausführliche Suche setzt dieselben Ausdrücke aus
+   Feldern zusammen.</p>
+
+<pre class="text">{html.escape(describe_syntax())}</pre>
+
+<h2>Was hier nicht geht</h2>
+<p>Diese Oberfläche <b>liest nur</b>. Einstufen, Löschen und das
+   Zurücklegen ins Postfach gibt es im Programmfenster und auf der
+   Kommandozeile, nicht hier. Das ist Absicht: Was ins Journal
+   schreibt, soll nicht über einen Browser gehen.</p>
+
+<h2>Eine Mail weiterverwenden</h2>
+<p>In jeder geöffneten Nachricht stehen zwei Knöpfe. <i>Im Mailprogramm
+   öffnen</i> übergibt sie an Outlook oder Thunderbird. <i>Als Datei
+   speichern</i> legt sie als <code>.eml</code> ab – unverändert, Byte
+   für Byte wie archiviert.</p>
+
+<p><a href="/">Zur Suche</a></p>
+""", benutzer, thema=thema, hier="/hilfe")
 
 
 def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
@@ -497,6 +686,7 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
     # Breite – bei den sechzig eines Firmenarchivs wäre daraus ein Block
     # geworden, der die Treffer nach unten schiebt.
     return _rahmen("Suchen – MailBurg", f"""
+{werkzeugleiste("/", ausdruck)}
 <form class="suche" method="get" action="/">
   <input name="q" value="{html.escape(ausdruck)}" autofocus
          placeholder="Suchen … z. B. rechnung · von:müller · jahr:2025">
@@ -583,6 +773,7 @@ def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
         )
 
     return _rahmen("Ausführlich suchen – MailBurg", f"""
+{werkzeugleiste("/maske", werte.get("begriff", ""))}
 <h1>Ausführlich suchen</h1>
 <form method="get" action="/maske">
   <div class="maske">{"".join(zeilen)}</div>
@@ -620,7 +811,18 @@ def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
         anhangsliste = ""
 
     gespraech = _verlauf(verlauf, kennung)
+    # **Die zwei Wege aus der Nachricht stehen oben in der Leiste.**
+    # Wie in MailStore, wo »E-Mail öffnen« und »E-Mail wiederherstellen«
+    # dort liegen. Unten bleiben sie trotzdem stehen: Wer eine lange Mail
+    # gelesen hat, ist am Ende und nicht mehr oben.
+    wege_oben = (
+        (f"/nachricht/{kennung}/oeffnen", "brief", "Im Mailprogramm",
+         "Die Nachricht an Outlook oder Thunderbird übergeben"),
+        (f"/nachricht/{kennung}/datei", "ablegen", "Als Datei",
+         "Als .eml speichern – unverändert, Byte für Byte"),
+    )
     return _rahmen(f"{kopf.get('Betreff', 'Nachricht')} – MailBurg", f"""
+{werkzeugleiste(f"/nachricht/{kennung}", zusatz=wege_oben)}
 <p><a href="javascript:history.back()">← zurück</a></p>
 <h1>{html.escape(str(kopf.get("Betreff", "(ohne Betreff)")))}</h1>
 <dl class="kopf">{zeilen}</dl>
