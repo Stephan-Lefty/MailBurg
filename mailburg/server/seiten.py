@@ -54,7 +54,10 @@ _KOPF = """<!doctype html>
   header .name {{ font-weight: 700; font-size: 1.15rem; }}
   header .marke {{ color: var(--marke); }}
   header .wer {{ margin-left: auto; color: var(--leise); font-size: .9rem; }}
-  main {{ max-width: 62rem; margin: 0 auto; padding: 1.5rem; }}
+  /* **Breiter als vorher (62rem).** Seit die Postfächer links als
+     eigene Spalte stehen, teilt sich die Breite auf zwei Dinge; die
+     Trefferliste soll dabei nicht schmaler werden als zuvor. */
+  main {{ max-width: 78rem; margin: 0 auto; padding: 1.5rem; }}
   form.suche {{ display: flex; gap: .6rem; margin-bottom: .4rem; }}
   form.suche input {{ flex: 1; padding: .55rem .7rem; font-size: 1rem;
                       border: 1px solid #97a1ad; border-radius: 4px; }}
@@ -108,12 +111,35 @@ _KOPF = """<!doctype html>
   .ausdruck span {{ color: var(--leise); font-size: .85rem; }}
   .ausdruck code {{ font-size: 1rem; }}
   .ausdruck.leise {{ color: var(--leise); }}
-  .postfaecher {{ display: flex; flex-wrap: wrap; gap: .5rem;
-                  align-items: baseline; margin: .6rem 0 0; }}
-  .postfaecher a {{ border: 1px solid #d6dde8; border-radius: 999px;
-                    padding: .15rem .7rem; font-size: .88rem;
-                    text-decoration: none; }}
-  .postfaecher a span {{ color: var(--leise); margin-left: .4rem; }}
+  /* **Links die Postfächer, rechts die Treffer.** Wie der
+     Postfachbaum im Programmfenster. Die Spalte wächst nicht mit der
+     Zahl der Postfächer in die Breite - bei sechzig Stück wäre eine
+     Leiste über der Tabelle ein Block, der die Treffer nach unten
+     schiebt. */
+  .zweispaltig {{ display: grid; gap: 1.5rem 2rem;
+                  grid-template-columns: minmax(11rem, 15rem) 1fr;
+                  align-items: start; margin-top: 1rem; }}
+  /* Auf einem schmalen Bildschirm untereinander: Zwei Spalten à 50 %
+     wären dort zwei zu schmale Spalten. */
+  @media (max-width: 55rem) {{
+    .zweispaltig {{ grid-template-columns: 1fr; }}
+  }}
+  .zweispaltig aside {{ position: sticky; top: 1rem; }}
+  .zweispaltig section {{ min-width: 0; }}
+  .postfaecher {{ display: flex; flex-wrap: wrap; gap: .4rem;
+                  flex-direction: column; align-items: stretch;
+                  margin: 0; }}
+  /* Eckig statt rund: Die Pillenform stammt aus der Zeit, als die
+     Postfächer nebeneinander in einer Leiste standen. Untereinander
+     liest sich eine Liste besser als eine Reihe Tabletten. */
+  .postfaecher a {{ border: 1px solid #d6dde8; border-radius: 4px;
+                    padding: .3rem .6rem; font-size: .9rem;
+                    text-decoration: none; display: flex;
+                    justify-content: space-between; gap: .6rem; }}
+  .postfaecher a:hover {{ border-color: var(--marke); }}
+  .postfaecher a span {{ color: var(--leise); }}
+  .postfaecher h2 {{ font-size: .85rem; color: var(--leise);
+                     font-weight: 600; margin: 0 0 .1rem; }}
   .postfaecher a.gewaehlt {{ border-color: var(--marke); font-weight: 600; }}
   .postfaecher a.alle {{ border-style: dashed; }}
   .verlauf {{ border: 1px solid #d6dde8; border-radius: 4px;
@@ -344,11 +370,15 @@ def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
     # den man häufig macht, ist das der falsche Tausch. Was die Leiste
     # bedeutet, steht jetzt am Element selbst (``title``) und wird von
     # Vorlesewerkzeugen über ``aria-label`` genannt.
+    # **Mit Überschrift, seit die Leiste eine Spalte ist.** Nebeneinander
+    # unter dem Suchfeld war klar, wozu die Knöpfe gehören; als Spalte am
+    # Rand braucht es ein Wort davor, sonst steht dort eine Liste ohne
+    # erkennbaren Sinn.
     return (
         f'<div class="postfaecher" aria-label="Durchsuchbare Postfächer" '
         f'title="Diese Postfächer dürfen Sie durchsuchen. '
         f'Ein Klick grenzt die Suche darauf ein.">'
-        f"{''.join(stuecke)}{alle}</div>"
+        f"<h2>Postfächer</h2>{''.join(stuecke)}{alle}</div>"
     )
 
 
@@ -428,17 +458,28 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
             )
         blaettern = f'<div class="blaettern">{"".join(stellen)}</div>'
 
+    # **Die Postfächer stehen links, nicht oben.** Wie der Postfachbaum
+    # im Programmfenster: Dort ist der Platz, dort sucht man sie, und auf
+    # einem breiten Bildschirm lag links ohnehin alles brach. Als Leiste
+    # über der Tabelle wuchs sie außerdem mit jedem Postfach in die
+    # Breite – bei den sechzig eines Firmenarchivs wäre daraus ein Block
+    # geworden, der die Treffer nach unten schiebt.
     return _rahmen("Suchen – MailBurg", f"""
 <form class="suche" method="get" action="/">
   <input name="q" value="{html.escape(ausdruck)}" autofocus
          placeholder="Suchen … z. B. rechnung · von:müller · jahr:2025">
   <button type="submit">Suchen</button>
 </form>
-{_postfachleiste(postfaecher or {}, ausdruck)}
-<p class="ergebnis">{html.escape(ergebnis)}
-   · <a href="/maske?begriff={html.escape(ausdruck)}">Ausführlich suchen</a></p>
-{tabelle}
-{blaettern}
+<div class="zweispaltig">
+  <aside>{_postfachleiste(postfaecher or {}, ausdruck)}</aside>
+  <section>
+    <p class="ergebnis">{html.escape(ergebnis)}
+       · <a href="/maske?begriff={html.escape(ausdruck)}">Ausführlich
+       suchen</a></p>
+    {tabelle}
+    {blaettern}
+  </section>
+</div>
 """, benutzer, thema=thema, hier="/")
 
 

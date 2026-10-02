@@ -723,6 +723,31 @@ class WebTest(unittest.TestCase):
         self.assertIn("konto%3Abuchhaltung", seite)
         self.assertIn('aria-label="Durchsuchbare Postfächer"', seite)
 
+    def test_die_postfaecher_stehen_links_neben_den_treffern(self):
+        """**Wie der Postfachbaum im Programmfenster.**
+
+        Als Leiste über der Tabelle wuchs sie mit jedem Postfach in die
+        Breite – bei den sechzig eines Firmenarchivs wäre daraus ein
+        Block geworden, der die Treffer nach unten schiebt. Und auf einem
+        16:9-Bildschirm lag links ohnehin alles brach.
+        """
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/").text
+
+        self.assertIn('class="zweispaltig"', seite)
+        # Die Postfächer im Seitenteil, die Treffer im Hauptteil.
+        seitenteil = seite.split("<aside>")[1].split("</aside>")[0]
+        self.assertIn("buchhaltung", seitenteil)
+        self.assertNotIn("<table", seitenteil)
+
+    def test_die_spalte_sagt_was_sie_ist(self):
+        """Nebeneinander unter dem Suchfeld war klar, wozu die Knöpfe
+        gehören; als Spalte am Rand braucht es ein Wort davor."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        self.assertIn("<h2>Postfächer</h2>", anna.get("/").text)
+
     def test_die_leiste_zeigt_keine_fremden_postfaecher(self):
         anna = self._als("anna", "ein-anderes-langes")
 
