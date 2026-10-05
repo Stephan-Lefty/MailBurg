@@ -8,6 +8,37 @@ wurde.
 
 ## Offen
 
+- [ ] **Die Testsuite ist unter Windows nicht grün, und das verdeckt
+  echte Befunde.** Gemessen am 05.10.2026 im breiten Lauf
+  (`workflow_dispatch` mit `breit=true`): 2162 Tests, **38
+  Fehlschläge und 39 Fehler**. Davon **62 Meldungen `WinError 32`** –
+  „The process cannot access the file because it is being used by
+  another process", jedes Mal beim Aufräumen eines
+  `TemporaryDirectory`, in dem noch eine SQLite-Datei offen ist.
+
+  **Das ist ein Testproblem, kein Programmfehler**: Windows gibt eine
+  offene Datei nicht zum Löschen frei, Linux schon. Ein Test, der ein
+  Archiv anlegt und das Verzeichnis wegräumen lässt, ohne vorher
+  `close()` zu rufen, läuft hier durch und dort nicht.
+
+  **Warum es trotzdem oben steht:** Ein Lauf, der ohnehin rot ist,
+  beantwortet keine Frage mehr. Der echte Windows-Befund vom 05.10.
+  (`os.kill` an der Sperrdatei) stand fünf Wochen unentdeckt in
+  genau diesem Rauschen. Solange das so bleibt, ist der wöchentliche
+  Montagslauf für Windows wertlos.
+
+  Zu tun: die betroffenen Tests durchgehen und das Archiv schließen,
+  bevor das Verzeichnis fällt – `addCleanup` in der richtigen
+  Reihenfolge. Betroffen sind unter anderem `test_index_fassung`,
+  `test_quellen`, `test_zurueckspielen`, `test_regeln`,
+  `test_sicherungsort`, `test_zeitplan_zustand`.
+
+  Prüfen lässt sich das nur dort:
+
+  ```
+  gh workflow run Tests --ref main -f breit=true
+  ```
+
 - [ ] **Aus einem Suchordner heraus die Maske vorfüllen.** Von joka63
   gemeldet (22.09.2026): Wer im Dialog *Suchordner bearbeiten* auf
   »Ausführlich suchen« geht, erwartet die Felder gefüllt – gefüllt mit

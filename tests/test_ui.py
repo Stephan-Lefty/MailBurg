@@ -5687,15 +5687,19 @@ class SperrfrageTest(OberflaechenTest):
         )
 
     def _tote_pid(self) -> int:
-        import os
+        """Über denselben Weg, den MailBurg selbst nimmt.
 
+        Ein eigenes ``os.kill(kandidat, 0)`` bricht unter Windows mit
+        ``WinError 87`` ab – siehe ``_prozess_lebt_windows``.
+        """
+        import sys
+
+        from mailburg.core.archive import _prozess_lebt_unix, _prozess_lebt_windows
+
+        lebt = _prozess_lebt_windows if sys.platform == "win32" else _prozess_lebt_unix
         for kandidat in range(99999, 90000, -1):
-            try:
-                os.kill(kandidat, 0)
-            except ProcessLookupError:
+            if lebt(kandidat) is False:
                 return kandidat
-            except PermissionError:
-                continue
         raise AssertionError("keine freie Prozessnummer gefunden")
 
     def test_ohne_sperre_wird_nicht_gefragt(self):

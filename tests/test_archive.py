@@ -499,16 +499,22 @@ class TestVerwaisteSperre(ArchiveTestCase):
         )
 
     def _tote_pid(self) -> int:
-        """Eine Prozessnummer, die es sicher nicht gibt."""
-        import os
+        """Eine Prozessnummer, die es sicher nicht gibt.
 
+        **Über denselben Weg, den MailBurg selbst nimmt** – vorher stand
+        hier ein eigenes ``os.kill(kandidat, 0)``, und das brach unter
+        Windows mit ``WinError 87`` ab. Eine Testhilfe, die die Frage
+        anders stellt als der Code, prüft am Ende etwas anderes; hier
+        fiel sie sogar ganz um.
+        """
+        import sys
+
+        from mailburg.core.archive import _prozess_lebt_unix, _prozess_lebt_windows
+
+        lebt = _prozess_lebt_windows if sys.platform == "win32" else _prozess_lebt_unix
         for kandidat in range(99999, 90000, -1):
-            try:
-                os.kill(kandidat, 0)
-            except ProcessLookupError:
+            if lebt(kandidat) is False:
                 return kandidat
-            except PermissionError:
-                continue
         raise AssertionError("keine freie Prozessnummer gefunden")
 
     def test_eine_verwaiste_sperre_wird_uebernommen(self) -> None:

@@ -7,6 +7,36 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **The test suite is not green on Windows, and that hides real
+  findings.** Measured on 2026-10-05 in the broad run
+  (`workflow_dispatch` with `breit=true`): 2162 tests, **38 failures
+  and 39 errors**. Of those, **62 messages read `WinError 32`** – "The
+  process cannot access the file because it is being used by another
+  process", every one of them while cleaning up a `TemporaryDirectory`
+  that still holds an open SQLite file.
+
+  **This is a test problem, not a program bug**: Windows will not let
+  go of an open file, Linux will. A test that creates an archive and
+  then lets the directory be removed without calling `close()` first
+  passes here and fails there.
+
+  **Why it is at the top anyway:** A run that is red regardless answers
+  no question. The genuine Windows finding of 2026-10-05 (`os.kill` on
+  the lock file) sat undetected in exactly this noise for five weeks.
+  As long as that holds, the weekly Monday run is worthless for
+  Windows.
+
+  To do: walk the affected tests and close the archive before the
+  directory goes – `addCleanup` in the right order. Affected are among
+  others `test_index_fassung`, `test_quellen`, `test_zurueckspielen`,
+  `test_regeln`, `test_sicherungsort`, `test_zeitplan_zustand`.
+
+  It can only be checked there:
+
+  ```
+  gh workflow run Tests --ref main -f breit=true
+  ```
+
 - [ ] **Prefill the search mask from a saved search.** Reported by
   joka63 (2026-09-22): opening "Ausführlich suchen" from the *Suchordner
   bearbeiten* dialog should show the fields filled in from the stored
