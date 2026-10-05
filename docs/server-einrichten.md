@@ -109,10 +109,10 @@ mit – er liegt außerhalb und wird auf dem Server neu erzeugt:
 mailburg neuaufbau /var/lib/mailburg/Archiv
 ```
 
-Bei einem großen Archiv dauert das: an 70.000 Mails mit vielen
-PDF-Rechnungen gemessen über eine Stunde, wenn der Text aus den
-Anhängen über `pypdf` gelesen wird, und einen Bruchteil davon mit
-`poppler`. **Am Anfang bleibt es minutenlang still** – erst wird der
+Bei einem großen Archiv dauert das: an 70.133 echten Mails mit vielen
+PDF-Rechnungen gemessen **101 Minuten** (11,6 je Sekunde), wenn der
+Text aus den Anhängen über `pypdf` gelesen wird, und einen Bruchteil
+davon mit `poppler`. **Am Anfang bleibt es minutenlang still** – erst wird der
 alte Index verworfen und das Archiv geöffnet; die Fortschrittszeile
 kommt danach. Fehlt poppler, lohnt vorher `pip install fonttools`:
 siehe [erste-schritte.md](erste-schritte.md).

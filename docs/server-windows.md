@@ -204,12 +204,19 @@ anzufassen – in einem **zweiten** Fenster:
 
 Wächst die Zahl, läuft alles.
 
-**Zur Laufzeit:** Gemessen an 70.000 echten Mails mit vielen
-PDF-Rechnungen, über `pypdf`, auf einem Windows Server 2025: deutlich
-über eine Stunde. Mit poppler ist es ein Bruchteil davon. Rechnen Sie
-nach den ersten zweitausend hoch, statt zu warten – und lassen Sie den
-Lauf dann in Ruhe durchlaufen. Ein Abbruch schadet nichts, kostet aber
-alles Gerechnete: Der Index wird immer von vorn gebaut.
+**Zur Laufzeit, gemessen am 05.10.2026** an einem echten
+Geschäftsarchiv mit 70.133 Mails und vielen PDF-Rechnungen, über
+`pypdf`, auf einem Windows Server 2025:
+
+```
+Fertig: 70.133 Mails in 6075.4 s indiziert.
+```
+
+Also **101 Minuten, rund 11,6 Mails je Sekunde.** Mit poppler ist es
+ein Bruchteil davon. Rechnen Sie nach den ersten zweitausend hoch,
+statt zu warten – und lassen Sie den Lauf dann in Ruhe durchlaufen. Ein
+Abbruch schadet nichts, kostet aber alles Gerechnete: Der Index wird
+immer von vorn gebaut.
 
 ### Der Text in den PDF-Anhängen
 
