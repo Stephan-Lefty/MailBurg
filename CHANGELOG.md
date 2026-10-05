@@ -134,6 +134,35 @@ Aus dem ersten vollständigen Durchlauf auf einem Windows Server 2025 am
 
 ### Behoben
 
+- **Die Bündelung der PDF-Meldungen bündelte fast nichts.** Gebaut war
+  sie dafür, aus hunderten Zeilen eine zu machen; beim ersten Lauf an
+  70.000 echten Mails lief die Flut unverändert durch. Gezählt wurde
+  die **fertige** Meldung, und pypdf setzt in nahezu jede Zahlen oder
+  ganze Datenstrukturen ein – im schlimmsten Fall das vollständige
+  Schriftverzeichnis einer PDF-Seite, über tausend Zeichen. Damit war
+  jede Meldung ihr eigener Eintrag. Zusammengefasst wurde nur, was
+  ohnehin wortgleich war (`EOF marker not found`), also gerade das
+  Harmlose.
+
+  Gezählt wird jetzt der **Wortlaut** vor dem Einsetzen; die
+  Platzhalter werden durch ein Auslassungszeichen ersetzt. Dazu eine
+  Längengrenze je Meldung – ein Bericht, der unlesbar ist, erklärt
+  nichts.
+
+  **Die Lehre ist nicht neu, nur neu angewandt:** Eine Prüfung, die die
+  fragliche Umgebung nicht nachstellt, misst etwas anderes. Die Tests
+  dazu schickten wortgleiche Meldungen, weil ich sie mir so gedacht
+  hatte – echte pypdf-Meldungen sehen anders aus. Jetzt stehen beide
+  Arten im Test.
+
+- **Fehlt `fonttools`, sagt MailBurg jetzt, dass es fehlt** – mit dem
+  Befehl daneben. Ohne das Paket kommt pypdf an die Zeichentabelle
+  eingebetteter Schriften nicht heran, und das trifft gewöhnliche
+  Geschäftspost: Rechnungen aus Warenwirtschaften bringen ihre
+  Hausschrift mit. Bisher stand davon nur eine Meldung je Schrift und
+  Datei auf dem Bildschirm, in der Sprache von pypdf, ohne Folgerung.
+  **Ein Hinweis ohne Handlung ist keiner.**
+
 - **Jeder Rat zum Nachrüsten eines Pakets nannte einen Befehl, der nirgends
   läuft.** An zwölf Stellen stand `pip install "mailburg[…]"` – in fünf
   Anleitungen, vor allem aber in sechs Meldungen des Programms selbst. Wer

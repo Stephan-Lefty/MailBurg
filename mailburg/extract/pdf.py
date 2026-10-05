@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import re
 import shutil
 import subprocess
 import tempfile
@@ -77,6 +78,42 @@ def _mit_poppler(daten: bytes) -> str:
 #: die Meldungen der übrigen Teile.
 _PYPDF_LOGGER = "pypdf"
 
+#: Platzhalter in einer ``logging``-Formatzeichenkette: ``%(name)s``
+#: ebenso wie das alte ``%s``. Beide werden durch ein Auslassungszeichen
+#: ersetzt, damit zwei Meldungen desselben Wortlauts zusammenfallen.
+_PLATZHALTER = re.compile(r"%\(\w+\)[-+ #0-9.]*[a-zA-Z]|%[-+ #0-9.]*[a-zA-Z]")
+
+#: Woran die Meldung zu erkennen ist, auf die es eine Antwort gibt.
+#: pypdf kommt ohne ``fonttools`` an die Zeichentabelle mancher
+#: eingebetteter Schriften nicht heran – ein Paket nachlegen, und der
+#: Text aus diesen Anhängen landet im Index.
+_FONTTOOLS_MELDUNG = "fontTools is required"
+
+
+def _muster(satz: logging.LogRecord) -> str:
+    """Der Wortlaut einer Meldung **ohne** die eingesetzten Werte.
+
+    **Hier lag der Fehler, den der erste echte Lauf gezeigt hat.**
+    Gezählt wurde die fertige Meldung (``getMessage()``), und pypdf
+    setzt in fast jede Zahlen oder ganze Datenstrukturen ein:
+    ``Ignoring wrong pointing object 8 0 (offset 0)`` oder, am
+    schlimmsten, das vollständige Schriftverzeichnis einer PDF-Seite.
+    Damit war jede Meldung ihr eigener Eintrag – gebündelt wurde nur,
+    was ohnehin wortgleich war (``EOF marker not found``), und genau der
+    Lärm, dessentwegen das hier gebaut wurde, lief weiter durch.
+
+    Der Wortlaut vor dem Einsetzen (``satz.msg``) ist dagegen konstant.
+    Ersetzt werden die Platzhalter, damit in der Ausgabe nicht
+    ``%(offset)d`` steht. Schickt ein Aufrufer eine fertige Zeichenkette
+    ohne Argumente – ältere pypdf-Fassungen taten das –, bleibt sie
+    unverändert; ein einzelnes Prozentzeichen im Text darf nicht
+    verschwinden.
+    """
+    text = str(satz.msg)
+    if not satz.args:
+        return text
+    return _PLATZHALTER.sub("…", text)
+
 
 @contextlib.contextmanager
 def meldungen_buendeln():
@@ -96,7 +133,9 @@ def meldungen_buendeln():
     der Windows-Dienst sein Protokoll umhängt statt es abzuschalten.
 
     Nicht unterdrückt, sondern gezählt: Der Aufrufer bekommt einen
-    ``Counter`` und kann am Ende sagen, was wie oft vorkam.
+    ``Counter`` und kann am Ende sagen, was wie oft vorkam. Gezählt wird
+    der **Wortlaut** der Meldung, nicht die Meldung mit ihren Werten –
+    warum, steht bei :func:`_muster`.
 
     **Nur dieser Logger, und der alte Zustand kommt zurück.** Wer
     MailBurg als Bibliothek benutzt, hat vielleicht ein eigenes
@@ -111,7 +150,7 @@ def meldungen_buendeln():
     class _Sammler(logging.Handler):
         def emit(self, satz: logging.LogRecord) -> None:
             try:
-                gezaehlt[satz.getMessage()] += 1
+                gezaehlt[_muster(satz)] += 1
             except Exception:  # noqa: BLE001
                 # Ein Protokollhandler, der wirft, reißt den Lauf mit,
                 # den er beschreiben soll. ``handleError`` ist der dafür
@@ -132,6 +171,32 @@ def meldungen_buendeln():
         logger.handlers = vorher_handler
         logger.propagate = vorher_weiter
         logger.setLevel(vorher_stufe)
+
+
+def rat_zu_meldungen(gezaehlt) -> str | None:
+    """Sagt, was sich an den gesammelten Meldungen noch bessern lässt.
+
+    Bisher gibt es genau einen Rat, und der ist ein Paketname. Ohne
+    ``fonttools`` kommt pypdf an die Zeichentabelle eingebetteter
+    Schriften nicht heran und meldet das – je Schrift, je Datei. Beim
+    ersten Lauf an 70.000 echten Mails war das die mit Abstand
+    häufigste Meldung.
+
+    **Ein Hinweis ohne Handlung ist keiner.** Deshalb steht hier der
+    Befehl und nicht die Beobachtung. Mitgeliefert wird das Paket
+    nicht: Es wiegt ein paar Megabyte, und wer poppler hat, braucht
+    diesen Weg gar nicht.
+    """
+    if any(_FONTTOOLS_MELDUNG in text for text in gezaehlt):
+        return (
+            "Die häufigste davon lässt sich abstellen – dann wird auch der\n"
+            "Text aus diesen Anhängen gelesen:\n"
+            "\n"
+            "    python3 -m pip install fonttools\n"
+            "\n"
+            "Unter Windows heißt der Befehl py statt python3."
+        )
+    return None
 
 
 def _mit_pypdf(daten: bytes) -> str:

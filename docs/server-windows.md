@@ -131,6 +131,48 @@ Freigabe nicht heran. Dann im Fenster über *Suchen …* wählen.
 Ein Archiv ist ein gewöhnlicher Ordner; kopieren genügt. **Der Suchindex
 kommt nicht mit**, er wird gleich neu gebaut.
 
+### Kommt das Archiv als Sicherungsdatei
+
+Bei einem großen Archiv ist das der bessere Weg: `mailburg sichern`
+macht aus 70.000 Dateien eine – über eine Cloud oder einen Stick geht
+eine Datei, ein Ordner mit 70.000 Dateien geht nicht.
+
+**Legen Sie die Zielordner vorher an und schieben Sie die Datei
+dorthin.** Das klingt selbstverständlich und ist der Punkt, an dem es
+beim ersten echten Umzug geklemmt hat: Wer unten Pfadnamen hinterlegt,
+hat damit noch keinen Ordner – und die Sicherungsdatei liegt
+üblicherweise noch im Download- oder Cloud-Ordner.
+
+```
+New-Item -ItemType Directory -Force D:\firma
+Move-Item $HOME\Downloads\archiv-2026-10-02.tar.zst D:\firma\
+```
+
+Dann prüfen, ob die Datei heil angekommen ist – bei 12 GB über eine
+Cloud ist das keine Formalität. Die Bytezahl kommt sofort, die
+Prüfsumme rechnet Minuten:
+
+```
+(Get-Item D:\firma\archiv-2026-10-02.tar.zst).Length
+(Get-FileHash D:\firma\archiv-2026-10-02.tar.zst -Algorithm SHA256).Hash
+```
+
+Beide Werte gegen den Rechner halten, von dem die Datei stammt. Stimmen
+sie nicht, hier aufhören: Alles Weitere stünde auf einer beschädigten
+Datei.
+
+Und erst dann zurückholen. Der Zielordner muss leer sein oder noch
+nicht bestehen – MailBurg legt ihn selbst an:
+
+```
+py -m mailburg wiederherstellen D:\firma\archiv-2026-10-02.tar.zst D:\firma\Archiv
+```
+
+**Läuft auf dem Server schon ein Dienst mit einem anderen Archiv, halten
+Sie ihn vorher an** (`sc.exe stop MailBurgServer`). Die nächsten
+Schritte schreiben ins Archiv; zwei Prozesse an einem Archiv reißen die
+Hash-Kette.
+
 ## 7. Index bauen
 
 Nur nötig, wenn ein vorhandenes Archiv kopiert wurde:
@@ -143,7 +185,31 @@ py -m mailburg neuaufbau C:\Pfad\Zum\Archiv
 **Die erste Zeile ist entscheidend.** Ohne sie landet der Index in Ihrem
 Benutzerprofil, und der Dienst sieht ihn nicht.
 
-Bei 70.000 Mails rechnen Sie mit Minuten, nicht Sekunden.
+**Am Anfang bleibt es ein paar Minuten still.** Erst wird der alte Index
+verworfen und das Archiv geöffnet; in dieser Zeit steht nur die erste
+Zeile da und sonst nichts. Das sieht aus wie ein hängender Befehl und
+ist keiner. Danach erscheint die Fortschrittszeile:
+
+```
+Baue den Suchindex neu. Das Archiv selbst wird dabei nur gelesen.
+  … 2000 von 69978
+```
+
+Ob er wirklich arbeitet, lässt sich von außen nachsehen, ohne den Lauf
+anzufassen – in einem **zweiten** Fenster:
+
+```
+(Get-ChildItem C:\MailBurg-Daten -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
+```
+
+Wächst die Zahl, läuft alles.
+
+**Zur Laufzeit:** Gemessen an 70.000 echten Mails mit vielen
+PDF-Rechnungen, über `pypdf`, auf einem Windows Server 2025: deutlich
+über eine Stunde. Mit poppler ist es ein Bruchteil davon. Rechnen Sie
+nach den ersten zweitausend hoch, statt zu warten – und lassen Sie den
+Lauf dann in Ruhe durchlaufen. Ein Abbruch schadet nichts, kostet aber
+alles Gerechnete: Der Index wird immer von vorn gebaut.
 
 ### Der Text in den PDF-Anhängen
 
@@ -161,20 +227,45 @@ PDF-Rechnungen überträgt, legt besser poppler dazu und nimmt den
 schnellen Weg – welche Fassung dafür die richtige ist, hängt am Server
 und steht in dieser Anleitung bewusst nicht aus dem Gedächtnis.
 
+**Bleibt es bei `pypdf`, legen Sie ein Paket dazu:**
+
+```
+py -m pip install fonttools
+```
+
+Ohne das kommt `pypdf` an die Zeichentabelle eingebetteter Schriften
+nicht heran. Das trifft gewöhnliche Geschäftspost: Rechnungen und
+Lieferscheine aus Warenwirtschaften bringen ihre Hausschrift mit. Die
+Folge ist nicht nur eine Meldung je Schrift und Datei, sondern auch
+Text, der nicht oder falsch im Index landet – also Rechnungsnummern,
+die später nicht gefunden werden.
+
 **Am Ende des Laufs steht, was auffiel** – gebündelt, nicht Zeile für
 Zeile:
 
 ```
 Beim Lesen der PDF-Anhänge gab es 312 Hinweise (nicht Dateien – ein PDF kann mehrere auslösen):
   298× EOF marker not found
-   14× Ignoring wrong pointing object
+   14× Ignoring wrong pointing object … (offset …)
 
 Die betroffenen Mails sind archiviert und werden gefunden –
 nur der Text aus diesen Anhängen fehlt im Index.
 ```
 
 `EOF marker not found` heißt: Dem PDF fehlt die Schlusszeile. Bei
-Mailanhängen ist das häufig und meistens harmlos.
+Mailanhängen ist das häufig und meistens harmlos. Die
+Auslassungszeichen stehen für Zahlen, die in jeder Meldung andere sind –
+gezählt wird der Wortlaut, sonst wäre jede Meldung ihr eigener Eintrag
+und die Bündelung hätte keinen Zweck.
+
+**Läuft die Flut trotzdem Zeile für Zeile durch**, ist MailBurg auf dem
+Server älter als diese Bündelung. Bis zum nächsten Update hilft, die
+Fehlerausgabe wegzuwerfen – die Fortschrittszeile bleibt dabei stehen,
+sie läuft über die normale Ausgabe:
+
+```
+py -m mailburg neuaufbau C:\Pfad\Zum\Archiv 2>$null
+```
 
 ## 8. Zugänge
 
@@ -287,14 +378,30 @@ mailburg tresor uebernehmen
 Dann `konten.json` und `tresor.json` in den gemeinsamen Ordner auf dem
 Server kopieren.
 
+> **Die Kontendatei muss auf dem Server `konten.json` heißen.** Der Name
+> steht fest im Programm. Wer eine gefilterte Liste mitbringt – etwa nur
+> die Firmenpostfächer, ohne die privaten –, hat sie meist anders
+> benannt und muss sie beim Ablegen umbenennen. Sonst sucht der Dienst
+> eine Datei, die es nicht gibt, und ruft nichts ab.
+
 > **Schlüsseldatei und Tresordatei nie zusammen weitergeben und nie
-> zusammen sichern.** Wer beides hat, hat die Postfächer.
+> zusammen sichern.** Wer beides hat, hat die Postfächer. Das gilt auch
+> für den Ordner auf dem eigenen Schreibtisch, in dem man die Dateien
+> für den Umzug sammelt.
+
+**Bringen Sie einen vorhandenen Tresor mit, drücken Sie *Tresor
+einrichten* nicht.** Der Knopf erzeugt einen **neuen** Hauptschlüssel,
+und mit dem lässt sich die mitgebrachte Tresordatei nicht mehr öffnen.
+Ein Tresor, zwei Rechner: Es muss derselbe Schlüssel sein.
 
 Und auf dem Server nachsehen, ob es für alle reicht:
 
 ```
 mailburg tresor pruefen
 ```
+
+Der Befehl nimmt **keinen** Archivpfad – er liest den Einstellungsordner
+des Dienstes.
 
 Der Befehl sagt nicht nur, ob sich die Einträge öffnen lassen, sondern
 auch, **ob für jedes eingerichtete Postfach eine Anmeldung dabei ist** –

@@ -11,6 +11,7 @@ import io
 import logging
 import unittest
 import zipfile
+from collections import Counter
 
 from mailburg.extract import office, pdf, text
 
@@ -178,6 +179,80 @@ class MeldungenBuendelnTest(unittest.TestCase):
             logging.getLogger("pypdf._reader").warning("EOF marker not found")
 
         self.assertEqual(gezaehlt["EOF marker not found"], 1)
+
+
+class MusterTest(unittest.TestCase):
+    """Gezählt wird der Wortlaut, nicht die Meldung mit ihren Werten.
+
+    **Aus dem ersten echten Lauf, 2026-10-05.** Die Bündelung war
+    gebaut und griff bei fast allem nicht: pypdf setzt in nahezu jede
+    Meldung Zahlen oder ganze Datenstrukturen ein (``%(offset)d``,
+    ``%(ft)s`` mit dem vollständigen Schriftverzeichnis einer Seite).
+    Gezählt wurde die fertige Meldung – also war jede ihr eigener
+    Eintrag, und auf dem Bildschirm lief weiter Zeile für Zeile durch.
+    """
+
+    def setUp(self):
+        self.logger = logging.getLogger(pdf._PYPDF_LOGGER)
+
+    def test_gleiche_meldung_mit_verschiedenen_werten_faellt_zusammen(self) -> None:
+        with pdf.meldungen_buendeln() as gezaehlt:
+            for nummer in (8, 24, 35, 37):
+                self.logger.warning(
+                    "Ignoring wrong pointing object %(id)d (offset %(offset)d)",
+                    {"id": nummer, "offset": 0},
+                )
+
+        self.assertEqual(len(gezaehlt), 1)
+        self.assertEqual(next(iter(gezaehlt.values())), 4)
+
+    def test_die_platzhalter_stehen_nicht_in_der_ausgabe(self) -> None:
+        with pdf.meldungen_buendeln() as gezaehlt:
+            self.logger.warning("Ignoring final token of %(line)r.", {"line": b"0003"})
+
+        (text,) = gezaehlt
+        self.assertNotIn("%(line)", text)
+        self.assertIn("…", text)
+
+    def test_eine_fertige_meldung_bleibt_wortgleich(self) -> None:
+        """Ältere pypdf-Fassungen bauten ihre Meldungen selbst zusammen.
+
+        Dann gibt es keine Argumente – und ein Prozentzeichen im Text
+        ist dann eins und kein Platzhalter.
+        """
+        with pdf.meldungen_buendeln() as gezaehlt:
+            self.logger.warning("100% der Seiten ohne Text")
+
+        self.assertEqual(gezaehlt["100% der Seiten ohne Text"], 1)
+
+    def test_verschiedene_wortlaute_bleiben_getrennt(self) -> None:
+        with pdf.meldungen_buendeln() as gezaehlt:
+            self.logger.warning("incorrect startxref pointer(%(nr)d)", {"nr": 3})
+            self.logger.warning("Ignoring wrong pointing object %(id)d", {"id": 8})
+
+        self.assertEqual(len(gezaehlt), 2)
+
+
+class RatZuMeldungenTest(unittest.TestCase):
+    """Ein Hinweis ohne Handlung ist keiner.
+
+    Die fontTools-Meldung war beim Lauf am 2026-10-05 die häufigste
+    überhaupt – und sie hat eine Antwort, die in eine Zeile passt.
+    """
+
+    def test_fonttools_wird_geraten(self) -> None:
+        gezaehlt = Counter({
+            "fontTools is required to fully parse the encoding of … ": 4012,
+        })
+        rat = pdf.rat_zu_meldungen(gezaehlt)
+        self.assertIsNotNone(rat)
+        self.assertIn("pip install fonttools", rat)
+
+    def test_ohne_anlass_kein_rat(self) -> None:
+        self.assertIsNone(pdf.rat_zu_meldungen(Counter({"EOF marker not found": 9})))
+
+    def test_leer_bleibt_leer(self) -> None:
+        self.assertIsNone(pdf.rat_zu_meldungen(Counter()))
 
 
 class TestDispatcher(unittest.TestCase):

@@ -1824,6 +1824,20 @@ def cmd_neuaufbau(args: argparse.Namespace) -> int:
 #: wäre wieder die Liste, die hier gerade vermieden wird.
 PDF_MELDUNGEN_ZEIGEN = 5
 
+#: Länger wird keine einzelne Meldung wiedergegeben. pypdf setzt in
+#: manche das vollständige Schriftverzeichnis einer Seite ein – über
+#: tausend Zeichen, die den Bericht unlesbar machen, den sie erklären
+#: sollen.
+PDF_MELDUNG_LAENGE = 110
+
+
+def _gekuerzt(text: str) -> str:
+    """Kürzt eine Meldung auf eine überschaubare Länge."""
+    einzeilig = " ".join(text.split())
+    if len(einzeilig) <= PDF_MELDUNG_LAENGE:
+        return einzeilig
+    return einzeilig[: PDF_MELDUNG_LAENGE - 1].rstrip() + "…"
+
 
 def _pdf_befund_melden(gezaehlt) -> None:
     """Nennt gebündelt, was beim Lesen der PDF-Anhänge auffiel.
@@ -1833,6 +1847,8 @@ def _pdf_befund_melden(gezaehlt) -> None:
     Zahl, die nach Dateien aussieht und keine sind, führt bei der
     nächsten Prüfung in die Irre.
     """
+    from mailburg.extract import pdf as pdf_modul
+
     if not gezaehlt:
         return
 
@@ -1844,7 +1860,7 @@ def _pdf_befund_melden(gezaehlt) -> None:
         f"(nicht Dateien – ein PDF kann mehrere auslösen):"
     )
     for text, wieoft in gezaehlt.most_common(PDF_MELDUNGEN_ZEIGEN):
-        print(f"  {wieoft}× {text}")
+        print(f"  {wieoft}× {_gekuerzt(text)}")
     übrig = len(gezaehlt) - PDF_MELDUNGEN_ZEIGEN
     if übrig > 0:
         print(f"  … und {sprache.anzahl(übrig, 'weitere Art', 'weitere Arten')}")
@@ -1852,6 +1868,10 @@ def _pdf_befund_melden(gezaehlt) -> None:
         "\nDie betroffenen Mails sind archiviert und werden gefunden –\n"
         "nur der Text aus diesen Anhängen fehlt im Index."
     )
+    rat = pdf_modul.rat_zu_meldungen(gezaehlt)
+    if rat:
+        print()
+        print(rat)
 
 
 def _nur_verschluesselt(pfad: Path) -> bool:

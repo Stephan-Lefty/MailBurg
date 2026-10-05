@@ -109,6 +109,14 @@ mit – er liegt außerhalb und wird auf dem Server neu erzeugt:
 mailburg neuaufbau /var/lib/mailburg/Archiv
 ```
 
+Bei einem großen Archiv dauert das: an 70.000 Mails mit vielen
+PDF-Rechnungen gemessen über eine Stunde, wenn der Text aus den
+Anhängen über `pypdf` gelesen wird, und einen Bruchteil davon mit
+`poppler`. **Am Anfang bleibt es minutenlang still** – erst wird der
+alte Index verworfen und das Archiv geöffnet; die Fortschrittszeile
+kommt danach. Fehlt poppler, lohnt vorher `pip install fonttools`:
+siehe [erste-schritte.md](erste-schritte.md).
+
 Zum Ausprobieren tut es auch ein Archiv mit erfundener Post:
 
 ```bash
@@ -171,7 +179,19 @@ mailburg tresor uebernehmen      # auf dem Arbeitsplatz
 
 Die entstandene Datei (`~/.config/mailburg/tresor.json`) gehört dann auf
 den Server. **Sie und der Schlüssel nicht denselben Weg schicken** – wer
-beides zusammen abfängt, hat die Postfächer.
+beides zusammen abfängt, hat die Postfächer. Das gilt auch für den
+Ordner, in dem man die Dateien für den Umzug sammelt: Liegen dort
+Tresordatei und Schlüssel nebeneinander, ist die Trennung aufgehoben,
+noch bevor etwas verschickt wurde.
+
+Dazu gehört die Kontenliste, und zwar **unter dem Namen
+`konten.json`** – der Name steht fest im Programm. Wer eine gefilterte
+Liste mitbringt, etwa nur die Firmenpostfächer ohne die privaten, muss
+sie beim Ablegen umbenennen. Sonst sucht der Dienst eine Datei, die es
+nicht gibt, und ruft nichts ab.
+
+**Ein vorhandener Tresor braucht denselben Schlüssel.** Ein neu
+erzeugter öffnet die mitgebrachte Datei nicht.
 
 **Für Postfächer mit OAuth2 ist das der einzige Weg.** Eine
 OAuth2-Anmeldung führt über einen Browser auf demselben Rechner, den es
@@ -183,7 +203,8 @@ Postfach, das dauerhaft hier archiviert wird, ist ein App-Passwort der
 ruhigere Weg – **außer bei Microsoft**, wo es keines mehr gibt und die
 erneuerte Anmeldung der einzige Weg bleibt. Siehe [oauth2.md](oauth2.md).
 
-Zum Schluss die Probe:
+Zum Schluss die Probe – der Befehl nimmt **keinen** Archivpfad, er liest
+den Einstellungsordner:
 
 ```bash
 mailburg tresor pruefen

@@ -152,6 +152,19 @@ Ob es geklappt hat, sagt Ihnen:
 tesseract --list-langs
 ```
 
+**Geht poppler auf Ihrem System nicht**, fällt MailBurg auf `pypdf`
+zurück – langsamer, aber es kommt auch ohne Fremdprogramm an den Text.
+Dann lohnt ein Paket dazu:
+
+```bash
+pip install fonttools
+```
+
+Ohne das kommt `pypdf` an die Zeichentabelle eingebetteter Schriften
+nicht heran, und gerade Geschäftspost bringt ihre Hausschrift mit.
+MailBurg sagt es am Ende eines Neuaufbaus von selbst, wenn es daran
+fehlt – samt diesem Befehl.
+
 Steht dort `deu`, ist alles bereit. In der Windows-Fassung sind beide Werkzeuge
 samt deutschen Sprachdaten bereits eingepackt — dort genügt
 `MailBurg.exe werkzeuge`, um es nachzusehen. Einzelheiten in
