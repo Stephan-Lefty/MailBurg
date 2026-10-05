@@ -105,6 +105,13 @@ mailburg anlegen /var/lib/mailburg/Archiv --modus geschaeftlich
 ist ein gewöhnlicher Ordner; kopieren genügt. Der Suchindex kommt nicht
 mit – er liegt außerhalb und wird auf dem Server neu erzeugt:
 
+> **Der erkannte Text aus Scans wird dabei nicht neu erzeugt.** Er
+> entsteht durch Texterkennung, liegt in `~/.local/share/mailburg/ocr`
+> und wird beim Neuaufbau nur **gelesen**. Wer ihn nicht mitkopiert,
+> hat ein Archiv, in dem eingescannte Rechnungen nicht im Volltext zu
+> finden sind – ohne dass irgendwo etwas fehlt. Auf dem Server
+> nachzuerkennen braucht tesseract.
+
 ```bash
 mailburg neuaufbau /var/lib/mailburg/Archiv
 ```

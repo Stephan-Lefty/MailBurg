@@ -132,6 +132,26 @@ Aus dem ersten vollständigen Durchlauf auf einem Windows Server 2025 am
   Ein Protokollknopf, der schweigt, ist schlimmer als keiner: Er sieht
   aus, als hätte er nachgesehen.
 
+### Geändert (Anleitungen)
+
+- **Beim Umzug eines Archivs muss der erkannte Text aus Scans
+  mitkopiert werden** – das stand nirgends. »Der Suchindex kommt nicht
+  mit, er wird neu gebaut« ist richtig und verschweigt den
+  Unterschied: Text aus einem *eingescannten* PDF entsteht nicht beim
+  Indexbauen, sondern durch Texterkennung. Er liegt in einem
+  Nebenspeicher daneben, genau damit er einen Neuaufbau überlebt – und
+  `neuaufbau` holt ihn dort nur **ab**.
+
+  Fehlt der Speicher, fehlt der Text, und **nichts sieht nach einem
+  Fehler aus**: Die Mails sind alle da, mit Anhang; nur wer nach einer
+  Rechnungsnummer sucht, die ausschließlich im Scan steht, bekommt
+  keinen Treffer. Nachzuerkennen braucht tesseract, das auf einem
+  Server meist fehlt.
+
+  Aufgefallen beim ersten echten Umzug am 05.10.2026 **an einer Zahl,
+  die nicht passte**: derselbe Bestand, Index auf dem Arbeitsplatz
+  954 MB, auf dem Server 665 MB. Betroffen waren 1844 Dokumente.
+
 ### Behoben
 
 - **Unter Windows hat MailBurg eine verwaiste Sperrdatei nie

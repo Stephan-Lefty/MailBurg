@@ -131,6 +131,37 @@ Freigabe nicht heran. Dann im Fenster über *Suchen …* wählen.
 Ein Archiv ist ein gewöhnlicher Ordner; kopieren genügt. **Der Suchindex
 kommt nicht mit**, er wird gleich neu gebaut.
 
+### Der erkannte Text aus Scans kommt aber auch nicht mit
+
+**Und der wird nicht neu gebaut.** Das ist der Unterschied, der beim
+ersten echten Umzug am 05.10.2026 aufgefallen ist – an einer Zahl, die
+nicht passte: Derselbe Bestand hatte auf dem Arbeitsplatz einen Index
+von 954 MB, auf dem Server 665 MB.
+
+Text aus einem **eingescannten** PDF entsteht nicht beim Indexbauen,
+sondern durch Texterkennung – ein Vorgang von Stunden. Er liegt deshalb
+in einem Nebenspeicher, damit er einen Neuaufbau überlebt, und
+`mailburg neuaufbau` holt ihn dort nur **ab**. Fehlt der Speicher,
+fehlt der Text, und nichts sieht nach einem Fehler aus: Die Mails sind
+alle da, mit Anhang – nur wer nach einer Rechnungsnummer sucht, die
+ausschließlich im Scan steht, bekommt keinen Treffer.
+
+Auf dem Server nachzuerkennen hilft nicht: `mailburg texterkennung`
+prüft zuerst, ob tesseract vorhanden ist, und bricht sonst ab. Auf
+einem frischen Windows Server ist keines.
+
+**Also mitkopieren.** Auf dem Arbeitsplatz liegt er unter
+`%LOCALAPPDATA%\MailBurg\ocr` (Linux: `~/.local/share/mailburg/ocr`)
+und gehört auf dem Server in den gemeinsamen Ordner:
+
+```
+C:\MailBurg-Daten\ocr
+```
+
+Beim ersten Umzug waren das 1844 Dokumente in 17 MB. Danach den Index
+bauen – oder, wenn er schon steht, **noch einmal** bauen; der
+Nebenspeicher wird nur beim Neuaufbau gelesen.
+
 ### Kommt das Archiv als Sicherungsdatei
 
 Bei einem großen Archiv ist das der bessere Weg: `mailburg sichern`
