@@ -3,6 +3,116 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-10-05, Montagabend) – der Umzug läuft
+
+**Das echte Firmenarchiv wird gerade auf dem Windows Server indiziert**
+– 70.000 Mails, über eine Stunde. Wiederherstellen und Betriebsart sind
+durch, Konten, Tresor, Abruf und Zugänge stehen noch aus.
+
+**Der Abend hat drei Fehler zutage gefördert, und alle drei waren
+meine.** Jeder einzelne betraf eine Sache, die *gebaut und geprüft*
+war – und in der fraglichen Umgebung nicht wirkte.
+
+### Die Bündelung bündelte fast nichts
+
+Freitagabend gebaut, damit aus hunderten pypdf-Meldungen eine wird.
+Beim ersten Lauf an echten Daten lief die Flut unverändert durch.
+
+Gezählt wurde die **fertige** Meldung – und pypdf setzt in nahezu jede
+Zahlen oder ganze Datenstrukturen ein, im schlimmsten Fall das
+vollständige Schriftverzeichnis einer PDF-Seite. Also war jede Meldung
+ihr eigener Eintrag. Zusammengefasst wurde nur, was ohnehin wortgleich
+war (`EOF marker not found`), **also gerade das Harmlose.** Gemessen:
+
+```
+alt: 4 Einträge -> ['Ignoring wrong pointing object 8 (offset 0)', …]
+neu: 1 Eintrag  -> ['Ignoring wrong pointing object … (offset …)']
+```
+
+Gezählt wird jetzt `satz.msg`, der Wortlaut vor dem Einsetzen. **Die
+Lehre steckt in den Tests, nicht im Code:** Sie schickten wortgleiche
+Meldungen, weil ich sie mir so gedacht hatte. Echte pypdf-Meldungen
+sehen anders aus. *Eine Prüfung, die die fragliche Umgebung nicht
+nachstellt, misst etwas anderes* – derselbe Satz wie beim Wappen, beim
+Index und beim Installer, hier zum vierten Mal.
+
+Dazu: Fehlt `fonttools`, sagt MailBurg das jetzt mit dem Befehl
+daneben. Ohne das Paket kommt pypdf an die Zeichentabelle eingebetteter
+Schriften nicht heran – und das trifft gewöhnliche Geschäftspost, denn
+Rechnungen aus Warenwirtschaften bringen ihre Hausschrift mit.
+
+### `os.kill(pid, 0)` ist unter Windows kein Anklopfen
+
+**Verwaiste Sperrdateien wurden dort nie weggeräumt.** Gebaut war das am
+21.09. für genau den Fall, der Stephan am 01.09. aus seinem
+Geschäftsarchiv aussperrte; fünf Wochen stand die Funktion da und wirkte
+unter Windows nicht.
+
+Unter POSIX prüft `kill(pid, 0)` nur, ob gesendet werden *könnte*.
+Pythons `os.kill` fängt unter Windows genau `CTRL_C_EVENT` und
+`CTRL_BREAK_EVENT` ab; **jeder andere Wert führt laut Dokumentation zu
+`TerminateProcess`**. Und `CTRL_C_EVENT` ist ausgerechnet **0** – der
+Aufruf landet bei `GenerateConsoleCtrlEvent`, einem Strg+C an eine ganze
+Konsolengruppe, das laut Microsoft bei einer Gruppennummer ungleich null
+*gelingt, ohne etwas zu tun*. Belegt an `posixmodule.c` und der
+MS-Dokumentation, nicht erinnert.
+
+In jeder Lesart falsch: Entweder galt jede Sperre als von einem
+laufenden Vorgang gehalten, auch eine Stunden alte, oder es kam nie eine
+Antwort. Jetzt über `OpenProcess` plus `WaitForSingleObject` – ein
+Handle überlebt den Prozess, den es hält, also beantwortet `OpenProcess`
+allein die Frage nicht.
+
+**Der ctypes-Aufruf selbst ist nicht geprüft** (dafür bräuchte es
+Windows); geprüft ist, *dass* dieser Weg genommen wird und wie die
+Fehlernummern gedeutet werden. Die Deutung steht dafür in einer eigenen
+Funktion – derselbe Zuschnitt wie bei `uvicorn_einstellungen()`.
+
+Nebenbei: `True` zählte als Prozessnummer, weil `bool` in Python ein
+`int` ist. Prozess 1 gibt es immer.
+
+### Und die Testhilfe stellte die Frage anders als der Code
+
+`_tote_pid()` suchte eine freie Prozessnummer mit einem *eigenen*
+`os.kill` – und fiel unter Windows mit `WinError 87` um. Also stürzte
+ausgerechnet der Test ab, der das Wegräumen prüft. An zwei Stellen,
+`test_archive` und `test_ui`.
+
+### Der Befund, der oben in der TODO steht
+
+**Die Suite ist unter Windows nicht grün**, und das ist der Grund, warum
+der `os.kill`-Fehler fünf Wochen unentdeckt blieb. Gemessen im breiten
+Lauf: 2162 Tests, 38 Fehlschläge, 39 Fehler – **62 Meldungen
+`WinError 32`**, jedes Mal beim Aufräumen eines `TemporaryDirectory`
+mit noch offener SQLite-Datei. Ein Testproblem, kein Programmfehler.
+Aber *ein Lauf, der ohnehin rot ist, beantwortet keine Frage mehr.*
+
+Der breite Lauf ist nur von Hand zu bekommen:
+
+```bash
+gh workflow run Tests --ref main -f breit=true
+```
+
+### Drei Lücken in den Anleitungen, alle aus diesem Abend
+
+**Pfadnamen hinterlegen legt keine Ordner an.** Schritt 0 der
+Umzugsanleitung setzte `$paket`, `$archiv`, `$daten` – und die
+Sicherungsdatei lag noch im Cloud-Ordner. Stephans Befund, wörtlich:
+»Da muss ich aber vorher die Verzeichnisse manuell angelegt haben und
+die gepackte Datei dorthin verschoben haben.«
+
+**Der Neuaufbau bleibt am Anfang minutenlang still.** Erst wird der alte
+Index verworfen und das Archiv geöffnet. Das sieht aus wie ein hängender
+Befehl – zweimal nachgefragt an diesem Abend.
+
+**Die Kontendatei muss auf dem Server `konten.json` heißen.** Der Name
+steht fest in `accounts.py`. Wer eine gefilterte Liste mitbringt, hat
+sie anders benannt, und der Dienst sucht dann eine Datei, die es nicht
+gibt – er läuft und ruft nichts ab.
+
+2187 Tests, `lesbarkeit.py` ohne Befund, CI grün (`7cf39b4`, `7d08fbf`,
+`8f123e3`).
+
 ## Hier war Schluss (Stand 2026-10-02, Freitagabend) – der Server trägt
 
 **Der Umzug des Firmenarchivs ist vorbereitet, nicht vollzogen.** Die
