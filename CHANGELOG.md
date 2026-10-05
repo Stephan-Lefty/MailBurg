@@ -134,6 +134,36 @@ Aus dem ersten vollständigen Durchlauf auf einem Windows Server 2025 am
 
 ### Behoben
 
+- **Unter Windows hat MailBurg eine verwaiste Sperrdatei nie
+  weggeräumt** – gebaut war das am 21.09.2026 für genau den Fall, der
+  Stephan am 01.09. aus seinem Geschäftsarchiv aussperrte. Fünf Wochen
+  lang stand die Funktion da und wirkte dort nicht.
+
+  Die Prüfung, ob der Vorgang hinter der Sperre noch läuft, ging über
+  `os.kill(pid, 0)` – unter Unix der vorgesehene Weg, der nur
+  anklopft und nichts sendet. **Unter Windows ist derselbe Aufruf kein
+  Anklopfen.** Pythons `os.kill` fängt dort genau zwei Werte ab,
+  `CTRL_C_EVENT` und `CTRL_BREAK_EVENT`; jeder andere führt laut
+  Dokumentation zu `TerminateProcess`. Und `CTRL_C_EVENT` ist
+  ausgerechnet **0** – der Aufruf landet also bei
+  `GenerateConsoleCtrlEvent`, einem Strg+C an eine ganze
+  Konsolengruppe.
+
+  Die Folge war in jeder Lesart falsch: Entweder galt jede Sperre als
+  von einem laufenden Vorgang gehalten, auch eine Stunden alte, oder es
+  kam nie eine Antwort. Statt »die Datei kann gelöscht werden« stand
+  dort »Läuft dort noch MailBurg, bitte dort erst schließen« – auf
+  demselben Rechner, dessen Vorgang längst tot war.
+
+  Jetzt über `OpenProcess` und `WaitForSingleObject`. **Nicht aus einem
+  Fehlerbericht, sondern aus dem wöchentlichen Windows-Lauf** – der
+  einzige, der diese Zeile je ausgeführt hat. Hier steht es, weil es
+  sonst niemand gemerkt hätte, bis es jemanden trifft.
+
+  Nebenbei: `True` zählte als Prozessnummer, weil `bool` in Python ein
+  `int` ist. Prozess 1 gibt es immer – damit hätte eine kaputte
+  Sperrdatei dauerhaft ausgesperrt.
+
 - **Die Bündelung der PDF-Meldungen bündelte fast nichts.** Gebaut war
   sie dafür, aus hunderten Zeilen eine zu machen; beim ersten Lauf an
   70.000 echten Mails lief die Flut unverändert durch. Gezählt wurde

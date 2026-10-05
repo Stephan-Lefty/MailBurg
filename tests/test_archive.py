@@ -658,6 +658,112 @@ class SperrmeldungTest(unittest.TestCase):
         text = self.erklaerung()
         self.assertIn("2026-08-26", text)
 
+    def test_wahr_ist_keine_prozessnummer(self):
+        """``True`` ist in Python ein ``int`` – und wäre Prozess 1.
+
+        Ein ``init``, das es immer gibt: Damit hielte jede kaputte
+        Sperrdatei einen laufenden Vorgang vor, und niemand käme mehr an
+        sein Archiv.
+        """
+        text = self.erklaerung(pid=True)
+
+        self.assertIn("2026-08-26", text)
+        self.assertNotIn("Geduld", text)
+
+    def test_null_und_negativ_sind_keine_prozessnummern(self):
+        """Unter POSIX heißt das »ganze Prozessgruppe«, nicht »dieser«."""
+        for nummer in (0, -1, -4711):
+            with self.subTest(pid=nummer):
+                text = self.erklaerung(pid=nummer)
+                self.assertNotIn("Geduld", text)
+                self.assertNotIn("Überbleibsel", text)
+
+
+class ProzessLebtWindowsTest(unittest.TestCase):
+    """Unter Windows ist ``os.kill(pid, 0)`` kein Anklopfen.
+
+    **Der Befund vom 2026-10-05.** Pythons ``os.kill`` fängt dort genau
+    ``CTRL_C_EVENT`` und ``CTRL_BREAK_EVENT`` ab; jeder andere Wert
+    führt laut Dokumentation zu ``TerminateProcess``. Und
+    ``CTRL_C_EVENT`` ist **0** – der Aufruf landet also bei
+    ``GenerateConsoleCtrlEvent``, einem Strg+C an eine Konsolengruppe.
+
+    Die Folge: Das Wegräumen verwaister Sperrdateien, gebaut am
+    21.09.2026, hat unter Windows **nie** funktioniert. Aufgefallen ist
+    es nicht im Betrieb, sondern weil der wöchentliche Windows-Lauf rot
+    wurde – fünf Wochen nach dem Einbau.
+
+    Geprüft wird hier nicht der ctypes-Aufruf (dafür bräuchte es
+    Windows), sondern **dass dieser Weg genommen wird** und wie die
+    Antworten gedeutet werden.
+    """
+
+    def test_unter_windows_wird_nicht_os_kill_benutzt(self):
+        import socket
+        import unittest.mock as mock
+
+        from mailburg.core import archive as modul
+
+        with mock.patch.object(modul.sys, "platform", "win32"), \
+             mock.patch.object(modul, "_prozess_lebt_windows", return_value=False) as win, \
+             mock.patch.object(modul.os, "kill") as kill:
+            ergebnis = modul._laeuft_noch({"host": socket.gethostname(), "pid": 4711})
+
+        self.assertIs(ergebnis, False)
+        win.assert_called_once_with(4711)
+        kill.assert_not_called()
+
+    def test_unter_unix_bleibt_es_bei_os_kill(self):
+        import socket
+        import unittest.mock as mock
+
+        from mailburg.core import archive as modul
+
+        with mock.patch.object(modul.sys, "platform", "linux"), \
+             mock.patch.object(modul, "_prozess_lebt_windows") as win, \
+             mock.patch.object(modul, "_prozess_lebt_unix", return_value=True) as unix:
+            ergebnis = modul._laeuft_noch({"host": socket.gethostname(), "pid": 4711})
+
+        self.assertIs(ergebnis, True)
+        unix.assert_called_once_with(4711)
+        win.assert_not_called()
+
+    def test_eine_nummer_die_keinem_prozess_gehoert_heisst_tot(self):
+        from mailburg.core.archive import _win_fehler_deuten
+
+        self.assertIs(_win_fehler_deuten(87), False)
+
+    def test_kein_zugriff_heisst_er_ist_da(self):
+        """Ein fremder Prozess ist einer – und kein Grund zum Löschen."""
+        from mailburg.core.archive import _win_fehler_deuten
+
+        self.assertIs(_win_fehler_deuten(5), True)
+
+    def test_jeder_andere_fehler_bleibt_unbeantwortet(self):
+        from mailburg.core.archive import _win_fehler_deuten
+
+        for nummer in (0, 6, 1455, 998):
+            with self.subTest(fehler=nummer):
+                self.assertIsNone(_win_fehler_deuten(nummer))
+
+    def test_ein_fehlschlag_beim_laden_wird_nicht_zur_antwort(self):
+        """Lieber keine Auskunft als eine erfundene.
+
+        Ein Auffangnetz, das aus einem Fehler ein Ergebnis macht, ist in
+        diesem Projekt schon dreimal teuer geworden – hier darf es nur
+        zu »weiß nicht« führen, nie zu »läuft« oder »tot«.
+        """
+        import socket
+        import unittest.mock as mock
+
+        from mailburg.core import archive as modul
+
+        with mock.patch.object(modul.sys, "platform", "win32"), \
+             mock.patch.object(modul, "_prozess_lebt_windows", side_effect=OSError):
+            ergebnis = modul._laeuft_noch({"host": socket.gethostname(), "pid": 4711})
+
+        self.assertIsNone(ergebnis)
+
 
 class MailsStattFundorteTest(unittest.TestCase):
     """Eine Mail in zwei Ordnern ist eine Mail, nicht zwei."""

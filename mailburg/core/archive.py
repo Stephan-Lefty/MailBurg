@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import sys
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -77,18 +78,85 @@ class Mode(StrEnum):
         return self is Mode.GESCHAEFTLICH
 
 
-def _laeuft_noch(held: dict) -> bool | None:
-    """Läuft der Prozess, der die Sperre hält, auf diesem Rechner noch?
+#: Das kleinste Recht, mit dem sich ein Prozess auf sein Ende abfragen
+#: lässt. Mehr zu verlangen hieße, bei fremden Prozessen an
+#: ``ERROR_ACCESS_DENIED`` zu scheitern, wo eine Antwort möglich wäre.
+_WIN_SYNCHRONIZE = 0x00100000
 
-    ``None`` heißt: nicht zu beantworten – die Sperre stammt von einem
-    anderen Rechner. Über dessen Prozesse lässt sich von hier aus nichts
-    sagen, und Raten wäre hier schlimmer als Schweigen.
+#: Fehlernummern von ``OpenProcess``, die eine Antwort erlauben. ``87``
+#: heißt: Diese Nummer gehört keinem Prozess – also läuft er nicht mehr.
+#: ``5`` heißt: Er ist da, gehört aber jemand anderem.
+_WIN_UNGUELTIGE_NUMMER = 87
+_WIN_KEIN_ZUGRIFF = 5
+
+#: Antwort von ``WaitForSingleObject``, wenn der Prozess **nicht**
+#: beendet ist. Ein Handle auf einen beendeten Prozess lässt sich
+#: weiterhin öffnen, solange es jemand hält – ``OpenProcess`` allein
+#: beantwortet die Frage also nicht.
+_WIN_LAEUFT_NOCH = 0x102
+
+
+def _prozess_lebt_windows(pid: int) -> bool | None:
+    """Fragt Windows, ob es diesen Prozess noch gibt.
+
+    **Warum nicht ``os.kill(pid, 0)`` wie unter Unix.** Das ist dort
+    kein Anklopfen, sondern ein Angriff. Pythons ``os.kill`` fängt unter
+    Windows genau zwei Werte ab, ``CTRL_C_EVENT`` und
+    ``CTRL_BREAK_EVENT``; **jeder andere Wert führt zu
+    ``TerminateProcess``** – so steht es in der Dokumentation von
+    ``os.kill``. Und ``CTRL_C_EVENT`` ist ausgerechnet **0**: Der Aufruf
+    landet also bei ``GenerateConsoleCtrlEvent``, das ein Strg+C an eine
+    ganze Konsolengruppe schickt und bei einer Gruppennummer ungleich
+    null laut Microsoft gelingt, **ohne etwas zu tun**.
+
+    Beides ist falsch, und beides war hier drin. In der einen Lesart
+    galt jede Sperre als von einem laufenden Vorgang gehalten, auch eine
+    Stunden alte; in der anderen kam nie eine Antwort. Unter Windows hat
+    das Wegräumen verwaister Sperrdateien damit **nie** funktioniert –
+    gebaut war es für genau den Fall, der Stephan am 01.09.2026 aus
+    seinem Geschäftsarchiv aussperrte. Aufgefallen ist es erst am
+    05.10.2026, als der wöchentliche Windows-Lauf rot wurde.
+
+    Der richtige Weg ist ``OpenProcess`` und, weil ein Handle einen
+    beendeten Prozess überlebt, ein ``WaitForSingleObject`` ohne
+    Wartezeit.
+
+    **Der ctypes-Aufruf selbst ist hier nicht geprüft** – dafür bräuchte
+    es Windows. Geprüft ist alles darum herum: dass dieser Weg
+    überhaupt genommen wird, und wie die Antworten gedeutet werden.
+    Derselbe Zuschnitt wie bei ``uvicorn_einstellungen()``.
     """
-    if held.get("host") != socket.gethostname():
-        return None
-    pid = held.get("pid")
-    if not isinstance(pid, int):
-        return None
+    import ctypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    handle = kernel32.OpenProcess(_WIN_SYNCHRONIZE, False, pid)
+    if not handle:
+        return _win_fehler_deuten(ctypes.get_last_error())
+    try:
+        return kernel32.WaitForSingleObject(handle, 0) == _WIN_LAEUFT_NOCH
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _win_fehler_deuten(fehler: int) -> bool | None:
+    """Was eine fehlgeschlagene ``OpenProcess``-Anfrage bedeutet.
+
+    Eigene Funktion, damit sich die Deutung ohne Windows prüfen lässt –
+    sie ist der Teil, an dem ein Denkfehler teuer wäre.
+    """
+    if fehler == _WIN_UNGUELTIGE_NUMMER:
+        return False
+    if fehler == _WIN_KEIN_ZUGRIFF:
+        return True
+    return None
+
+
+def _prozess_lebt_unix(pid: int) -> bool | None:
+    """Dasselbe über ein Signal, das keines ist.
+
+    Unter POSIX ist ``kill(pid, 0)`` der vorgesehene Weg: Es prüft nur,
+    ob gesendet werden *könnte*, und sendet nichts.
+    """
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -99,6 +167,37 @@ def _laeuft_noch(held: dict) -> bool | None:
     except OSError:
         return None
     return True
+
+
+def _laeuft_noch(held: dict) -> bool | None:
+    """Läuft der Prozess, der die Sperre hält, auf diesem Rechner noch?
+
+    ``None`` heißt: nicht zu beantworten – die Sperre stammt von einem
+    anderen Rechner. Über dessen Prozesse lässt sich von hier aus nichts
+    sagen, und Raten wäre hier schlimmer als Schweigen.
+
+    **Der Weg zur Antwort ist je System ein anderer**, und das ist kein
+    Schönheitsfehler: Unter Windows gibt es kein Signal, mit dem man
+    einen Prozess nur anklopfen kann. Siehe
+    :func:`_prozess_lebt_windows`.
+    """
+    if held.get("host") != socket.gethostname():
+        return None
+    pid = held.get("pid")
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        # ``bool`` ist in Python ein ``int``; ``True`` wäre Prozess 1.
+        # Und eine Nummer kleiner gleich null bedeutet unter POSIX
+        # »ganze Prozessgruppe« – das wäre kein Anklopfen mehr, sondern
+        # ein Signal an alles.
+        return None
+    try:
+        if sys.platform == "win32":
+            return _prozess_lebt_windows(pid)
+        return _prozess_lebt_unix(pid)
+    except OSError:
+        # Unter Windows kann schon das Laden von kernel32 scheitern.
+        # Dann ist die Frage unbeantwortbar und nicht falsch beantwortet.
+        return None
 
 
 def _sperre_erklaeren(lock: "Path", held: dict) -> str:
