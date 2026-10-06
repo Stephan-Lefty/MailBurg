@@ -533,6 +533,54 @@ bekannte Herkunftsadressen. Dann ist der Dienst nicht mehr ohne
 weiteres auffindbar, und die Anmeldeseite von MailBurg ist nicht das
 Einzige zwischen einem Fremden und dem Archiv.
 
+## 7. Sich melden lassen
+
+**Ein Dienst, der still arbeitet, ist von einem Dienst, der still
+*nicht* arbeitet, nicht zu unterscheiden.** Genau das ist am
+06.10.2026 passiert: Der Abruf scheiterte tagelang in seiner ersten
+Zeile, der Dienst lief weiter, und die Meldung stand im
+Ereignisprotokoll – dort, wo man nur nachsieht, wenn man schon etwas
+ahnt.
+
+Deshalb schickt MailBurg eine Mail: wie viele Mails dazukamen, und ob
+das Archiv in Ordnung ist. Einzurichten im Fenster unter *Tagesbericht
+…*, auf der Kommandozeile über Umgebungsvariablen:
+
+```bash
+MAILBURG_BERICHT_AN=verwaltung@example.org
+MAILBURG_BERICHT_UHR=07:00
+MAILBURG_BERICHT_TAKT=7          # Tage; 1 = täglich
+MAILBURG_BERICHT_SMTP=mail.example.org:587
+MAILBURG_BERICHT_VON=archiv@example.org
+MAILBURG_BERICHT_BENUTZER=archiv@example.org
+```
+
+Das Versandpasswort gehört in den Tresor, nicht daneben:
+
+```bash
+mailburg tresor liste    # der Eintrag heißt mailburg-bericht-smtp
+```
+
+**Vier Dinge, die den Unterschied machen:**
+
+- **Ein eigenes Postfach zum Versenden**, nicht eines der archivierten.
+  Sonst landet jeder Bericht beim nächsten Abruf wieder im Archiv.
+- **Eine Störung wartet nicht auf die Uhrzeit.** Sie geht sofort
+  hinaus, wiederholt sich nicht, solange sie dieselbe bleibt, und es
+  kommt eine Entwarnung, sobald sie behoben ist. Der Takt oben regelt
+  nur die gute Nachricht.
+- **Der Bericht hängt am Abruf.** In der Ruhezeit läuft keiner – wer
+  die Berichtszeit dort hineinlegt, bekommt die Mail erst danach.
+- **Verschickt wird nur über STARTTLS.** Hat Ihr Server das nicht, gibt
+  es eine Absage statt einer unverschlüsselten Verbindung.
+
+**Probieren Sie es, bevor Sie das Fenster schließen** – der Knopf
+*Probe schicken* steht daneben. Sonst erfahren Sie erst am nächsten
+Morgen, ob das Passwort stimmt.
+
+Und das Wichtigste steht in jeder dieser Mails: **Bleibt sie aus, läuft
+der Dienst nicht mehr.** Das ist dann selbst der Befund.
+
 ## Wenn etwas klemmt
 
 **»Auf 127.0.0.1:8383 lauscht schon etwas«** – ein zweiter Server läuft

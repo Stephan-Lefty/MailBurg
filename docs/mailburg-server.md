@@ -67,7 +67,19 @@ Drei Dinge, die dabei wichtig sind:
   selbst der Befund – und der Grund, warum der Bericht auch dann kommt,
   wenn alles gut ist.
 
-Das Versandpasswort liegt im Tresor, nicht in der Registry.
+Das Versandpasswort liegt im Tresor, nicht in der Registry. Liegt es
+dort schon – weil dasselbe Postfach abgerufen wird –, lässt es sich
+übernehmen, ohne es noch einmal einzutippen:
+
+```
+mailburg tresor liste
+```
+
+**Und vor dem Schließen den Knopf *Probe schicken* drücken.** Sonst
+erfahren Sie erst am nächsten Morgen, ob das Passwort stimmt und der
+Server die Anmeldung annimmt. Eine Einstellung, die sich einen Tag
+später als falsch herausstellt, ist genau die Sorte, vor der diese
+Funktion warnen soll.
 
 ### Wartung
 
