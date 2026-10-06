@@ -64,8 +64,16 @@ jobs:
             Write-Error "Die gepackte Fassung gibt keine Prüfliste aus."
             exit 1
           }
-          if ($ausgabe -notmatch "Pakete für den Dienst") {
-            Write-Error "Die Paketprüfung fehlt - dann prüft sie das Falsche."
+          # **Ohne Umlaut suchen.** Die .exe schreibt in der
+          # Konsolen-Codepage, PowerShell liest sie anders - aus
+          # "Pakete für den Dienst" wird "Pakete f?r den Dienst", und
+          # der Wächter schlägt an, obwohl alles in Ordnung ist. Beim
+          # Release der 1.7.9 hat genau das den Bau der .exe verhindert.
+          # Dieselbe Klasse wie der schtasks-Fehler vom 2026-08-30, nur
+          # diesmal im Bauskript. Gesucht wird deshalb nach den
+          # Paketnamen aus derselben Zeile - die sind ASCII.
+          if ($ausgabe -notmatch "starlette und uvicorn") {
+            Write-Error "Die Paketpruefung fehlt - dann prueft sie das Falsche."
             exit 1
           }
 
