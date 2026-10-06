@@ -47,6 +47,13 @@ man es öffnet: Muss ich etwas tun?
 
 Daneben steht ein Knopf, der zur **ersten** offenen Sache führt.
 
+![Das Einrichtungsfenster mit grüner Ampel: oben drei grüne Haken und der Satz »Das Archiv läuft sauber«. Darunter die Felder für Archiv, Erreichbarkeit, Port und gemeinsamen Ordner, dann die Prüfliste mit sechzehn Zeilen – Betriebssystem, Python, Fassung, Pakete, Rechte, Archiv, Zugänge, Einstellungen, Dienst, Starttyp, Tresor, Abruf und Weboberfläche, alle mit grünem Haken. Darunter die Knöpfe für den Dienst, der Kasten »Wartung« mit vier Knöpfen und das Protokoll des Dienstes.](bilder/einrichtung-server-gruen.png)
+
+Steht etwas an, sieht dieselbe Stelle so aus – der Satz nennt, was es
+ist, und der Knopf rechts führt dorthin:
+
+![Dasselbe Fenster mit roter Ampel: oben drei rote Kreuze und der Satz »Sofort handeln. Dienst: Eingerichtet, läuft aber nicht. (und 1 weitere)«, rechts daneben ein Knopf »Dienst starten«. In der Prüfliste sind Dienst und Weboberfläche rot, Tresor und Abruf gelb, alles andere grün.](bilder/einrichtung-server-rot.png)
+
 ### Der Tagesbericht
 
 MailBurg schickt, was es getan hat: wie viele Mails dazugekommen sind
