@@ -336,6 +336,8 @@ def cmd_importieren(args: argparse.Namespace) -> int:
             )
     print(f"Anhänge im Volltext: {'ja' if mit_text else 'nein'}")
 
+    from mailburg.extract import pdf as pdf_modul
+
     quellen = local.quellen_oeffnen(
         gute, konto, alles=args.alles, zusammenlegen=args.zusammenlegen
     )
@@ -362,13 +364,26 @@ def cmd_importieren(args: argparse.Namespace) -> int:
                   end="\r", flush=True)
 
         try:
-            gesamt = importiere_alle(
-                archive, quellen,
-                mit_anhangstext=mit_text,
-                fortschritt=fortschritt,
-                auf_fehler=auf_fehler,
-                je_quelle=ansagen,
-            )
+            # **Die Meldungen von pypdf bündeln, nicht durchlassen.** Es
+            # meldet jedes PDF ohne EOF-Marke einzeln; über zehntausende
+            # Mails sind das hunderte Zeilen, zwischen denen die
+            # Fortschrittsanzeige zerfasert und eine echte Meldung
+            # untergeht. Gezählt statt unterdrückt – am Ende steht, was
+            # wie oft war.
+            #
+            # **Hier stand es bis zum 2026-10-06 nicht**, sondern nur im
+            # Neuaufbau. Aufgefallen beim Einlesen von 827.198 Mails aus
+            # MailStore, als die Flut mitten im Lauf über den Bildschirm
+            # lief. Zwei Wege, einer nachgezogen, der andere nicht – und
+            # getroffen hat es den, über den die meisten PDF gehen.
+            with pdf_modul.meldungen_buendeln() as pdf_meldungen:
+                gesamt = importiere_alle(
+                    archive, quellen,
+                    mit_anhangstext=mit_text,
+                    fortschritt=fortschritt,
+                    auf_fehler=auf_fehler,
+                    je_quelle=ansagen,
+                )
         finally:
             uebergangen = {
                 ordner for quelle in quellen
@@ -418,6 +433,11 @@ def cmd_importieren(args: argparse.Namespace) -> int:
                     f"Davon {gesamt.eingescannt} PDF ohne Textebene – vermutlich "
                     f"eingescannt und daher nicht durchsuchbar."
                 )
+            # **Gezählt statt unterdrückt.** Was während des Laufs
+            # gebündelt wurde, steht hier – sonst wäre die Bündelung ein
+            # Verschlucken, und ein Auffangnetz, das Auskunft wegwirft,
+            # ist genauso falsch wie eines, das sie erfindet.
+            _pdf_befund_melden(pdf_meldungen)
 
     return 0
 
