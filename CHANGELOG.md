@@ -44,6 +44,23 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Das Einrichtungsfenster rollte vom ersten Augenblick an.** Es ging
+  691 px hoch auf, während der Bildschirm noch 392 px frei hatte – und
+  rollte damit genau dort, wo Stephans Regel vom 31.08. das verbietet:
+  In der Vorgabegröße wird nicht gerollt.
+
+  Ursache war der Rollbereich, der am selben Tag dazukam. **Eine
+  QScrollArea meldet nach außen nur, dass sie rollen *kann*** – nicht,
+  wie hoch ihr Inhalt ist. Als Anfangsgröße stand weiter
+  `self.sizeHint()`, und das sind 408 px statt 1073. Der Kommentar
+  darüber sagte dabei das Richtige (»Die Anfangsgröße kommt aus dem
+  Inhalt«); nur der Code tat es nicht.
+
+  Gemeldet hat es `werkzeuge/lesbarkeit.py` in der CI, bei 9, 12 und
+  16 pt. **Ich hatte denselben Lauf vorher lokal als »ohne Befund«
+  gemeldet und dabei nur die letzten fünf Zeilen seiner Ausgabe
+  gelesen** – der Befund stand darüber.
+
 - **Ein Wächtertest hielt zum zweiten Mal einen Wortlaut fest statt
   seinen Sinn.** `test_die_seite_holt_nichts_von_fremden_servern`
   prüfte `assertNotIn("<script", …)` und schlug an, als die

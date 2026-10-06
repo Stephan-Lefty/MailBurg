@@ -410,7 +410,42 @@ class Einrichtungsfenster(QMainWindow):
         # und in MailBurg lässt sie sich einstellen. In der Standardgröße
         # wird nicht gerollt; der Rollbereich ist die Rückfalllinie für
         # kleine Bildschirme, nicht der Normalzustand.
-        self.resize(self.sizeHint())
+        #
+        # **Und genau deshalb darf hier nicht `self.sizeHint()` stehen.**
+        # Ein Rollbereich meldet nach außen nur, dass er rollen kann –
+        # nicht, wie hoch sein Inhalt ist. Mit `self.sizeHint()` ging
+        # das Fenster 691 px hoch auf, während der Bildschirm noch
+        # 392 px frei hatte, und rollte vom ersten Augenblick an. Der
+        # Kommentar darüber sagte dabei schon das Richtige; nur der Code
+        # tat es nicht. Gefragt wird deshalb das Widget *im*
+        # Rollbereich (`mitte`), das die ganze Liste trägt – dieselbe
+        # Stelle, an der `werkzeuge/screenshots_einrichtung.py` am
+        # 06.10. über dasselbe gestolpert ist.
+        self.resize(self.sizeHint().width(), self._wunschhoehe(rollen, mitte))
+
+    def _wunschhoehe(self, rollen: QScrollArea, mitte: QWidget) -> int:
+        """Wie hoch das Fenster aufgehen soll, damit nichts rollt.
+
+        Zwei Dinge kommen zusammen, und keines davon ist geraten:
+
+        **Die Höhe des Inhalts** steht in ``mitte``, nicht im
+        Rollbereich und nicht im Fenster. Was oberhalb und unterhalb
+        davon noch Platz braucht – Menüleiste, Rahmen –, ergibt sich
+        als Unterschied zwischen dem, was das Fenster meldet, und dem,
+        was der Rollbereich darin für sich verlangt.
+
+        **Und der Bildschirm setzt die Grenze.** Auf einem kleinen oder
+        entfernten Bildschirm reicht der Platz bei großer Schrift
+        nicht – dann *soll* gerollt werden. Ein Fenster, das über den
+        Rand hinausgeht, ist schlimmer als eines mit Rollbalken: Dort
+        liegen die Knöpfe außerhalb des Sichtbaren.
+        """
+        zugabe = max(0, self.sizeHint().height() - rollen.sizeHint().height())
+        hoehe = mitte.sizeHint().height() + zugabe
+        schirm = self.screen()
+        if schirm is not None:
+            hoehe = min(hoehe, schirm.availableGeometry().height())
+        return hoehe
 
     # ------------------------------------------------------------ Zustand
 
