@@ -115,9 +115,89 @@ class Berichtsdialog(QDialog):
         knoepfe = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         )
+        # **Ein Probeversand, bevor es ernst wird.** Ohne ihn erführe
+        # man erst am nächsten Morgen, dass das Passwort nicht stimmt
+        # oder der Server die Anmeldung verweigert – und bis dahin
+        # hielte man die Einstellung für erledigt. Eine Einrichtung, die
+        # sich erst einen Tag später als falsch herausstellt, ist genau
+        # die Sorte, vor der diese ganze Funktion warnen soll.
+        probe = knoepfe.addButton(
+            "Probe schicken", QDialogButtonBox.ActionRole
+        )
+        probe.setToolTip(
+            "Schickt sofort eine Testmail mit den Angaben aus diesem "
+            "Fenster.\n\nDas Passwort aus dem Tresor wird dabei "
+            "benutzt, wenn das Feld leer ist."
+        )
+        probe.clicked.connect(self._probe)
         knoepfe.accepted.connect(self.accept)
         knoepfe.rejected.connect(self.reject)
         senkrecht.addWidget(knoepfe)
+
+    def _probe(self) -> None:
+        """Verschickt eine Testmail mit dem, was gerade in den Feldern steht.
+
+        **Nicht mit dem, was gespeichert ist.** Wer etwas ändert und auf
+        Probe drückt, will wissen, ob *die Änderung* trägt – sonst
+        prüfte der Knopf den alten Stand und meldete Erfolg für etwas
+        anderes.
+        """
+        from PySide6.QtWidgets import QMessageBox
+
+        neu, passwort = self.ergebnis()
+        lage = bericht.Lage(
+            an=neu.an,
+            smtp=neu.smtp,
+            anschluss=neu.anschluss,
+            von=neu.von,
+            benutzer=neu.benutzer,
+        )
+        if not lage.eingerichtet:
+            QMessageBox.information(
+                self, "Noch unvollständig",
+                "Für eine Probe braucht es Empfänger, Postausgangsserver "
+                "und Absender.",
+            )
+            return
+
+        if not passwort:
+            from mailburg.core import tresor
+
+            try:
+                passwort = (
+                    tresor.holen(bericht.TRESORSCHLUESSEL) or ""
+                    if tresor.verfuegbar() else ""
+                )
+            except Exception:  # noqa: BLE001
+                passwort = ""
+
+        try:
+            bericht.senden(
+                lage,
+                "MailBurg: Probe",
+                "Diese Nachricht ist eine Probe aus dem "
+                "Einrichtungsfenster.\n\n"
+                "Kommt sie an, kann MailBurg Ihnen von nun an melden, "
+                "wie es dem Archiv geht – und sich sofort rühren, wenn "
+                "etwas klemmt.",
+                passwort,
+            )
+        except Exception as fehler:  # noqa: BLE001
+            QMessageBox.warning(
+                self, "Probe gescheitert",
+                f"Die Mail ging nicht hinaus:\n\n{fehler}\n\n"
+                f"Häufige Gründe: falsches Passwort, ein Server, der "
+                f"STARTTLS nicht anbietet, oder eine Absenderadresse, "
+                f"die zu diesem Zugang nicht passt.",
+            )
+            return
+
+        QMessageBox.information(
+            self, "Probe unterwegs",
+            f"Die Mail ging an {lage.an} hinaus.\n\n"
+            f"Kommt sie nicht an, sehen Sie im Spam-Ordner nach – eine "
+            f"erste Nachricht von einem neuen Absender landet dort gern.",
+        )
 
     def ergebnis(self) -> tuple[Lageanteil, str]:
         """Die neue Lage und das Passwort – getrennt, weil sie getrennt

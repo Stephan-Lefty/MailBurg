@@ -99,5 +99,98 @@ class BerichtsdialogTest(unittest.TestCase):
         self.assertEqual(im_feld, [t for _, t in bericht.TAKTE])
 
 
+
+@unittest.skipIf(QApplication is None, "PySide6 ist nicht installiert")
+class ProbeTest(unittest.TestCase):
+    """Der Knopf, der vor dem nächsten Morgen Bescheid sagt.
+
+    **Ohne ihn erführe man erst dann, dass das Passwort nicht stimmt.**
+    Eine Einrichtung, die sich einen Tag später als falsch herausstellt,
+    ist genau die Sorte, vor der diese Funktion warnen soll.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _dialog(self):
+        from mailburg.ui.berichtsdialog import Berichtsdialog
+
+        dialog = Berichtsdialog(bericht.Lage())
+        dialog.an.setText("chef@example.org")
+        dialog.smtp.setText("mail.example.org:587")
+        dialog.von.setText("archiv@example.org")
+        return dialog
+
+    def test_die_probe_nimmt_die_felder_und_nicht_das_gespeicherte(self):
+        """Wer etwas ändert und auf Probe drückt, will wissen, ob *die
+        Änderung* trägt."""
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog = self._dialog()
+        dialog.smtp.setText("neuer.example.org:2525")
+        gesehen = {}
+
+        def merken(lage, betreff, text, pw=""):
+            gesehen["smtp"] = lage.smtp
+            gesehen["anschluss"] = lage.anschluss
+
+        with mock.patch("mailburg.core.bericht.senden", side_effect=merken), \
+                mock.patch.object(QMessageBox, "information"):
+            dialog._probe()
+
+        self.assertEqual(gesehen["smtp"], "neuer.example.org")
+        self.assertEqual(gesehen["anschluss"], 2525)
+
+    def test_eine_halbe_einrichtung_wird_abgewiesen(self):
+        from PySide6.QtWidgets import QMessageBox
+
+        from mailburg.ui.berichtsdialog import Berichtsdialog
+
+        dialog = Berichtsdialog(bericht.Lage())
+        dialog.an.setText("chef@example.org")
+
+        with mock.patch("mailburg.core.bericht.senden") as senden, \
+                mock.patch.object(QMessageBox, "information") as hinweis:
+            dialog._probe()
+
+        senden.assert_not_called()
+        hinweis.assert_called_once()
+
+    def test_ein_fehler_wird_genannt_und_nicht_verschluckt(self):
+        """**Sonst sähe eine gescheiterte Probe aus wie eine
+        gelungene** – und das wäre schlimmer als gar keine."""
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog = self._dialog()
+
+        with mock.patch(
+            "mailburg.core.bericht.senden",
+            side_effect=bericht.VersandFehler("Anmeldung abgelehnt"),
+        ), mock.patch.object(QMessageBox, "warning") as warnung, \
+                mock.patch.object(QMessageBox, "information") as erfolg:
+            dialog._probe()
+
+        warnung.assert_called_once()
+        erfolg.assert_not_called()
+        self.assertIn("Anmeldung abgelehnt", str(warnung.call_args))
+
+    def test_ohne_eingetipptes_passwort_kommt_es_aus_dem_tresor(self):
+        from PySide6.QtWidgets import QMessageBox
+
+        dialog = self._dialog()
+        gesehen = {}
+
+        with mock.patch(
+            "mailburg.core.bericht.senden",
+            side_effect=lambda l, b, t, pw="": gesehen.update(pw=pw),
+        ), mock.patch("mailburg.core.tresor.verfuegbar", return_value=True), \
+                mock.patch(
+                    "mailburg.core.tresor.holen", return_value="aus-dem-tresor"
+                ), mock.patch.object(QMessageBox, "information"):
+            dialog._probe()
+
+        self.assertEqual(gesehen["pw"], "aus-dem-tresor")
+
 if __name__ == "__main__":
     unittest.main()
