@@ -19,6 +19,11 @@
 - **[Private Post im Geschäftsarchiv](regeln.md)** – wie Regeln den Verein
   und die Familie von selbst als privat einstufen, damit sie nicht unter
   Aufbewahrungsfristen fallen, die für sie nicht gelten.
+- **[Aus MailStore umziehen](mailstore-umzug.md)** – der Weg, der im Oktober
+  2026 an einem Bestand von 827.198 Mails gegangen wurde: exportieren, die
+  Ordner so benennen, dass daraus die Postfächer werden, und einlesen. Warum
+  Dubletten niemand vorher aussortieren muss, und warum beide Archive einige
+  Wochen nebeneinander laufen sollten.
 - **[Post aus dem Archiv zurückholen](zurueckspielen.md)** – eine einzelne
   Nachricht ins Mailprogramm, oder ein ganzes Postfach als Maildir, MBOX oder
   einzelne `.eml`. Welches Format wofür taugt, und warum zweimal
