@@ -200,9 +200,18 @@ einer erlaubten Mail die Struktur des übrigen Archivs, samt Namen der
 Postfächer, die es sonst noch gibt.
 
 Betroffen sind alle Stellen, die Fundorte zeigen oder zählen: die
-Trefferliste, die Detailansicht, der Postfachbaum links und die
-Gesamtzahl unten (»2.431 Mails im Archiv« ist für jeden Benutzer eine
-andere Zahl).
+Trefferliste, die Detailansicht und der Postfachbaum links.
+
+**Eine Ausnahme, und sie ist entschieden:** die Zahl »2.431 Mails im
+Archiv« über der Trefferliste. Sie ist für *jeden* Benutzer dieselbe –
+Stephans Vorgabe vom 06.10.2026: *Die Gesamtzahl aller Mails dürfen
+alle sehen, auch wenn sie nur auf einen kleinen Teil zugreifen können.*
+
+Der Grund trägt: Sie sagt, wie groß das Archiv ist und dass es wächst.
+Wer weiß, dass 70.000 Mails darin liegen, weiß deshalb über keine
+einzige etwas – keinen Absender, keinen Betreff, nicht einmal, in
+welchem Postfach sie liegt. Die **Trefferzahl** daneben bleibt
+eingeschränkt, denn die handelt vom Inhalt.
 
 ### Wer die Rechte vergibt
 

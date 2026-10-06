@@ -9,7 +9,52 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
-Noch nichts.
+### Neu
+
+- **Ein Hinweis, wenn die Weboberfläche gerade arbeitet.** Oben in der
+  Mitte erscheint »MailBurg sucht …«, sobald eine Suche oder das Öffnen
+  einer Nachricht länger als eine halbe Sekunde braucht. Keine Sanduhr,
+  kein Balken, nichts, was blinkt – ein Satz, der still dasteht und
+  sagt, *was* läuft.
+
+  **Der Anlass war eine Beobachtung, die sich nicht bestätigt hat.** Am
+  06.10. dauerte eine Suche auf dem Firmenserver fünf bis sieben
+  Sekunden. Gemessen wurde danach der ganze Suchpfad über 70.269 Mails:
+  **0,12 Sekunden**, der Hauptverdächtige (das Zählen je Postfach) mit
+  0,05 s unschuldig. Die Last kam von außen – MailStore schrieb zur
+  selben Zeit 827.199 Mails als einzelne Dateien auf dieselbe Maschine.
+
+  Der Hinweis bleibt trotzdem, und zwar genau deshalb: Solche Last kann
+  jederzeit wieder auftreten, und dann soll der Browser nicht tot
+  aussehen. Im Normalbetrieb sieht ihn niemand.
+
+  Er trägt `role="status"` – eine Vorlesesoftware liest ihn vor, sobald
+  er erscheint, ohne den Leser aus seiner Stelle zu reißen. Ein rein
+  sichtbarer Hinweis wäre für einen blinden Anwender keiner. In der
+  Hilfe der Weboberfläche steht, was er bedeutet.
+
+### Geändert
+
+- **Die Gesamtzahl im Archiv steht jetzt auch so in der Anleitung.**
+  `docs/server.md` sagte weiterhin, »2.431 Mails im Archiv« sei für
+  jeden Benutzer eine andere Zahl. Seit dem 06.10. ist sie für alle
+  dieselbe – eine Festlegung, nicht ein Versehen. Eine Anleitung, die
+  das Gegenteil des Codes sagt, schickt die nächste Suche an den
+  falschen Ort.
+
+### Behoben
+
+- **Ein Wächtertest hielt zum zweiten Mal einen Wortlaut fest statt
+  seinen Sinn.** `test_die_seite_holt_nichts_von_fremden_servern`
+  prüfte `assertNotIn("<script", …)` und schlug an, als die
+  Warteanzeige dazukam – ein *eingebettetes* Skript holt von fremden
+  Servern nichts. Derselbe Test war am 02.10. schon einmal aus genau
+  diesem Grund nachgezogen worden (vorher: `assertNotIn("https://")`).
+  Gefragt wird jetzt nach `<script src=`.
+
+  Dass die Oberfläche mit genau *einem* Skript auskommt, hält dafür ein
+  eigener Test fest. Eine Ausnahme bleibt nur eine, wenn sie gezählt
+  wird.
 
 ## [1.8.0] – 2026-10-06
 

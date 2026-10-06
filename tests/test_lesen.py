@@ -409,7 +409,15 @@ class WebTest(unittest.TestCase):
                     nachladend.search(seite),
                     f"{name} lädt von einem fremden Server",
                 )
-                self.assertNotIn("<script", seite)
+                # **Ein eingebettetes Skript holt nichts.** Hier stand
+                # bis zum 2026-10-06 `assertNotIn("<script", …)` – und
+                # schlug an, als die Warteanzeige dazukam, die ohne
+                # JavaScript nicht geht. Schon der zweite Wortlaut in
+                # diesem einen Test, der seinen eigenen Sinn verfehlte
+                # (vorher: `assertNotIn("https://")`). Gefragt ist, was
+                # der Browser von fremden Servern holt – und das ist
+                # allein ein Skript mit `src`.
+                self.assertNotRegex(seite, r"<script[^>]+src\s*=")
 
     def test_ein_verweis_nach_draussen_gibt_nichts_preis(self):
         """``target="_blank"`` ohne ``noreferrer`` verrät die Herkunft.

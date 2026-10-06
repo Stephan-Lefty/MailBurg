@@ -239,9 +239,55 @@ _KOPF = """<!doctype html>
              margin: 1rem 0; }}
   footer {{ color: var(--leise); font-size: .85rem; padding: 2rem 1.5rem;
             text-align: center; }}
+  /* **Ein Hinweis, keine Sanduhr.** Ein laufender Balken oder ein
+     pochendes Wappen zieht das Auge an und sagt doch nur »warte«.
+     Dieser Satz sagt, *was* läuft – und steht still dabei. Stephans
+     Entscheidung vom 2026-10-06.
+
+     Er erscheint erst nach einer halben Sekunde: Eine Suche über
+     70.000 Mails dauert meist Millisekunden, und ein Hinweis, der bei
+     jedem Klick aufblitzt, ist Flackern und keine Auskunft. */
+  #laeufttext {{ position: fixed; top: 0; left: 50%;
+                 transform: translateX(-50%); display: none; z-index: 9;
+                 background: var(--marke); color: #fff; font-size: .9rem;
+                 padding: .4rem 1.1rem; border-radius: 0 0 5px 5px;
+                 box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }}
+  html.sucht #laeufttext {{ display: block; }}
 </style>
 </head>
 <body>
+<div id="laeufttext" role="status">MailBurg sucht …</div>
+<script>
+/* **Das einzige Skript der Oberfläche, und es ist eingebettet.**
+   Nichts wird nachgeladen; ohne JavaScript funktioniert alles wie
+   zuvor, es fehlt dann nur diese Anzeige.
+
+   Die halbe Sekunde Verzug ist der Kern: Eine Suche über 70.000 Mails
+   dauert gemessen 125 ms. Ohne Verzug flackerte es bei jeder Suche
+   kurz auf – und eine Anzeige, die immer angeht, sagt nichts mehr. */
+(function () {{
+  var zeiger = null;
+  function an() {{
+    zeiger = setTimeout(function () {{
+      document.documentElement.classList.add("sucht");
+    }}, 500);
+  }}
+  document.addEventListener("submit", an, true);
+  /* Auch beim Blättern und beim Öffnen einer Nachricht: Das Lesen
+     holt die Mail von der Platte, und bei einem großen Anhang ist das
+     die spürbarere Wartezeit. */
+  document.addEventListener("click", function (e) {{
+    var a = e.target.closest ? e.target.closest("a") : null;
+    if (a && a.host === location.host && !a.hasAttribute("download")) an();
+  }}, true);
+  /* Zurück im Verlauf zeigt der Browser die Seite aus dem Zwischen-
+     speicher – dann stünde der Hinweis dort ohne Grund. */
+  window.addEventListener("pageshow", function () {{
+    if (zeiger) clearTimeout(zeiger);
+    document.documentElement.classList.remove("sucht");
+  }});
+}})();
+</script>
 """
 
 #: Wo der Quelltext liegt. Eine Konstante, weil sie an zwei Stellen
@@ -551,6 +597,14 @@ def hilfeseite(benutzer=None, thema: str = "system") -> str:
    zuschieben.</p>
 
 <pre class="text">{html.escape(describe_syntax())}</pre>
+
+<h2>Wenn eine Suche länger dauert</h2>
+<p>Dann erscheint oben in der Mitte der Hinweis <b>MailBurg sucht …</b>
+   – der Server arbeitet also, und es hat sich nichts aufgehängt. Bei
+   den meisten Suchen sehen Sie ihn gar nicht: Sie sind nach
+   Millisekunden fertig. Länger wird es, wenn der Rechner gerade stark
+   beschäftigt ist oder Sie eine Nachricht mit einem großen Anhang
+   öffnen.</p>
 
 <h2>Was hier nicht geht</h2>
 <p>Diese Oberfläche <b>liest nur</b>. Einstufen, Löschen und das
