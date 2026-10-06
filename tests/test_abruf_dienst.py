@@ -112,12 +112,87 @@ class SchleifeTest(unittest.TestCase):
         konto = mock.Mock(name="buero")
         konto.name = "buero"
         with mock.patch(
+            "mailburg.core.accounts.passwort_holen", return_value="geheim"
+        ), mock.patch(
             "mailburg.sources.quelle_fuer", side_effect=OSError("weg")
         ):
-            zahl = schleife._konto(mock.Mock(), konto)
+            zahl = schleife._konto(mock.Mock(), konto, mock.Mock())
 
-        self.assertEqual(zahl, 0)
+        self.assertIsNone(zahl)
         self.assertTrue(any("übersprungen" in z for z in gemeldet))
+
+    def test_das_passwort_kommt_aus_dem_tresor_und_geht_an_die_quelle(self):
+        """**Der zweite Fehler, der am 2026-10-06 auflief.**
+
+        Hier stand ``quelle_fuer(konto)`` – ohne Passwort, ohne
+        Höchststand, ohne Abrufzustand. Der Aufruf kam nie bis zum
+        Server: ``quelle_fuer() missing 1 required positional argument``.
+        Alle sieben Postfächer wurden übersprungen.
+
+        **Höchststand und Zustand gehören dazu, nicht nur das
+        Passwort.** Ohne sie holte jeder Lauf das ganze Postfach erneut
+        – alle dreißig Minuten, bei 70.000 Mails.
+        """
+        schleife = Schleife("/irgendwo", Lage(takt=30))
+        schleife._melden = lambda text, fehler=False: None
+
+        konto = mock.Mock()
+        konto.name = "buero"
+        konto.per_oauth2 = False
+        konto.betreffmarken = ()
+        zustand = mock.Mock()
+
+        with mock.patch(
+            "mailburg.core.accounts.passwort_holen", return_value="geheim"
+        ), mock.patch("mailburg.sources.quelle_fuer") as quelle_fuer, \
+                mock.patch(
+                    "mailburg.core.importer.importieren",
+                    return_value=mock.Mock(neu=3)):
+            zahl = schleife._konto(mock.Mock(), konto, zustand)
+
+        self.assertEqual(zahl, 3)
+        args, kwargs = quelle_fuer.call_args
+        self.assertEqual(args[1], "geheim")
+        self.assertIn("hoechststand", kwargs)
+        self.assertIs(kwargs["zustand"], zustand)
+
+    def test_ohne_passwort_im_tresor_gibt_es_einen_eigenen_rat(self):
+        """**Ein Dienst kann nicht nachfragen.**
+
+        Fehlt das Passwort, ist das etwas anderes als ein Netzfehler:
+        Hier muss ein Mensch auf dem Server etwas hinterlegen. Also
+        gehört der Weg dorthin in die Meldung.
+        """
+        schleife = Schleife("/irgendwo", Lage(takt=30))
+        gemeldet: list[str] = []
+        schleife._melden = lambda text, fehler=False: gemeldet.append(text)
+
+        konto = mock.Mock()
+        konto.name = "buero"
+        konto.per_oauth2 = False
+
+        with mock.patch(
+            "mailburg.core.accounts.passwort_holen", return_value=None
+        ):
+            zahl = schleife._konto(mock.Mock(), konto, mock.Mock())
+
+        self.assertIsNone(zahl)
+        self.assertTrue(any("tresor uebernehmen" in z for z in gemeldet))
+
+    def test_uebersprungene_postfaecher_gelten_nicht_als_geprueft(self):
+        """**Die Meldung, die beruhigte und nicht stimmte.**
+
+        Am 2026-10-06 stand im Ereignisprotokoll »Nichts Neues in 7
+        Postfächern«, während alle sieben an einem Fehler gescheitert
+        waren. Wer das liest, sucht die ausbleibende Post anderswo.
+        """
+        self.assertIn("Nichts Neues in 3", Schleife._befund(0, 3, 0))
+        self.assertIn("7 Postfächer übersprungen", Schleife._befund(0, 0, 7))
+        self.assertNotIn("Nichts Neues", Schleife._befund(0, 0, 7))
+
+        beides = Schleife._befund(5, 2, 1)
+        self.assertIn("5 neue Mails aus 2", beides)
+        self.assertIn("1 Postfächer übersprungen", beides)
 
     def test_ein_durchgang_liest_die_eingerichteten_postfaecher(self):
         """**Der Fehler, der den Abruf im Dienst lahmlegte.**
@@ -150,7 +225,9 @@ class SchleifeTest(unittest.TestCase):
         schleife = Schleife("/irgendwo", Lage(takt=30))
         schleife._melden = lambda text, fehler=False: None
         geholt: list[str] = []
-        schleife._konto = lambda archiv, konto: geholt.append(konto.name) or 0
+        schleife._konto = (
+            lambda archiv, konto, zustand: geholt.append(konto.name) or 0
+        )
 
         with mock.patch(
             "mailburg.core.paths.config_dir",

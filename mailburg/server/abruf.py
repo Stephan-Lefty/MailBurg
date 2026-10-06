@@ -213,45 +213,132 @@ class Schleife:
             self.letzter_befund = "Keine Postfächer eingerichtet."
             return
 
-        neu = gesamt = 0
+        from mailburg.core.sync import Abrufzustand
+
+        neu = geholt = uebersprungen = 0
         with Archive.open(
             self.archiv, exclusive=True, passwort=self.passwort
         ) as archiv:
-            for konto in konten:
-                if self.halt.is_set():
-                    break
-                zahl = self._konto(archiv, konto)
-                neu += zahl
-                gesamt += 1
+            zustand = Abrufzustand(archiv.uuid)
+            try:
+                for konto in konten:
+                    if self.halt.is_set():
+                        break
+                    zahl = self._konto(archiv, konto, zustand)
+                    if zahl is None:
+                        uebersprungen += 1
+                    else:
+                        neu += zahl
+                        geholt += 1
+            finally:
+                # **Auch bei einem Abbruch.** Sonst gehen die
+                # Vormerkungen gescheiterter Mails verloren, und der
+                # Höchststand zöge an ihnen vorbei – sie fehlten dann
+                # für immer, ohne Spur.
+                zustand.speichern()
 
         self.zuletzt = datetime.now()
         self.laeufe += 1
-        self.letzter_befund = (
-            f"{neu} neue Mails aus {gesamt} Postfächern."
-            if neu else f"Nichts Neues in {gesamt} Postfächern."
-        )
-        self._melden(self.letzter_befund)
+        self.letzter_befund = self._befund(neu, geholt, uebersprungen)
+        self._melden(self.letzter_befund, fehler=bool(uebersprungen))
 
-    def _konto(self, archiv, konto) -> int:
+    @staticmethod
+    def _befund(neu: int, geholt: int, uebersprungen: int) -> str:
+        """Was am Ende eines Laufs dasteht.
+
+        **Übersprungene Postfächer dürfen nicht als geprüft gelten.** Am
+        2026-10-06 meldete der Dienst »Nichts Neues in 7 Postfächern«,
+        während alle sieben an einem Fehler gescheitert waren. Das ist
+        die teuerste Sorte Auskunft: Sie beruhigt und stimmt nicht – und
+        wer sie liest, sucht die ausbleibende Post anderswo.
+        """
+        teile = []
+        if geholt:
+            teile.append(
+                f"{neu} neue Mails aus {geholt} Postfächern."
+                if neu else f"Nichts Neues in {geholt} Postfächern."
+            )
+        if uebersprungen:
+            teile.append(
+                f"{uebersprungen} Postfächer übersprungen – "
+                f"von dort kam nichts."
+            )
+        return " ".join(teile) or "Keine Postfächer geprüft."
+
+    def _konto(self, archiv, konto, zustand) -> int | None:
         """Ein Postfach – Fehler bleiben bei ihm.
+
+        Gibt die Zahl der neuen Mails zurück, oder ``None``, wenn das
+        Postfach übersprungen wurde.
 
         **Ein klemmendes Postfach beendet den Lauf nicht.** Dieselbe
         Regel wie beim Abgleich: Wer nach dem ersten Fehler aufhört,
         verliert die Post aller übrigen. Was übersprungen wurde, wird
         genannt.
+
+        **Höchststand und Abrufzustand gehören dazu, nicht nur das
+        Passwort.** Ohne sie holte jeder Lauf das ganze Postfach erneut –
+        alle dreißig Minuten, bei 70.000 Mails. Bis zum 2026-10-06 stand
+        hier ``quelle_fuer(konto)``, also ohne alles; der Aufruf kam nie
+        bis zum Server, weil schon das fehlende Passwort eine Ausnahme
+        warf.
         """
+        from mailburg.core import accounts
         from mailburg.core.importer import importieren
         from mailburg.sources import quelle_fuer
 
         try:
-            with quelle_fuer(konto) as quelle:
-                statistik = importieren(archiv, quelle, konto=konto.name)
+            passwort = accounts.passwort_holen(konto, streng=True) or ""
+        except Exception as fehler:  # noqa: BLE001
+            self._melden(
+                f"Postfach »{konto.name}« übersprungen: {fehler}", fehler=True
+            )
+            return None
+
+        if not passwort and not getattr(konto, "per_oauth2", False):
+            # **Eigene Meldung, nicht dieselbe wie bei einem Netzfehler.**
+            # Ein Dienst kann nicht nachfragen; hier fehlt etwas, das ein
+            # Mensch auf dem Server hinterlegen muss.
+            self._melden(
+                f"Postfach »{konto.name}« übersprungen: kein Passwort im "
+                f"Tresor. Nachtragen mit »mailburg tresor uebernehmen« auf "
+                f"dem Rechner, auf dem das Postfach eingerichtet ist.",
+                fehler=True,
+            )
+            return None
+
+        def vormerken(nachricht, _fehler, k=konto) -> None:
+            if nachricht.uid is not None:
+                zustand.vormerken(k.name, nachricht.folder, nachricht.uid)
+
+        try:
+            quelle = quelle_fuer(
+                konto,
+                passwort,
+                hoechststand=lambda ordner, k=konto: archiv.index.max_uid(
+                    k.name, ordner
+                ),
+                zustand=zustand,
+            )
+            try:
+                statistik = importieren(
+                    archiv, quelle,
+                    auf_fehler=vormerken,
+                    betreffmarken=getattr(konto, "betreffmarken", None) or (),
+                    # Beim Anhalten des Dienstes endet auch ein laufender
+                    # Abruf – sonst wartet Windows auf einen Vorgang, der
+                    # noch zehntausend Mails vor sich hat, und bricht ihn
+                    # nach dreißig Sekunden hart ab.
+                    weiter=lambda: not self.halt.is_set(),
+                )
+            finally:
+                quelle.close()
             return int(getattr(statistik, "neu", 0))
         except Exception as fehler:  # noqa: BLE001
             self._melden(
                 f"Postfach »{konto.name}« übersprungen: {fehler}", fehler=True
             )
-            return 0
+            return None
 
     def _melden(self, text: str, *, fehler: bool = False) -> None:
         """Dorthin, wo auf diesem System jemand hinsieht.

@@ -11,6 +11,44 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 Noch nichts.
 
+## [1.7.9] – 2026-10-06
+
+### Behoben (der Dienst holte immer noch keine Post)
+
+- **Hinter dem Fehler der 1.7.8 steckte ein zweiter.** Der Abruf im
+  Dienst rief `quelle_fuer(konto)` auf – ohne Passwort, ohne
+  Höchststand, ohne Abrufzustand:
+
+  ```
+  quelle_fuer() missing 1 required positional argument: 'passwort'
+  ```
+
+  Alle sieben Postfächer wurden übersprungen. Dass der Aufruf auch kein
+  `konto=` an `importieren` übergeben darf, wäre die nächste Ausnahme
+  gewesen – diese Zeile ist nie zur Ausführung gekommen, seit es sie
+  gibt.
+
+  **Höchststand und Abrufzustand sind dabei nicht Beiwerk.** Ohne sie
+  holte jeder Lauf das ganze Postfach erneut, alle dreißig Minuten.
+  Und ohne Vormerken gescheiterter Mails zöge der Höchststand an ihnen
+  vorbei: Sie fehlten dann für immer, ohne Spur.
+
+- **»Nichts Neues in 7 Postfächern«, obwohl keines gefragt wurde.** Die
+  Schlussmeldung zählte alle versuchten Postfächer als geprüft, auch
+  die übersprungenen. Das ist die teuerste Sorte Auskunft: Sie
+  beruhigt, stimmt nicht, und wer sie liest, sucht die ausbleibende
+  Post anderswo. Übersprungene werden jetzt getrennt gezählt und
+  genannt.
+
+- **Fehlt das Passwort, sagt die Meldung, was zu tun ist.** Ein Dienst
+  kann nicht nachfragen; dort muss ein Mensch etwas hinterlegen. Also
+  steht `mailburg tresor uebernehmen` in der Meldung statt derselben
+  Zeile wie bei einem Netzfehler.
+
+- **Ein laufender Abruf endet jetzt beim Anhalten des Dienstes.** Sonst
+  wartet Windows auf einen Vorgang, der noch zehntausend Mails vor sich
+  hat, und bricht ihn nach dreißig Sekunden hart ab.
+
 ## [1.7.8] – 2026-10-06
 
 ### Neu
@@ -3264,6 +3302,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.7.9]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.8...v1.7.9
 [1.7.8]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.7...v1.7.8
 [1.7.7]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.6...v1.7.7
 [1.7.6]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.5...v1.7.6
