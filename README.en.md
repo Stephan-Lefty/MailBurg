@@ -1,4 +1,4 @@
-[Deutsch](README.md) | [English](README.en.md) | [Changelog](CHANGELOG.md) | [TODO](TODO.en.md) | [Guides](docs/README.md) | [Legal](RECHTLICHES.md)
+[Deutsch](README.md) | [English](README.en.md) | [Changelog](CHANGELOG.md) | [TODO](TODO.en.md) | [Guides](docs/README.md) | [MailBurg Server](docs/mailburg-server.md) | [Legal](RECHTLICHES.md)
 
 <p align="center">
   <picture>
@@ -43,8 +43,8 @@ use, you need know nothing about the other.
 |---|---|---|
 | **For whom** | one person at their own machine | several people looking into the same archive – a practice, a club, a company |
 | **How you get in** | a program window | a browser, from any desk |
-| **Start here** | **[Getting started](docs/erste-schritte.md)** (German) – from installing to the first searchable archive, with pictures | **[On a Windows Server](docs/server-windows.md)** · **[On Linux](docs/server-einrichten.md)** (German) |
-| **And then** | [The interface](docs/oberflaeche.md) · [Setting up mailboxes](docs/postfaecher-einrichten.md) · [On Windows](docs/windows.md) (German) | [The archive in a browser](#in-the-browser-when-more-than-one-person-needs-access) · [The reasoning](docs/server.md) (German) |
+| **Start here** | **[Getting started](docs/erste-schritte.md)** (German) – from installing to the first searchable archive, with pictures | **[MailBurg Server](docs/mailburg-server.md)** (German) – setup, operation and maintenance in one place |
+| **And then** | [The interface](docs/oberflaeche.md) · [Setting up mailboxes](docs/postfaecher-einrichten.md) · [Backups](docs/sicherung.md) · [On Windows](docs/windows.md) (German) | [Windows Server](docs/server-windows.md) · [Linux](docs/server-einrichten.md) · [Accounts and rights](docs/server-einrichten.md#3-zugänge-anlegen) · [The reasoning](docs/server.md) (German) |
 
 The differences in detail – what the red one deliberately cannot do – are
 under [Blue or red](#blue-or-red--which-one-do-you-need).
@@ -69,7 +69,7 @@ MailBurg does the opposite:
 
 ## Status
 
-**Version 1.7.9, in daily use.** Archive format, IMAP retrieval, search
+**Version 1.8.0, in daily use.** Archive format, IMAP retrieval, search
 including saved searches, the graphical interface, text recognition for
 scanned PDFs, backups and scheduled retrieval are all in place and used every
 day — on Linux with a corpus of around 68,000 messages, on Windows with the

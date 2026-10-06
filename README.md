@@ -1,4 +1,4 @@
-[Deutsch](README.md) | [English](README.en.md) | [Änderungsprotokoll](CHANGELOG.md) | [TODO](TODO.md) | [Anleitungen](docs/README.md) | [Rechtliches](RECHTLICHES.md)
+[Deutsch](README.md) | [English](README.en.md) | [Änderungsprotokoll](CHANGELOG.md) | [TODO](TODO.md) | [Anleitungen](docs/README.md) | [MailBurg Server](docs/mailburg-server.md) | [Rechtliches](RECHTLICHES.md)
 
 <p align="center">
   <picture>
@@ -41,8 +41,8 @@ benutzt, braucht über die andere nichts zu wissen.
 |---|---|---|
 | **Für wen** | eine Person an ihrem Rechner | mehrere, die auf dasselbe Archiv sehen – Kanzlei, Verein, Firma |
 | **Zugang** | Programmfenster | Browser, von jedem Arbeitsplatz aus |
-| **Loslegen** | **[Erste Schritte](docs/erste-schritte.md)** – mit Bildern von der Installation bis zum ersten durchsuchbaren Archiv | **[Auf einem Windows Server](docs/server-windows.md)** · **[Auf Linux](docs/server-einrichten.md)** |
-| **Und weiter** | [Die Oberfläche](docs/oberflaeche.md) · [Postfächer einrichten](docs/postfaecher-einrichten.md) · [Unter Windows](docs/windows.md) | [Das Archiv im Browser](#im-browser-wenn-mehrere-darauf-zugreifen) · [Der Entwurf dahinter](docs/server.md) |
+| **Loslegen** | **[Erste Schritte](docs/erste-schritte.md)** – mit Bildern von der Installation bis zum ersten durchsuchbaren Archiv | **[MailBurg Server](docs/mailburg-server.md)** – Einrichtung, Betrieb und Wartung an einer Stelle |
+| **Und weiter** | [Die Oberfläche](docs/oberflaeche.md) · [Postfächer einrichten](docs/postfaecher-einrichten.md) · [Sichern](docs/sicherung.md) · [Unter Windows](docs/windows.md) | [Windows Server](docs/server-windows.md) · [Linux](docs/server-einrichten.md) · [Zugänge und Rechte](docs/server-einrichten.md#3-zugänge-anlegen) · [Der Entwurf dahinter](docs/server.md) |
 
 Die Unterschiede im Einzelnen – was die rote Fassung *nicht* kann und warum –
 stehen unter [Blau oder rot](#blau-oder-rot--welche-fassung-ist-die-richtige).
@@ -68,7 +68,7 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 1.7.9, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche samt
+**Fassung 1.8.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche samt
 Suchordnern, Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der
 regelmäßige Abruf im Hintergrund stehen und werden täglich benutzt – unter
 Linux mit einem Bestand von rund 68.000 Mails, unter Windows mit der fertigen

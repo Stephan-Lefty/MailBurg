@@ -1,4 +1,4 @@
-[Deutsch](CHANGELOG.md) | [Übersicht](README.md) | [TODO](TODO.md) | [Anleitungen](docs/README.md)
+[Deutsch](CHANGELOG.md) | [Übersicht](README.md) | [TODO](TODO.md) | [Anleitungen](docs/README.md) | [MailBurg Server](docs/mailburg-server.md)
 
 # Änderungsprotokoll
 
@@ -10,6 +10,92 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unveröffentlicht]
 
 Noch nichts.
+
+## [1.8.0] – 2026-10-06
+
+Die erste Fassung, die aus dem laufenden Betrieb eines Firmenservers
+stammt. Am 5. und 6. Oktober ist ein Geschäftsarchiv mit 70.133 Mails
+auf einen Windows Server 2025 gezogen; was dabei fehlte, steht hier.
+
+### Neu
+
+- **Eine Ampel im Einrichtungsfenster.** Ganz oben, vor allem anderen:
+  Rot heißt, es fehlt etwas Zwingendes – der Dienst läuft nicht oder
+  liefert nichts aus. Gelb heißt, es läuft, aber etwas gehört
+  nachgezogen. Grün heißt grün. Daneben ein Knopf, der zur **ersten**
+  offenen Sache führt.
+
+  **Siebzehn Zeilen beantworten nicht die Frage, mit der man dieses
+  Fenster öffnet.** Ein Verwalter will wissen, ob er handeln muss, und
+  zwar bevor er die Liste durchgeht.
+
+  Unklares macht dabei nicht gelb: »Noch nicht nachgesehen« beim Update
+  ist eine offene Frage, keine Störung. Wer daraus Gelb machte, hätte
+  eine Ampel, die nie grün wird – und damit keine.
+
+- **Ein Tagesbericht per Mail, und eine Störungsmeldung sofort.**
+
+  **Warum ein Archivdienst eine Mail schreibt, obwohl er sonst nur
+  liest:** Ein Dienst, der still arbeitet, ist von einem Dienst, der
+  still *nicht* arbeitet, nicht zu unterscheiden. Am 06.10. scheiterte
+  der Abruf tagelang in seiner ersten Zeile; die Meldung stand im
+  Ereignisprotokoll, wo man nur nachsieht, wenn man schon etwas ahnt.
+
+  Der Bericht nennt, wie viele Mails seit dem letzten Mal dazukamen,
+  und ob das Archiv in Ordnung ist – **geprüft, nicht behauptet**. Der
+  Befund steht im Betreff, nicht im Text: Wer dreißig Tagesmails im
+  Postfach hat, liest keine davon, aber einen Betreff, der sich ändert,
+  sieht er.
+
+  Einstellbar sind Empfänger, Uhrzeit und Takt (täglich, alle 7, 14
+  oder 30 Tage) sowie der Postausgangsserver – **ausdrücklich ein
+  eigenes Postfach**, nicht eines der archivierten; sonst landet jeder
+  Bericht beim nächsten Abruf wieder im Archiv. Das Versandpasswort
+  liegt im Tresor, nicht in der Registry.
+
+  **Eine Störung wartet nicht auf die Uhrzeit.** Sie wiederholt sich
+  nicht, solange sie dieselbe bleibt – sonst legt der Empfänger nach
+  dem dritten Mal eine Regel an und bekommt auch die vierte nicht mehr,
+  die etwas anderes sagt. Dafür kommt eine Entwarnung, sobald es wieder
+  läuft.
+
+  **Und das Ausbleiben ist selbst eine Nachricht.** Das steht in jeder
+  Mail.
+
+- **Ein Wartungskasten im Einrichtungsfenster**, das jetzt »einrichten
+  und warten« heißt. Drei Werkzeuge, für die es bisher nur die
+  Kommandozeile gab – auf einem Server also nichts:
+
+  *Archiv prüfen* hält die Hash-Kette gegen die Ablage. *Tresor prüfen*
+  beide Richtungen: Postfächer ohne Anmeldung (der Dienst holt dort
+  nichts und meldet es nicht als Fehler) und Einträge ohne Postfach
+  (fremde Passwörter auf einem gemeinsamen Rechner). *Mails einlesen*
+  übernimmt Post aus Dateien.
+
+  **Der Text zählt dabei mehr als der Knopf.** Eine beschädigte
+  Hash-Kette sieht ein Verwalter höchstens einmal – dann muss dastehen,
+  dass die Mails davon nicht betroffen sind, dass die Lückenlosigkeit
+  beanstandet ist, und was zu tun ist.
+
+- **Mails einlesen hält den Dienst an** – und lässt ihn stehen. Zwei
+  Vorgänge, die gleichzeitig ins selbe Archiv schreiben, reißen die
+  Hash-Kette; das ist am 21.09. passiert. Ihn hinterher von selbst
+  wieder zu starten wäre bequem und falsch: Ein großer Einlesevorgang
+  läuft über Stunden, und wer ihn abends anstößt, will morgens selbst
+  entscheiden, wann wieder Betrieb ist.
+
+  Lässt er sich nicht anhalten, wird gar nicht eingelesen.
+
+- **`mailburg tresor entfernen`** nimmt einen Eintrag heraus. Ein
+  Tresor vom Arbeitsplatz bringt *alle* dortigen Anmeldungen mit; die
+  Kontenliste lässt sich filtern, der Tresor nicht, denn er kennt keine
+  Archive. Jeder Eintrag ist einzeln verschlüsselt – herausnehmen lässt
+  die übrigen lesbar und braucht keinen neuen Hauptschlüssel. Stimmt
+  eine der genannten Kennungen nicht, wird **keine** entfernt.
+
+- **`mailburg zugaenge ARCHIV anzeigename NAME "Vor Nachname"`** ändert
+  den Klarnamen. Bisher ging das nur im Einrichtungsfenster – also an
+  dem Ort, den es auf einem Server gerade nicht gibt.
 
 ## [1.7.9] – 2026-10-06
 
@@ -3302,6 +3388,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.8.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.9...v1.8.0
 [1.7.9]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.8...v1.7.9
 [1.7.8]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.7...v1.7.8
 [1.7.7]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.6...v1.7.7
