@@ -95,6 +95,133 @@ KNOEPFE = {
 }
 
 
+def pruefbericht(bericht: dict) -> tuple[str, bool]:
+    """Macht aus ``Archive.verify()`` einen Text für Menschen.
+
+    Gibt den Text zurück und ob er heikel ist – daran entscheidet das
+    Fenster, ob es eine Warnung zeigt oder eine Mitteilung.
+
+    **Eigene Funktion und nicht im Fenster.** So lässt sie sich ohne Qt
+    prüfen, und zwar für alle Fälle: ein heiles Archiv, eine gerissene
+    Kette, fehlende Dateien, untergeschobene Dateien. Genau diese Fälle
+    sieht ein Verwalter höchstens einmal – und dann muss der Text
+    stimmen.
+
+    **Ein Befund ohne Weg ist nur eine schlechte Nachricht.** Wer liest,
+    dass die Hash-Kette beschädigt ist, muss erfahren, was das heißt:
+    Die Mails sind da, die Lückenlosigkeit ist es nicht.
+    """
+    zeilen: list[str] = []
+    heikel = False
+
+    if bericht["chain_ok"] and bericht.get("chain_bekannt"):
+        zeilen.append(
+            f"Hash-Kette: schlüssig bis auf "
+            f"{len(bericht['chain_bekannt'])} vermerkte Stelle(n), "
+            f"{bericht['chain_entries']} Einträge."
+        )
+    elif bericht["chain_ok"]:
+        zeilen.append(
+            f"Hash-Kette: unversehrt, {bericht['chain_entries']} Einträge."
+        )
+    else:
+        heikel = True
+        zeilen.append(
+            f"Hash-Kette: BESCHÄDIGT an "
+            f"{len(bericht['chain_errors'])} Stelle(n)."
+        )
+
+    fehlend = bericht.get("missing") or []
+    fremd = bericht.get("unexpected") or []
+    unvollstaendig = bericht.get("unvollstaendig") or []
+
+    if fehlend:
+        heikel = True
+        zeilen.append(
+            f"{len(fehlend)} Mail(s) stehen im Journal, liegen aber nicht "
+            f"mehr auf der Platte."
+        )
+    if fremd:
+        heikel = True
+        zeilen.append(
+            f"{len(fremd)} Datei(en) liegen im Archiv, ohne im Journal zu "
+            f"stehen – sie sind nicht archiviert, sondern untergeschoben."
+        )
+    if unvollstaendig:
+        heikel = True
+        zeilen.append(
+            f"{len(unvollstaendig)} Journaleintrag/-einträge sagen nicht, "
+            f"welche Mail sie meinen."
+        )
+
+    if not heikel:
+        zeilen.append("Ablage: jede Mail am Platz, nichts Fremdes dabei.")
+        zeilen.append("")
+        zeilen.append("Das Archiv ist in Ordnung.")
+        return "\n".join(zeilen), False
+
+    zeilen.append("")
+    zeilen.append(
+        "Was das heißt: Die Mails selbst sind davon nicht betroffen – "
+        "beanstandet ist die Lückenlosigkeit, also der Nachweis, dass "
+        "nichts nachträglich geändert wurde."
+    )
+    zeilen.append(
+        "Was zu tun ist: Nichts überschreiben und nichts aufräumen. "
+        "Eine bekannte Ursache lässt sich festhalten "
+        "(»mailburg kettenvermerk«), damit sie erklärt ist statt "
+        "verschwiegen. Vorher den Grund suchen – ein zweiter Vorgang am "
+        "selben Archiv ist der häufigste."
+    )
+    return "\n".join(zeilen), True
+
+
+def tresorbericht(eintraege: int, schlecht: list[str], ohne: list[str],
+                  konten: int) -> tuple[str, bool]:
+    """Reicht der Tresor für die eingerichteten Postfächer?
+
+    Dieselbe Trennung wie bei :func:`pruefbericht` und aus demselben
+    Grund: Der Text ist das Eigentliche, und er soll ohne Fenster
+    prüfbar sein.
+
+    **Beide Richtungen zählen.** Ein Postfach ohne Eintrag kann der
+    Dienst nicht abrufen – und er meldet das nicht als Fehler, er
+    überspringt es. Ein Eintrag ohne Postfach ist ein fremdes Passwort
+    auf einem Rechner, an dem mehrere Menschen arbeiten.
+    """
+    zeilen = [f"Im Tresor liegen {eintraege} Einträge."]
+    heikel = False
+
+    if schlecht:
+        heikel = True
+        zeilen.append(
+            f"{len(schlecht)} davon lassen sich nicht öffnen – vermutlich "
+            f"der falsche Hauptschlüssel, oder die Datei stammt von einem "
+            f"anderen Rechner."
+        )
+    if ohne:
+        heikel = True
+        zeilen.append("")
+        zeilen.append(
+            f"Ohne Anmeldung: {', '.join(ohne)} "
+            f"({len(ohne)} von {konten} Postfächern)."
+        )
+        zeilen.append(
+            "Von dort holt der Dienst keine Post. Er meldet das nicht als "
+            "Fehler – es kommt einfach nichts an."
+        )
+        zeilen.append(
+            "Nachtragen auf dem Rechner, auf dem die Postfächer "
+            "eingerichtet sind: mailburg tresor uebernehmen"
+        )
+
+    if not heikel:
+        zeilen.append(
+            f"Alle {konten} eingerichteten Postfächer haben eine Anmeldung."
+        )
+    return "\n".join(zeilen), heikel
+
+
 class Zeile(QWidget):
     """Ein Befund: Zeichen, Titel, Text – und vielleicht ein Knopf."""
 
@@ -143,7 +270,12 @@ class Einrichtungsfenster(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("MailBurg im Browser – einrichten")
+        # **»und Wartung«, seit dem 2026-10-06.** Das Fenster war als
+        # Einrichtungshilfe gedacht – etwas, das man einmal braucht.
+        # Nach dem ersten echten Serverumzug ist klar, dass es der Ort
+        # ist, an dem ein Verwalter *im Betrieb* nachsieht: Läuft es
+        # sauber, und wenn nicht, was ist zu tun?
+        self.setWindowTitle("MailBurg im Browser – einrichten und warten")
         self.umgebung = self._umgebung_laden()
 
         #: Was GitHub zuletzt gesagt hat. **Gemerkt, nicht bei jedem
@@ -157,11 +289,12 @@ class Einrichtungsfenster(QMainWindow):
         senkrecht = QVBoxLayout(mitte)
 
         senkrecht.addWidget(Fliesstext(
-            "<p>Hier wird eingerichtet, was nötig ist, damit das Archiv im "
-            "Browser erreichbar ist – auf diesem Rechner und, wenn Sie es "
-            "wollen, im Netz.</p>"
+            "<p>Hier wird eingerichtet und nachgesehen, was nötig ist, "
+            "damit das Archiv im Browser erreichbar ist – auf diesem "
+            "Rechner und, wenn Sie es wollen, im Netz.</p>"
             "<p>Die Liste prüft sich selbst. Wo etwas fehlt, steht der "
-            "Knopf daneben.</p>"
+            "Knopf daneben; die Werkzeuge darunter sagen Ihnen, ob das "
+            "Archiv in Ordnung ist.</p>"
         ))
 
         # -- Einstellungen -------------------------------------------------
@@ -278,23 +411,6 @@ class Einrichtungsfenster(QMainWindow):
             )
             dienstzeile.addWidget(knopf)
         dienstzeile.addStretch(1)
-        # **Der Weg für Altbestände.** Ein Archiv, das aus MailStore
-        # oder einem anderen Programm kommt, zieht als Verzeichnis
-        # voller .eml-Dateien um – und auf einem Server gab es dafür nur
-        # die Kommandozeile. Dieselbe Lehre wie am 2026-09-03 bei der
-        # blauen Fassung: *Eine Funktion, die niemand findet, gibt es
-        # für den Anwender nicht.*
-        einlesen = QPushButton("Mails einlesen …")
-        einlesen.setToolTip(
-            "Post aus Dateien übernehmen – ein Verzeichnis mit "
-            ".eml-Dateien, ein Maildir, eine MBOX-Datei oder ein "
-            "Thunderbird-Profil.\n\n"
-            "Der Dienst wird dafür angehalten und danach wieder "
-            "gestartet: Zwei Prozesse, die gleichzeitig ins selbe "
-            "Archiv schreiben, reißen die Hash-Kette."
-        )
-        einlesen.clicked.connect(self._einlesen)
-        dienstzeile.addWidget(einlesen)
         symbole = QPushButton("Symbole anlegen")
         symbole.setToolTip(
             "Zwei Verknüpfungen auf dem Schreibtisch aller Benutzer: "
@@ -306,6 +422,44 @@ class Einrichtungsfenster(QMainWindow):
         nachsehen.clicked.connect(self.auffrischen)
         dienstzeile.addWidget(nachsehen)
         senkrecht.addLayout(dienstzeile)
+
+        # -- Wartung --------------------------------------------------------
+        # **Eigener Kasten, seit dem 2026-10-06.** Die Prüfliste darüber
+        # beantwortet »ist es eingerichtet«. Ein Verwalter im Betrieb
+        # fragt etwas anderes: »Ist mein Archiv in Ordnung, und wenn
+        # nicht, was tue ich?« Dafür gab es bisher nur die
+        # Kommandozeile – auf einem Server also nichts.
+        wartung = QGroupBox("Wartung")
+        wartungszeile = QHBoxLayout(wartung)
+        for beschriftung, hinweis, ziel in (
+            ("Archiv prüfen",
+             "Hält die Hash-Kette gegen die Ablage: Ist jede Mail noch "
+             "da, und liegt dort nichts, was nicht im Journal steht?\n\n"
+             "Das Archiv wird dabei nur gelesen.",
+             "pruefen"),
+            ("Tresor prüfen",
+             "Lässt sich jeder Eintrag öffnen – und reicht er für alle "
+             "eingerichteten Postfächer?\n\n"
+             "Fehlt einem Postfach die Anmeldung, holt der Dienst von "
+             "dort keine Post und meldet es nicht als Fehler.",
+             "tresor_pruefen"),
+            ("Mails einlesen …",
+             "Post aus Dateien übernehmen – ein Verzeichnis mit "
+             ".eml-Dateien, ein Maildir, eine MBOX-Datei oder ein "
+             "Thunderbird-Profil.\n\n"
+             "Der Dienst wird dafür angehalten und bleibt es, bis Sie "
+             "ihn wieder starten: Zwei Vorgänge, die gleichzeitig ins "
+             "selbe Archiv schreiben, reißen die Hash-Kette.",
+             "einlesen"),
+        ):
+            knopf = QPushButton(beschriftung)
+            knopf.setToolTip(hinweis)
+            knopf.clicked.connect(
+                lambda _=False, z=ziel: self._wartung(z)
+            )
+            wartungszeile.addWidget(knopf)
+        wartungszeile.addStretch(1)
+        senkrecht.addWidget(wartung)
 
         # -- Protokoll ------------------------------------------------------
         protokollkasten = QGroupBox("Was der Dienst meldet")
@@ -485,6 +639,88 @@ class Einrichtungsfenster(QMainWindow):
                 "Eingelesen wird in ein Archiv. Wählen Sie zuerst eines.",
             )
             return
+        self._einlesen_mit_archiv(ort)
+
+    def _wartung(self, ziel: str) -> None:
+        """Verteiler der Wartungsknöpfe."""
+        if ziel == "einlesen":
+            self._einlesen()
+        elif ziel == "pruefen":
+            self._archiv_pruefen()
+        elif ziel == "tresor_pruefen":
+            self._tresor_pruefen()
+
+    def _archiv_pruefen(self) -> None:
+        """Hash-Kette gegen Ablage – und sagen, was zu tun ist.
+
+        **Ein Befund ohne Weg ist nur eine schlechte Nachricht.** Wer
+        auf einem Server liest, dass die Hash-Kette beschädigt ist, muss
+        erfahren, was das heißt und was er tun kann; sonst ruft er an
+        und fragt, ob die Mails weg sind.
+        """
+        ort = self.archivfeld.text().strip()
+        if not ort:
+            QMessageBox.information(
+                self, "Erst das Archiv",
+                "Geprüft wird ein Archiv. Wählen Sie zuerst eines.",
+            )
+            return
+
+        from mailburg.core.archive import Archive
+
+        try:
+            # Lesend: Eine Prüfung darf einen laufenden Abruf nicht
+            # aussperren, und ändern will sie ohnehin nichts.
+            with Archive.open(ort, exclusive=False) as archiv:
+                bericht = archiv.verify()
+        except Exception as fehler:  # noqa: BLE001
+            QMessageBox.warning(self, "Archiv prüfen", str(fehler))
+            return
+
+        text, heikel = pruefbericht(bericht)
+        self._melden(text.replace("\n", " · "))
+        if heikel:
+            QMessageBox.warning(self, "Archiv prüfen", text)
+        else:
+            QMessageBox.information(self, "Archiv prüfen", text)
+
+    def _tresor_pruefen(self) -> None:
+        """Reicht, was im Tresor liegt, für die eingerichteten Postfächer?"""
+        from mailburg.core import accounts, tresor
+
+        if not tresor.verfuegbar():
+            QMessageBox.information(
+                self, "Tresor",
+                "Es ist kein Hauptschlüssel eingerichtet. Ohne ihn holt "
+                "der Dienst keine Post – auf einem Arbeitsplatz ist das "
+                "in Ordnung, auf einem Server nicht.",
+            )
+            return
+
+        eintraege = tresor.eintraege()
+        schlecht = []
+        for name in eintraege:
+            try:
+                tresor.holen(name)
+            except tresor.TresorFehler:
+                schlecht.append(name)
+
+        konten = accounts.Kontenliste().konten
+        vorhanden = set(eintraege)
+        ohne = [
+            k.name for k in konten
+            if k.schluessel not in vorhanden
+            and not (k.per_oauth2 and k.token_schluessel in vorhanden)
+        ]
+
+        text, heikel = tresorbericht(len(eintraege), schlecht, ohne, len(konten))
+        self._melden(text.replace("\n", " · "))
+        if heikel:
+            QMessageBox.warning(self, "Tresor prüfen", text)
+        else:
+            QMessageBox.information(self, "Tresor prüfen", text)
+
+    def _einlesen_mit_archiv(self, ort: str) -> None:
 
         lief, _ = einrichtung.dienst_zustand()
         if lief is Lage.GUT:
