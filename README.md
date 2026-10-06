@@ -393,7 +393,7 @@ liegt das Archiv auf einem Rechner, der läuft, und alle anderen erreichen es
 über den Browser: anmelden, suchen, lesen, Anhänge herunterladen.
 
 <p align="center">
-  <img src="docs/bilder/server-uebersicht.png" alt="Die Weboberfläche nach der Anmeldung: oben eine Werkzeugleiste mit Erweiterte Suche, Neue Suche, Einstellungen, Hilfe und Über. Darunter das Suchfeld, links eine Spalte mit den beiden Postfächern, die dieser Zugang sehen darf, und rechts die Trefferliste – je Nachricht zwei Zeilen mit Absender, Betreff, Datum und einer Büroklammer bei Anhängen." width="900">
+  <img src="docs/bilder/server-uebersicht.png" alt="Die Weboberfläche nach der Anmeldung: oben eine Werkzeugleiste mit Erweiterte Suche, Neue Suche, Einstellungen, Hilfe und Über. Darunter das Suchfeld, dann eine Zeile mit dem Knopf »Postfächer« und der Trefferzahl, und darunter die Treffer über die volle Breite – je Nachricht zwei Zeilen mit Absender, Betreff, Datum und einer Büroklammer bei Anhängen. Der Knopf schiebt eine Spalte auf, in der steht, welche Postfächer dieser Zugang durchsuchen darf." width="900">
 </p>
 
 Eine Nachricht geöffnet – mit Anhang, »Im Mailprogramm öffnen« und

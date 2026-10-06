@@ -338,6 +338,14 @@ def main() -> int:
             knipser.oeffnen("/?q=rechnung")
             knipser.ablegen("server-trefferliste")
 
+            # **Einmal mit offener Postfachspalte.** Zugeschoben ist
+            # seit der 1.8.0 die Vorgabe – damit sieht man auf dem Bild
+            # oben die Spalte gar nicht mehr, und niemand käme auf die
+            # Idee, dass es sie gibt.
+            knipser.oeffnen("/postfaecher?wahl=auf&weiter=%2F%3Fq%3Drechnung")
+            knipser.ablegen("server-postfaecher")
+            knipser.oeffnen("/postfaecher?wahl=zu&weiter=%2F%3Fq%3Drechnung")
+
             # Die erste Nachricht öffnen – welche das ist, steht nicht
             # fest, deshalb über den ersten Treffer gehen.
             ziel = knipser.ausfuehren(

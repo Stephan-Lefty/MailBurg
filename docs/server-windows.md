@@ -386,11 +386,18 @@ erfährt nicht einmal, wie das Archiv heißt.
 
 ![Die Anmeldeseite: Kopfzeile mit rotem Wappen und dem Schriftzug MailBurg SERVER, rechts der Umschalter System · Hell · Dunkel. In der Mitte zwei Felder für Anmeldename und Passwort mit einer Schaltfläche Anmelden.](bilder/server-anmelden.png)
 
-Nach der Anmeldung die Suche. Links stehen nur die Postfächer, die
-dieser Zugang sehen darf; die Zahl dahinter ist die der Nachrichten
-darin.
+Nach der Anmeldung die Suche. Die Treffer bekommen die volle Breite –
+gesucht wird ohnehin über alle Postfächer, die dieser Zugang sehen
+darf.
 
-![Die Trefferliste nach einer Suche nach »rechnung«: oben die Werkzeugleiste, darunter das Suchfeld mit der Trefferzahl, links die Postfachspalte und rechts drei Treffer, je zwei Zeilen mit Absender, Betreff, Datum und einer Büroklammer für den Anhang.](bilder/server-trefferliste.png)
+![Die Trefferliste nach einer Suche nach »rechnung«: oben die Werkzeugleiste, darunter das Suchfeld, dann der Knopf »Postfächer« neben der Trefferzahl und darunter drei Treffer über die volle Breite, je zwei Zeilen mit Absender, Betreff, Datum und einer Büroklammer für den Anhang.](bilder/server-trefferliste.png)
+
+Wer wissen will, **worin** er eigentlich sucht, drückt auf
+*Postfächer*. Die Spalte zeigt jedes Postfach mit seiner Mailzahl, und
+ein Klick darauf grenzt die Suche darauf ein. Sie bleibt offen, bis man
+sie wieder zuschiebt.
+
+![Dieselbe Trefferliste mit aufgeschobener Postfachspalte: links zwei Kästen mit je einer Mailadresse und der Zahl der Nachrichten darin, oben der Knopf »Postfächer« zum Zuschieben, rechts daneben unverändert die drei Treffer.](bilder/server-postfaecher.png)
 
 Unter **Einstellungen** stellt jeder für sich ein, wie es aussehen soll.
 Die Einstellung hängt am Browser, nicht am Zugang – wer sich von einem

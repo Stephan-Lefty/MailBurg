@@ -360,7 +360,7 @@ and everyone else reaches it through a browser: sign in, search, read, download
 attachments.
 
 <p align="center">
-  <img src="docs/bilder/server-uebersicht.png" alt="The web interface after signing in: a toolbar across the top with advanced search, new search, settings, help and about. Below it the search box, on the left a column listing the two mailboxes this account may see, and on the right the results – two lines per message with sender, subject, date and a paperclip where there are attachments." width="900">
+  <img src="docs/bilder/server-uebersicht.png" alt="The web interface after signing in: a toolbar across the top with advanced search, new search, settings, help and about. Below it the search box, then a row with the »Postfächer« button and the number of hits, and under that the results across the full width – two lines per message with sender, subject, date and a paperclip where there are attachments. The button slides open a column listing which mailboxes this account may search." width="900">
 </p>
 
 A message opened – with its attachment, »open in mail client« and
