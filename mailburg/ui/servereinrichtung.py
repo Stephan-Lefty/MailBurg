@@ -278,6 +278,23 @@ class Einrichtungsfenster(QMainWindow):
             )
             dienstzeile.addWidget(knopf)
         dienstzeile.addStretch(1)
+        # **Der Weg für Altbestände.** Ein Archiv, das aus MailStore
+        # oder einem anderen Programm kommt, zieht als Verzeichnis
+        # voller .eml-Dateien um – und auf einem Server gab es dafür nur
+        # die Kommandozeile. Dieselbe Lehre wie am 2026-09-03 bei der
+        # blauen Fassung: *Eine Funktion, die niemand findet, gibt es
+        # für den Anwender nicht.*
+        einlesen = QPushButton("Mails einlesen …")
+        einlesen.setToolTip(
+            "Post aus Dateien übernehmen – ein Verzeichnis mit "
+            ".eml-Dateien, ein Maildir, eine MBOX-Datei oder ein "
+            "Thunderbird-Profil.\n\n"
+            "Der Dienst wird dafür angehalten und danach wieder "
+            "gestartet: Zwei Prozesse, die gleichzeitig ins selbe "
+            "Archiv schreiben, reißen die Hash-Kette."
+        )
+        einlesen.clicked.connect(self._einlesen)
+        dienstzeile.addWidget(einlesen)
         symbole = QPushButton("Symbole anlegen")
         symbole.setToolTip(
             "Zwei Verknüpfungen auf dem Schreibtisch aller Benutzer: "
@@ -449,6 +466,61 @@ class Einrichtungsfenster(QMainWindow):
         self.archivfeld.setText(ordner)
         self._melden("Angelegt: 27 erfundene Mails, alle auf .example.")
         self.auffrischen()
+
+    def _einlesen(self) -> None:
+        """Post aus Dateien übernehmen – mit angehaltenem Dienst.
+
+        **Der Dienst muss stehen, und er bleibt es danach.** Zwei
+        Prozesse, die gleichzeitig ins selbe Archiv schreiben, reißen
+        die Hash-Kette; das ist am 2026-09-21 passiert. Ihn hinterher
+        von selbst wieder zu starten wäre bequem und falsch: Ein großer
+        Einlesevorgang läuft über Stunden, und wer ihn nachts anstößt,
+        will morgens selbst entscheiden, wann wieder Betrieb ist. Der
+        Knopf *Starten* steht gleich daneben.
+        """
+        ort = self.archivfeld.text().strip()
+        if not ort:
+            QMessageBox.information(
+                self, "Erst das Archiv",
+                "Eingelesen wird in ein Archiv. Wählen Sie zuerst eines.",
+            )
+            return
+
+        lief, _ = einrichtung.dienst_zustand()
+        if lief is Lage.GUT:
+            antwort = QMessageBox.question(
+                self, "Dienst anhalten?",
+                "Zum Einlesen muss der Dienst stehen – sonst schreiben "
+                "zwei Vorgänge gleichzeitig ins Archiv.\n\n"
+                "Er wird jetzt angehalten und bleibt es, bis Sie ihn "
+                "mit »Starten« wieder in Betrieb nehmen. Solange ist "
+                "das Archiv im Browser nicht erreichbar.",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
+            )
+            if antwort != QMessageBox.Yes:
+                return
+            geschafft, meldung = einrichtung.dienst_stoppen()
+            self._melden(meldung)
+            if not geschafft:
+                QMessageBox.warning(
+                    self, "Dienst läuft weiter",
+                    "Der Dienst ließ sich nicht anhalten. Eingelesen wird "
+                    "deshalb nicht – das Risiko für die Hash-Kette wäre "
+                    "zu groß.\n\n" + meldung,
+                )
+                return
+            self.auffrischen()
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.einlesen import Einlesedialog
+
+        try:
+            with Archive.open(ort, exclusive=True) as archiv:
+                Einlesedialog(archiv, self).exec()
+        except Exception as fehler:  # noqa: BLE001
+            QMessageBox.warning(self, "Einlesen", str(fehler))
+        finally:
+            self.auffrischen()
 
     def _zugaenge(self) -> None:
         ort = self.archivfeld.text().strip()
