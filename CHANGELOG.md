@@ -148,9 +148,14 @@ Aus dem ersten vollständigen Durchlauf auf einem Windows Server 2025 am
   keinen Treffer. Nachzuerkennen braucht tesseract, das auf einem
   Server meist fehlt.
 
-  Aufgefallen beim ersten echten Umzug am 05.10.2026 **an einer Zahl,
-  die nicht passte**: derselbe Bestand, Index auf dem Arbeitsplatz
-  954 MB, auf dem Server 665 MB. Betroffen waren 1844 Dokumente.
+  Aufgefallen beim ersten echten Umzug am 05.10.2026: Archiv und
+  Sicherungsdatei gingen mit, der Ordner `ocr` nicht. Betroffen waren
+  1844 Dokumente.
+
+  **Die Indexgröße taugt dafür nicht als Anhaltspunkt** – und das war
+  zuerst die Begründung: 665 MB auf dem Server gegen 954 MB auf dem
+  Arbeitsplatz. Gemessen war aber mitten im Lauf; fertig waren es
+  1,07 GB. Ob der erkannte Text fehlt, sagt nur, ob der Ordner da ist.
 
 ### Behoben
 

@@ -134,9 +134,16 @@ kommt nicht mit**, er wird gleich neu gebaut.
 ### Der erkannte Text aus Scans kommt aber auch nicht mit
 
 **Und der wird nicht neu gebaut.** Das ist der Unterschied, der beim
-ersten echten Umzug am 05.10.2026 aufgefallen ist – an einer Zahl, die
-nicht passte: Derselbe Bestand hatte auf dem Arbeitsplatz einen Index
-von 954 MB, auf dem Server 665 MB.
+ersten echten Umzug am 05.10.2026 aufgefallen ist: Kopiert wurden
+Archiv und Sicherungsdatei – der Ordner `ocr` nicht, und der Neuaufbau
+meldete trotzdem alle 70.133 Mails.
+
+> **An der Indexgröße ist das nicht zu erkennen.** Beim Umzug lag die
+> Vermutung nahe, der Server habe einen kleineren Index: gemessen
+> wurden 665 MB gegen 954 MB auf dem Arbeitsplatz. Gemessen war aber
+> **mitten im Lauf**; fertig waren es 1,07 GB, also mehr als auf dem
+> Arbeitsplatz. Ob der erkannte Text fehlt, sagt nur, ob der Ordner
+> `ocr` vorhanden ist.
 
 Text aus einem **eingescannten** PDF entsteht nicht beim Indexbauen,
 sondern durch Texterkennung – ein Vorgang von Stunden. Er liegt deshalb
