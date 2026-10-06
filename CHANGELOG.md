@@ -9,6 +9,10 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+Noch nichts.
+
+## [1.7.8] – 2026-10-06
+
 ### Neu
 
 - **Ein Fenster, das den Serverdienst einrichtet.** Bis hierher ging das
@@ -3260,6 +3264,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.7.8]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.7...v1.7.8
 [1.7.7]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.6...v1.7.7
 [1.7.6]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.5...v1.7.6
 [1.7.5]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.4...v1.7.5
