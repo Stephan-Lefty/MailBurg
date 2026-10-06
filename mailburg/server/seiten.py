@@ -644,7 +644,7 @@ def _gemeinsame_domain(postfaecher) -> str:
 
     **Die häufigste, nicht die einzige.** Der erste Entwurf verlangte,
     dass *alle* Adressen gleich enden. Stephans Frage dazu war die
-    richtige: »wenn später roesner@gmail.at dazu kommt« – dann hätte
+    richtige: »wenn später roesner@freemail.example dazu kommt« – dann hätte
     eine einzige fremde Adresse alle siebenundzwanzig Einträge wieder
     lang gemacht. Jetzt bleibt die fremde Adresse vollständig stehen und
     hebt sich dadurch sogar ab; das ist dasselbe Muster, das
@@ -775,7 +775,7 @@ def _postfachleiste(postfaecher: dict[str, int], ausdruck: str,
     # erkennbaren Sinn.
     # **Was weggelassen wird, steht dabei.** Sonst rät man, zu welcher
     # Domain »roesner« gehört – besonders, sobald daneben ein
-    # vollständiges »roesner@gmail.at« steht.
+    # vollständiges »roesner@freemail.example« steht.
     weggelassen = (
         f" Bei den kurzen Namen fehlt »@{html.escape(gemeinsam)}«."
         if gemeinsam else ""

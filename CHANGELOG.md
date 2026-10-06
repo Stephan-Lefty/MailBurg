@@ -27,7 +27,7 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
   **Gekürzt wird die häufigste Domain, nicht die einzige.** Der erste
   Entwurf verlangte, dass *alle* Adressen gleich enden – Stephans Frage
-  dazu war die richtige: *»wenn später roesner@gmail.at dazu kommt«*.
+  dazu war die richtige: *»wenn später roesner@freemail.example dazu kommt«*.
   Dann hätte eine einzige fremde Adresse alle siebenundzwanzig
   Einträge wieder lang gemacht. Jetzt bleibt sie vollständig stehen und
   hebt sich dadurch sogar ab; dasselbe Muster benutzen Mailprogramme

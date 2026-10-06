@@ -37,7 +37,7 @@ class GemeinsameDomainTest(unittest.TestCase):
 
     def test_eine_fremde_adresse_kippt_die_kuerzung_nicht(self):
         """**Stephans Frage vom 06.10.2026**, wörtlich: »wenn später
-        roesner@gmail.at dazu kommt«.
+        roesner@freemail.example dazu kommt«.
 
         Der erste Entwurf verlangte, dass *alle* Adressen gleich enden –
         dann hätte eine einzige fremde alle siebenundzwanzig Einträge
