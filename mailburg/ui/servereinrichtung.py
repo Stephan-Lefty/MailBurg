@@ -25,6 +25,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -33,6 +34,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -150,6 +152,7 @@ class Einrichtungsfenster(QMainWindow):
         # ist, an dem ein Verwalter *im Betrieb* nachsieht: Läuft es
         # sauber, und wenn nicht, was ist zu tun?
         self.setWindowTitle("MailBurg im Browser – einrichten und warten")
+        self._wappen_setzen()
         self.umgebung = self._umgebung_laden()
 
         #: Was GitHub zuletzt gesagt hat. **Gemerkt, nicht bei jedem
@@ -158,8 +161,23 @@ class Einrichtungsfenster(QMainWindow):
         #: Zeitablauf, bevor überhaupt etwas erscheint.
         self.stand = None
 
+        # **Ein Rollbereich, und zwar als Rückfalllinie.** In der
+        # Vorgabegröße soll nichts gerollt werden – das ist Stephans
+        # Regel vom 2026-08-31, und sie gilt. Aber dieses Fenster hat
+        # siebzehn Prüfzeilen, einen Wartungskasten und ein Protokoll;
+        # auf einem Server, der oft an einem kleinen oder entfernten
+        # Bildschirm hängt, kam man an die unteren Zeilen gar nicht
+        # heran (2026-10-06 gemeldet: »im Menü kann ich nicht
+        # scrollen«).
         mitte = QWidget()
-        self.setCentralWidget(mitte)
+        rollen = QScrollArea()
+        rollen.setWidget(mitte)
+        rollen.setWidgetResizable(True)
+        # Waagerecht wird nie gerollt: Was zu breit ist, ist ein Fehler
+        # im Layout und soll als solcher auffallen.
+        rollen.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        rollen.setFrameShape(QFrame.NoFrame)
+        self.setCentralWidget(rollen)
         senkrecht = QVBoxLayout(mitte)
 
         # -- Die Ampel ------------------------------------------------------
@@ -1035,6 +1053,30 @@ class Einrichtungsfenster(QMainWindow):
         self.protokoll.appendPlainText(text)
         leiste = self.protokoll.verticalScrollBar()
         leiste.setValue(leiste.maximum())
+
+
+    def _wappen_setzen(self) -> None:
+        """Das rote Wappen ins Fenster.
+
+        **Es fehlte seit jeher**, und das fällt gerade hier auf: Wer das
+        Fenster neben dem blauen Programmfenster in der Leiste hat,
+        unterscheidet beide am Wappen. Ohne eines steht dort ein leeres
+        Blatt – bei einem Programm, das Vertrauen wecken soll, wirkt das
+        unnötig schäbig. Derselbe Befund wie am 2026-08-28 bei der
+        gepackten Windows-Fassung.
+
+        Fehlt die Datei, bleibt es beim leeren Blatt: Ein Symbol ist
+        kein Grund, ein Fenster nicht zu öffnen.
+        """
+        from PySide6.QtGui import QIcon
+
+        from mailburg import bilder
+
+        for name in ("server/icon-256.png", "server/icon-64.png"):
+            ort = bilder.finden(name)
+            if ort is not None:
+                self.setWindowIcon(QIcon(str(ort)))
+                return
 
 
 def starten() -> int:

@@ -449,6 +449,29 @@ def pruefe_tresor(umgebung: Umgebung) -> Befund:
 # ------------------------------------------------------------ Umgebung
 
 
+#: Welche Variablen beim Öffnen gelesen werden.
+#:
+#: **Dieselbe Liste wie beim Schreiben, und das war sie nicht.** Bis zum
+#: 2026-10-06 standen hier nur Archiv, Adresse und Port – geschrieben
+#: wurden aber auch ``MAILBURG_EINSTELLUNGEN``, ``MAILBURG_DATEN``,
+#: Abruftakt und Ruhezeit. Die Folge: Das Fenster zeigte sie leer, und
+#: die Prüfliste schloss daraus, der Dienst finde den Tresor nicht –
+#: eine rote Ampel über einem Server, der seit Stunden sauber Post holt.
+#:
+#: **Ein Fehlalarm ist teurer als eine fehlende Warnung.** Wer dreimal
+#: nachsieht und nichts findet, glaubt beim vierten Mal auch der
+#: richtigen Meldung nicht mehr.
+GELESEN = (
+    lage.ARCHIV,
+    lage.ADRESSE,
+    lage.ANSCHLUSS,
+    paths.EINSTELLUNGEN,
+    paths.DATEN,
+    "MAILBURG_ABRUF",
+    "MAILBURG_ABRUF_PAUSE",
+)
+
+
 def gesetzte_variablen() -> dict[str, str]:
     """Was systemweit hinterlegt ist – aus der Registry, nicht aus os.environ.
 
@@ -458,8 +481,7 @@ def gesetzte_variablen() -> dict[str, str]:
     Wer die eigene Umgebung befragt, prüft seine Erinnerung.
     """
     if not ist_windows():
-        return {k: os.environ.get(k, "") for k in
-                (lage.ARCHIV, lage.ADRESSE, lage.ANSCHLUSS)}
+        return {k: os.environ.get(k, "") for k in GELESEN}
 
     import winreg
 
@@ -467,7 +489,7 @@ def gesetzte_variablen() -> dict[str, str]:
     werte = {}
     try:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, pfad) as schluessel:
-            for name in (lage.ARCHIV, lage.ADRESSE, lage.ANSCHLUSS):
+            for name in GELESEN:
                 try:
                     werte[name] = winreg.QueryValueEx(schluessel, name)[0]
                 except FileNotFoundError:
