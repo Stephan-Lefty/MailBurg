@@ -24,6 +24,11 @@
   Ordner so benennen, dass daraus die Postfächer werden, und einlesen. Warum
   Dubletten niemand vorher aussortieren muss, und warum beide Archive einige
   Wochen nebeneinander laufen sollten.
+- **[Vorlage: Übernahmeprotokoll](uebernahmeprotokoll-vorlage.md)** – zum
+  Ausfüllen, wenn ein Archiv umgezogen ist. Wer geschäftliche Post
+  aufbewahrt, muss belegen können, wie sie ins System kam und dass dabei
+  nichts verändert wurde. Elf Abschnitte, in einer Sprache, die auch eine
+  Geschäftsführung ohne Technikhintergrund versteht.
 - **[Post aus dem Archiv zurückholen](zurueckspielen.md)** – eine einzelne
   Nachricht ins Mailprogramm, oder ein ganzes Postfach als Maildir, MBOX oder
   einzelne `.eml`. Welches Format wofür taugt, und warum zweimal

@@ -168,6 +168,20 @@ Ein Archiv, aus dem etwas fehlt, sieht genauso aus wie ein
 vollständiges. Das ist der Grund für diese Wartezeit, und sie ist der
 einzige Weg, die Vollständigkeit zu belegen.
 
+## 9. Den Vorgang protokollieren
+
+**Bei geschäftlicher Post gehört der Umzug belegt.** Nachvollziehbar
+sein muss, wie die Daten in das System gekommen sind und dass dabei
+nichts verändert wurde – das verlangen die GoBD, und es ist ohnehin
+die Frage, die in fünf Jahren jemand stellt.
+
+Dafür gibt es eine Vorlage zum Ausfüllen:
+**[Übernahmeprotokoll](uebernahmeprotokoll-vorlage.md)**.
+
+**Schreiben Sie die Zahlen mit, während der Umzug läuft.** Am Ende
+jedes Laufs steht die Bilanz; hinterher ist sie nur noch mühsam zu
+rekonstruieren, und was man rekonstruiert, ist keine Messung mehr.
+
 ## Was dabei nicht mitkommt
 
 **Einstufungen, Markierungen und Aufbewahrungsvermerke aus MailStore.**
