@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
+    QListWidget,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -120,19 +120,41 @@ class Einlesedialog(QDialog):
         )
         erklaerung.sizePolicy().setHeightForWidth(True)
 
-        self.pfad = QLineEdit()
-        self.pfad.setPlaceholderText("Noch kein Ordner gewählt")
-        self.pfad.textChanged.connect(self._pruefen)
+        # **Eine Liste, kein Feld – seit dem 2026-10-06.** Stephan hat
+        # zweiunddreißig MailStore-Archive, die zu etwa zwanzig Menschen
+        # gehören: eine Person hat oft ein altes Postfach, ein neues und
+        # ein eigenes Benutzerarchiv. Alle drei gehören unter denselben
+        # Kontonamen – und zweiunddreißig einzelne Läufe von Hand sind
+        # zweiunddreißig Gelegenheiten, sich zu vertippen.
+        self.liste = QListWidget()
+        self.liste.setSelectionMode(QListWidget.ExtendedSelection)
+        # Höhe aus der Schrift, nicht aus einer geratenen Pixelzahl –
+        # sonst sitzt sie falsch, sobald jemand die Schrift ändert.
+        self.liste.setMinimumHeight(self.fontMetrics().height() * 5)
+        self.liste.setToolTip(
+            "Alles hier Aufgeführte landet unter demselben Kontonamen.\n\n"
+            "Mehrere Ordner sind der Normalfall, wenn ein Mensch über die "
+            "Jahre mehrere Adressen hatte."
+        )
+        self.liste.itemSelectionChanged.connect(self._auswahl_geaendert)
 
-        waehlen = QPushButton("Ordner auswählen …")
+        waehlen = QPushButton("Ordner hinzufügen …")
         waehlen.clicked.connect(self._waehlen)
         datei = QPushButton("MBOX-Datei …")
         datei.clicked.connect(self._datei_waehlen)
+        self.entfernen = QPushButton("Entfernen")
+        self.entfernen.setEnabled(False)
+        self.entfernen.clicked.connect(self._entfernen)
+
+        knopfspalte = QVBoxLayout()
+        knopfspalte.addWidget(waehlen)
+        knopfspalte.addWidget(datei)
+        knopfspalte.addWidget(self.entfernen)
+        knopfspalte.addStretch(1)
 
         zeile = QHBoxLayout()
-        zeile.addWidget(self.pfad, 1)
-        zeile.addWidget(waehlen)
-        zeile.addWidget(datei)
+        zeile.addWidget(self.liste, 1)
+        zeile.addLayout(knopfspalte)
 
         # **Zur Auswahl, nicht zum Abtippen.** Wer alte Post zu einem
         # Postfach einliest, das längst abgerufen wird, muss denselben
@@ -193,6 +215,32 @@ class Einlesedialog(QDialog):
             "lesen« nachholen."
         )
 
+        # **Nur sichtbar, wenn es mehr als eine Quelle gibt.** Bei einem
+        # einzelnen Ordner ist die Frage sinnlos – und ein Häkchen, das
+        # meistens nichts tut, lädt dazu ein, es einmal falsch zu setzen.
+        #
+        # **Vorgabe: jede Quelle behält ihre Struktur.** Stephans Urteil
+        # vom 2026-10-06: »eigentlich wäre es sinnvoll, wenn jedes
+        # Verzeichnis auch wie in MailStore eine eigene Struktur hat.«
+        # Wer aus einem anderen Archivprogramm kommt, erkennt seinen
+        # Baum wieder – und das Zusammenlegen ist die Entscheidung, die
+        # man bewusst trifft, nicht das, was von selbst passiert.
+        self.herkunft = QCheckBox(
+            "Jede Quelle behält ihre eigene Ordnerstruktur"
+        )
+        self.herkunft.setChecked(True)
+        self.herkunft.setToolTip(
+            "Mit Häkchen bekommt jede Quelle ihren Verzeichnisnamen als "
+            "Oberordner – der Baum sieht aus wie in MailStore, und man "
+            "sieht später noch, woher eine Mail kam.\n\n"
+            "Ohne Häkchen verschmelzen gleichnamige Ordner: Aus drei "
+            "Posteingängen wird einer mit der Post aus allen dreien.\n\n"
+            "Die Mails selbst behalten in beiden Fällen alles: Eine Suche "
+            "nach der alten Adresse findet sie weiterhin."
+        )
+        self.herkunft.hide()
+        self.herkunft.toggled.connect(self._pruefen)
+
         felder = QFormLayout()
         felder.addRow("Woher:", zeile)
         felder.addRow("Kontoname:", self.konto)
@@ -212,6 +260,7 @@ class Einlesedialog(QDialog):
         aufbau.addWidget(erklaerung)
         aufbau.addLayout(felder)
         aufbau.addWidget(self.befund)
+        aufbau.addWidget(self.herkunft)
         aufbau.addWidget(self.alles)
         aufbau.addWidget(self.anhangstext)
         aufbau.addWidget(self.balken)
@@ -238,13 +287,13 @@ class Einlesedialog(QDialog):
             return
 
         ort = next((o for _, o in orte if self._taugt(o)), orte[0][1])
-        self.pfad.setText(str(ort))
+        self.pfade_setzen(ort)
         if len(orte) > 1:
             # Mit vollem Pfad, nicht nur mit dem Namen: Wer dieselbe
             # Anwendung klassisch und aus Flatpak installiert hat, sieht
             # sonst zweimal »Evolution« und weiß nicht, welches welches ist.
             weitere = ", ".join(str(o) for _, o in orte if o != ort)
-            self.pfad.setToolTip(f"Auch gefunden: {weitere}")
+            self.liste.setToolTip(f"Auch gefunden: {weitere}")
 
     @staticmethod
     def _taugt(ort: Path) -> bool:
@@ -258,19 +307,70 @@ class Einlesedialog(QDialog):
         quelle.close()
         return True
 
+    # -------------------------------------------------------- Die Liste
+
+    def pfade(self) -> list[Path]:
+        """Die gewählten Quellen, in der Reihenfolge der Liste."""
+        return [
+            Path(self.liste.item(i).text()) for i in range(self.liste.count())
+        ]
+
+    def pfade_setzen(self, *orte) -> None:
+        """Ersetzt die Liste – nimmt einzelne Pfade oder eine Folge davon."""
+        gesammelt: list[str] = []
+        for ort in orte:
+            if isinstance(ort, (str, Path)):
+                gesammelt.append(str(ort))
+            else:
+                gesammelt += [str(o) for o in ort]
+        self.liste.clear()
+        self.liste.addItems([o for o in gesammelt if o])
+        self._nach_der_liste()
+
+    def _hinzufuegen(self, ort: str) -> None:
+        """Nimmt einen Ort auf – aber keinen zweimal.
+
+        **Zweimal dieselbe Quelle wäre nicht schlimm, aber verwirrend.**
+        Doppelt eingelesen wird nichts (der Inhaltshash entscheidet),
+        die Liste sähe nur aus, als täte sie doppelte Arbeit.
+        """
+        if ort in [str(p) for p in self.pfade()]:
+            return
+        self.liste.addItem(ort)
+        self._nach_der_liste()
+
+    def _nach_der_liste(self) -> None:
+        """Was sich ändert, wenn Quellen dazukommen oder wegfallen."""
+        # Die Frage nach der Herkunft stellt sich erst ab zwei Quellen.
+        self.herkunft.setVisible(self.liste.count() > 1)
+        self._auswahl_geaendert()
+        self._pruefen()
+
+    def _auswahl_geaendert(self) -> None:
+        self.entfernen.setEnabled(bool(self.liste.selectedItems()))
+
+    def _entfernen(self) -> None:
+        for eintrag in self.liste.selectedItems():
+            self.liste.takeItem(self.liste.row(eintrag))
+        self._nach_der_liste()
+
     def _waehlen(self) -> None:
+        zuletzt = self.pfade()
         ort = QFileDialog.getExistingDirectory(
-            self, "Mailordner auswählen", self.pfad.text() or str(Path.home())
+            self, "Mailordner auswählen",
+            str(zuletzt[-1].parent) if zuletzt else str(Path.home()),
         )
         if ort:
-            self.pfad.setText(ort)
+            self._hinzufuegen(ort)
 
     def _datei_waehlen(self) -> None:
+        zuletzt = self.pfade()
         ort, _ = QFileDialog.getOpenFileName(
-            self, "MBOX-Datei auswählen", self.pfad.text() or str(Path.home())
+            self, "MBOX-Datei auswählen",
+            str(zuletzt[-1].parent) if zuletzt else str(Path.home()),
         )
         if ort:
-            self.pfad.setText(ort)
+            self._hinzufuegen(ort)
 
     # ------------------------------------------------------------ Prüfen
 
@@ -326,16 +426,54 @@ class Einlesedialog(QDialog):
         kennt, kann einem Pfadfeld nicht ansehen, ob er das Richtige
         gewählt hat – der Befund darunter beantwortet genau das.
         """
-        text = self.pfad.text().strip()
-        gut = False
-        if not text:
+        orte = self.pfade()
+        if not orte:
             self.befund.setText(self._kontowarnung())
-        else:
-            gut, meldung = self._befund(Path(text))
+            self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
+            return
+
+        if len(orte) == 1:
+            gut, meldung = self._befund(orte[0])
             farbe = "" if gut else " color:palette(mid);"
             self.befund.setText(
                 f"<span style='{farbe}'>{meldung}</span>{self._kontowarnung()}"
             )
+            self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(gut)
+            return
+
+        # **Bei vielen Quellen zählt der Befund, nicht die Aufzählung.**
+        # Zweiunddreißig Ordnerlisten untereinander liest niemand – und
+        # sie würden den Dialog über den Bildschirm hinauswachsen lassen.
+        # Interessant ist nur, ob eine davon klemmt.
+        schlecht = [(ort, meldung) for ort, meldung in
+                    ((o, self._befund(o)) for o in orte) if not meldung[0]]
+        gut = not schlecht
+        if gut:
+            # **Wohin sie gehen, steht dabei.** Der Kontoname ist nach
+            # dem Lauf nicht mehr zu ändern (es gibt keinen Befehl
+            # dafür); wer ihn hier falsch liest, merkt es erst im Baum.
+            ziel = self.konto.currentText().strip()
+            wohin = f" nach »{ziel}«" if ziel else " – Kontoname fehlt noch"
+            getrennt = (
+                " Jede behält ihre eigene Ordnerstruktur."
+                if self.herkunft.isChecked()
+                else " Gleichnamige Ordner verschmelzen."
+            )
+            meldung = (
+                f"<b>{len(orte)} Quellen</b>{wohin}.{getrennt}"
+            )
+        else:
+            namen = ", ".join(ort.name for ort, _ in schlecht[:3])
+            weiter = f" und {len(schlecht) - 3} weitere" if len(schlecht) > 3 else ""
+            meldung = (
+                f"<b>{len(schlecht)} von {len(orte)} Quellen klemmen:</b> "
+                f"{namen}{weiter}.<br>"
+                f"<span style='color:palette(mid)'>{schlecht[0][1][1]}</span>"
+            )
+        farbe = "" if gut else " color:palette(mid);"
+        self.befund.setText(
+            f"<span style='{farbe}'>{meldung}</span>{self._kontowarnung()}"
+        )
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(gut)
 
     def _befund(self, ort: Path) -> tuple[bool, str]:
@@ -378,17 +516,23 @@ class Einlesedialog(QDialog):
     # ------------------------------------------------------------ Laufen
 
     def _starten(self) -> None:
-        ort = Path(self.pfad.text().strip())
-        name = self.konto.currentText().strip() or ort.name
+        orte = self.pfade()
+        if not orte:
+            return
+        # **Der Rückfall auf den Ordnernamen gilt nur bei einer Quelle.**
+        # Bei mehreren wäre er eine Lotterie: Welcher der zweiunddreißig
+        # Namen soll es sein? Deshalb verlangt der Dialog dort einen.
+        name = self.konto.currentText().strip() or orte[0].name
 
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
         self.knoepfe.button(QDialogButtonBox.Cancel).setText("Abbrechen")
         self.balken.show()
 
         auftrag = Einleselauf(
-            self.archiv.root, ort, name,
+            self.archiv.root, orte, name,
             mit_anhangstext=self.anhangstext.isChecked(),
             alles=self.alles.isChecked(),
+            zusammenlegen=not self.herkunft.isChecked(),
         )
         auftrag.meldung.connect(self.befund.setText)
         auftrag.fertig.connect(self._fertig)

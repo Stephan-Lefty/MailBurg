@@ -364,49 +364,99 @@ class Einleselauf(Auftrag):
     """
 
     def __init__(self, archiv_pfad, quellpfad, konto: str, *,
-                 mit_anhangstext: bool = True, alles: bool = False) -> None:
+                 mit_anhangstext: bool = True, alles: bool = False,
+                 zusammenlegen: bool = False) -> None:
         super().__init__()
         self.archiv_pfad = archiv_pfad
-        self.quellpfad = quellpfad
+        # **Einer oder viele, ohne zwei Wege.** Seit dem 2026-10-06 kann
+        # ein Lauf mehrere Verzeichnisse unter einen Kontonamen legen –
+        # Stephan hat zweiunddreißig MailStore-Archive, die zu etwa
+        # zwanzig Menschen gehören. Ein einzelner Pfad bleibt erlaubt,
+        # damit die Aufrufer von vorher unverändert weiterlaufen.
+        if isinstance(quellpfad, (str, Path)):
+            self.quellpfade = [Path(quellpfad)]
+        else:
+            self.quellpfade = [Path(p) for p in quellpfad]
         self.konto = konto
         self.mit_anhangstext = mit_anhangstext
         self.alles = alles
         """Auch Papierkorb, Spamverdacht und Entwürfe einlesen."""
+        self.zusammenlegen = zusammenlegen
+        """Gleichnamige Ordner mehrerer Quellen verschmelzen lassen.
+
+        **In der Vorgabe nicht**, und das ist eine Festlegung: Jede
+        Quelle behält ihre eigene Struktur, so wie sie im Quellprogramm
+        aussah. Stephans Urteil vom 2026-10-06 – wer aus MailStore
+        kommt, erkennt seinen Baum wieder.
+
+        Die Vorgabe steht hier und nirgends sonst. Stünde sie außerdem
+        im Dialog und in der Kommandozeile, liefen die drei auseinander,
+        sobald jemand eine davon ändert.
+        """
+
+    @property
+    def quellpfad(self):
+        """Der erste Pfad – für Aufrufer, die nur einen kennen."""
+        return self.quellpfade[0]
 
     def ausfuehren(self):
         from mailburg.core.archive import Archive
+        from mailburg.core.importer import Statistik
         from mailburg.core.importer import importieren
         from mailburg.sources import local
 
-        quelle = local.open_path(
-            Path(self.quellpfad), self.konto, alles=self.alles
-        )
-        self.meldung.emit(f"Lese {quelle.describe()} …")
-
-        try:
-            with Archive.open(self.archiv_pfad) as archiv:
-                def melden(stat) -> None:
-                    self.meldung.emit(
-                        f"{self.konto}: {stat.gelesen} gelesen, {stat.neu} neu"
-                    )
-                    self.fortschritt.emit(stat.gelesen, 0)
-
-                stat = importieren(
-                    archiv,
-                    quelle,
-                    mit_anhangstext=self.mit_anhangstext,
-                    fortschritt=melden,
-                    # **Abbruch ist hier wichtiger als beim Abruf.** Ein
-                    # Thunderbird-Profil kann Jahrzehnte enthalten; wer
-                    # das versehentlich startet, muss es beenden können.
-                    weiter=lambda: not self.abgebrochen,
+        gesamt = Statistik()
+        # **Das Archiv wird einmal geöffnet, nicht je Quelle.** Jedes
+        # Öffnen nimmt die Sperre, liest das Journal und schließt wieder;
+        # bei zweiunddreißig Verzeichnissen wäre das zweiunddreißigmal
+        # derselbe Aufwand – und zwischen zwei Läufen stünde das Archiv
+        # einen Augenblick offen für jeden anderen Vorgang.
+        with Archive.open(self.archiv_pfad) as archiv:
+            for nummer, pfad in enumerate(self.quellpfade, start=1):
+                if self.abgebrochen:
+                    break
+                quelle = local.open_path(pfad, self.konto, alles=self.alles)
+                # Bei einer einzelnen Quelle gibt es die Frage nicht –
+                # ein Oberordner, der genauso heißt wie das gewählte
+                # Verzeichnis, wäre eine Verschachtelung ohne Nutzen.
+                if len(self.quellpfade) > 1 and not self.zusammenlegen:
+                    quelle = local.MitHerkunft(quelle, pfad.name)
+                woher = (
+                    f"[{nummer}/{len(self.quellpfade)}] "
+                    if len(self.quellpfade) > 1 else ""
                 )
-                if stat.neu:
-                    self.meldung.emit("Verdichte den Suchindex …")
-                    archiv.index.optimize()
-                return stat
-        finally:
-            quelle.close()
+                self.meldung.emit(f"{woher}Lese {quelle.describe()} …")
+
+                try:
+                    def melden(stat, woher=woher) -> None:
+                        self.meldung.emit(
+                            f"{woher}{self.konto}: {stat.gelesen} gelesen, "
+                            f"{stat.neu} neu"
+                        )
+                        self.fortschritt.emit(gesamt.gelesen + stat.gelesen, 0)
+
+                    stat = importieren(
+                        archiv,
+                        quelle,
+                        mit_anhangstext=self.mit_anhangstext,
+                        fortschritt=melden,
+                        # **Abbruch ist hier wichtiger als beim Abruf.**
+                        # Ein Thunderbird-Profil kann Jahrzehnte
+                        # enthalten; wer das versehentlich startet, muss
+                        # es beenden können.
+                        weiter=lambda: not self.abgebrochen,
+                    )
+                finally:
+                    quelle.close()
+                gesamt = gesamt + stat
+
+            # **Einmal am Ende verdichten, nicht nach jeder Quelle.**
+            # `optimize()` schreibt den Volltextindex um; das lohnt sich
+            # je Lauf, nicht je Verzeichnis.
+            if gesamt.neu:
+                self.meldung.emit("Verdichte den Suchindex …")
+                archiv.index.optimize()
+        return gesamt
 
 
 class Rueckspiellauf(Auftrag):

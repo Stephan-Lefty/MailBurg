@@ -477,6 +477,34 @@ stehen die Postfächer, die es in diesem Archiv schon gibt.</p>
 gleich aus. MailBurg warnt deshalb, wenn Ihr Name einem vorhandenen bis
 auf Groß- und Kleinschreibung gleicht.</p>
 
+<p><b>Der Name lässt sich später nicht ändern.</b> Er steht im Journal,
+und das wird nicht umgeschrieben – es ist der Nachweis. Nehmen Sie sich
+die halbe Minute, bevor Sie starten.</p>
+
+<h3>Mehrere Ordner auf einmal</h3>
+
+<p>Über <i>Ordner hinzufügen …</i> kommen beliebig viele in die Liste.
+<b>Alle landen unter demselben Kontonamen</b> – gedacht für jemanden,
+der über die Jahre mehrere Adressen hatte: ein altes Postfach, ein
+neues, dazu ein Export aus einem Archivprogramm. Im Postfachbaum steht
+danach ein Eintrag statt drei.</p>
+
+<p>Dabei behält <b>jede Quelle ihre eigene Ordnerstruktur</b>: Aus dem
+Verzeichnisnamen wird ein Oberordner, und der Baum sieht aus wie im
+Programm, aus dem die Post kommt. Das Häkchen <i>Jede Quelle behält
+ihre eigene Ordnerstruktur</i> schaltet das ab – dann verschmelzen
+gleichnamige Ordner, aus drei Posteingängen wird einer.</p>
+
+<p>Beides ist richtig, je nachdem, was Sie später sehen wollen. <b>Die
+Mails selbst verlieren in keinem Fall etwas:</b> Ihre Kopfzeilen bleiben
+Byte für Byte erhalten, eine Suche nach der alten Adresse findet sie
+weiterhin.</p>
+
+<p><b>Dubletten müssen Sie vorher nicht aussortieren.</b> Liegt dieselbe
+Mail in zwei Exporten, wird sie einmal abgelegt – der Name im Archiv ist
+der Hash ihres Inhalts, eine zweite Kopie kann es gar nicht geben. Am
+Ende steht, wie viele Mails neu waren und wie viele schon da.</p>
+
 <p><b>Papierkorb, Spamverdacht und Entwürfe bleiben draußen</b> – wie
 beim Abruf aus einem Postfach. Diese Post haben Sie schon einmal
 aussortiert; sie ins Archiv zu holen, machte diese Entscheidung

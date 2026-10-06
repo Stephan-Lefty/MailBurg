@@ -74,6 +74,44 @@ class Statistik:
         """PDF ohne Textebene – diese Dokumente sind nicht durchsuchbar."""
         return self.anhaenge.get("pdf:eingescannt", 0)
 
+    def __add__(self, andere):
+        """Zählt zwei Bilanzen zusammen.
+
+        **Eine Zahl je Lauf, nicht je Verzeichnis.** Seit dem
+        2026-10-06 kann ein Lauf mehrere Quellen unter einen
+        Kontonamen legen – Stephan hat zweiunddreißig
+        MailStore-Archive, die zu etwa zwanzig Menschen gehören. Wer
+        die einliest, will am Ende wissen, wie viele Mails dazugekommen
+        sind, nicht zweiunddreißig Einzelmeldungen, von denen er die
+        letzte sieht.
+
+        **Die Felder werden durchlaufen, nicht aufgezählt.** Eine
+        abgeschriebene Liste veraltet beim nächsten neuen Zähler, und
+        zwar still: Die Summe wäre dann einfach zu klein, ohne dass
+        etwas rot wird.
+        """
+        from dataclasses import fields
+
+        if not isinstance(andere, Statistik):
+            return NotImplemented
+        werte = {}
+        for feld in fields(self):
+            hier, dort = getattr(self, feld.name), getattr(andere, feld.name)
+            if isinstance(hier, dict):
+                zusammen = dict(hier)
+                for schluessel, zahl in dort.items():
+                    zusammen[schluessel] = zusammen.get(schluessel, 0) + zahl
+                werte[feld.name] = zusammen
+            else:
+                werte[feld.name] = hier + dort
+        return Statistik(**werte)
+
+    def __radd__(self, andere):
+        """Damit ``sum(…)`` funktioniert – das beginnt bei ``0``."""
+        if andere == 0:
+            return self
+        return NotImplemented
+
 
 def _verarbeiten(roh: bytes, mit_anhangstext: bool) -> tuple[Any, str, dict[str, int]]:
     """Zerlegt eine Mail und holt den Text ihrer Anhänge.

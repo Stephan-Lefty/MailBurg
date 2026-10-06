@@ -11,6 +11,40 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Neu
 
+- **Mehrere Ordner auf einmal einlesen, unter einem Kontonamen.** Im
+  Dialog steht statt des Pfadfelds eine Liste, auf der Kommandozeile
+  nimmt `mailburg importieren` beliebig viele Quellen.
+
+  **Der Anlass kommt aus dem Betrieb (06.10.2026).** In MailStore
+  liegen zweiunddreißig Archive – siebzehn Postfächer und fünfzehn
+  Benutzerarchive –, die zu etwa zwanzig Menschen gehören: eine Person
+  hat oft ein altes Postfach, ein neues und ein eigenes Benutzerarchiv.
+  Stephans Vorschlag, wörtlich: *»dann könnte ich mehrere Verzeichnisse
+  mit eml Dateien einen sinnvollen Namen zuordnen.«*
+
+  Vorher ging das nur als Folge einzelner Läufe mit demselben, von Hand
+  getippten Namen – **zweiunddreißig Gelegenheiten, sich zu
+  vertippen.** Und ein Tippfehler ist hier nicht reparabel: Der
+  Kontoname steht im Journal, und es gibt keinen Befehl, der ihn
+  ändert.
+
+  **Jede Quelle behält dabei ihre eigene Ordnerstruktur** – aus dem
+  Verzeichnisnamen wird ein Oberordner, der Baum sieht aus wie im
+  Programm, aus dem die Post kommt. Auch das ist Stephans Urteil:
+  *»eigentlich wäre es sinnvoll, wenn jedes Verzeichnis auch wie in
+  MailStore eine eigene Struktur hat.«* Wer sie lieber zusammenlegt,
+  schaltet es im Dialog ab oder gibt `--zusammenlegen` mit.
+
+  Das Archiv wird dabei **einmal** geöffnet, nicht je Quelle. Jedes
+  Öffnen nimmt die Sperre und liest das Journal; zwischen zwei Läufen
+  stünde es außerdem einen Augenblick offen für jeden anderen Vorgang –
+  und genau daran ist am 21.09.2026 eine Hash-Kette gerissen.
+
+  Dubletten sortiert niemand vorher aus: Gemessen an drei Exporten mit
+  absichtlichen Dreifach-Dubletten – `9 gelesen, 5 neu aufgenommen,
+  4 bereits vorhanden`, fünf Mails im Archiv. Der Name einer Mail *ist*
+  der Hash ihres Inhalts; eine zweite Kopie kann es nicht geben.
+
 - **Ein Hinweis, wenn die Weboberfläche gerade arbeitet.** Oben in der
   Mitte erscheint »MailBurg sucht …«, sobald eine Suche oder das Öffnen
   einer Nachricht länger als eine halbe Sekunde braucht. Keine Sanduhr,

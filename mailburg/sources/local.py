@@ -13,6 +13,7 @@ import mailbox
 import os
 import sys
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
 
 from mailburg.sources.base import RawMessage, Source
@@ -553,6 +554,79 @@ class OhnePapierkorb(Source):
 
     def close(self) -> None:
         self.quelle.close()
+
+
+class MitHerkunft(Source):
+    """Stellt jedem Fundort den Namen voran, aus dem er stammt.
+
+    **Der Anlass ist Stephans Lage vom 2026-10-06.** In MailStore liegen
+    zweiunddreißig Archive, die zu etwa zwanzig Menschen gehören: eine
+    Person hat oft ein altes Postfach, ein neues und ein eigenes
+    Benutzerarchiv. Beim Einlesen sollen sie zusammen unter *einem*
+    Kontonamen stehen – aber jedes bringt seinen eigenen »INBOX« mit.
+
+    **Ohne diese Hülle verschmelzen die gleichnamigen Ordner.** Das ist
+    oft genau richtig (ein Posteingang je Person), manchmal aber nicht:
+    Wer später belegen muss, über welche Adresse etwas hereinkam, sieht
+    es im Baum dann nicht mehr. Die Mail selbst weiß es weiterhin – die
+    Kopfzeilen bleiben Byte für Byte erhalten –, nur die Ordnung darüber
+    ginge verloren.
+
+    Deshalb eine Hülle und keine Änderung an den fünf Quellen: Es ist
+    eine Entscheidung des Anwenders, nicht eine Eigenschaft des Formats.
+
+    **Leere Herkunft heißt: nichts tun.** Dann verhält sich die Hülle
+    wie die Quelle darunter – so muss der Aufrufer nicht zwischen zwei
+    Wegen unterscheiden.
+    """
+
+    def __init__(self, quelle: Source, herkunft: str) -> None:
+        self.quelle = quelle
+        self.herkunft = herkunft.strip().strip("/")
+
+    @property
+    def account(self) -> str:  # type: ignore[override]
+        return self.quelle.account
+
+    @property
+    def roh(self) -> Source:
+        """Die Quelle darunter – für Tests und Fehlersuche."""
+        return self.quelle
+
+    def _benennen(self, ordner: str) -> str:
+        if not self.herkunft:
+            return ordner
+        # **Liegt die Mail unmittelbar in der Quelle**, trägt sie dort
+        # den Kontonamen als Fundort (siehe `EmlOrdnerSource._dateien`).
+        # Daraus »Herkunft/Kontoname« zu machen wäre eine Verdopplung,
+        # die niemand so geschrieben hätte.
+        if not ordner or ordner == self.quelle.account:
+            return self.herkunft
+        return f"{self.herkunft}/{ordner}"
+
+    def folders(self) -> list[str]:
+        return [self._benennen(o) for o in self.quelle.folders()]
+
+    def iter_messages(self) -> Iterator[RawMessage]:
+        for nachricht in self.quelle.iter_messages():
+            yield replace(nachricht, folder=self._benennen(nachricht.folder))
+
+    def describe(self) -> str:
+        return self.quelle.describe()
+
+    def close(self) -> None:
+        self.quelle.close()
+
+    def __getattr__(self, name: str):
+        """Was die Hülle nicht kennt, beantwortet die Quelle darunter.
+
+        **Sonst verschluckt sie `uebergangen`.** Liegt eine
+        `OhnePapierkorb` darunter, merkt die sich, welche Ordner
+        draußen blieben – und der Dialog zeigt das an. Eine Hülle, die
+        diese Auskunft schluckt, macht aus einer genannten Auslassung
+        eine stille.
+        """
+        return getattr(self.quelle, name)
 
 
 def open_path(path: Path, account: str = "", *, alles: bool = False) -> Source:

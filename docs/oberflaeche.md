@@ -186,8 +186,48 @@ Vorgeschlagen wird der erste Ort, mit dem MailBurg etwas anfangen kann. Wer
 von einer klassischen Installation auf Flatpak wechselt, lässt ein leeres
 Verzeichnis zurück; nach der bloßen Reihenfolge stünde genau das im Feld.
 
-Findet der Dialog nichts, ist das kein Hindernis: *Ordner auswählen …* nimmt
+Findet der Dialog nichts, ist das kein Hindernis: *Ordner hinzufügen …* nimmt
 jeden Pfad. Die Vorschläge sind eine Abkürzung, keine Liste des Erlaubten.
+
+### Mehrere Ordner auf einmal
+
+*Ordner hinzufügen …* lässt sich mehrfach anklicken; alles in der Liste landet
+**unter demselben Kontonamen**. Das ist für jemanden gedacht, der über die
+Jahre mehrere Adressen hatte: ein altes Postfach, ein neues, dazu ein Export
+aus einem Archivprogramm. Im Postfachbaum steht danach ein Eintrag statt drei.
+
+Dabei behält **jede Quelle ihre eigene Ordnerstruktur** – aus dem
+Verzeichnisnamen wird ein Oberordner:
+
+```
+Stephan Rösner / roesner@alt.example/Posteingang
+Stephan Rösner / roesner@alt.example/Gesendete Elemente
+Stephan Rösner / roesner@neu.example/Posteingang
+Stephan Rösner / Archiv von roesner/Projekte/2024
+```
+
+Der Baum sieht damit aus wie im Programm, aus dem die Post kommt. Das Häkchen
+*Jede Quelle behält ihre eigene Ordnerstruktur* schaltet es ab; dann
+verschmelzen gleichnamige Ordner, und aus drei Posteingängen wird einer.
+
+Beides ist richtig, je nachdem, was Sie später sehen wollen. **Die Mails
+verlieren in keinem Fall etwas:** Ihre Kopfzeilen bleiben Byte für Byte
+erhalten, eine Suche nach der alten Adresse findet sie weiterhin.
+
+**Dubletten sortieren Sie nicht vorher aus.** Liegt dieselbe Mail in zwei
+Exporten, wird sie einmal abgelegt – der Name im Archiv *ist* der Hash ihres
+Inhalts, eine zweite Kopie kann es technisch nicht geben. Am Ende steht, wie
+viele Mails neu waren und wie viele schon da.
+
+Auf der Kommandozeile geht dasselbe:
+
+```bash
+mailburg importieren ~/Archiv ~/Export/alt ~/Export/neu --konto "Stephan Rösner"
+```
+
+Mehrere Quellen verlangen `--konto`: Bei einer einzelnen fällt der Name auf
+das Verzeichnis zurück, bei dreißig wäre das eine Lotterie. `--zusammenlegen`
+verschmilzt die gleichnamigen Ordner.
 
 **Der Kontoname entscheidet, wo die Post landet.** Zur Auswahl stehen die
 Postfächer, die es in diesem Archiv schon gibt; eintippen lässt sich trotzdem,

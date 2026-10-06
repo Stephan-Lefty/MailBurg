@@ -21,7 +21,7 @@ from mailburg import APP_ID, APP_NAME, __version__
 from mailburg.core import accounts, sprache
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
-from mailburg.core.importer import importieren
+from mailburg.core.importer import Statistik, importieren
 from mailburg.core.index import IndexOutdated
 from mailburg.core.krypto import KryptoFehler
 from mailburg.core.tresor import TresorFehler
@@ -261,18 +261,66 @@ def cmd_anlegen(args: argparse.Namespace) -> int:
     return 0
 
 
+def _quellen_pruefen(pfade, konto: str, alles: bool):
+    """Öffnet jede Quelle einmal und schließt sie wieder.
+
+    **Erst prüfen, dann arbeiten.** Bei zweiunddreißig Verzeichnissen –
+    Stephans MailStore-Bestand vom 2026-10-06 – will niemand nach einer
+    halben Stunde erfahren, dass der einunddreißigste Pfad ein
+    Tippfehler war. Das Öffnen ist billig: Die Quellen brechen beim
+    ersten gefundenen Mailordner ab, statt alles zu zählen.
+
+    Gibt zurück, was taugt, und was nicht – beides. **Ein klemmender
+    Ordner beendet den Lauf nicht**, wie bei ``abrufen --alle``; er wird
+    genannt, am Anfang und noch einmal am Ende.
+    """
+    gut, schlecht = [], []
+    for pfad in pfade:
+        try:
+            quelle = local.open_path(Path(pfad), konto, alles=alles)
+        except (ValueError, FileNotFoundError, OSError) as exc:
+            schlecht.append((Path(pfad), str(exc)))
+            continue
+        quelle.close()
+        gut.append(Path(pfad))
+    return gut, schlecht
+
+
 def cmd_importieren(args: argparse.Namespace) -> int:
-    """Liest eine Mailquelle ins Archiv ein."""
-    try:
-        source = local.open_path(
-            Path(args.quelle), args.konto or "", alles=args.alles
+    """Liest eine oder mehrere Mailquellen ins Archiv ein."""
+    # **Eine oder viele, ohne zwei Wege.** Seit dem 2026-10-06 nimmt der
+    # Befehl mehrere Verzeichnisse und legt sie unter *einen* Kontonamen
+    # – für einen Menschen, der über die Jahre mehrere Adressen hatte.
+    pfade = args.quelle if isinstance(args.quelle, list) else [args.quelle]
+    konto = args.konto or ""
+
+    if len(pfade) > 1 and not konto:
+        # Bei einer Quelle fällt der Name auf das Verzeichnis zurück.
+        # Bei mehreren wäre das eine Lotterie: welches von zweiunddreißig?
+        print(
+            "Fehler: Bei mehreren Quellen braucht es --konto.\n"
+            "        Sonst stünde nicht fest, unter welchem Namen die Post\n"
+            "        erscheint – und der lässt sich nachträglich nicht ändern.",
+            file=sys.stderr,
         )
-    except (ValueError, FileNotFoundError) as exc:
-        print(f"Fehler: {exc}", file=sys.stderr)
         return 2
 
-    print(f"Quelle: {source.describe()}")
-    print(f"Konto:  {source.account}")
+    gute, klemmende = _quellen_pruefen(pfade, konto, args.alles)
+    for pfad, grund in klemmende:
+        print(f"Übersprungen: {pfad} – {grund}", file=sys.stderr)
+    if not gute:
+        print("Fehler: Keine brauchbare Quelle dabei.", file=sys.stderr)
+        return 2
+
+    if len(gute) > 1:
+        print(f"Quellen: {len(gute)}")
+        for pfad in gute:
+            print(f"  {pfad}")
+        if args.zusammenlegen:
+            print("Gleichnamige Ordner verschmelzen.")
+        else:
+            print("Jede Quelle behält ihre eigene Ordnerstruktur.")
+    print(f"Konto:  {konto or Path(gute[0]).name}")
     if args.alles:
         print("Papierkorb, Spamverdacht und Entwürfe: werden mit eingelesen")
 
@@ -288,39 +336,64 @@ def cmd_importieren(args: argparse.Namespace) -> int:
             )
     print(f"Anhänge im Volltext: {'ja' if mit_text else 'nein'}")
 
+    gesamt = Statistik()
+    uebergangen: set[str] = set()
+    # **Das Archiv wird einmal geöffnet, nicht je Quelle.** Jedes Öffnen
+    # nimmt die Sperre und liest das Journal; bei zweiunddreißig
+    # Verzeichnissen wäre das zweiunddreißigmal derselbe Aufwand.
     with oeffnen(Path(args.archiv)) as archive:
         started = time.monotonic()
-
-        def fortschritt(stat) -> None:
-            print(f"  … {stat.gelesen} gelesen, {stat.neu} neu", end="\r", flush=True)
 
         def auf_fehler(nachricht, exc: Exception) -> None:
             if args.ausführlich:
                 print(f"  übersprungen ({nachricht.folder}): {exc}", file=sys.stderr)
 
-        stat = importieren(
-            archive,
-            source,
-            mit_anhangstext=mit_text,
-            fortschritt=fortschritt,
-            auf_fehler=auf_fehler,
-        )
+        for nummer, pfad in enumerate(gute, start=1):
+            source = local.open_path(pfad, konto, alles=args.alles)
+            # Bei einer einzelnen Quelle gibt es die Frage nicht – ein
+            # Oberordner, der genauso heißt wie das gewählte Verzeichnis,
+            # wäre eine Verschachtelung ohne Nutzen.
+            if len(gute) > 1 and not args.zusammenlegen:
+                source = local.MitHerkunft(source, pfad.name)
 
-        print(" " * 60, end="\r")
-        if stat.neu:
+            woher = f"[{nummer}/{len(gute)}] " if len(gute) > 1 else ""
+            print(f"{woher}{source.describe()}")
+
+            def fortschritt(stat, woher=woher, vorher=gesamt.gelesen) -> None:
+                print(
+                    f"  {woher}… {vorher + stat.gelesen} gelesen, "
+                    f"{stat.neu} neu",
+                    end="\r", flush=True,
+                )
+
+            try:
+                stat = importieren(
+                    archive,
+                    source,
+                    mit_anhangstext=mit_text,
+                    fortschritt=fortschritt,
+                    auf_fehler=auf_fehler,
+                )
+            finally:
+                uebergangen |= set(getattr(source, "uebergangen", None) or ())
+                source.close()
+            gesamt = gesamt + stat
+            print(" " * 70, end="\r")
+
+        # **Einmal am Ende verdichten, nicht nach jeder Quelle.**
+        if gesamt.neu:
             print("Verdichte den Suchindex …")
             archive.index.optimize()
 
         seconds = time.monotonic() - started
-        rate = stat.gelesen / seconds if seconds else 0
-        print(f"Fertig: {stat}")
+        rate = gesamt.gelesen / seconds if seconds else 0
+        print(f"Fertig: {gesamt}")
         print(f"Dauer: {seconds:.1f} s ({rate:.0f} Mails/s)")
 
         # **Was ausgelassen wurde, gehört gesagt.** Sonst sucht jemand
         # Jahre später eine Mail, die nie hier angekommen ist, und hält
         # das Archiv für unvollständig – ohne je zu erfahren, dass es
         # eine Entscheidung war.
-        uebergangen = getattr(source, "uebergangen", None)
         if uebergangen:
             namen = ", ".join(sorted(uebergangen))
             print(
@@ -330,15 +403,24 @@ def cmd_importieren(args: argparse.Namespace) -> int:
                 f"sie mit."
             )
 
+        # **Und was gar nicht erst gelesen wurde, auch.** Am Anfang
+        # stand es schon auf der Fehlerausgabe – nach zwanzig Stunden
+        # Lauf hat das niemand mehr auf dem Bildschirm.
+        if klemmende:
+            print(
+                f"\nNicht eingelesen ({len(klemmende)} von {len(pfade)}):"
+            )
+            for pfad, grund in klemmende:
+                print(f"  {pfad} – {grund}")
+
         if mit_text:
-            print(f"Mit Anhangstext: {sprache.mails(stat.mit_anhangstext)}")
-            if stat.eingescannt:
+            print(f"Mit Anhangstext: {sprache.mails(gesamt.mit_anhangstext)}")
+            if gesamt.eingescannt:
                 print(
-                    f"Davon {stat.eingescannt} PDF ohne Textebene – vermutlich "
+                    f"Davon {gesamt.eingescannt} PDF ohne Textebene – vermutlich "
                     f"eingescannt und daher nicht durchsuchbar."
                 )
 
-    source.close()
     return 0
 
 
@@ -3703,10 +3785,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = subparsers.add_parser("importieren", help="Mails aus einer Quelle einlesen")
     p.add_argument("archiv", help="Verzeichnis des Archivs")
-    p.add_argument("quelle",
+    p.add_argument("quelle", nargs="+",
         help="Thunderbird-Profil, Maildir, MBOX-Datei oder ein Verzeichnis "
-             "mit .eml-Dateien")
+             "mit .eml-Dateien. Mehrere sind erlaubt – sie landen dann alle "
+             "unter demselben --konto")
     p.add_argument("--konto", help="Name, unter dem die Mails erscheinen sollen")
+    p.add_argument(
+        "--zusammenlegen",
+        action="store_true",
+        help="bei mehreren Quellen gleichnamige Ordner verschmelzen "
+             "(aus drei Posteingängen wird einer). In der Vorgabe behält "
+             "jede Quelle ihre eigene Struktur, wie im Quellprogramm",
+    )
     p.add_argument(
         "--ohne-anhangstext",
         action="store_true",

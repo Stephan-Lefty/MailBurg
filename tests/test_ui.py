@@ -6128,7 +6128,7 @@ class EinlesedialogTest(OberflaechenTest):
         from PySide6.QtWidgets import QDialogButtonBox
 
         dialog = self._dialog()
-        dialog.pfad.setText("")
+        dialog.pfade_setzen()
 
         self.assertFalse(
             dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled()
@@ -6143,7 +6143,7 @@ class EinlesedialogTest(OberflaechenTest):
         self._maildir(".Gesendet", 1)
 
         dialog = self._dialog()
-        dialog.pfad.setText(str(self.basis / "Quelle"))
+        dialog.pfade_setzen(str(self.basis / "Quelle"))
 
         self.assertTrue(dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
         self.assertIn("Inbox", dialog.befund.text())
@@ -6156,7 +6156,7 @@ class EinlesedialogTest(OberflaechenTest):
         leer.mkdir()
 
         dialog = self._dialog()
-        dialog.pfad.setText(str(leer))
+        dialog.pfade_setzen(str(leer))
 
         self.assertFalse(dialog.knoepfe.button(QDialogButtonBox.Ok).isEnabled())
         # Und die Meldung nennt, was erwartet wird - nicht nur "geht nicht".
@@ -6164,7 +6164,7 @@ class EinlesedialogTest(OberflaechenTest):
 
     def test_ein_pfad_der_nicht_existiert_sagt_das(self):
         dialog = self._dialog()
-        dialog.pfad.setText(str(self.basis / "gibtesnicht"))
+        dialog.pfade_setzen(str(self.basis / "gibtesnicht"))
 
         self.assertIn("gibt es nicht", dialog.befund.text())
 
