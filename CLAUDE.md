@@ -3,6 +3,117 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-10-06, Dienstag) – der Server läuft
+
+**Das Firmenarchiv ist umgezogen und arbeitet.** 70.133 Mails auf einem
+Windows Server 2025, fünf Zugänge, Abruf alle 30 Minuten mit Ruhe von
+17:10 bis 4:00. Die Zeile, auf die es ankam, stand um 12:52 im
+Ereignisprotokoll:
+
+```
+MailBurg-Abruf: 122 neue Mails aus 7 Postfächern.
+```
+
+**Der Tag hat fünf Fehler zutage gefördert, und sie liegen übereinander
+wie Schichten.** Das ist der Befund, den ich mir merken will: Jeder
+wurde erst sichtbar, als der darüber behoben war.
+
+### Der Abruf im Dienst ist nie gelaufen – seit es ihn gibt
+
+Zwei Fehler in derselben Funktion, in zwei Fassungen behoben:
+
+1. `for k in Kontenliste()` – **`Kontenliste` ist kein Behälter,
+   sondern hat einen** (`.konten`). Wirft in der ersten Zeile jedes
+   Durchgangs.
+2. Danach `quelle_fuer(konto)` – **ohne Passwort, ohne Höchststand,
+   ohne Abrufzustand.** Und die nächste Zeile hätte `importieren` ein
+   `konto=` übergeben, das es dort gar nicht gibt.
+
+**Diese Funktion ist nie zur Ausführung gekommen.** Es gab Tests für
+Takt, Pause, ein klemmendes Postfach und dafür, dass die Schleife einen
+Fehler überlebt – also für alles *um* `_einmal` herum, nie für den Weg
+hinein. Dieselbe Klasse wie beim Wappen und beim Installer: *Eine
+Prüfung, die die fragliche Umgebung nicht nachstellt, misst etwas
+anderes.*
+
+**Höchststand und Abrufzustand sind kein Beiwerk.** Ohne sie holte
+jeder Lauf das ganze Postfach erneut, alle dreißig Minuten. Und ohne
+Vormerken gescheiterter Mails zöge der Höchststand an ihnen vorbei.
+
+### Und die Meldung dazu beruhigte
+
+»Nichts Neues in 7 Postfächern«, während alle sieben an einem Fehler
+gescheitert waren. Die Schlussmeldung zählte Versuche als Prüfungen.
+**Wer das liest, sucht die ausbleibende Post anderswo.** Übersprungene
+zählen jetzt getrennt; fehlt ein Passwort, nennt die Meldung
+`mailburg tresor uebernehmen` statt derselben Zeile wie bei einem
+Netzfehler.
+
+Das ist die vierte Instanz der Regel »Ein Auffangnetz darf keine
+Auskunft erfinden« – diesmal nicht im `except`, sondern in der Bilanz
+danach.
+
+### Zwei Wächter des Bauservers, beide falsch
+
+Der Bau der `MailBurg-Server-Einrichten.exe` scheiterte beim Release,
+**ohne dass an der Datei etwas war**:
+
+- Der Prüfschritt suchte nach `"Pakete für den Dienst"`. Die `.exe`
+  schreibt in der Konsolen-Codepage, PowerShell liest sie anders – aus
+  dem `ü` wird ein Fragezeichen. Dieselbe Klasse wie der
+  `schtasks.exe`-Fehler vom 30.08., nur im Bauskript.
+- Danach blieb der **Rückgabewert** von `--pruefen` stehen: Der meldet
+  1, wenn etwas Zwingendes fehlt – und auf einem Bauserver fehlt
+  zwangsläufig alles. GitHub wertet den letzten Rückgabewert eines
+  `pwsh`-Schritts als Ergebnis. **Eine richtige Auskunft, die als
+  Fehler gelesen wurde.**
+
+### Die Weboberfläche auf einem 5:4-Bildschirm
+
+Die Postfachspalte lag quer über der Trefferliste. Ein Grid-Feld wird
+nie schmaler als sein längstes unteilbares Wort, und eine Mailadresse
+ist für den Browser ein Wort; `min-width: 0` stand für die
+Trefferspalte seit jeher da, für die Postfachspalte nicht.
+
+Dazu Stephans Vorschlag aus dem Betrieb: Die Spalte lässt sich
+zuschieben, **und zugeschoben ist die Vorgabe** – gesucht wird über
+alle Postfächer, und wer gezielt in einem sucht, nimmt die
+ausführliche Suche.
+
+### Was der Umzug sonst an Lücken gezeigt hat
+
+- **`mailburg tresor entfernen`** gab es nicht. Ein Tresor vom
+  Arbeitsplatz bringt *alle* dortigen Anmeldungen mit; die Kontenliste
+  lässt sich filtern, der Tresor nicht. Geholfen hat ein
+  PowerShell-Einzeiler über die JSON-Datei.
+- **`mailburg zugaenge … anzeigename`** gab es nicht. Den Klarnamen
+  ändern ging nur im Einrichtungsfenster – auf einem Server also gar
+  nicht.
+- **Das Einrichtungsfenster kann Einstellungen und Daten nicht
+  trennen**: ein Feld »Gemeinsamer Ordner« setzt beide Variablen
+  (`servereinrichtung.py:333`). Eine Trennung von Hand hält nur bis
+  zum nächsten *Übernehmen*.
+- **`sc.exe stop` kehrt zurück, bevor der Dienst unten ist.** Ein
+  sofortiges `start` scheitert mit Fehler 1056.
+
+### Nachgewiesen statt vermutet
+
+Der erkannte Text aus 1844 gescannten Dokumenten liegt im Index –
+belegt über die **Indexgröße**, nicht über Stichproben: 1.073.889.280
+Bytes vor dem OCR-Ordner, 1.084.239.872 danach, bei unverändertem
+Archiv. **Stichproben scheiterten**, weil der Textspeicher nach
+Dokument-Fingerabdruck liegt und nicht nach Archiv: Die größten Dateien
+darin waren private Scans, die im Firmenarchiv zu Recht nichts fanden.
+
+2206 Tests, `lesbarkeit.py` ohne Befund, CI grün. Fassungen 1.7.8 und
+1.7.9 an einem Tag – nach der Regel vom 25.09., dass ein Fehler, der
+Anwender trifft, sofort herausgeht.
+
+**Offen:** die 827.199 Mails aus MailStore (siehe TODO), die
+Windows-Testsuite, und ob sich poppler auf dem Server einrichten lässt
+– bei 827.000 Mails ist das der Unterschied zwischen zwanzig Stunden
+und ein paar.
+
 ## Hier war Schluss (Stand 2026-10-05, Montagabend) – der Umzug läuft
 
 **Das echte Firmenarchiv wird gerade auf dem Windows Server indiziert**
