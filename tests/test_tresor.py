@@ -521,6 +521,81 @@ class PruefenTest(Umgebung):
         self.assertNotIn("Alle", ausgabe)
 
 
+@unittest.skipUnless(HAT_KRYPTO, "cryptography fehlt")
+class EntfernenTest(Umgebung):
+    """»mailburg tresor entfernen« – der Weg, der beim Umzug fehlte.
+
+    **Aus dem Betrieb, 2026-10-06.** Beim Umzug eines Firmenarchivs kam
+    der Tresor vom Arbeitsplatz mit, und darin lagen auch alle privaten
+    Anmeldungen. Die Kontenliste ließ sich filtern, der Tresor nicht:
+    ``loeschen()`` gab es im Kern, aber keinen Weg dorthin. Geholfen hat
+    ein Einzeiler über die JSON-Datei – also genau das, was ein
+    Archivprogramm seinen Anwendern nicht zumuten sollte.
+    """
+
+    def _entfernen(self, *schluessel: str) -> tuple[str, int]:
+        import argparse
+        import contextlib
+        import io
+
+        from mailburg import __main__ as cli
+
+        aus, fehler = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(aus), \
+                contextlib.redirect_stderr(fehler):
+            code = cli.cmd_tresor(argparse.Namespace(
+                was="entfernen", schluessel=list(schluessel)))
+        return aus.getvalue() + fehler.getvalue(), code
+
+    def test_ein_eintrag_geht_heraus(self):
+        self._einrichten()
+        tresor.setzen("firma@example.org", "geheim")
+        tresor.setzen("privat@example.net", "auch-geheim")
+
+        ausgabe, code = self._entfernen("privat@example.net")
+
+        self.assertEqual(code, 0)
+        self.assertEqual(tresor.eintraege(), ["firma@example.org"])
+        self.assertIn("1 Eintrag", ausgabe)
+
+    def test_die_uebrigen_bleiben_lesbar(self):
+        """**Der Punkt der ganzen Sache.** Jeder Eintrag ist einzeln
+        verschlüsselt – einen herauszunehmen darf die anderen nicht
+        anfassen und keinen neuen Hauptschlüssel verlangen."""
+        self._einrichten()
+        tresor.setzen("firma@example.org", "geheim")
+        tresor.setzen("privat@example.net", "auch-geheim")
+
+        self._entfernen("privat@example.net")
+
+        self.assertEqual(tresor.holen("firma@example.org"), "geheim")
+
+    def test_mehrere_auf_einmal(self):
+        self._einrichten()
+        for name in ("a@example.org", "b@example.org", "c@example.org"):
+            tresor.setzen(name, "geheim")
+
+        ausgabe, code = self._entfernen("a@example.org", "b@example.org")
+
+        self.assertEqual(code, 0)
+        self.assertEqual(tresor.eintraege(), ["c@example.org"])
+        self.assertIn("1 Eintrag", ausgabe)
+
+    def test_ein_tippfehler_laesst_alles_stehen(self):
+        """**Alles oder nichts.** Wer drei Einträge nennt und sich bei
+        einem vertippt, hätte sonst zwei gelöscht und eine Fehlermeldung
+        – und wüsste hinterher nicht, was gilt."""
+        self._einrichten()
+        tresor.setzen("firma@example.org", "geheim")
+        tresor.setzen("privat@example.net", "auch-geheim")
+
+        ausgabe, code = self._entfernen("privat@example.net", "vertippt@x.org")
+
+        self.assertEqual(code, 1)
+        self.assertIn("vertippt@x.org", ausgabe)
+        self.assertEqual(len(tresor.eintraege()), 2)
+
+
 class OhneKryptoTest(Umgebung):
     """Fehlt ``cryptography``, gibt es keinen Rückfall auf Klartext."""
 

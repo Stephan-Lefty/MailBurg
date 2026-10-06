@@ -263,6 +263,16 @@ mailburg zugaenge /var/lib/mailburg/Archiv hinzufuegen anna \
 anlegen und Rechte vergeben. `--alle` darf jede Post lesen. Wer die
 Technik betreut, muss keine Geschäftspost lesen dürfen.
 
+**Mindestens einer sollte `--verwalter` sein.** Sonst kann später
+niemand aus dem Browser heraus einen Zugang anlegen oder ein Passwort
+zurücksetzen – es ginge nur noch auf der Kommandozeile am Server.
+
+Den Klarnamen nachtragen, wenn er beim Anlegen nicht zur Hand war:
+
+```bash
+mailburg zugaenge /var/lib/mailburg/Archiv anzeigename anna "Anna Feldmann"
+```
+
 Nachsehen, was gilt:
 
 ```bash

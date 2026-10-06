@@ -86,6 +86,26 @@ class ZugaengeCliTest(unittest.TestCase):
 
         self.assertEqual(code, 1)
 
+    def test_den_anzeigenamen_nachtragen(self):
+        """**Aus dem Betrieb.** Beim Einrichten des ersten Firmenservers
+        waren die Vornamen nicht zur Hand; die Zugänge entstanden mit dem
+        Nachnamen. Nachtragen ging danach nur im Einrichtungsfenster –
+        auf einem Server also gar nicht.
+        """
+        self._ruf("hinzufuegen", "gaertner", "--anzeigename", "Gärtner")
+
+        code, text = self._ruf("anzeigename", "gaertner", "Frank Gärtner")
+
+        self.assertEqual(code, 0)
+        self.assertIn("Gärtner", text)
+        self.assertIn("Frank Gärtner", self._ruf("liste")[1])
+
+    def test_der_anzeigename_eines_unbekannten_zugangs(self):
+        code, text = self._ruf("anzeigename", "niemand", "Wer Auchimmer")
+
+        self.assertEqual(code, 1)
+        self.assertIn("gibt es nicht", text)
+
     def test_rechte_aendern(self):
         self._ruf("hinzufuegen", "anna")
         code, text = self._ruf("rechte", "anna", "--nur", "buchhaltung")

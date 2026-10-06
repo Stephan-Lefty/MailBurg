@@ -55,6 +55,30 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - **Eine Weiche am Kopf der Startseite.** Blau oder rot – wer die eine
   Fassung benutzt, soll nicht durch die Anleitungen der anderen müssen.
 
+### Neu (aus dem ersten Serverumzug)
+
+- **`mailburg tresor entfernen`** nimmt einen Eintrag aus dem Tresor.
+  Den Weg gab es bisher nicht: `loeschen()` stand im Kern, aber keine
+  Kommandozeile führte dorthin.
+
+  **Warum das beim Umzug fehlt.** Ein Tresor vom Arbeitsplatz bringt
+  *alle* dortigen Anmeldungen mit – die Kontenliste lässt sich vorher
+  filtern, der Tresor nicht, denn er kennt keine Archive. Am
+  06.10.2026 lagen dadurch achtzehn Anmeldungen auf einem Firmenserver
+  mit fünf fremden Zugängen. Geholfen hat ein Einzeiler über die
+  JSON-Datei – das sollte ein Archivprogramm niemandem zumuten.
+
+  Jeder Eintrag ist einzeln verschlüsselt: Herausnehmen lässt die
+  übrigen lesbar und braucht keinen neuen Hauptschlüssel. Mehrere
+  Kennungen auf einmal gehen; stimmt eine davon nicht, wird **keine**
+  entfernt.
+
+- **`mailburg zugaenge ARCHIV anzeigename NAME "Vor Nachname"`** ändert
+  den Klarnamen. Bisher ging das nur im Einrichtungsfenster – also an
+  dem Ort, den es auf einem Server gerade nicht gibt. Aufgefallen beim
+  Anlegen der ersten fünf Zugänge, als die Vornamen nicht zur Hand
+  waren.
+
 ### Geändert
 
 - **Die Postfachspalte im Browser ist zuschiebbar – und zugeschoben die

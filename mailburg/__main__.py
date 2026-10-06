@@ -2689,6 +2689,20 @@ def cmd_zugaenge(args: argparse.Namespace) -> int:
             print(f"Passwort für »{eintrag.name}« gesetzt.")
             return 0
 
+        if args.was == "anzeigename":
+            vorher = eintrag.anzeigename
+            eintrag.anzeigename = args.klarname.strip()
+            try:
+                archiv.benutzer_setzen(liste)
+            except BenutzerFehler as fehler:
+                print(fehler, file=sys.stderr)
+                return 1
+            if vorher:
+                print(f"»{eintrag.name}«: {vorher} → {eintrag.anzeigename}")
+            else:
+                print(f"»{eintrag.name}« heißt jetzt {eintrag.anzeigename}.")
+            return 0
+
         if args.was == "rechte":
             if args.alle:
                 eintrag.alle_postfaecher = True
@@ -3100,6 +3114,33 @@ def cmd_tresor(args: argparse.Namespace) -> int:
         print(f"{sprache.anzahl(len(eintraege), 'Eintrag', 'Einträge')}:")
         for name in eintraege:
             print(f"  {name}")
+        return 0
+
+    if args.was == "entfernen":
+        vorhanden = set(tresor.eintraege())
+        fehlend = [s for s in args.schluessel if s not in vorhanden]
+        if fehlend:
+            # **Nichts anfassen, wenn einer nicht stimmt.** Wer drei
+            # Einträge nennt und sich bei einem vertippt, hat sonst zwei
+            # gelöscht und eine Fehlermeldung – und weiß hinterher nicht,
+            # was gilt.
+            print("Diese Einträge gibt es nicht:", file=sys.stderr)
+            for name in fehlend:
+                print(f"  {name}", file=sys.stderr)
+            print(
+                "\nEs wurde nichts entfernt. "
+                "»mailburg tresor liste« zeigt, was drinsteht.",
+                file=sys.stderr,
+            )
+            return 1
+
+        for name in args.schluessel:
+            tresor.loeschen(name)
+        print(
+            f"{sprache.anzahl(len(args.schluessel), 'Eintrag', 'Einträge')} "
+            f"entfernt. Im Tresor liegen jetzt "
+            f"{sprache.anzahl(len(tresor.eintraege()), 'Eintrag', 'Einträge')}."
+        )
         return 0
 
     if args.was == "pruefen":
@@ -4390,6 +4431,17 @@ def build_parser() -> argparse.ArgumentParser:
     u.add_argument("name")
     u.set_defaults(func=cmd_zugaenge)
 
+    # **Nachgereicht am 2026-10-06.** Beim Einrichten des ersten
+    # Firmenservers waren die Vornamen nicht zur Hand; die Zugänge
+    # entstanden mit dem Nachnamen. Nachtragen ging danach nur im
+    # Einrichtungsfenster – also an dem Ort, den es auf einem Server
+    # gerade nicht gibt.
+    u = unter.add_parser(
+        "anzeigename", help="den Klarnamen eines Zugangs ändern")
+    u.add_argument("name", help="der Anmeldename")
+    u.add_argument("klarname", help="Vor- und Nachname, in Anführungszeichen")
+    u.set_defaults(func=cmd_zugaenge)
+
     u = unter.add_parser(
         "stilllegen",
         help="der Zugang meldet sich nicht mehr an, bleibt aber eingetragen")
@@ -4455,6 +4507,31 @@ def build_parser() -> argparse.ArgumentParser:
     u.set_defaults(func=cmd_tresor)
 
     u = unter.add_parser("liste", help="was im Tresor liegt")
+    u.set_defaults(func=cmd_tresor)
+
+    # **Nachgereicht am 2026-10-06.** Beim Umzug eines Firmenarchivs
+    # kam der Tresor vom Arbeitsplatz mit – und darin lagen auch alle
+    # privaten Anmeldungen. Die Kontenliste ließ sich filtern, der
+    # Tresor nicht: ``loeschen()`` gab es im Kern, aber keinen Weg
+    # dorthin. Geholfen hat dann ein PowerShell-Einzeiler über die
+    # JSON-Datei – also genau das, was dieser Befehl überflüssig macht.
+    u = unter.add_parser(
+        "entfernen",
+        help="einen Eintrag herausnehmen",
+        description=(
+            "Für den Umzug: Ein Tresor, der von einem Arbeitsplatz "
+            "stammt, enthält alle dortigen Anmeldungen – auch die, die "
+            "auf einem Server mit fremden Zugängen nichts verloren "
+            "haben. Jeder Eintrag ist einzeln verschlüsselt; einen "
+            "herauszunehmen rührt die übrigen nicht an und braucht "
+            "keinen neuen Hauptschlüssel.\n\n"
+            "Welche Einträge es gibt, zeigt »mailburg tresor liste«."
+        ),
+    )
+    u.add_argument(
+        "schluessel", nargs="+",
+        help="Kennung wie in der Liste, mehrere möglich",
+    )
     u.set_defaults(func=cmd_tresor)
 
     u = unter.add_parser(

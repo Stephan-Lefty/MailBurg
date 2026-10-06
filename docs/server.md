@@ -251,8 +251,22 @@ einer Umgebungsvariablen oder einer eigenen Datei.
 ```bash
 mailburg tresor schluessel        # Hauptschlüssel erzeugen
 mailburg tresor uebernehmen       # vom Arbeitsplatz in den Tresor
+mailburg tresor liste             # was liegt drin?
 mailburg tresor pruefen           # kommt der Server an alles heran?
+mailburg tresor entfernen KENNUNG # einen Eintrag herausnehmen
 ```
+
+**`entfernen` ist der Befehl für den Umzug.** Ein Tresor, der von einem
+Arbeitsplatz stammt, bringt *alle* dortigen Anmeldungen mit – auch die
+privaten. Die Kontenliste lässt sich vorher filtern, der Tresor nicht:
+Er kennt die Zuordnung zu Archiven gar nicht.
+
+Beim ersten echten Umzug am 06.10.2026 lagen dadurch achtzehn
+Anmeldungen auf einem Firmenserver, an dem fünf fremde Zugänge hängen.
+Jeder Eintrag ist einzeln verschlüsselt, also kostet das Aufräumen
+nichts: Die übrigen bleiben lesbar, der Hauptschlüssel bleibt derselbe.
+Was wirklich drinsteht, sagt `liste` – und `pruefen` nennt Einträge
+ohne zugehöriges Postfach ausdrücklich.
 
 **Der Tresor greift nur, wenn er eingerichtet ist.** Sonst gilt der
 Schlüsselbund wie bisher: Auf einem Arbeitsplatz soll nichts an ihm
