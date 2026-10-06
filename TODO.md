@@ -39,6 +39,30 @@ wurde.
   gh workflow run Tests --ref main -f breit=true
   ```
 
+- [ ] **827.199 Mails aus MailStore übernehmen.** Das Firmenarchiv auf
+  dem Server (70.133 Mails, seit 06.10.2026 im Betrieb) ist ein
+  Zwölftel des Bestands. Der Rest liegt in MailStore 26.1.0.23845.
+
+  Der Weg aus MailStore, in der Hersteller-Doku nachgeschlagen:
+  Rechtsklick im Ordnerbaum → *Exportieren nach …* → Ziel *Verzeichnis
+  (Dateisystem)*, Dateiformat **EML**, Option *Ordnerstruktur
+  beibehalten*. *Vorhandenen Export aktualisieren* gleicht über
+  Dateinamen ab und schreibt nur Neues – damit lässt sich der Export in
+  Etappen fahren.
+  <https://help.mailstore.com/de/server/E-Mails_exportieren>
+
+  **Hochgerechnet aus Gemessenem** (70.133 Mails = 19,2 GB roh,
+  1,07 GB Index, 6075 s Indexlauf über pypdf): rund **230 GB**
+  Rohdaten, **12 GB** Index, **20 Stunden** Indexlauf. Die zwanzig
+  Stunden sind der Punkt, an dem sich poppler lohnt – mit `pdftotext`
+  ist es ein Bruchteil davon. Vor dem großen Lauf also prüfen, ob sich
+  poppler auf dem Windows Server einrichten lässt.
+
+  Vorher zu klären: ein Archiv oder je MailStore-Archiv eines, wie die
+  Postfachzuordnung beim Einlesen gesetzt wird (`importieren --konto`),
+  und ob Export und Einlesen in Etappen laufen – 230 GB am Stück sind
+  auch beim Kopieren eine Hausnummer.
+
 - [ ] **Aus einem Suchordner heraus die Maske vorfüllen.** Von joka63
   gemeldet (22.09.2026): Wer im Dialog *Suchordner bearbeiten* auf
   »Ausführlich suchen« geht, erwartet die Felder gefüllt – gefüllt mit

@@ -37,6 +37,29 @@ down, with the date they were completed.
   gh workflow run Tests --ref main -f breit=true
   ```
 
+- [ ] **Move 827,199 emails over from MailStore.** The company archive
+  on the server (70,133 emails, live since 2026-10-06) is one twelfth
+  of the holdings. The rest sits in MailStore 26.1.0.23845.
+
+  The export path, looked up in the vendor's documentation: right-click
+  in the folder tree → *Exportieren nach …* → target *Verzeichnis
+  (Dateisystem)*, file format **EML**, option *Ordnerstruktur
+  beibehalten*. *Vorhandenen Export aktualisieren* compares by filename
+  and writes only what is new — so the export can run in stages.
+  <https://help.mailstore.com/de/server/E-Mails_exportieren>
+
+  **Extrapolated from measurements** (70,133 emails = 19.2 GB raw,
+  1.07 GB index, 6075 s index run via pypdf): roughly **230 GB** raw,
+  **12 GB** index, **20 hours** of indexing. Those twenty hours are
+  where poppler pays for itself — with `pdftotext` it is a fraction of
+  that. So check whether poppler can be installed on the Windows server
+  before the big run.
+
+  To settle first: one archive or one per MailStore archive, how the
+  mailbox assignment is set on import (`importieren --konto`), and
+  whether export and import should run in stages — 230 GB in one go is
+  a lot even to copy.
+
 - [ ] **Prefill the search mask from a saved search.** Reported by
   joka63 (2026-09-22): opening "Ausführlich suchen" from the *Suchordner
   bearbeiten* dialog should show the fields filled in from the stored
