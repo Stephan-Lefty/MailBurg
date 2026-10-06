@@ -1141,6 +1141,45 @@ class Gesamtbild:
         return [b for b in self.befunde if b.lage is Lage.ACHTUNG]
 
 
+def ampeltext(bild: Gesamtbild) -> tuple[str, str]:
+    """Was neben der Ampel steht: der Satz und die erste Abhilfe.
+
+    **Hier und nicht im Fenster**, aus demselben Grund wie die
+    Prüfungen selbst: Läge es dort, wäre es auf einem Rechner ohne Qt
+    nicht prüfbar – und der erste CI-Lauf installiert absichtlich keine
+    Oberfläche. Am 2026-10-06 ist genau das aufgelaufen.
+
+    Zurück kommt der Name der Abhilfe, nicht die Beschriftung des
+    Knopfes: Wie der heißt, weiß das Fenster.
+
+    **Eine Abhilfe, nicht drei.** Wer rot sieht, soll nicht wählen
+    müssen, womit er anfängt – die Liste steht in der Reihenfolge, in
+    der sie abzuarbeiten ist.
+    """
+    for lage, vorspann in (
+        (Lage.FEHLT, "<b>Sofort handeln.</b>"),
+        (Lage.ACHTUNG, "<b>Handlungsbedarf, aber keine Eile.</b>"),
+    ):
+        betroffen = [b for b in bild.befunde if b.lage is lage]
+        if not betroffen:
+            continue
+        erstes = betroffen[0]
+        weitere = (
+            f" (und {len(betroffen) - 1} weitere)"
+            if len(betroffen) > 1 else ""
+        )
+        return (
+            f"{vorspann} {erstes.titel}: {erstes.text}{weitere}",
+            erstes.abhilfe or "",
+        )
+
+    return (
+        "<b>Das Archiv läuft sauber.</b> Der Dienst liefert aus, holt "
+        "Post und kommt nach einem Neustart von selbst wieder.",
+        "",
+    )
+
+
 def alles_pruefen(umgebung: Umgebung, stand=None) -> Gesamtbild:
     """Die ganze Liste, in der Reihenfolge, in der sie abzuarbeiten ist.
 

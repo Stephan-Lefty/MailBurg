@@ -96,56 +96,6 @@ KNOEPFE = {
 }
 
 
-def ampeltext(bild) -> tuple[str, str, str]:
-    """Was neben der Ampel steht: Satz, Knopfbeschriftung, Abhilfe.
-
-    **Ohne Fenster prüfbar**, und das ist kein Selbstzweck: Die drei
-    Zustände sieht man auf einem Server höchstens einmal, und genau
-    dann muss der Satz stimmen.
-
-    **Ein Knopf, nicht drei.** Wer rot sieht, soll nicht wählen müssen,
-    womit er anfängt – die Liste steht in der Reihenfolge, in der sie
-    abzuarbeiten ist, also führt der Knopf zur ersten offenen Sache.
-    """
-    dringend = bild.dringend
-    if dringend:
-        erstes = dringend[0]
-        knopf = ""
-        if erstes.abhilfe and erstes.abhilfe in KNOEPFE:
-            knopf = KNOEPFE[erstes.abhilfe][0]
-        weitere = (
-            f" (und {len(dringend) - 1} weitere)" if len(dringend) > 1 else ""
-        )
-        return (
-            f"<b>Sofort handeln.</b> {erstes.titel}: {erstes.text}{weitere}",
-            knopf,
-            erstes.abhilfe or "",
-        )
-
-    offen = bild.demnaechst
-    if offen:
-        erstes = offen[0]
-        knopf = ""
-        if erstes.abhilfe and erstes.abhilfe in KNOEPFE:
-            knopf = KNOEPFE[erstes.abhilfe][0]
-        weitere = (
-            f" (und {len(offen) - 1} weitere)" if len(offen) > 1 else ""
-        )
-        return (
-            f"<b>Handlungsbedarf, aber keine Eile.</b> "
-            f"{erstes.titel}: {erstes.text}{weitere}",
-            knopf,
-            erstes.abhilfe or "",
-        )
-
-    return (
-        "<b>Das Archiv läuft sauber.</b> Der Dienst liefert aus, holt "
-        "Post und kommt nach einem Neustart von selbst wieder.",
-        "",
-        "",
-    )
-
-
 class Zeile(QWidget):
     """Ein Befund: Zeichen, Titel, Text – und vielleicht ein Knopf."""
 
@@ -509,7 +459,8 @@ class Einrichtungsfenster(QMainWindow):
     def _ampel_stellen(self, bild) -> None:
         """Die Ampel und den Knopf daneben auf den Stand bringen."""
         lage = bild.ampel
-        text, knopf, abhilfe = ampeltext(bild)
+        text, abhilfe = einrichtung.ampeltext(bild)
+        knopf = KNOEPFE[abhilfe][0] if abhilfe in KNOEPFE else ""
 
         self.ampel.setText(ZEICHEN[lage] * 3)
         self.ampel.setStyleSheet(

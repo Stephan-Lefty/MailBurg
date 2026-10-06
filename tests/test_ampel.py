@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import unittest
 
-from mailburg.server.einrichtung import Befund, Gesamtbild, Lage
-from mailburg.ui.servereinrichtung import ampeltext
+from mailburg.server.einrichtung import Befund, Gesamtbild, Lage, ampeltext
+
 
 
 def _bild(*lagen_und_titel) -> Gesamtbild:
@@ -74,17 +74,16 @@ class AmpelTest(unittest.TestCase):
 
 class AmpeltextTest(unittest.TestCase):
     def test_gruen_sagt_was_laeuft(self):
-        text, knopf, abhilfe = ampeltext(_bild((Lage.GUT, "Dienst", "")))
+        text, abhilfe = ampeltext(_bild((Lage.GUT, "Dienst", "")))
 
         self.assertIn("läuft sauber", text)
-        self.assertEqual(knopf, "")
         self.assertEqual(abhilfe, "")
 
     def test_rot_nennt_die_erste_offene_sache(self):
         """**Ein Knopf, nicht drei.** Die Liste steht in der
         Reihenfolge, in der sie abzuarbeiten ist – also führt der Knopf
         zur ersten offenen Sache."""
-        text, knopf, abhilfe = ampeltext(_bild(
+        text, abhilfe = ampeltext(_bild(
             (Lage.FEHLT, "Archiv", "archiv"),
             (Lage.FEHLT, "Dienst", "dienst_anlegen"),
         ))
@@ -92,11 +91,10 @@ class AmpeltextTest(unittest.TestCase):
         self.assertIn("Sofort handeln", text)
         self.assertIn("Archiv", text)
         self.assertEqual(abhilfe, "archiv")
-        self.assertEqual(knopf, "Archiv wählen …")
 
     def test_rot_zaehlt_die_uebrigen_mit(self):
         """Sonst klickt jemand den einen Knopf und hält sich für fertig."""
-        text, _, _ = ampeltext(_bild(
+        text, _ = ampeltext(_bild(
             (Lage.FEHLT, "Archiv", "archiv"),
             (Lage.FEHLT, "Dienst", "dienst_anlegen"),
             (Lage.FEHLT, "Zugänge", "zugang"),
@@ -105,12 +103,12 @@ class AmpeltextTest(unittest.TestCase):
         self.assertIn("und 2 weitere", text)
 
     def test_bei_einem_einzigen_mangel_steht_kein_weitere(self):
-        text, _, _ = ampeltext(_bild((Lage.FEHLT, "Archiv", "archiv")))
+        text, _ = ampeltext(_bild((Lage.FEHLT, "Archiv", "archiv")))
 
         self.assertNotIn("weitere", text)
 
     def test_gelb_sagt_dass_es_warten_kann(self):
-        text, knopf, abhilfe = ampeltext(_bild(
+        text, abhilfe = ampeltext(_bild(
             (Lage.GUT, "Dienst", ""),
             (Lage.ACHTUNG, "Abruf", "abruf"),
         ))
@@ -119,14 +117,12 @@ class AmpeltextTest(unittest.TestCase):
         self.assertIn("Abruf", text)
         self.assertEqual(abhilfe, "abruf")
 
-    def test_ein_befund_ohne_knopf_laesst_den_knopf_weg(self):
-        """Nicht jeder Mangel hat eine Abhilfe im Fenster – eine leere
-        Schaltfläche wäre schlimmer als keine."""
-        _, knopf, abhilfe = ampeltext(_bild(
-            (Lage.FEHLT, "Betriebssystem", ""),
-        ))
+    def test_ein_befund_ohne_abhilfe_gibt_keine_zurueck(self):
+        """Nicht jeder Mangel hat eine Abhilfe im Fenster – dann bleibt
+        der Knopf weg, denn eine leere Schaltfläche wäre schlimmer als
+        keine."""
+        _, abhilfe = ampeltext(_bild((Lage.FEHLT, "Betriebssystem", "")))
 
-        self.assertEqual(knopf, "")
         self.assertEqual(abhilfe, "")
 
 
