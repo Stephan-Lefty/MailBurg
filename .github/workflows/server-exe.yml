@@ -59,9 +59,15 @@ jobs:
         shell: pwsh
         run: |
           $ausgabe = & ".\dist\MailBurg-Server-Einrichten.exe" --pruefen 2>&1 | Out-String
+          # **Der Rückgabewert ist hier kein Fehler.** ``--pruefen``
+          # meldet 1, wenn etwas Zwingendes fehlt - und auf einem
+          # Bauserver fehlt zwangsläufig alles: kein Archiv, kein
+          # Dienst, keine Weboberfläche. Geprüft wird die Ausgabe, nicht
+          # der Code; sonst verwechselt der Schritt eine richtige
+          # Auskunft mit einem gescheiterten Bau.
           Write-Host $ausgabe
           if ($ausgabe -notmatch "Python") {
-            Write-Error "Die gepackte Fassung gibt keine Prüfliste aus."
+            Write-Error "Die gepackte Fassung gibt keine Pruefliste aus."
             exit 1
           }
           # **Ohne Umlaut suchen.** Die .exe schreibt in der
@@ -76,6 +82,9 @@ jobs:
             Write-Error "Die Paketpruefung fehlt - dann prueft sie das Falsche."
             exit 1
           }
+          # Ausdrücklich, damit nicht der Rückgabewert der .exe stehen
+          # bleibt und den Schritt rot färbt.
+          exit 0
 
       - name: Findet sie pywin32?
         # **Der eigentliche Beweis.** Ohne pywin32 kann das Fenster
@@ -89,6 +98,7 @@ jobs:
             Write-Error "pywin32 ist nicht mit eingepackt."
             exit 1
           }
+          exit 0
 
       - name: Größe nennen
         run: |
