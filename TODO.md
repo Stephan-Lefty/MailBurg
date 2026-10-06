@@ -8,6 +8,33 @@ wurde.
 
 ## Offen
 
+- [ ] **Der Import nutzt die Kerne nicht aus – gemessen 1,5 von 12.**
+  Am 06.10.2026 an einem Windows Server mit zwölf logischen Kernen,
+  mitten im Einlesen von 80.000 Mails:
+
+  ```
+  Kern 1: 75 %   Kern 2: 44 %   Kern 4: 19 %
+  die übrigen neun: 0–6 %       Gesamt: 13 %
+  ```
+
+  **Weder Platte noch CPU sind dabei am Anschlag** (`PercentIdleTime`
+  der Platte: 64). Es dauert trotzdem – der Lauf hängt an einem Kern.
+
+  Vermutet, **nicht belegt**: `SCHWELLE_PARALLEL` schickt nur Mails ab
+  24 KB in den Prozesspool; kurze Geschäftspost erledigt der
+  Hauptprozess allein. Dazu kommt, dass Ablage, Journal und Index
+  seriell geschrieben werden – der Pool kann noch so schnell liefern,
+  wenn der Hauptprozess nicht nachkommt.
+
+  **Vor jeder Änderung messen, woran es wirklich liegt.** Die Schwelle
+  zu senken wäre der naheliegende Griff und könnte alles langsamer
+  machen: Eine kleine Mail an einen anderen Prozess zu schicken kostet
+  mehr, als sie dort zu zerlegen. Das steht so im Modulkopf von
+  `core/importer.py` und war schon einmal gemessen.
+
+  Relevant wird es bei großen Beständen: 827.000 Mails auf einem
+  Server, der zu neunzig Prozent brachliegt.
+
 - [ ] **Zwei Kontonamen mit demselben Umlaut können verschieden sein.**
   Gemessen am 06.10.2026: »Stephan Rösner« einmal mit 26 und einmal mit
   27 Zeichen, beide am Bildschirm nicht zu unterscheiden. Das »ö« lässt

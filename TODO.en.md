@@ -7,6 +7,33 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **The import does not use the available cores – measured 1.5 out
+  of 12.** On 2026-10-06, on a Windows server with twelve logical
+  cores, while reading in 80,000 messages:
+
+  ```
+  core 1: 75 %   core 2: 44 %   core 4: 19 %
+  the other nine: 0–6 %         total: 13 %
+  ```
+
+  **Neither disk nor CPU is saturated** (disk `PercentIdleTime`: 64).
+  It still takes its time – the run hangs on a single core.
+
+  Suspected, **not established**: `SCHWELLE_PARALLEL` only sends
+  messages of 24 KB and above into the process pool; short business
+  mail is handled by the main process alone. On top of that, store,
+  journal and index are written serially – the pool can deliver as fast
+  as it likes if the main process cannot keep up.
+
+  **Measure what actually causes it before changing anything.**
+  Lowering the threshold is the obvious move and could make everything
+  slower: shipping a small message to another process costs more than
+  parsing it there. That is in the module docstring of
+  `core/importer.py`, and it was measured once already.
+
+  It matters for large holdings: 827,000 messages on a server that sits
+  idle ninety percent of the time.
+
 - [ ] **Two account names with the same umlaut can differ.** Measured
   on 2026-10-06: "Stephan Rösner" once with 26 and once with 27
   characters, indistinguishable on screen. The "ö" can be stored as a
