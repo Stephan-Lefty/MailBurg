@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import unittest
 
-from mailburg.ui.servereinrichtung import pruefbericht, tresorbericht
+from mailburg.core.bericht import pruefbericht, tresorbericht
 
 
 def _heil(**mehr):

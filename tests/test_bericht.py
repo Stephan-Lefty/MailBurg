@@ -111,6 +111,52 @@ class FaelligTest(unittest.TestCase):
             bericht.Lage(), bericht.Stand(), datetime(2026, 10, 7, 23, 0)
         ))
 
+    def test_alle_sieben_tage_heisst_am_siebten_wieder(self):
+        """**Für ein Privatarchiv ist täglich zu viel.** Wer dreißig
+        gleichlautende Mails im Monat bekommt, liest keine davon – und
+        dann ist auch die einunddreißigste wertlos, die etwas anderes
+        sagt."""
+        lage = bericht.Lage(
+            an="ich@example.org", smtp="mail.example.org",
+            von="archiv@example.org", zeit=uhrzeit(7, 0), takt_tage=7,
+        )
+        stand = bericht.Stand(zuletzt=datetime(2026, 10, 1, 7, 2))
+
+        self.assertFalse(bericht.faellig(
+            lage, stand, datetime(2026, 10, 7, 7, 1)
+        ))
+        self.assertTrue(bericht.faellig(
+            lage, stand, datetime(2026, 10, 8, 7, 1)
+        ))
+
+    def test_alle_dreissig_tage(self):
+        lage = bericht.Lage(
+            an="ich@example.org", smtp="mail.example.org",
+            von="archiv@example.org", zeit=uhrzeit(7, 0), takt_tage=30,
+        )
+        stand = bericht.Stand(zuletzt=datetime(2026, 9, 1, 7, 2))
+
+        self.assertFalse(bericht.faellig(
+            lage, stand, datetime(2026, 9, 29, 8, 0)
+        ))
+        self.assertTrue(bericht.faellig(
+            lage, stand, datetime(2026, 10, 1, 7, 1)
+        ))
+
+    def test_ein_unsinniger_takt_wird_taeglich_und_nicht_nie(self):
+        """Zu viele Mails fallen auf, zu wenige nicht."""
+        self.assertEqual(bericht.takt_lesen("jede Woche"), 1)
+        self.assertEqual(bericht.takt_lesen("0"), 1)
+        self.assertEqual(bericht.takt_lesen(""), 1)
+        self.assertEqual(bericht.takt_lesen("14"), 14)
+
+    def test_die_auswahl_steht_im_modul(self):
+        """Damit Fenster und Doku dieselbe Liste nehmen und nicht
+        auseinanderlaufen."""
+        tage = [t for _, t in bericht.TAKTE]
+
+        self.assertEqual(tage, [1, 7, 14, 30])
+
 
 class TextTest(unittest.TestCase):
     def test_ein_gesunder_tag(self):

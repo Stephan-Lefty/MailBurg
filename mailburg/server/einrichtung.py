@@ -1096,6 +1096,40 @@ class Gesamtbild:
                 return b
         return None
 
+    @property
+    def ampel(self) -> Lage:
+        """Rot, Gelb oder Grün – der eine Blick, bevor man liest.
+
+        **Siebzehn Zeilen beantworten nicht die Frage, die ein
+        Verwalter hat.** Er will wissen, ob er handeln muss, und zwar
+        bevor er die Liste durchgeht. Erst danach interessiert ihn, was.
+
+        Rot: Es fehlt etwas Zwingendes – der Dienst läuft nicht oder
+        liefert nichts aus. Gelb: Es läuft, aber etwas gehört
+        nachgezogen; der häufigste Fall ist ein Dienst ohne Abruf, der
+        ein Archiv ausliefert, das nicht mehr wächst. Grün: grün.
+
+        **Unklares zählt nicht als Mangel.** »Noch nicht nachgesehen«
+        beim Update ist keine Störung, sondern eine offene Frage – wer
+        daraus Gelb machte, hätte eine Ampel, die nie grün wird, und
+        damit keine.
+        """
+        if any(b.lage is Lage.FEHLT for b in self.befunde):
+            return Lage.FEHLT
+        if any(b.lage is Lage.ACHTUNG for b in self.befunde):
+            return Lage.ACHTUNG
+        return Lage.GUT
+
+    @property
+    def dringend(self) -> list[Befund]:
+        """Was rot ist – in der Reihenfolge der Liste, also der Abarbeitung."""
+        return [b for b in self.befunde if b.lage is Lage.FEHLT]
+
+    @property
+    def demnaechst(self) -> list[Befund]:
+        """Was gelb ist."""
+        return [b for b in self.befunde if b.lage is Lage.ACHTUNG]
+
 
 def alles_pruefen(umgebung: Umgebung, stand=None) -> Gesamtbild:
     """Die ganze Liste, in der Reihenfolge, in der sie abzuarbeiten ist.

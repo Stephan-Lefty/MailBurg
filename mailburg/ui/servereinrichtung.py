@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from mailburg.core.bericht import pruefbericht, tresorbericht
 from mailburg.server import einrichtung
 from mailburg.server.einrichtung import Befund, Lage, Umgebung
 from mailburg.ui.fliesstext import Fliesstext
@@ -95,131 +96,54 @@ KNOEPFE = {
 }
 
 
-def pruefbericht(bericht: dict) -> tuple[str, bool]:
-    """Macht aus ``Archive.verify()`` einen Text für Menschen.
+def ampeltext(bild) -> tuple[str, str, str]:
+    """Was neben der Ampel steht: Satz, Knopfbeschriftung, Abhilfe.
 
-    Gibt den Text zurück und ob er heikel ist – daran entscheidet das
-    Fenster, ob es eine Warnung zeigt oder eine Mitteilung.
+    **Ohne Fenster prüfbar**, und das ist kein Selbstzweck: Die drei
+    Zustände sieht man auf einem Server höchstens einmal, und genau
+    dann muss der Satz stimmen.
 
-    **Eigene Funktion und nicht im Fenster.** So lässt sie sich ohne Qt
-    prüfen, und zwar für alle Fälle: ein heiles Archiv, eine gerissene
-    Kette, fehlende Dateien, untergeschobene Dateien. Genau diese Fälle
-    sieht ein Verwalter höchstens einmal – und dann muss der Text
-    stimmen.
-
-    **Ein Befund ohne Weg ist nur eine schlechte Nachricht.** Wer liest,
-    dass die Hash-Kette beschädigt ist, muss erfahren, was das heißt:
-    Die Mails sind da, die Lückenlosigkeit ist es nicht.
+    **Ein Knopf, nicht drei.** Wer rot sieht, soll nicht wählen müssen,
+    womit er anfängt – die Liste steht in der Reihenfolge, in der sie
+    abzuarbeiten ist, also führt der Knopf zur ersten offenen Sache.
     """
-    zeilen: list[str] = []
-    heikel = False
-
-    if bericht["chain_ok"] and bericht.get("chain_bekannt"):
-        zeilen.append(
-            f"Hash-Kette: schlüssig bis auf "
-            f"{len(bericht['chain_bekannt'])} vermerkte Stelle(n), "
-            f"{bericht['chain_entries']} Einträge."
+    dringend = bild.dringend
+    if dringend:
+        erstes = dringend[0]
+        knopf = ""
+        if erstes.abhilfe and erstes.abhilfe in KNOEPFE:
+            knopf = KNOEPFE[erstes.abhilfe][0]
+        weitere = (
+            f" (und {len(dringend) - 1} weitere)" if len(dringend) > 1 else ""
         )
-    elif bericht["chain_ok"]:
-        zeilen.append(
-            f"Hash-Kette: unversehrt, {bericht['chain_entries']} Einträge."
-        )
-    else:
-        heikel = True
-        zeilen.append(
-            f"Hash-Kette: BESCHÄDIGT an "
-            f"{len(bericht['chain_errors'])} Stelle(n)."
+        return (
+            f"<b>Sofort handeln.</b> {erstes.titel}: {erstes.text}{weitere}",
+            knopf,
+            erstes.abhilfe or "",
         )
 
-    fehlend = bericht.get("missing") or []
-    fremd = bericht.get("unexpected") or []
-    unvollstaendig = bericht.get("unvollstaendig") or []
-
-    if fehlend:
-        heikel = True
-        zeilen.append(
-            f"{len(fehlend)} Mail(s) stehen im Journal, liegen aber nicht "
-            f"mehr auf der Platte."
+    offen = bild.demnaechst
+    if offen:
+        erstes = offen[0]
+        knopf = ""
+        if erstes.abhilfe and erstes.abhilfe in KNOEPFE:
+            knopf = KNOEPFE[erstes.abhilfe][0]
+        weitere = (
+            f" (und {len(offen) - 1} weitere)" if len(offen) > 1 else ""
         )
-    if fremd:
-        heikel = True
-        zeilen.append(
-            f"{len(fremd)} Datei(en) liegen im Archiv, ohne im Journal zu "
-            f"stehen – sie sind nicht archiviert, sondern untergeschoben."
-        )
-    if unvollstaendig:
-        heikel = True
-        zeilen.append(
-            f"{len(unvollstaendig)} Journaleintrag/-einträge sagen nicht, "
-            f"welche Mail sie meinen."
+        return (
+            f"<b>Handlungsbedarf, aber keine Eile.</b> "
+            f"{erstes.titel}: {erstes.text}{weitere}",
+            knopf,
+            erstes.abhilfe or "",
         )
 
-    if not heikel:
-        zeilen.append("Ablage: jede Mail am Platz, nichts Fremdes dabei.")
-        zeilen.append("")
-        zeilen.append("Das Archiv ist in Ordnung.")
-        return "\n".join(zeilen), False
-
-    zeilen.append("")
-    zeilen.append(
-        "Was das heißt: Die Mails selbst sind davon nicht betroffen – "
-        "beanstandet ist die Lückenlosigkeit, also der Nachweis, dass "
-        "nichts nachträglich geändert wurde."
+    return (
+        "<b>Das Archiv läuft sauber.</b> Der Dienst liefert aus, holt "
+        "Post und kommt nach einem Neustart von selbst wieder.",
+        "",
+        "",
     )
-    zeilen.append(
-        "Was zu tun ist: Nichts überschreiben und nichts aufräumen. "
-        "Eine bekannte Ursache lässt sich festhalten "
-        "(»mailburg kettenvermerk«), damit sie erklärt ist statt "
-        "verschwiegen. Vorher den Grund suchen – ein zweiter Vorgang am "
-        "selben Archiv ist der häufigste."
-    )
-    return "\n".join(zeilen), True
-
-
-def tresorbericht(eintraege: int, schlecht: list[str], ohne: list[str],
-                  konten: int) -> tuple[str, bool]:
-    """Reicht der Tresor für die eingerichteten Postfächer?
-
-    Dieselbe Trennung wie bei :func:`pruefbericht` und aus demselben
-    Grund: Der Text ist das Eigentliche, und er soll ohne Fenster
-    prüfbar sein.
-
-    **Beide Richtungen zählen.** Ein Postfach ohne Eintrag kann der
-    Dienst nicht abrufen – und er meldet das nicht als Fehler, er
-    überspringt es. Ein Eintrag ohne Postfach ist ein fremdes Passwort
-    auf einem Rechner, an dem mehrere Menschen arbeiten.
-    """
-    zeilen = [f"Im Tresor liegen {eintraege} Einträge."]
-    heikel = False
-
-    if schlecht:
-        heikel = True
-        zeilen.append(
-            f"{len(schlecht)} davon lassen sich nicht öffnen – vermutlich "
-            f"der falsche Hauptschlüssel, oder die Datei stammt von einem "
-            f"anderen Rechner."
-        )
-    if ohne:
-        heikel = True
-        zeilen.append("")
-        zeilen.append(
-            f"Ohne Anmeldung: {', '.join(ohne)} "
-            f"({len(ohne)} von {konten} Postfächern)."
-        )
-        zeilen.append(
-            "Von dort holt der Dienst keine Post. Er meldet das nicht als "
-            "Fehler – es kommt einfach nichts an."
-        )
-        zeilen.append(
-            "Nachtragen auf dem Rechner, auf dem die Postfächer "
-            "eingerichtet sind: mailburg tresor uebernehmen"
-        )
-
-    if not heikel:
-        zeilen.append(
-            f"Alle {konten} eingerichteten Postfächer haben eine Anmeldung."
-        )
-    return "\n".join(zeilen), heikel
 
 
 class Zeile(QWidget):
@@ -287,6 +211,30 @@ class Einrichtungsfenster(QMainWindow):
         mitte = QWidget()
         self.setCentralWidget(mitte)
         senkrecht = QVBoxLayout(mitte)
+
+        # -- Die Ampel ------------------------------------------------------
+        # **Ganz oben und vor allem anderen.** Siebzehn Zeilen
+        # beantworten nicht die Frage, mit der ein Verwalter dieses
+        # Fenster öffnet: Muss ich etwas tun? Erst danach interessiert
+        # ihn, was.
+        ampelzeile = QHBoxLayout()
+        self.ampel = QLabel()
+        self.ampel.setToolTip(
+            "Rot: etwas Zwingendes fehlt – der Dienst läuft nicht oder "
+            "liefert nichts aus.\n"
+            "Gelb: es läuft, aber etwas gehört nachgezogen.\n"
+            "Grün: alles in Ordnung."
+        )
+        ampelzeile.addWidget(self.ampel)
+        self.ampeltext = Fliesstext("")
+        ampelzeile.addWidget(self.ampeltext, 1)
+        self.ampelknopf = QPushButton()
+        self.ampelknopf.clicked.connect(self._ampel_handeln)
+        ampelzeile.addWidget(self.ampelknopf)
+        senkrecht.addLayout(ampelzeile)
+
+        #: Woran der Ampelknopf gerade hängt – die erste offene Sache.
+        self._ampel_abhilfe = ""
 
         senkrecht.addWidget(Fliesstext(
             "<p>Hier wird eingerichtet und nachgesehen, was nötig ist, "
@@ -549,6 +497,27 @@ class Einrichtungsfenster(QMainWindow):
 
         for befund in bild.befunde:
             self.listenlayout.addWidget(Zeile(befund, self._abhilfe))
+
+        self._ampel_stellen(bild)
+
+    def _ampel_stellen(self, bild) -> None:
+        """Die Ampel und den Knopf daneben auf den Stand bringen."""
+        lage = bild.ampel
+        text, knopf, abhilfe = ampeltext(bild)
+
+        self.ampel.setText(ZEICHEN[lage] * 3)
+        self.ampel.setStyleSheet(
+            f"color: {FARBEN[lage]}; font-size: 20pt; font-weight: bold;"
+        )
+        self.ampeltext.setText(text)
+        self._ampel_abhilfe = abhilfe
+        self.ampelknopf.setText(knopf or "")
+        self.ampelknopf.setVisible(bool(knopf))
+
+    def _ampel_handeln(self) -> None:
+        """Führt zu dem, was als Nächstes dran ist."""
+        if self._ampel_abhilfe:
+            self._abhilfe(self._ampel_abhilfe)
 
     def _warnung_pflegen(self) -> None:
         if self.netz.currentData() == "127.0.0.1":

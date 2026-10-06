@@ -242,6 +242,31 @@ class Schleife:
         self.letzter_befund = self._befund(neu, geholt, uebersprungen)
         self._melden(self.letzter_befund, fehler=bool(uebersprungen))
 
+        # **Der Bericht hängt am Abruf und braucht keinen zweiten
+        # Faden.** Die Schleife läuft ohnehin alle paar Minuten; ein
+        # eigener Zeitgeber wäre ein zweiter Ort, an dem etwas
+        # steckenbleiben kann. Und berichtet wird über das, was der
+        # Abruf getan hat – ohne ihn gäbe es nichts zu melden.
+        self._berichten(neu, uebersprungen)
+
+    def _berichten(self, neu: int, uebersprungen: int) -> None:
+        """Tagesbericht und Störungsmeldung – beides nach Lage.
+
+        **Fehler hier dürfen den Abruf nicht kosten.** Ein Mailserver,
+        der nicht antwortet, ist ein Grund, keinen Bericht zu schicken –
+        kein Grund, die Post nicht zu holen.
+        """
+        try:
+            from mailburg.server import meldung
+
+            meldung.nach_einem_lauf(
+                self.archiv, neu=neu, uebersprungen=uebersprungen,
+                befund=self.letzter_befund, passwort=self.passwort,
+                melden=self._melden,
+            )
+        except Exception as fehler:  # noqa: BLE001
+            self._melden(f"Bericht nicht möglich: {fehler}", fehler=True)
+
     @staticmethod
     def _befund(neu: int, geholt: int, uebersprungen: int) -> str:
         """Was am Ende eines Laufs dasteht.

@@ -37,6 +37,26 @@ AN = "MAILBURG_BERICHT_AN"
 UHR = "MAILBURG_BERICHT_UHR"
 STANDARDZEIT = uhrzeit(7, 0)
 
+#: Wie oft berichtet wird, wenn **alles in Ordnung** ist – in Tagen.
+#:
+#: **Störungen gehen davon unberührt sofort hinaus.** Der Takt regelt
+#: nur die gute Nachricht; die schlechte wartet nie.
+#:
+#: Täglich ist für einen Firmenserver richtig, für ein Privatarchiv zu
+#: viel: Wer dreißig gleichlautende Mails im Monat bekommt, liest keine
+#: davon – und dann ist auch die einunddreißigste wertlos, die etwas
+#: anderes sagt.
+TAKT = "MAILBURG_BERICHT_TAKT"
+STANDARDTAKT = 1
+
+#: Was sich einstellen lässt: Beschriftung und Tage.
+TAKTE = (
+    ("täglich", 1),
+    ("alle 7 Tage", 7),
+    ("alle 14 Tage", 14),
+    ("alle 30 Tage", 30),
+)
+
 #: Der Postausgangsserver, als ``name`` oder ``name:port``.
 #:
 #: **Ausdrücklich nicht eines der archivierten Postfächer.** Wer den
@@ -63,6 +83,7 @@ class Lage:
 
     an: str = ""
     zeit: uhrzeit = STANDARDZEIT
+    takt_tage: int = STANDARDTAKT
     smtp: str = ""
     anschluss: int = STANDARDANSCHLUSS
     von: str = ""
@@ -85,11 +106,27 @@ class Lage:
         return cls(
             an=os.environ.get(AN, "").strip(),
             zeit=zeit_lesen(os.environ.get(UHR, "")) or STANDARDZEIT,
+            takt_tage=takt_lesen(os.environ.get(TAKT, "")),
             smtp=smtp,
             anschluss=anschluss,
             von=os.environ.get(VON, "").strip(),
             benutzer=os.environ.get(BENUTZER, "").strip(),
         )
+
+
+def takt_lesen(roh: str) -> int:
+    """Wie viele Tage zwischen zwei guten Nachrichten liegen.
+
+    **Unsinn wird zu »täglich«, nicht zu »nie«.** Ein Tippfehler darf
+    den Bericht nicht stillschweigend abschalten – dann wäre sein
+    Ausbleiben kein Signal mehr, und darauf beruht die ganze Funktion.
+    Zu viele Mails fallen auf, zu wenige nicht.
+    """
+    roh = roh.strip()
+    if not roh.isdigit():
+        return STANDARDTAKT
+    tage = int(roh)
+    return tage if tage >= 1 else STANDARDTAKT
 
 
 def _server_lesen(roh: str) -> tuple[str, int]:
@@ -293,19 +330,154 @@ def entwarnung_bauen(name: str, vorher: str) -> tuple[str, str]:
 
 
 def faellig(lage: Lage, stand: Stand, jetzt: datetime) -> bool:
-    """Ist die Berichtszeit seit dem letzten Bericht vorbeigekommen?
+    """Ist die gute Nachricht wieder dran?
 
     **Nicht »ist es genau sieben Uhr«.** Der Dienst sieht alle paar
     Minuten nach; eine Uhrzeit auf die Sekunde zu treffen wäre Zufall.
     Und wer den Server um acht einschaltet, soll den Bericht trotzdem
     bekommen und nicht einen Tag warten.
+
+    **Der Takt gilt nur hier.** Eine Störung geht sofort hinaus, ganz
+    gleich, ob zuletzt vorgestern berichtet wurde.
     """
+    from datetime import timedelta
+
     if not lage.eingerichtet:
         return False
     heute = datetime.combine(jetzt.date(), lage.zeit)
     if jetzt < heute:
         return False
-    return stand.zuletzt is None or stand.zuletzt < heute
+    if stand.zuletzt is None:
+        return True
+    schwelle = heute - timedelta(days=max(1, lage.takt_tage) - 1)
+    return stand.zuletzt < schwelle
+
+
+def pruefbericht(bericht: dict) -> tuple[str, bool]:
+    """Macht aus ``Archive.verify()`` einen Text für Menschen.
+
+    Gibt den Text zurück und ob er heikel ist – daran entscheidet das
+    Fenster, ob es eine Warnung zeigt oder eine Mitteilung.
+
+    **Eigene Funktion und nicht im Fenster.** So lässt sie sich ohne Qt
+    prüfen, und zwar für alle Fälle: ein heiles Archiv, eine gerissene
+    Kette, fehlende Dateien, untergeschobene Dateien. Genau diese Fälle
+    sieht ein Verwalter höchstens einmal – und dann muss der Text
+    stimmen.
+
+    **Ein Befund ohne Weg ist nur eine schlechte Nachricht.** Wer liest,
+    dass die Hash-Kette beschädigt ist, muss erfahren, was das heißt:
+    Die Mails sind da, die Lückenlosigkeit ist es nicht.
+    """
+    zeilen: list[str] = []
+    heikel = False
+
+    if bericht["chain_ok"] and bericht.get("chain_bekannt"):
+        zeilen.append(
+            f"Hash-Kette: schlüssig bis auf "
+            f"{len(bericht['chain_bekannt'])} vermerkte Stelle(n), "
+            f"{bericht['chain_entries']} Einträge."
+        )
+    elif bericht["chain_ok"]:
+        zeilen.append(
+            f"Hash-Kette: unversehrt, {bericht['chain_entries']} Einträge."
+        )
+    else:
+        heikel = True
+        zeilen.append(
+            f"Hash-Kette: BESCHÄDIGT an "
+            f"{len(bericht['chain_errors'])} Stelle(n)."
+        )
+
+    fehlend = bericht.get("missing") or []
+    fremd = bericht.get("unexpected") or []
+    unvollstaendig = bericht.get("unvollstaendig") or []
+
+    if fehlend:
+        heikel = True
+        zeilen.append(
+            f"{len(fehlend)} Mail(s) stehen im Journal, liegen aber nicht "
+            f"mehr auf der Platte."
+        )
+    if fremd:
+        heikel = True
+        zeilen.append(
+            f"{len(fremd)} Datei(en) liegen im Archiv, ohne im Journal zu "
+            f"stehen – sie sind nicht archiviert, sondern untergeschoben."
+        )
+    if unvollstaendig:
+        heikel = True
+        zeilen.append(
+            f"{len(unvollstaendig)} Journaleintrag/-einträge sagen nicht, "
+            f"welche Mail sie meinen."
+        )
+
+    if not heikel:
+        zeilen.append("Ablage: jede Mail am Platz, nichts Fremdes dabei.")
+        zeilen.append("")
+        zeilen.append("Das Archiv ist in Ordnung.")
+        return "\n".join(zeilen), False
+
+    zeilen.append("")
+    zeilen.append(
+        "Was das heißt: Die Mails selbst sind davon nicht betroffen – "
+        "beanstandet ist die Lückenlosigkeit, also der Nachweis, dass "
+        "nichts nachträglich geändert wurde."
+    )
+    zeilen.append(
+        "Was zu tun ist: Nichts überschreiben und nichts aufräumen. "
+        "Eine bekannte Ursache lässt sich festhalten "
+        "(»mailburg kettenvermerk«), damit sie erklärt ist statt "
+        "verschwiegen. Vorher den Grund suchen – ein zweiter Vorgang am "
+        "selben Archiv ist der häufigste."
+    )
+    return "\n".join(zeilen), True
+
+
+def tresorbericht(eintraege: int, schlecht: list[str], ohne: list[str],
+                  konten: int) -> tuple[str, bool]:
+    """Reicht der Tresor für die eingerichteten Postfächer?
+
+    Dieselbe Trennung wie bei :func:`pruefbericht` und aus demselben
+    Grund: Der Text ist das Eigentliche, und er soll ohne Fenster
+    prüfbar sein.
+
+    **Beide Richtungen zählen.** Ein Postfach ohne Eintrag kann der
+    Dienst nicht abrufen – und er meldet das nicht als Fehler, er
+    überspringt es. Ein Eintrag ohne Postfach ist ein fremdes Passwort
+    auf einem Rechner, an dem mehrere Menschen arbeiten.
+    """
+    zeilen = [f"Im Tresor liegen {eintraege} Einträge."]
+    heikel = False
+
+    if schlecht:
+        heikel = True
+        zeilen.append(
+            f"{len(schlecht)} davon lassen sich nicht öffnen – vermutlich "
+            f"der falsche Hauptschlüssel, oder die Datei stammt von einem "
+            f"anderen Rechner."
+        )
+    if ohne:
+        heikel = True
+        zeilen.append("")
+        zeilen.append(
+            f"Ohne Anmeldung: {', '.join(ohne)} "
+            f"({len(ohne)} von {konten} Postfächern)."
+        )
+        zeilen.append(
+            "Von dort holt der Dienst keine Post. Er meldet das nicht als "
+            "Fehler – es kommt einfach nichts an."
+        )
+        zeilen.append(
+            "Nachtragen auf dem Rechner, auf dem die Postfächer "
+            "eingerichtet sind: mailburg tresor uebernehmen"
+        )
+
+    if not heikel:
+        zeilen.append(
+            f"Alle {konten} eingerichteten Postfächer haben eine Anmeldung."
+        )
+    return "\n".join(zeilen), heikel
 
 
 # ------------------------------------------------------------- Der Versand
