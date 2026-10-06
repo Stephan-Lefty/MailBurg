@@ -35,16 +35,45 @@ class GemeinsameDomainTest(unittest.TestCase):
     def test_enden_alle_gleich_wird_sie_erkannt(self):
         self.assertEqual(_gemeinsame_domain(LAUFEND), "firma.example")
 
-    def test_zwei_domains_werden_nicht_gekuerzt(self):
-        """**Sonst hießen zwei verschiedene Postfächer gleich.**
+    def test_eine_fremde_adresse_kippt_die_kuerzung_nicht(self):
+        """**Stephans Frage vom 06.10.2026**, wörtlich: »wenn später
+        roesner@gmail.at dazu kommt«.
 
-        ``roesner@firma.example`` und ``roesner@anders.example`` würden
-        beide zu »roesner« – und niemand könnte sie auseinanderhalten.
-        Eine lange Zeile ist besser als eine falsche.
+        Der erste Entwurf verlangte, dass *alle* Adressen gleich enden –
+        dann hätte eine einzige fremde alle siebenundzwanzig Einträge
+        wieder lang gemacht. Gekürzt wird deshalb die **häufigste**
+        Domain; die fremde bleibt vollständig stehen und hebt sich
+        dadurch sogar ab. Dasselbe Muster benutzen Mailprogramme seit
+        jeher.
         """
-        gemischt = {**LAUFEND, "roesner@anders.example": 1200}
+        gemischt = {**LAUFEND, "roesner@gmail.example": 230}
 
-        self.assertEqual(_gemeinsame_domain(gemischt), "")
+        self.assertEqual(_gemeinsame_domain(gemischt), "firma.example")
+        self.assertEqual(
+            _kurzname("roesner@gmail.example", "firma.example"),
+            "roesner@gmail.example",
+        )
+
+    def test_zwei_gleich_haeufige_domains_entscheiden_nach_dem_namen(self):
+        """**Eine Anzeige darf nicht davon abhängen, in welcher
+        Reihenfolge die Konten aus der Datenbank kamen.** Bei
+        Gleichstand gewinnt die alphabetisch erste – dieselbe Spalte
+        sieht damit bei jedem Aufruf gleich aus.
+        """
+        patt = {
+            "a@aaa.example": 1, "b@aaa.example": 2, "c@aaa.example": 3,
+            "d@bbb.example": 4, "e@bbb.example": 5, "f@bbb.example": 6,
+        }
+
+        self.assertEqual(_gemeinsame_domain(patt), "aaa.example")
+
+    def test_unter_drei_gleichen_lohnt_es_nicht(self):
+        """Bei zweien spart das Weglassen eine Zeile und kostet die
+        Eindeutigkeit auf den ersten Blick."""
+        wenige = {"a@firma.example": 1, "b@firma.example": 2,
+                  "Stephan Rösner": 3}
+
+        self.assertEqual(_gemeinsame_domain(wenige), "")
 
     def test_namen_ohne_adresse_stehen_nicht_im_weg(self):
         """Ein eingelesener Bestand heißt »Stephan Rösner« oder
@@ -76,9 +105,11 @@ class GemeinsameDomainTest(unittest.TestCase):
             _gemeinsame_domain({"Stephan Rösner": 1, "Outlook": 2}), ""
         )
 
-    def test_ein_einzelnes_postfach(self):
+    def test_ein_einzelnes_postfach_wird_nicht_gekuerzt(self):
+        """Es gibt nichts, wovon es sich abheben müsste – und der volle
+        Name sagt mehr."""
         self.assertEqual(
-            _gemeinsame_domain({"roesner@firma.example": 1}), "firma.example"
+            _gemeinsame_domain({"roesner@firma.example": 1}), ""
         )
 
 
@@ -164,6 +195,21 @@ class DarstellungTest(unittest.TestCase):
             [name.casefold() for name in reihenfolge],
             sorted(name.casefold() for name in reihenfolge),
         )
+
+    def test_die_spalte_sagt_was_sie_weglaesst(self):
+        """**Sonst rät man, zu welcher Domain »roesner« gehört** –
+        besonders, sobald daneben ein vollständiges
+        »roesner@gmail.example« steht."""
+        seite = self._spalte(LAUFEND)
+
+        self.assertIn("@firma.example", seite)
+        self.assertIn("fehlt", seite)
+
+    def test_ohne_kuerzung_steht_dieser_satz_nicht_da(self):
+        """Ein Hinweis auf etwas, das nicht passiert ist, verwirrt."""
+        seite = self._spalte({"Stephan Rösner": 1, "Outlook": 2})
+
+        self.assertNotIn("fehlt", seite)
 
     def test_eine_zeile_je_postfach(self):
         """**Das war der Anlass.** Umgebrochen wurde bis zum 06.10.2026

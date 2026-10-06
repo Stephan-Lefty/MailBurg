@@ -627,43 +627,58 @@ def hilfeseite(benutzer=None, thema: str = "system") -> str:
 """, benutzer, thema=thema, hier="/hilfe")
 
 
+#: Ab wie vielen Postfächern derselben Domain sich das Weglassen lohnt.
+#: Bei zweien spart es eine Zeile und kostet die Eindeutigkeit auf den
+#: ersten Blick – erst ab dreien überwiegt der Gewinn.
+MINDESTENS_GLEICH = 3
+
+
 def _gemeinsame_domain(postfaecher) -> str:
-    """Die Domain, auf die *alle* Adressen enden – sonst leer.
+    """Die Hausdomain – die, auf die die meisten Adressen enden.
 
     **Der Anlass kommt aus dem Betrieb (06.10.2026).** In Stephans
     Firmenarchiv heißen sieben Postfächer ``…@ourww.hostedoffice.ag``;
-    aus MailStore kommen gut zwanzig weitere dazu. In der Spalte stand
+    aus MailStore kommen gut zwanzig weitere dazu. In der Spalte standen
     bei jedem Eintrag dieselben zweiundzwanzig Zeichen – und drängten
-    das, was sie unterscheidet, aus dem Bild.
+    das, was ihn unterscheidet, aus dem Bild.
 
-    **Nur wenn sie bei allen gleich ist.** Kämen zwei Domains vor,
-    wären ``roesner@ourww.hostedoffice.ag`` und ``roesner@sitebah.de``
-    nach dem Kürzen beide schlicht »roesner« – zwei verschiedene
-    Postfächer, die gleich aussehen. Das wäre schlimmer als eine lange
-    Zeile.
+    **Die häufigste, nicht die einzige.** Der erste Entwurf verlangte,
+    dass *alle* Adressen gleich enden. Stephans Frage dazu war die
+    richtige: »wenn später roesner@gmail.at dazu kommt« – dann hätte
+    eine einzige fremde Adresse alle siebenundzwanzig Einträge wieder
+    lang gemacht. Jetzt bleibt die fremde Adresse vollständig stehen und
+    hebt sich dadurch sogar ab; das ist dasselbe Muster, das
+    Mailprogramme seit jeher benutzen.
+
+    **Gekürzt wird nur, wenn danach noch jeder für sich steht.** Beim
+    Prüfen an echten Daten fiel auf: Aus
+    ``buchhaltung@ourww.hostedoffice.ag`` (laufend) und »Buchhaltung«
+    (Altbestand aus MailStore) würden zwei Einträge, die sich nur in
+    einem Großbuchstaben unterscheiden. Im Postfachbaum sähen sie aus
+    wie derselbe – genau davor warnt der Einlesedialog beim Vergeben des
+    Namens, und die Anzeige darf es nicht selbst herbeiführen.
 
     Namen ohne ``@`` zählen nicht mit: Ein eingelesener Bestand heißt
     »Stephan Rösner« oder »Outlook Persönlich«, und das ist keine
     Adresse, der eine Domain fehlt.
     """
-    domains = set()
+    haeufigkeit: dict[str, int] = {}
     for name in postfaecher:
         if "@" not in name:
             continue
-        domains.add(name.rsplit("@", 1)[1])
-        if len(domains) > 1:
-            return ""
-    if len(domains) != 1:
+        domain = name.rsplit("@", 1)[1]
+        haeufigkeit[domain] = haeufigkeit.get(domain, 0) + 1
+    if not haeufigkeit:
         return ""
-    domain = next(iter(domains))
 
-    # **Und nur, wenn danach noch jeder für sich steht.** Beim Prüfen an
-    # Stephans Daten fiel auf: Aus »buchhaltung@ourww.hostedoffice.ag«
-    # (laufend) und »Buchhaltung« (Altbestand aus MailStore) würden
-    # zwei Einträge, die sich nur in einem Großbuchstaben unterscheiden.
-    # Im Postfachbaum sähen sie aus wie derselbe – genau davor warnt der
-    # Einlesedialog beim Vergeben des Namens, und hier würde die Anzeige
-    # es selbst herbeiführen.
+    # Bei Gleichstand die alphabetisch erste – eine Anzeige darf nicht
+    # davon abhängen, in welcher Reihenfolge die Konten zurückkamen.
+    domain, wie_oft = sorted(
+        haeufigkeit.items(), key=lambda p: (-p[1], p[0])
+    )[0]
+    if wie_oft < MINDESTENS_GLEICH:
+        return ""
+
     kurz = [_kurzname(name, domain).casefold() for name in postfaecher]
     if len(set(kurz)) != len(kurz):
         return ""
@@ -758,10 +773,17 @@ def _postfachleiste(postfaecher: dict[str, int], ausdruck: str,
     # unter dem Suchfeld war klar, wozu die Knöpfe gehören; als Spalte am
     # Rand braucht es ein Wort davor, sonst steht dort eine Liste ohne
     # erkennbaren Sinn.
+    # **Was weggelassen wird, steht dabei.** Sonst rät man, zu welcher
+    # Domain »roesner« gehört – besonders, sobald daneben ein
+    # vollständiges »roesner@gmail.at« steht.
+    weggelassen = (
+        f" Bei den kurzen Namen fehlt »@{html.escape(gemeinsam)}«."
+        if gemeinsam else ""
+    )
     return (
         f'<div class="postfaecher" aria-label="Durchsuchbare Postfächer" '
         f'title="Diese Postfächer dürfen Sie durchsuchen. '
-        f'Ein Klick grenzt die Suche darauf ein.">'
+        f'Ein Klick grenzt die Suche darauf ein.{weggelassen}">'
         f"{''.join(stuecke)}{alle}</div>"
     )
 

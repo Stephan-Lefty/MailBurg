@@ -25,14 +25,19 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Anzeige im Browser nach unseren Bedürfnissen anpassen.«* An den Daten
   ändert sich nichts.
 
-  **Gekürzt wird nur, wenn es eindeutig bleibt.** Kommen zwei Domains
-  vor, bliebe von `roesner@firma.example` und `roesner@anders.example`
-  zweimal »roesner« übrig. Und beim Prüfen an echten Daten fiel ein
-  zweiter Fall auf: Heißt ein eingelesener Bestand »Buchhaltung«,
-  stünde er nach dem Kürzen neben dem laufenden »buchhaltung« – zwei
-  Einträge, die sich in einem Großbuchstaben unterscheiden. In beiden
-  Fällen bleibt die Spalte lang. Eine lange Zeile ist besser als eine
-  falsche.
+  **Gekürzt wird die häufigste Domain, nicht die einzige.** Der erste
+  Entwurf verlangte, dass *alle* Adressen gleich enden – Stephans Frage
+  dazu war die richtige: *»wenn später roesner@gmail.at dazu kommt«*.
+  Dann hätte eine einzige fremde Adresse alle siebenundzwanzig
+  Einträge wieder lang gemacht. Jetzt bleibt sie vollständig stehen und
+  hebt sich dadurch sogar ab; dasselbe Muster benutzen Mailprogramme
+  seit jeher. Was weggelassen wurde, nennt die Spalte.
+
+  **Und nur, wenn es eindeutig bleibt.** Beim Prüfen an echten Daten
+  fiel auf: Heißt ein eingelesener Bestand »Buchhaltung«, stünde er
+  nach dem Kürzen neben dem laufenden »buchhaltung« – zwei Einträge,
+  die sich in einem Großbuchstaben unterscheiden. Dann bleibt die
+  Spalte lang. Eine lange Zeile ist besser als eine falsche.
 
   Sortiert wird jetzt ohne Rücksicht auf Groß- und Kleinschreibung –
   sonst stünden alle Klarnamen oben und alle Adressen unten.
