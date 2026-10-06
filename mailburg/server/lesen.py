@@ -261,6 +261,21 @@ def routen(lage, sitzungen):
                 benutzer, ausdruck, treffer, gesamt, seite_nr, JE_SEITE,
                 postfaecher=archiv.index.account_totals(sicht=blick),
                 thema=_thema(anfrage), spalte=_spalte(anfrage),
+                # **Ohne Sicht, und das ist eine Entscheidung.**
+                # Überall sonst gilt: Was jemand nicht sehen darf,
+                # taucht in keiner Zahl auf – schon eine Trefferzahl
+                # verriete, dass es Post gibt, die verborgen ist.
+                #
+                # Hier nicht. Stephans Vorgabe vom 2026-10-06: *Die
+                # Gesamtzahl aller Mails dürfen alle sehen.* Sie sagt,
+                # wie groß das Archiv ist, und dass es wächst – eine
+                # Auskunft über den Bestand, nicht über seinen Inhalt.
+                # Wer weiß, dass 70.000 Mails da sind, weiß deshalb
+                # über keine einzige etwas.
+                #
+                # Wer das ändert, ändert eine Festlegung und keinen
+                # Fehler.
+                im_archiv=archiv.index.count(""),
             ))
 
     async def maske(anfrage):

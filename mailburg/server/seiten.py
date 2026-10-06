@@ -711,9 +711,50 @@ def _zeile(treffer) -> str:
     )
 
 
+def ergebniszeile(gesamt: int, ausdruck: str, im_archiv: int = 0) -> str:
+    """Was über der Trefferliste steht.
+
+    **Die Zahl im Archiv steht auch ohne Suche da.** Wer das Archiv
+    öffnet, will sehen, dass es wächst – und nach einer Suche hilft die
+    Einordnung: »1.234 von 70.264« sagt mehr als »1.234«.
+
+    **Die Zahl im Archiv ist die ganze, nicht die sichtbare.** Das
+    weicht von der Regel ab, dass in keiner Zahl auftauchen darf, was
+    jemand nicht sehen soll – und zwar mit Absicht (Stephans Vorgabe
+    vom 2026-10-06). Sie sagt, wie groß das Archiv ist und dass es
+    wächst; wer weiß, dass 70.000 Mails darin liegen, weiß deshalb über
+    keine einzige etwas. Die **Trefferzahl** daneben bleibt
+    eingeschränkt – sie handelt vom Inhalt.
+    """
+    bestand = (
+        f"{sprache.anzahl(im_archiv, 'Mail', 'Mails')} im Archiv"
+        if im_archiv else ""
+    )
+
+    if gesamt:
+        treffer = sprache.anzahl(gesamt, "Treffer", "Treffer")
+        if not ausdruck:
+            # Ohne Suchbegriff sind Treffer und Bestand dasselbe – das
+            # zweimal zu nennen liest sich wie ein Fehler.
+            return f"MailBurg hat {treffer}."
+        return (
+            f"MailBurg hat {treffer} – von {bestand}."
+            if bestand else f"MailBurg hat {treffer}."
+        )
+
+    if ausdruck:
+        return (
+            f"MailBurg hat nichts gefunden – {bestand}."
+            if bestand else "MailBurg hat nichts gefunden."
+        )
+
+    return f"{bestand[0].upper()}{bestand[1:]}." if bestand else ""
+
+
 def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
                  seite_nr: int, je_seite: int, postfaecher=None,
-                 thema: str = "system", spalte: str = "zu") -> str:
+                 thema: str = "system", spalte: str = "zu",
+                 im_archiv: int = 0) -> str:
     """Die Suchseite mit ihrer Trefferliste.
 
     ``postfaecher`` sind die, die dieser Benutzer sehen darf, mit ihrer
@@ -747,12 +788,7 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
             "den Anhängen.</p>"
         )
 
-    if gesamt:
-        ergebnis = f"MailBurg hat {sprache.anzahl(gesamt, 'Treffer', 'Treffer')}."
-    elif ausdruck:
-        ergebnis = "MailBurg hat nichts gefunden."
-    else:
-        ergebnis = ""
+    ergebnis = ergebniszeile(gesamt, ausdruck, im_archiv)
 
     seiten = max(1, -(-gesamt // je_seite))
     blaettern = ""
