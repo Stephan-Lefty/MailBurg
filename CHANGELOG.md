@@ -9,6 +9,34 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Geändert
+
+- **Die Postfachspalte im Browser kommt mit vielen Postfächern
+  zurecht.** Enden alle Adressen auf dieselbe Domain, lässt die Spalte
+  sie weg: Aus `buchhaltung@firma.example` wird `buchhaltung`. Der
+  volle Name steht am Element und wird vorgelesen; die Suche zielt
+  unverändert auf ihn.
+
+  **Der Anlass kommt aus dem Betrieb (06.10.2026).** Sieben Postfächer
+  endeten auf dieselben zweiundzwanzig Zeichen, und jeder Eintrag brach
+  darum über zwei Zeilen um – sieben füllten die halbe Seitenhöhe. Mit
+  den gut zwanzig, die aus MailStore dazukommen, wäre das unbenutzbar.
+  Stephans Vorschlag: *»Wir können ja die Struktur so lassen, aber die
+  Anzeige im Browser nach unseren Bedürfnissen anpassen.«* An den Daten
+  ändert sich nichts.
+
+  **Gekürzt wird nur, wenn es eindeutig bleibt.** Kommen zwei Domains
+  vor, bliebe von `roesner@firma.example` und `roesner@anders.example`
+  zweimal »roesner« übrig. Und beim Prüfen an echten Daten fiel ein
+  zweiter Fall auf: Heißt ein eingelesener Bestand »Buchhaltung«,
+  stünde er nach dem Kürzen neben dem laufenden »buchhaltung« – zwei
+  Einträge, die sich in einem Großbuchstaben unterscheiden. In beiden
+  Fällen bleibt die Spalte lang. Eine lange Zeile ist besser als eine
+  falsche.
+
+  Sortiert wird jetzt ohne Rücksicht auf Groß- und Kleinschreibung –
+  sonst stünden alle Klarnamen oben und alle Adressen unten.
+
 ### Neu
 
 - **Mehrere Ordner auf einmal einlesen, unter einem Kontonamen.** Im

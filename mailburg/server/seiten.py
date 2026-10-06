@@ -192,10 +192,15 @@ _KOPF = """<!doctype html>
                     text-decoration: none; display: flex;
                     justify-content: space-between; gap: .6rem;
                     min-width: 0; }}
-  /* Umbrechen, wo es keine Trennstelle gibt. Ohne das ragt die
-     Adresse aus ihrem Kasten heraus, auch wenn der Kasten passt. */
-  .postfaecher a em {{ font-style: normal; overflow-wrap: anywhere;
-                       min-width: 0; }}
+  /* **Eine Zeile je Postfach, abgeschnitten statt umgebrochen.**
+     Bis zum 2026-10-06 brach eine Adresse um, und jeder Eintrag war
+     zwei Zeilen hoch – bei sieben Postfächern schon die halbe
+     Seitenhöhe, bei den gut zwanzig, die aus MailStore dazukommen,
+     unbenutzbar. Der volle Name steht am Element (``title``), und
+     Vorlesewerkzeuge bekommen ihn ohnehin ganz. */
+  .postfaecher a em {{ font-style: normal; min-width: 0;
+                       overflow: hidden; text-overflow: ellipsis;
+                       white-space: nowrap; }}
   .postfaecher a span {{ flex: none; }}
   /* Der Griff zum Auf- und Zuschieben. Keine Schaltfläche, sondern ein
      Link: Er führt zu einer Adresse, die den Zustand merkt, und wirkt
@@ -622,6 +627,61 @@ def hilfeseite(benutzer=None, thema: str = "system") -> str:
 """, benutzer, thema=thema, hier="/hilfe")
 
 
+def _gemeinsame_domain(postfaecher) -> str:
+    """Die Domain, auf die *alle* Adressen enden – sonst leer.
+
+    **Der Anlass kommt aus dem Betrieb (06.10.2026).** In Stephans
+    Firmenarchiv heißen sieben Postfächer ``…@ourww.hostedoffice.ag``;
+    aus MailStore kommen gut zwanzig weitere dazu. In der Spalte stand
+    bei jedem Eintrag dieselben zweiundzwanzig Zeichen – und drängten
+    das, was sie unterscheidet, aus dem Bild.
+
+    **Nur wenn sie bei allen gleich ist.** Kämen zwei Domains vor,
+    wären ``roesner@ourww.hostedoffice.ag`` und ``roesner@sitebah.de``
+    nach dem Kürzen beide schlicht »roesner« – zwei verschiedene
+    Postfächer, die gleich aussehen. Das wäre schlimmer als eine lange
+    Zeile.
+
+    Namen ohne ``@`` zählen nicht mit: Ein eingelesener Bestand heißt
+    »Stephan Rösner« oder »Outlook Persönlich«, und das ist keine
+    Adresse, der eine Domain fehlt.
+    """
+    domains = set()
+    for name in postfaecher:
+        if "@" not in name:
+            continue
+        domains.add(name.rsplit("@", 1)[1])
+        if len(domains) > 1:
+            return ""
+    if len(domains) != 1:
+        return ""
+    domain = next(iter(domains))
+
+    # **Und nur, wenn danach noch jeder für sich steht.** Beim Prüfen an
+    # Stephans Daten fiel auf: Aus »buchhaltung@ourww.hostedoffice.ag«
+    # (laufend) und »Buchhaltung« (Altbestand aus MailStore) würden
+    # zwei Einträge, die sich nur in einem Großbuchstaben unterscheiden.
+    # Im Postfachbaum sähen sie aus wie derselbe – genau davor warnt der
+    # Einlesedialog beim Vergeben des Namens, und hier würde die Anzeige
+    # es selbst herbeiführen.
+    kurz = [_kurzname(name, domain).casefold() for name in postfaecher]
+    if len(set(kurz)) != len(kurz):
+        return ""
+    return domain
+
+
+def _kurzname(name: str, gemeinsame_domain: str) -> str:
+    """Was in der Spalte steht – der volle Name bleibt im ``title``."""
+    if not gemeinsame_domain:
+        return name
+    ende = f"@{gemeinsame_domain}"
+    # **Nur kürzen, wenn etwas übrig bleibt.** Ein Postfach, das genau
+    # so heißt wie die Domain, würde sonst zu einem leeren Kasten.
+    if name.endswith(ende) and len(name) > len(ende):
+        return name[: -len(ende)]
+    return name
+
+
 def _postfachleiste(postfaecher: dict[str, int], ausdruck: str,
                     offen: bool = False) -> str:
     """Welche Postfächer der Angemeldete durchsuchen kann.
@@ -657,16 +717,27 @@ def _postfachleiste(postfaecher: dict[str, int], ausdruck: str,
         if wort.startswith("konto:"):
             aktiv = wort[len("konto:"):].strip('"')
 
+    gemeinsam = _gemeinsame_domain(postfaecher)
+
     stuecke = []
-    for name, anzahl in sorted(postfaecher.items()):
+    # **Sortiert ohne Rücksicht auf Groß- und Kleinschreibung.** Sonst
+    # stehen alle Klarnamen oben und alle Adressen unten, weil »B« vor
+    # »b« kommt – und »Buchhaltung« landete weit weg von
+    # »buchhaltung@…«, obwohl beide dasselbe Postfach meinen.
+    for name, anzahl in sorted(postfaecher.items(), key=lambda p: p[0].casefold()):
         ziel = f"{ohne_konto} konto:{quoten_wenn_noetig(name)}".strip()
         gewaehlt = ' class="gewaehlt"' if name == aktiv else ""
+        kurz = _kurzname(name, gemeinsam)
+        # **Der volle Name bleibt am Element.** Was angezeigt wird, ist
+        # gekürzt; was gemeint ist, muss nachlesbar bleiben – sonst
+        # unterscheidet niemand zwei Postfächer, die sich erst hinter
+        # der Kürzung unterscheiden.
+        titel = f' title="{html.escape(name)}"' if kurz != name else ""
         # Der Name in einem eigenen Element: Nur so lässt sich das
-        # Umbrechen auf ihn beschränken und die Zahl daneben ganz
-        # lassen.
+        # Kürzen auf ihn beschränken und die Zahl daneben ganz lassen.
         stuecke.append(
-            f'<a href="/?q={quote(ziel)}"{gewaehlt}>'
-            f"<em>{html.escape(name)}</em>"
+            f'<a href="/?q={quote(ziel)}"{gewaehlt}{titel}>'
+            f"<em>{html.escape(kurz)}</em>"
             f"<span>{anzahl}</span></a>"
         )
 
