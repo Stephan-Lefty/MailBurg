@@ -113,6 +113,57 @@ class Statistik:
         return NotImplemented
 
 
+def importiere_alle(archive, quellen, *, mit_anhangstext: bool = True,
+                    fortschritt=None, auf_fehler=None, weiter=None,
+                    je_quelle=None) -> Statistik:
+    """Liest mehrere Quellen nacheinander in *ein* geöffnetes Archiv.
+
+    **Warum das im Kern steht und nicht beim Aufrufer.** Bis zum
+    2026-10-06 hatten Fenster und Kommandozeile jedes seine eigene
+    Schleife – dieselbe Sache zweimal, und die zweite wäre bei der
+    nächsten Änderung vergessen worden. Dieselbe Begründung wie bei
+    ``sources.quelle_fuer()``: Es gibt genau eine Stelle, die
+    entscheidet.
+
+    **Das Archiv kommt offen herein und wird nicht geschlossen.** Jedes
+    Öffnen nimmt die Sperre und liest das Journal; bei zweiunddreißig
+    Verzeichnissen wäre das zweiunddreißigmal derselbe Aufwand – und
+    zwischen zwei Quellen stünde das Archiv einen Augenblick offen für
+    jeden anderen Vorgang. Genau daran ist am 21.09.2026 eine
+    Hash-Kette gerissen.
+
+    ``je_quelle(nummer, anzahl, quelle)`` wird vor jeder Quelle
+    gerufen – dafür, dass ein Aufrufer sagen kann, wo er gerade steht.
+
+    Die Quellen werden **nicht** geschlossen; das bleibt beim
+    Aufrufer, der sie geöffnet hat.
+    """
+    gesamt = Statistik()
+    anzahl = len(quellen)
+    for nummer, quelle in enumerate(quellen, start=1):
+        if weiter is not None and not weiter():
+            break
+        if je_quelle is not None:
+            je_quelle(nummer, anzahl, quelle)
+
+        def melden(stat, vorher=gesamt) -> None:
+            if fortschritt is not None:
+                # **Die Zahl zählt über alle Quellen hoch.** Sonst
+                # spränge sie bei jedem Verzeichnis auf null zurück, und
+                # bei zweiunddreißig Ordnern sähe das aus, als ginge es
+                # nicht voran.
+                fortschritt(vorher + stat)
+
+        gesamt = gesamt + importieren(
+            archive, quelle,
+            mit_anhangstext=mit_anhangstext,
+            fortschritt=melden,
+            auf_fehler=auf_fehler,
+            weiter=weiter,
+        )
+    return gesamt
+
+
 def _verarbeiten(roh: bytes, mit_anhangstext: bool) -> tuple[Any, str, dict[str, int]]:
     """Zerlegt eine Mail und holt den Text ihrer Anhänge.
 

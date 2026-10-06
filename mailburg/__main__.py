@@ -21,7 +21,7 @@ from mailburg import APP_ID, APP_NAME, __version__
 from mailburg.core import accounts, sprache
 from mailburg.core.accounts import Konto, Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked, Mode
-from mailburg.core.importer import Statistik, importieren
+from mailburg.core.importer import importiere_alle, importieren
 from mailburg.core.index import IndexOutdated
 from mailburg.core.krypto import KryptoFehler
 from mailburg.core.tresor import TresorFehler
@@ -336,8 +336,17 @@ def cmd_importieren(args: argparse.Namespace) -> int:
             )
     print(f"Anhänge im Volltext: {'ja' if mit_text else 'nein'}")
 
-    gesamt = Statistik()
-    uebergangen: set[str] = set()
+    quellen = local.quellen_oeffnen(
+        gute, konto, alles=args.alles, zusammenlegen=args.zusammenlegen
+    )
+    stand = ""
+
+    def ansagen(nummer, anzahl, quelle) -> None:
+        nonlocal stand
+        stand = f"[{nummer}/{anzahl}] " if anzahl > 1 else ""
+        print(" " * 70, end="\r")
+        print(f"{stand}{quelle.describe()}")
+
     # **Das Archiv wird einmal geöffnet, nicht je Quelle.** Jedes Öffnen
     # nimmt die Sperre und liest das Journal; bei zweiunddreißig
     # Verzeichnissen wäre das zweiunddreißigmal derselbe Aufwand.
@@ -348,37 +357,26 @@ def cmd_importieren(args: argparse.Namespace) -> int:
             if args.ausführlich:
                 print(f"  übersprungen ({nachricht.folder}): {exc}", file=sys.stderr)
 
-        for nummer, pfad in enumerate(gute, start=1):
-            source = local.open_path(pfad, konto, alles=args.alles)
-            # Bei einer einzelnen Quelle gibt es die Frage nicht – ein
-            # Oberordner, der genauso heißt wie das gewählte Verzeichnis,
-            # wäre eine Verschachtelung ohne Nutzen.
-            if len(gute) > 1 and not args.zusammenlegen:
-                source = local.MitHerkunft(source, pfad.name)
+        def fortschritt(stat) -> None:
+            print(f"  {stand}… {stat.gelesen} gelesen, {stat.neu} neu",
+                  end="\r", flush=True)
 
-            woher = f"[{nummer}/{len(gute)}] " if len(gute) > 1 else ""
-            print(f"{woher}{source.describe()}")
-
-            def fortschritt(stat, woher=woher, vorher=gesamt.gelesen) -> None:
-                print(
-                    f"  {woher}… {vorher + stat.gelesen} gelesen, "
-                    f"{stat.neu} neu",
-                    end="\r", flush=True,
-                )
-
-            try:
-                stat = importieren(
-                    archive,
-                    source,
-                    mit_anhangstext=mit_text,
-                    fortschritt=fortschritt,
-                    auf_fehler=auf_fehler,
-                )
-            finally:
-                uebergangen |= set(getattr(source, "uebergangen", None) or ())
-                source.close()
-            gesamt = gesamt + stat
-            print(" " * 70, end="\r")
+        try:
+            gesamt = importiere_alle(
+                archive, quellen,
+                mit_anhangstext=mit_text,
+                fortschritt=fortschritt,
+                auf_fehler=auf_fehler,
+                je_quelle=ansagen,
+            )
+        finally:
+            uebergangen = {
+                ordner for quelle in quellen
+                for ordner in (getattr(quelle, "uebergangen", None) or ())
+            }
+            for quelle in quellen:
+                quelle.close()
+        print(" " * 70, end="\r")
 
         # **Einmal am Ende verdichten, nicht nach jeder Quelle.**
         if gesamt.neu:

@@ -36,6 +36,13 @@ MAIL = (
     b"Date: Tue, 6 Oct 2026 09:00:00 +0200\r\n\r\nInhalt {nr}.\r\n"
 )
 
+try:
+    import PySide6  # noqa: F401
+except ImportError:  # pragma: no cover – der CI-Lauf ohne Oberfläche
+    _QT_FEHLT = True
+else:
+    _QT_FEHLT = False
+
 
 def _export(wurzel: Path, name: str, ordner: dict[str, list[int]]) -> Path:
     """Baut ein Verzeichnis, wie MailStore es herausschreibt."""
@@ -166,8 +173,12 @@ class BilanzTest(unittest.TestCase):
             Statistik() + 5
 
 
-class EinleselaufTest(unittest.TestCase):
-    """Der Lauf über mehrere Quellen – Stephans eigentlicher Fall."""
+class MehrfachEinlesenTest(unittest.TestCase):
+    """Der Lauf über mehrere Quellen – Stephans eigentlicher Fall.
+
+    **Ohne Qt.** Was hier geprüft wird, ist Kernlogik; sie darf nicht
+    daran hängen, dass eine Oberfläche installiert ist.
+    """
 
     def setUp(self) -> None:
         import os
@@ -198,17 +209,35 @@ class EinleselaufTest(unittest.TestCase):
             _export(self.basis, "Archiv von roesner", {"INBOX": [1, 2]}),
         ]
 
-    def _lauf(self, **zusatz):
-        from mailburg.ui.arbeit import Einleselauf
+    def _einlesen(self, pfade=None, **zusatz):
+        """Derselbe Weg, den Fenster und Kommandozeile gehen.
 
-        return Einleselauf(
-            self.wurzel, self.quellen, "Stephan Rösner",
-            mit_anhangstext=False, **zusatz,
+        **Geprüft wird der Kern, nicht die Oberfläche.** Bis zum
+        06.10.2026 stand die Schleife in ``ui/arbeit.py``, und diese
+        Tests holten sie von dort – im CI-Lauf *ohne* PySide6 brachen
+        damit acht Tests, die mit Qt nicht das Geringste zu tun haben.
+        Dieselbe Klasse wie am 31.08.: Der erste Job installiert
+        bewusst nichts außer dem Kern, und hier liegt alles da.
+        """
+        from mailburg.core.importer import importiere_alle
+        from mailburg.sources import local
+
+        quellen = local.quellen_oeffnen(
+            self.quellen if pfade is None else pfade,
+            "Stephan Rösner", **zusatz,
         )
+        try:
+            with Archive.open(self.wurzel) as archiv:
+                return importiere_alle(
+                    archiv, quellen, mit_anhangstext=False
+                )
+        finally:
+            for quelle in quellen:
+                quelle.close()
 
     def test_alles_landet_unter_einem_namen(self):
         """**Der Punkt des Ganzen.**"""
-        stat = self._lauf().ausfuehren()
+        stat = self._einlesen()
 
         with Archive.open(self.wurzel) as archiv:
             konten = {k for k, _, _ in archiv.index.accounts()}
@@ -218,7 +247,7 @@ class EinleselaufTest(unittest.TestCase):
     def test_die_bilanz_zaehlt_alle_quellen_zusammen(self):
         """Nicht die der letzten Quelle – sonst meldet ein Lauf über
         zweiunddreißig Ordner die Zahlen des zweiunddreißigsten."""
-        stat = self._lauf().ausfuehren()
+        stat = self._einlesen()
 
         self.assertEqual(stat.neu, 7)
         # Mail 1 und 2 liegen in zwei Quellen; beim zweiten Mal sind sie
@@ -234,7 +263,7 @@ class EinleselaufTest(unittest.TestCase):
         wieder – und das Zusammenlegen ist dann die Entscheidung, die
         man bewusst trifft, nicht das, was von selbst passiert.
         """
-        self._lauf().ausfuehren()
+        self._einlesen()
 
         with Archive.open(self.wurzel) as archiv:
             ordner = {o for _, o, _ in archiv.index.accounts()}
@@ -244,33 +273,16 @@ class EinleselaufTest(unittest.TestCase):
 
     def test_zusammenlegen_verschmilzt_gleichnamige_ordner(self):
         """Der andere Weg: ein Posteingang je Person."""
-        self._lauf(zusammenlegen=True).ausfuehren()
+        self._einlesen(zusammenlegen=True)
 
         with Archive.open(self.wurzel) as archiv:
             ordner = {o for _, o, _ in archiv.index.accounts()}
         self.assertEqual(ordner, {"INBOX", "Gesendet"})
 
-    def test_ein_einzelner_pfad_geht_weiterhin(self):
-        """**Die Aufrufer von vorher laufen unverändert weiter.** Ein
-        Umbau, der jeden Aufrufer anfassen muss, vergisst einen."""
-        from mailburg.ui.arbeit import Einleselauf
-
-        lauf = Einleselauf(
-            self.wurzel, self.quellen[0], "Einer", mit_anhangstext=False
-        )
-        stat = lauf.ausfuehren()
-
-        self.assertEqual(stat.neu, 4)
-        self.assertEqual(lauf.quellpfad, self.quellen[0])
-
     def test_bei_einer_quelle_gibt_es_keinen_oberordner(self):
         """Er hieße genauso wie das gewählte Verzeichnis – eine
         Verschachtelung ohne jeden Nutzen."""
-        from mailburg.ui.arbeit import Einleselauf
-
-        Einleselauf(
-            self.wurzel, [self.quellen[0]], "Einer", mit_anhangstext=False
-        ).ausfuehren()
+        self._einlesen([self.quellen[0]])
 
         with Archive.open(self.wurzel) as archiv:
             ordner = {o for _, o, _ in archiv.index.accounts()}
@@ -288,12 +300,95 @@ class EinleselaufTest(unittest.TestCase):
         with mock.patch.object(
             Archive, "open", side_effect=echt, autospec=False
         ) as spion:
-            self._lauf().ausfuehren()
+            self._einlesen()
 
         self.assertEqual(spion.call_count, 1)
 
-    def test_ein_abbruch_mittendrin_laesst_das_bisherige_stehen(self):
-        lauf = self._lauf()
+    def test_ein_abbruch_vor_der_ersten_quelle_nimmt_nichts_auf(self):
+        """Ein Thunderbird-Profil kann Jahrzehnte enthalten; wer den
+        Lauf versehentlich startet, muss ihn beenden können."""
+        from mailburg.core.importer import importiere_alle
+        from mailburg.sources import local
+
+        quellen = local.quellen_oeffnen(self.quellen, "Stephan Rösner")
+        self.addCleanup(lambda: [q.close() for q in quellen])
+
+        with Archive.open(self.wurzel) as archiv:
+            stat = importiere_alle(
+                archiv, quellen, mit_anhangstext=False, weiter=lambda: False
+            )
+
+        self.assertEqual(stat.gelesen, 0)
+        with Archive.open(self.wurzel) as archiv:
+            self.assertEqual(archiv.index.count(), 0)
+
+
+@unittest.skipIf(_QT_FEHLT, "PySide6 ist nicht installiert")
+class EinleselaufTest(unittest.TestCase):
+    """Der Qt-Auftrag benutzt denselben Kern.
+
+    **Was hier geprüft wird, ist die Naht, nicht die Mechanik.** Die
+    Schleife über mehrere Quellen liegt seit dem 06.10.2026 im Kern
+    (``importer.importiere_alle``) – vorher stand sie hier, und der
+    CI-Lauf *ohne* PySide6 ließ acht Tests brechen, die mit Qt nichts
+    zu tun hatten. Nur was wirklich Qt braucht, steht in dieser Klasse.
+    """
+
+    def setUp(self) -> None:
+        from unittest import mock
+
+        from mailburg.core import paths
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.basis = Path(self._tmp.name)
+        for name in ("data_dir", "config_dir"):
+            patcher = mock.patch.object(
+                paths, name, return_value=self.basis / name
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
+            (self.basis / name).mkdir(parents=True, exist_ok=True)
+        self.wurzel = self.basis / "Archiv"
+        Archive.create(self.wurzel, name="P").close()
+        self.quellen = [
+            _export(self.basis, "alt", {"INBOX": [1, 2, 3]}),
+            _export(self.basis, "neu", {"INBOX": [4, 5]}),
+        ]
+
+    def test_ein_einzelner_pfad_geht_weiterhin(self):
+        """**Die Aufrufer von vorher laufen unverändert weiter.** Ein
+        Umbau, der jeden Aufrufer anfassen muss, vergisst einen."""
+        from mailburg.ui.arbeit import Einleselauf
+
+        lauf = Einleselauf(
+            self.wurzel, self.quellen[0], "Einer", mit_anhangstext=False
+        )
+        stat = lauf.ausfuehren()
+
+        self.assertEqual(stat.neu, 3)
+        self.assertEqual(lauf.quellpfad, self.quellen[0])
+
+    def test_mehrere_pfade_landen_unter_einem_namen(self):
+        from mailburg.ui.arbeit import Einleselauf
+
+        stat = Einleselauf(
+            self.wurzel, self.quellen, "Beide", mit_anhangstext=False
+        ).ausfuehren()
+
+        self.assertEqual(stat.neu, 5)
+        with Archive.open(self.wurzel) as archiv:
+            konten = {k for k, _, _ in archiv.index.accounts()}
+            ordner = {o for _, o, _ in archiv.index.accounts()}
+        self.assertEqual(konten, {"Beide"})
+        self.assertEqual(ordner, {"alt/INBOX", "neu/INBOX"})
+
+    def test_ein_abbruch_laesst_das_bisherige_stehen(self):
+        from mailburg.ui.arbeit import Einleselauf
+
+        lauf = Einleselauf(
+            self.wurzel, self.quellen, "Beide", mit_anhangstext=False
+        )
         lauf.abbrechen()
         stat = lauf.ausfuehren()
 

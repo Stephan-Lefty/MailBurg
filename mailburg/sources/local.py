@@ -629,6 +629,39 @@ class MitHerkunft(Source):
         return getattr(self.quelle, name)
 
 
+def quellen_oeffnen(pfade, account: str = "", *, alles: bool = False,
+                    zusammenlegen: bool = False) -> list[Source]:
+    """Öffnet mehrere Verzeichnisse für *einen* Kontonamen.
+
+    **Hier steht, was mehrere Quellen von einer unterscheidet** – und
+    nur hier. Bis zum 2026-10-06 hatten Fenster und Kommandozeile jedes
+    seine eigene Schleife mit derselben Entscheidung darin; die wären
+    auseinandergelaufen, sobald jemand eine davon anfasst.
+
+    ``zusammenlegen=False`` ist die Vorgabe: Jede Quelle behält ihre
+    eigene Ordnerstruktur, der Baum sieht aus wie im Programm, aus dem
+    die Post kommt. **Bei einer einzelnen Quelle stellt sich die Frage
+    nicht** – ein Oberordner, der genauso heißt wie das gewählte
+    Verzeichnis, wäre eine Verschachtelung ohne Nutzen.
+    """
+    pfade = [Path(p) for p in pfade]
+    geoeffnet: list[Source] = []
+    try:
+        for pfad in pfade:
+            quelle = open_path(pfad, account, alles=alles)
+            if len(pfade) > 1 and not zusammenlegen:
+                quelle = MitHerkunft(quelle, pfad.name)
+            geoeffnet.append(quelle)
+    except Exception:
+        # Was schon offen ist, wird geschlossen – sonst bleiben bei
+        # einem Tippfehler im dreißigsten Pfad neunundzwanzig
+        # Dateihandles hängen.
+        for quelle in geoeffnet:
+            quelle.close()
+        raise
+    return geoeffnet
+
+
 def open_path(path: Path, account: str = "", *, alles: bool = False) -> Source:
     """Errät, was für eine Mailquelle unter ``path`` liegt, und öffnet sie.
 

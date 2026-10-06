@@ -401,61 +401,48 @@ class Einleselauf(Auftrag):
 
     def ausfuehren(self):
         from mailburg.core.archive import Archive
-        from mailburg.core.importer import Statistik
-        from mailburg.core.importer import importieren
+        from mailburg.core.importer import importiere_alle
         from mailburg.sources import local
 
-        gesamt = Statistik()
-        # **Das Archiv wird einmal geöffnet, nicht je Quelle.** Jedes
-        # Öffnen nimmt die Sperre, liest das Journal und schließt wieder;
-        # bei zweiunddreißig Verzeichnissen wäre das zweiunddreißigmal
-        # derselbe Aufwand – und zwischen zwei Läufen stünde das Archiv
-        # einen Augenblick offen für jeden anderen Vorgang.
-        with Archive.open(self.archiv_pfad) as archiv:
-            for nummer, pfad in enumerate(self.quellpfade, start=1):
-                if self.abgebrochen:
-                    break
-                quelle = local.open_path(pfad, self.konto, alles=self.alles)
-                # Bei einer einzelnen Quelle gibt es die Frage nicht –
-                # ein Oberordner, der genauso heißt wie das gewählte
-                # Verzeichnis, wäre eine Verschachtelung ohne Nutzen.
-                if len(self.quellpfade) > 1 and not self.zusammenlegen:
-                    quelle = local.MitHerkunft(quelle, pfad.name)
-                woher = (
-                    f"[{nummer}/{len(self.quellpfade)}] "
-                    if len(self.quellpfade) > 1 else ""
+        quellen = local.quellen_oeffnen(
+            self.quellpfade, self.konto,
+            alles=self.alles, zusammenlegen=self.zusammenlegen,
+        )
+        stand = ""
+
+        def ansagen(nummer, anzahl, quelle) -> None:
+            nonlocal stand
+            stand = f"[{nummer}/{anzahl}] " if anzahl > 1 else ""
+            self.meldung.emit(f"{stand}Lese {quelle.describe()} …")
+
+        def melden(stat) -> None:
+            self.meldung.emit(
+                f"{stand}{self.konto}: {stat.gelesen} gelesen, {stat.neu} neu"
+            )
+            self.fortschritt.emit(stat.gelesen, 0)
+
+        try:
+            # **Das Archiv wird einmal geöffnet, nicht je Quelle.**
+            with Archive.open(self.archiv_pfad) as archiv:
+                gesamt = importiere_alle(
+                    archiv, quellen,
+                    mit_anhangstext=self.mit_anhangstext,
+                    fortschritt=melden,
+                    je_quelle=ansagen,
+                    # **Abbruch ist hier wichtiger als beim Abruf.** Ein
+                    # Thunderbird-Profil kann Jahrzehnte enthalten; wer
+                    # das versehentlich startet, muss es beenden können.
+                    weiter=lambda: not self.abgebrochen,
                 )
-                self.meldung.emit(f"{woher}Lese {quelle.describe()} …")
-
-                try:
-                    def melden(stat, woher=woher) -> None:
-                        self.meldung.emit(
-                            f"{woher}{self.konto}: {stat.gelesen} gelesen, "
-                            f"{stat.neu} neu"
-                        )
-                        self.fortschritt.emit(gesamt.gelesen + stat.gelesen, 0)
-
-                    stat = importieren(
-                        archiv,
-                        quelle,
-                        mit_anhangstext=self.mit_anhangstext,
-                        fortschritt=melden,
-                        # **Abbruch ist hier wichtiger als beim Abruf.**
-                        # Ein Thunderbird-Profil kann Jahrzehnte
-                        # enthalten; wer das versehentlich startet, muss
-                        # es beenden können.
-                        weiter=lambda: not self.abgebrochen,
-                    )
-                finally:
-                    quelle.close()
-                gesamt = gesamt + stat
-
-            # **Einmal am Ende verdichten, nicht nach jeder Quelle.**
-            # `optimize()` schreibt den Volltextindex um; das lohnt sich
-            # je Lauf, nicht je Verzeichnis.
-            if gesamt.neu:
-                self.meldung.emit("Verdichte den Suchindex …")
-                archiv.index.optimize()
+                # **Einmal am Ende verdichten, nicht nach jeder Quelle.**
+                # `optimize()` schreibt den Volltextindex um; das lohnt
+                # sich je Lauf, nicht je Verzeichnis.
+                if gesamt.neu:
+                    self.meldung.emit("Verdichte den Suchindex …")
+                    archiv.index.optimize()
+        finally:
+            for quelle in quellen:
+                quelle.close()
         return gesamt
 
 
