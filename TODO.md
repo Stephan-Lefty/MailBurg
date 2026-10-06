@@ -8,6 +8,26 @@ wurde.
 
 ## Offen
 
+- [ ] **Zwei Kontonamen mit demselben Umlaut können verschieden sein.**
+  Gemessen am 06.10.2026: »Stephan Rösner« einmal mit 26 und einmal mit
+  27 Zeichen, beide am Bildschirm nicht zu unterscheiden. Das »ö« lässt
+  sich als ein Zeichen speichern (U+00F6, NFC) oder als »o« plus
+  kombinierendes Trema (NFD) – Windows und Qt liefern NFC, macOS-Pfade
+  und manche Zwischenablagen NFD.
+
+  Wer einen Namen einmal tippt und einmal aus einem Dokument kopiert,
+  bekommt **zwei Postfächer, die gleich heißen**. Der Einlesedialog
+  warnt vor »firma« gegen »Firma«, aber nicht vor diesem Fall –
+  `casefold()` normalisiert die Kodierung nicht.
+
+  Zu tun: in `_kontowarnung()` (`ui/einlesen.py`) vor dem Vergleich
+  `unicodedata.normalize("NFC", …)` anwenden, dazu ein Test. **Nicht**
+  die gespeicherten Namen umschreiben – der Kontoname steht im Journal.
+
+  Für den MailStore-Import vom Oktober 2026 folgenlos: Die Namen dort
+  sind alle ASCII (»roesner (Mailstore)«, »gaertner«). Es trifft jeden,
+  der Klarnamen mit Umlauten vergibt.
+
 - [ ] **Die Testsuite ist unter Windows nicht grün, und das verdeckt
   echte Befunde.** Gemessen am 05.10.2026 im breiten Lauf
   (`workflow_dispatch` mit `breit=true`): 2162 Tests, **38

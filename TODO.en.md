@@ -7,6 +7,26 @@ down, with the date they were completed.
 
 ## Open
 
+- [ ] **Two account names with the same umlaut can differ.** Measured
+  on 2026-10-06: "Stephan Rösner" once with 26 and once with 27
+  characters, indistinguishable on screen. The "ö" can be stored as a
+  single character (U+00F6, NFC) or as "o" plus a combining diaeresis
+  (NFD) – Windows and Qt produce NFC, macOS paths and some clipboards
+  NFD.
+
+  Type a name once and paste it another time, and you end up with
+  **two mailboxes that look identical**. The import dialog warns about
+  "firma" versus "Firma" but not about this case – `casefold()` does
+  not normalise the encoding.
+
+  To do: apply `unicodedata.normalize("NFC", …)` before the comparison
+  in `_kontowarnung()` (`ui/einlesen.py`), plus a test. Do **not**
+  rewrite stored names – the account name lives in the journal.
+
+  No consequence for the MailStore import of October 2026: the names
+  there are all ASCII ("roesner (Mailstore)", "gaertner"). It affects
+  anyone assigning real names containing umlauts.
+
 - [ ] **The test suite is not green on Windows, and that hides real
   findings.** Measured on 2026-10-05 in the broad run
   (`workflow_dispatch` with `breit=true`): 2162 tests, **38 failures
