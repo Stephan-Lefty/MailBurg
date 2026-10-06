@@ -151,6 +151,45 @@ def routen(lage, sitzungen):
         )
         return antwort
 
+    #: Ob die Postfachspalte offen steht. **Dieselbe Bauart wie der
+    #: Themenkeks und aus demselben Grund:** Es ist eine Vorliebe, keine
+    #: Anmeldung. Wer die Spalte zuschiebt, will sie nicht bei jeder
+    #: Suche wieder zuschieben.
+    SPALTENKEKS = "mailburg_postfaecher"
+
+    def _spalte(anfrage) -> str:
+        """»auf« oder »zu« – zugeschoben ist die Vorgabe.
+
+        **Umgekehrt zur ersten Fassung.** Bis zum 2026-10-06 stand die
+        Spalte immer offen. In der Praxis sucht man über alle
+        Postfächer und grenzt, wenn überhaupt, über die ausführliche
+        Suche ein – dafür dauerhaft ein Fünftel der Breite auszugeben,
+        ist der falsche Tausch.
+        """
+        return "auf" if anfrage.cookies.get(SPALTENKEKS) == "auf" else "zu"
+
+    async def spalte_schieben(anfrage):
+        """Schiebt die Postfachspalte auf oder zu und kehrt zurück.
+
+        Das Ziel wird geprüft wie bei ``/thema``: Ein ungeprüftes
+        ``weiter`` wäre eine offene Umleitung.
+        """
+        wahl = "auf" if anfrage.query_params.get("wahl") == "auf" else "zu"
+
+        ziel = anfrage.query_params.get("weiter", "/")
+        if not ziel.startswith("/") or ziel.startswith("//"):
+            ziel = "/"
+
+        antwort = RedirectResponse(ziel, status_code=303)
+        antwort.set_cookie(
+            SPALTENKEKS, wahl,
+            max_age=60 * 60 * 24 * 365,
+            samesite="lax",
+            secure=anfrage.url.scheme == "https",
+            path="/",
+        )
+        return antwort
+
     async def einstellungen(anfrage):
         """Helligkeit und was später dazukommt."""
         benutzer = None
@@ -221,7 +260,7 @@ def routen(lage, sitzungen):
             return HTMLResponse(seiten.trefferliste(
                 benutzer, ausdruck, treffer, gesamt, seite_nr, JE_SEITE,
                 postfaecher=archiv.index.account_totals(sicht=blick),
-                thema=_thema(anfrage),
+                thema=_thema(anfrage), spalte=_spalte(anfrage),
             ))
 
     async def maske(anfrage):
@@ -435,6 +474,7 @@ def routen(lage, sitzungen):
         Route("/anmelden", anmelden, methods=["POST"]),
         Route("/abmelden", abmelden),
         Route("/thema", thema_waehlen),
+        Route("/postfaecher", spalte_schieben),
         Route("/rechtliches", rechtliches),
         Route("/info", rechtliches),
         Route("/hilfe", hilfe),

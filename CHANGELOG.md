@@ -57,6 +57,17 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Geändert
 
+- **Die Postfachspalte im Browser ist zuschiebbar – und zugeschoben die
+  Vorgabe.** Der Knopf *Postfächer* neben der Trefferzahl schiebt sie
+  auf und wieder zu; der Zustand bleibt gespeichert, auch über das
+  Abmelden hinaus.
+
+  **Der Anlass kommt aus dem ersten echten Betrieb** (06.10.2026): In
+  der Firma wird über *alle* Postfächer gesucht, und wer gezielt in
+  einem sucht, nimmt die ausführliche Suche. Dafür dauerhaft ein
+  Fünftel der Breite auszugeben, ist der falsche Tausch – auf einem
+  5:4-Bildschirm umso mehr.
+
 - **`mailburg tresor schluessel --datei` legt den Hauptschlüssel selbst
   ab.** Der bisherige Rat lautete `install -m 600 /dev/null
   /etc/mailburg/schluessel` und danach `echo '…' > …`. Das ging an drei
@@ -90,6 +101,25 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Zusatz, dass die betroffenen Mails archiviert sind und gefunden werden;
   nur der Text aus diesen Anhängen fehlt im Index. Gezählt, nicht
   unterdrückt.
+
+### Behoben (Weboberfläche)
+
+- **Auf einem 5:4-Bildschirm lagen die Postfächer quer über der
+  Trefferliste.** Die Trefferzahlen standen mitten in den Betreffzeilen,
+  beides unlesbar. Aufgefallen am 06.10.2026 am ersten Arbeitstag mit
+  echten Daten.
+
+  Ursache: Ein Grid-Feld wird nie schmaler als sein längstes
+  unteilbares Wort, und `buchhaltung@beispielfirma.example` ist für
+  einen Browser ein Wort. Die Spalte war auf 15 rem gedeckelt, der
+  Inhalt brauchte mehr – also lief er in die Nachbarspalte. Die
+  Gegenmaßnahme (`min-width: 0`) stand für die Trefferspalte seit jeher
+  im Stylesheet, für die Postfachspalte nicht. **Zwei Stellen, eine
+  nachgezogen, die andere nicht** – in diesem Projekt kein neues
+  Muster.
+
+  Der Postfachname steht jetzt in einem eigenen Element und bricht dort
+  um, wo es keine Trennstelle gibt; die Zahl daneben bleibt ganz.
 
 ### Behoben (Serverbetrieb unter Windows)
 

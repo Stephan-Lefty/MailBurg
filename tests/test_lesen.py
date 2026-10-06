@@ -786,6 +786,16 @@ class WebTest(unittest.TestCase):
 
     # -- Die Postfachleiste ------------------------------------------------
 
+    def _mit_offener_spalte(self, kunde):
+        """Schiebt die Postfachspalte auf – wie ein Klick auf den Griff.
+
+        Seit dem 2026-10-06 ist sie zugeschoben, wenn niemand etwas
+        anderes sagt. Die Tests darunter handeln von dem, was in ihr
+        steht, also müssen sie sie öffnen.
+        """
+        kunde.get("/postfaecher?wahl=auf")
+        return kunde
+
     def test_der_benutzer_sieht_worin_er_suchen_kann(self):
         """Sonst sucht er ins Ungewisse: Gibt es die Mail nicht, oder
         liegt sie in einem Postfach, das er nicht sieht?
@@ -800,7 +810,8 @@ class WebTest(unittest.TestCase):
         Verlangt wird: Das Postfach steht da, es ist anklickbar, und die
         Leiste sagt, was sie ist.
         """
-        anna = self._als("anna", "ein-anderes-langes")
+        anna = self._mit_offener_spalte(
+            self._als("anna", "ein-anderes-langes"))
 
         seite = anna.get("/").text
 
@@ -816,7 +827,8 @@ class WebTest(unittest.TestCase):
         Block geworden, der die Treffer nach unten schiebt. Und auf einem
         16:9-Bildschirm lag links ohnehin alles brach.
         """
-        anna = self._als("anna", "ein-anderes-langes")
+        anna = self._mit_offener_spalte(
+            self._als("anna", "ein-anderes-langes"))
 
         seite = anna.get("/").text
 
@@ -827,19 +839,30 @@ class WebTest(unittest.TestCase):
         self.assertNotIn("<table", seitenteil)
 
     def test_die_spalte_sagt_was_sie_ist(self):
-        """Nebeneinander unter dem Suchfeld war klar, wozu die Knöpfe
-        gehören; als Spalte am Rand braucht es ein Wort davor."""
+        """Als Spalte am Rand braucht es ein Wort davor, sonst steht
+        dort eine Liste ohne erkennbaren Sinn.
+
+        Seit die Spalte zuschiebbar ist, trägt der Griff dieses Wort –
+        und zwar in beiden Zuständen.
+        """
         anna = self._als("anna", "ein-anderes-langes")
 
-        self.assertIn("<h2>Postfächer</h2>", anna.get("/").text)
+        zu = anna.get("/").text
+        auf = self._mit_offener_spalte(anna).get("/").text
+
+        for seite in (zu, auf):
+            self.assertIn("Postfächer", seite)
+            self.assertIn('class="schublade"', seite)
 
     def test_die_leiste_zeigt_keine_fremden_postfaecher(self):
-        anna = self._als("anna", "ein-anderes-langes")
+        anna = self._mit_offener_spalte(
+            self._als("anna", "ein-anderes-langes"))
 
         self.assertNotIn("chefsache", anna.get("/").text)
 
     def test_der_verwalter_sieht_beide(self):
-        chef = self._als("chef", "ein-langes-passwort")
+        chef = self._mit_offener_spalte(
+            self._als("chef", "ein-langes-passwort"))
 
         seite = chef.get("/").text
 
@@ -847,9 +870,101 @@ class WebTest(unittest.TestCase):
         self.assertIn("chefsache", seite)
 
     def test_ein_klick_grenzt_ein(self):
-        chef = self._als("chef", "ein-langes-passwort")
+        chef = self._mit_offener_spalte(
+            self._als("chef", "ein-langes-passwort"))
 
         self.assertIn("konto%3Abuchhaltung", chef.get("/").text)
+
+    # -- Die Spalte auf- und zuschieben -------------------------------------
+
+    def test_zugeschoben_ist_die_vorgabe(self):
+        """**Aus dem Betrieb, nicht aus dem Entwurf.**
+
+        In der Firma, die MailBurg als erste einsetzt, wird über alle
+        Postfächer gesucht; wer gezielt in einem sucht, nimmt die
+        ausführliche Suche. Eine Spalte, an die man selten muss, nimmt
+        der Trefferliste dauerhaft ein Fünftel der Breite.
+        """
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/").text
+
+        self.assertIn('class="zweispaltig zu"', seite)
+        self.assertNotIn("<aside>", seite)
+
+    def test_der_griff_schiebt_auf_und_wieder_zu(self):
+        anna = self._als("anna", "ein-anderes-langes")
+
+        anna.get("/postfaecher?wahl=auf")
+        self.assertIn("<aside>", anna.get("/").text)
+
+        anna.get("/postfaecher?wahl=zu")
+        self.assertNotIn("<aside>", anna.get("/").text)
+
+    def test_der_zustand_haelt_ueber_seiten_hinweg(self):
+        """Sonst müsste man die Spalte nach jeder Suche neu aufschieben."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        anna.get("/postfaecher?wahl=auf")
+
+        self.assertIn("<aside>", anna.get("/?q=rechnung").text)
+
+    def test_eine_unbekannte_wahl_schiebt_zu(self):
+        """Der Wert kommt aus der Adresszeile – er darf alles sein."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        anna.get("/postfaecher?wahl=auf")
+        anna.get("/postfaecher?wahl=schraeg")
+
+        self.assertNotIn("<aside>", anna.get("/").text)
+
+    def test_der_suchbegriff_ueberlebt_das_schieben(self):
+        """**Sonst kostet ein Klick auf den Griff die laufende Suche.**
+
+        Der Griff führt über ``/postfaecher`` und von dort zurück – ohne
+        den Ausdruck käme man auf einer leeren Seite heraus.
+        """
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/?q=rechnung").text
+        griff = seite.split('class="schublade" href="')[1].split('"')[0]
+
+        self.assertIn("q%3Drechnung", griff)
+
+    def test_der_postfachname_steht_in_einem_eigenen_element(self):
+        """**Darauf beruht das Umbrechen.**
+
+        Eine Mailadresse ist für den Browser ein Wort ohne Trennstelle.
+        Ohne eigenes Element für den Namen müsste das Umbrechen für den
+        ganzen Kasten gelten – dann bräche auch die Zahl daneben um.
+        Am 2026-10-06 ragten die Kästen deshalb quer über die
+        Trefferliste.
+        """
+        anna = self._mit_offener_spalte(
+            self._als("anna", "ein-anderes-langes"))
+
+        seitenteil = anna.get("/").text.split("<aside>")[1].split("</aside>")[0]
+
+        self.assertIn("<em>buchhaltung", seitenteil)
+
+    def test_die_hilfe_erklaert_den_griff(self):
+        """Wer nicht weiterkommt, klickt auf Hilfe – dort muss stehen,
+        wo die Postfächer geblieben sind."""
+        seite = Kunde(self.anwendung).get("/hilfe").text
+
+        self.assertIn("Postfächer", seite)
+        self.assertIn("Trefferzahl", seite)
+
+    def test_das_ziel_des_griffs_wird_geprueft(self):
+        """Dieselbe offene Umleitung wie bei ``/thema`` – und dieselbe
+        Prüfung."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        for boese in ("https://example.org/", "//example.org/", "javascript:1"):
+            with self.subTest(ziel=boese):
+                antwort = anna.get(f"/postfaecher?wahl=auf&weiter={boese}")
+
+                self.assertEqual(antwort.headers["location"], "/")
 
     # -- Der Gesprächsverlauf ----------------------------------------------
 

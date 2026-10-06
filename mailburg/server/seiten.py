@@ -162,12 +162,24 @@ _KOPF = """<!doctype html>
   .zweispaltig {{ display: grid; gap: 1.5rem 2rem;
                   grid-template-columns: minmax(11rem, 15rem) 1fr;
                   align-items: start; margin-top: 1rem; }}
+  /* Zugeschoben gibt es keine zweite Spalte: Die Treffer bekommen die
+     ganze Breite, der Griff sitzt neben der Trefferzahl. */
+  .zweispaltig.zu {{ grid-template-columns: 1fr; }}
   /* Auf einem schmalen Bildschirm untereinander: Zwei Spalten à 50 %
      wären dort zwei zu schmale Spalten. */
   @media (max-width: 55rem) {{
-    .zweispaltig {{ grid-template-columns: 1fr; }}
+    .zweispaltig, .zweispaltig.zu {{ grid-template-columns: 1fr; }}
   }}
-  .zweispaltig aside {{ position: sticky; top: 1rem; }}
+  /* **``min-width: 0`` auf beiden Seiten.** Ein Grid-Feld wird sonst
+     nie schmaler als sein längstes unteilbares Wort - und eine
+     Mailadresse wie »buchhaltung@beispielfirma.example« ist für den
+     Browser ein Wort. Die Spur ist auf 15 rem gedeckelt, der Inhalt
+     brauchte mehr, also lief er in die Nachbarspalte: Am 2026-10-06
+     standen auf einem 5:4-Bildschirm die Trefferzahlen quer über den
+     Betreffzeilen. Für ``section`` stand die Regel seit jeher da, für
+     ``aside`` nicht. Zwei Stellen, eine nachgezogen, die andere
+     nicht. */
+  .zweispaltig aside {{ position: sticky; top: 1rem; min-width: 0; }}
   .zweispaltig section {{ min-width: 0; }}
   .postfaecher {{ display: flex; flex-wrap: wrap; gap: .4rem;
                   flex-direction: column; align-items: stretch;
@@ -178,7 +190,23 @@ _KOPF = """<!doctype html>
   .postfaecher a {{ border: 1px solid #d6dde8; border-radius: 4px;
                     padding: .3rem .6rem; font-size: .9rem;
                     text-decoration: none; display: flex;
-                    justify-content: space-between; gap: .6rem; }}
+                    justify-content: space-between; gap: .6rem;
+                    min-width: 0; }}
+  /* Umbrechen, wo es keine Trennstelle gibt. Ohne das ragt die
+     Adresse aus ihrem Kasten heraus, auch wenn der Kasten passt. */
+  .postfaecher a em {{ font-style: normal; overflow-wrap: anywhere;
+                       min-width: 0; }}
+  .postfaecher a span {{ flex: none; }}
+  /* Der Griff zum Auf- und Zuschieben. Keine Schaltfläche, sondern ein
+     Link: Er führt zu einer Adresse, die den Zustand merkt, und wirkt
+     damit auch ohne JavaScript. */
+  .schublade {{ display: inline-flex; align-items: center; gap: .35rem;
+                border: 1px solid #d6dde8; border-radius: 4px;
+                padding: .15rem .5rem; font-size: .85rem;
+                text-decoration: none; color: var(--leise);
+                white-space: nowrap; margin-right: .5rem; }}
+  .schublade:hover {{ border-color: var(--marke); color: var(--marke); }}
+  .schublade .pfeil {{ font-size: .75rem; }}
   .postfaecher a:hover {{ border-color: var(--marke); }}
   .postfaecher a span {{ color: var(--leise); }}
   .postfaecher h2 {{ font-size: .85rem; color: var(--leise);
@@ -514,6 +542,14 @@ def hilfeseite(benutzer=None, thema: str = "system") -> str:
    es dazu; die ausführliche Suche setzt dieselben Ausdrücke aus
    Feldern zusammen.</p>
 
+<h2>In welchen Postfächern suche ich?</h2>
+<p>In allen, die Sie sehen dürfen – ohne dass Sie etwas tun müssen.
+   Welche das sind, zeigt der Knopf <b>Postfächer</b> neben der
+   Trefferzahl: Er schiebt eine Spalte auf, in der jedes Postfach mit
+   seiner Mailzahl steht, und ein Klick darauf grenzt die Suche auf
+   dieses eine ein. Die Spalte bleibt offen, bis Sie sie wieder
+   zuschieben.</p>
+
 <pre class="text">{html.escape(describe_syntax())}</pre>
 
 <h2>Was hier nicht geht</h2>
@@ -532,7 +568,8 @@ def hilfeseite(benutzer=None, thema: str = "system") -> str:
 """, benutzer, thema=thema, hier="/hilfe")
 
 
-def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
+def _postfachleiste(postfaecher: dict[str, int], ausdruck: str,
+                    offen: bool = False) -> str:
     """Welche Postfächer der Angemeldete durchsuchen kann.
 
     **Warum das sichtbar sein muss.** Wer nur einen Teil des Archivs
@@ -543,8 +580,15 @@ def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
 
     Jeder Eintrag grenzt die Suche mit einem Klick darauf ein – wie ein
     Klick in den Postfachbaum des Fensters.
+
+    **Zugeschoben ist die Vorgabe, und das aus dem Betrieb.** Stephans
+    Firma sucht über alle Postfächer; wer gezielt in einem sucht, nimmt
+    die ausführliche Suche. Eine Spalte, an die man selten muss, nimmt
+    der Trefferliste dauerhaft ein Fünftel der Breite – auf einem
+    5:4-Bildschirm merkt man das sofort. Der Griff bleibt stehen, der
+    Zustand wird gemerkt.
     """
-    if not postfaecher:
+    if not postfaecher or not offen:
         return ""
 
     from urllib.parse import quote
@@ -563,8 +607,12 @@ def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
     for name, anzahl in sorted(postfaecher.items()):
         ziel = f"{ohne_konto} konto:{quoten_wenn_noetig(name)}".strip()
         gewaehlt = ' class="gewaehlt"' if name == aktiv else ""
+        # Der Name in einem eigenen Element: Nur so lässt sich das
+        # Umbrechen auf ihn beschränken und die Zahl daneben ganz
+        # lassen.
         stuecke.append(
-            f'<a href="/?q={quote(ziel)}"{gewaehlt}>{html.escape(name)}'
+            f'<a href="/?q={quote(ziel)}"{gewaehlt}>'
+            f"<em>{html.escape(name)}</em>"
             f"<span>{anzahl}</span></a>"
         )
 
@@ -589,7 +637,37 @@ def _postfachleiste(postfaecher: dict[str, int], ausdruck: str) -> str:
         f'<div class="postfaecher" aria-label="Durchsuchbare Postfächer" '
         f'title="Diese Postfächer dürfen Sie durchsuchen. '
         f'Ein Klick grenzt die Suche darauf ein.">'
-        f"<h2>Postfächer</h2>{''.join(stuecke)}{alle}</div>"
+        f"{''.join(stuecke)}{alle}</div>"
+    )
+
+
+def _griff(ausdruck: str, offen: bool) -> str:
+    """Der Schalter, der die Postfachspalte auf- und zuschiebt.
+
+    **Er steht neben der Trefferzahl, nicht über der Spalte** – also an
+    derselben Stelle, ob die Spalte offen ist oder nicht. Ein Schalter,
+    der mitwandert, ist beim zweiten Klick nicht mehr dort, wo die Maus
+    gerade war.
+
+    Ein Link und keine Schaltfläche: Er führt zu einer Adresse, die den
+    Zustand merkt, und wirkt deshalb auch ohne JavaScript.
+    """
+    from urllib.parse import quote as _q
+
+    zurueck = _q(f"/?q={_q(ausdruck)}" if ausdruck else "/", safe="")
+    if offen:
+        return (
+            f'<a class="schublade" href="/postfaecher?wahl=zu&amp;'
+            f'weiter={zurueck}" title="Schiebt die Postfachspalte zu. '
+            f'Gesucht wird weiterhin in allen Postfächern, die Sie '
+            f'sehen dürfen.">'
+            f'<span class="pfeil">◂</span>Postfächer</a>'
+        )
+    return (
+        f'<a class="schublade" href="/postfaecher?wahl=auf&amp;'
+        f'weiter={zurueck}" title="Zeigt, in welchen Postfächern Sie '
+        f'suchen dürfen – und grenzt mit einem Klick darauf ein.">'
+        f'<span class="pfeil">▸</span>Postfächer</a>'
     )
 
 
@@ -635,17 +713,31 @@ def _zeile(treffer) -> str:
 
 def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
                  seite_nr: int, je_seite: int, postfaecher=None,
-                 thema: str = "system") -> str:
+                 thema: str = "system", spalte: str = "zu") -> str:
     """Die Suchseite mit ihrer Trefferliste.
 
     ``postfaecher`` sind die, die dieser Benutzer sehen darf, mit ihrer
-    Anzahl. Sie stehen oben – das entspricht dem Postfachbaum links im
+    Anzahl. Sie stehen links – das entspricht dem Postfachbaum im
     Fenster und beantwortet die Frage, die man sonst nicht beantworten
     kann: *Worin suche ich hier eigentlich?*
+
+    ``spalte`` ist ``auf`` oder ``zu``. Zugeschoben bleibt nur der
+    Griff stehen, und die Treffer bekommen die ganze Breite.
     """
+    # **Der Griff nur, wenn es etwas zu zeigen gibt.** Wer genau ein
+    # Postfach sehen darf, braucht keine Spalte mit einem Eintrag –
+    # und eine Schaltfläche, die eine leere Fläche aufschiebt, ist
+    # schlimmer als keine.
+    offen = spalte == "auf" and bool(postfaecher)
+    griff = f"{_griff(ausdruck, offen)} " if postfaecher else ""
+    spaltenbereich = (
+        f"<aside>{_postfachleiste(postfaecher or {}, ausdruck, True)}</aside>"
+        if offen else ""
+    )
+
     if treffer:
         zeilen = "".join(_zeile(t) for t in treffer)
-        tabelle = f'<ol class="treffer">{zeilen}</ol>' 
+        tabelle = f'<ol class="treffer">{zeilen}</ol>'
     elif ausdruck:
         tabelle = '<p class="leer">MailBurg hat nichts gefunden.</p>'
     else:
@@ -692,10 +784,10 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
          placeholder="Suchen … z. B. rechnung · von:müller · jahr:2025">
   <button type="submit">Suchen</button>
 </form>
-<div class="zweispaltig">
-  <aside>{_postfachleiste(postfaecher or {}, ausdruck)}</aside>
+<div class="zweispaltig{'' if offen else ' zu'}">
+  {spaltenbereich}
   <section>
-    <p class="ergebnis">{html.escape(ergebnis)}
+    <p class="ergebnis">{griff}{html.escape(ergebnis)}
        · <a href="/maske?begriff={html.escape(ausdruck)}">Ausführlich
        suchen</a></p>
     {tabelle}
