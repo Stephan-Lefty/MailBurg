@@ -119,6 +119,65 @@ class SchleifeTest(unittest.TestCase):
         self.assertEqual(zahl, 0)
         self.assertTrue(any("übersprungen" in z for z in gemeldet))
 
+    def test_ein_durchgang_liest_die_eingerichteten_postfaecher(self):
+        """**Der Fehler, der den Abruf im Dienst lahmlegte.**
+
+        Hier stand ``for k in Kontenliste()`` – und ``Kontenliste`` ist
+        kein Behälter, sondern hat einen (``.konten``). Das wirft in der
+        ersten Zeile von ``_einmal``, bei jedem Lauf, und landet im
+        weiten ``except`` der Schleife: Der Dienst läuft weiter, meldet
+        »alle 30 Minuten« und holt nichts.
+
+        **Warum kein Test das gefunden hat:** Die vorhandenen prüften
+        Takt, Pause und ein klemmendes Postfach – also alles um
+        ``_einmal`` herum, nie den Weg hinein. Dieser geht durch die
+        Stelle, an der es krachte, mit einer echten Kontenliste.
+        """
+        import tempfile
+        from pathlib import Path
+
+        from mailburg.core.accounts import Konto, Kontenliste
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        liste = Kontenliste(Path(ordner.name) / "konten.json")
+        liste.konten = [
+            Konto(name="buero", server="imap.example.org",
+                  benutzer="buero@example.org"),
+        ]
+        liste.speichern()
+
+        schleife = Schleife("/irgendwo", Lage(takt=30))
+        schleife._melden = lambda text, fehler=False: None
+        geholt: list[str] = []
+        schleife._konto = lambda archiv, konto: geholt.append(konto.name) or 0
+
+        with mock.patch(
+            "mailburg.core.paths.config_dir",
+            return_value=Path(ordner.name),
+        ), mock.patch("mailburg.core.archive.Archive.open"):
+            schleife._einmal()
+
+        self.assertEqual(geholt, ["buero"])
+        self.assertNotIn("Keine Postfächer", schleife.letzter_befund or "")
+
+    def test_ohne_postfaecher_wird_es_gesagt_statt_zu_krachen(self):
+        """Die Gegenprobe: Ein leerer Ordner ist kein Fehler."""
+        import tempfile
+        from pathlib import Path
+
+        schleife = Schleife("/irgendwo", Lage(takt=30))
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+
+        with mock.patch(
+            "mailburg.core.paths.config_dir",
+            return_value=Path(ordner.name),
+        ):
+            schleife._einmal()
+
+        self.assertIn("Keine Postfächer", schleife.letzter_befund)
+
     def test_ein_fehler_schaltet_den_abruf_nicht_ab(self):
         """**Der Faden darf nicht sterben.**
 

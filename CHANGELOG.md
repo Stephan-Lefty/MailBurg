@@ -126,6 +126,33 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   nur der Text aus diesen Anhängen fehlt im Index. Gezählt, nicht
   unterdrückt.
 
+### Behoben (der Dienst holte keine Post)
+
+- **Der Abruf im Dienst ist nie gelaufen – seit es ihn gibt.** In
+  `server/abruf.py` stand `for k in Kontenliste()`, und `Kontenliste`
+  ist kein Behälter, sondern hat einen (`.konten`). Das wirft in der
+  **ersten Zeile** jedes Durchgangs:
+
+  ```
+  MailBurg-Abruf: Abruf fehlgeschlagen: 'Kontenliste' object is not iterable
+  ```
+
+  **Wie es aussah, ist das Eigentliche.** Der Fehler landet im weiten
+  `except` der Abrufschleife – das dort mit gutem Grund steht, damit
+  ein Fehler den Faden nicht beendet – und von dort ins
+  Ereignisprotokoll. Der Dienst lief weiter, die Statusseite meldete
+  `"abruf":"alle 30 Minuten"`, und das Archiv bekam nichts dazu.
+  Niemand hätte das als Störung erkannt; aufgefallen ist es am ersten
+  Tag im echten Betrieb, und auch das nur nebenbei beim Blick ins
+  Protokoll aus einem anderen Anlass.
+
+  **Warum kein Test das gefunden hat:** Es gab welche für Takt, Pause,
+  ein klemmendes Postfach und dafür, dass die Schleife einen Fehler
+  überlebt – also für alles *um* `_einmal` herum, nie für den Weg
+  hinein. Jetzt läuft ein Test mit einer echten Kontenliste durch
+  genau diese Zeile, und ohne den Fix fällt er mit derselben Meldung
+  um.
+
 ### Behoben (Weboberfläche)
 
 - **Auf einem 5:4-Bildschirm lagen die Postfächer quer über der

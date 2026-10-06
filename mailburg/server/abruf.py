@@ -188,11 +188,27 @@ class Schleife:
                 return
 
     def _einmal(self) -> None:
-        """Ein Durchgang über alle eingerichteten Postfächer."""
+        """Ein Durchgang über alle eingerichteten Postfächer.
+
+        **``Kontenliste`` ist kein Behälter, sondern hat einen.** Hier
+        stand bis zum 2026-10-06 ``for k in Kontenliste()`` – und das
+        wirft ``'Kontenliste' object is not iterable``, in der ersten
+        Zeile, bei jedem Lauf. Der Abruf im Dienst hat damit **nie**
+        Post geholt, seit es ihn gibt.
+
+        Gesehen hat es niemand, weil der Fehler genau dort landet, wo er
+        hingehört und wo niemand hinsieht: im weiten ``except`` der
+        Schleife, von dort ins Ereignisprotokoll. Der Dienst lief
+        weiter, die Statusseite meldete »alle 30 Minuten«, und das
+        Archiv bekam nichts dazu. Aufgefallen am ersten Tag im echten
+        Betrieb, und auch das nur nebenbei.
+        """
         from mailburg.core.accounts import Kontenliste
         from mailburg.core.archive import Archive
 
-        konten = [k for k in Kontenliste() if getattr(k, "aktiv", True)]
+        konten = [
+            k for k in Kontenliste().konten if getattr(k, "aktiv", True)
+        ]
         if not konten:
             self.letzter_befund = "Keine Postfächer eingerichtet."
             return
