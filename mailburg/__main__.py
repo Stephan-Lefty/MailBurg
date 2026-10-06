@@ -394,9 +394,28 @@ def cmd_importieren(args: argparse.Namespace) -> int:
         print(" " * 70, end="\r")
 
         # **Einmal am Ende verdichten, nicht nach jeder Quelle.**
-        if gesamt.neu:
+        #
+        # **Und auf Wunsch gar nicht.** `optimize()` verschmilzt den
+        # *gesamten* Volltextindex, nicht nur das Neue – bei einem
+        # Index von 2,3 GB dauert das eine knappe Stunde und kostet
+        # ebenso viel Schreibprotokoll. Wer einen großen Bestand in
+        # mehreren Läufen einliest, macht dieselbe Arbeit jedes Mal neu
+        # und wirft sie beim nächsten Lauf wieder weg.
+        #
+        # Gemessen am 06.10.2026 beim Einlesen von 827.198 Mails aus
+        # MailStore: achtzehn Läufe, bei jedem ein Verdichten über einen
+        # Index, der auf zwölf Gigabyte zuwächst. Mit `--ohne-verdichten`
+        # läuft es siebzehnmal ohne und einmal am Schluss.
+        if gesamt.neu and not args.ohne_verdichten:
             print("Verdichte den Suchindex …")
             archive.index.optimize()
+        elif gesamt.neu:
+            print(
+                "Nicht verdichtet (--ohne-verdichten). Die Suche "
+                "funktioniert,\nist aber langsamer, bis einmal "
+                "»mailburg neuaufbau« oder ein Lauf\nohne diesen "
+                "Schalter gelaufen ist."
+            )
 
         seconds = time.monotonic() - started
         rate = gesamt.gelesen / seconds if seconds else 0
@@ -3820,6 +3839,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Anhänge nicht im Volltext erfassen (deutlich schneller, "
              "dafür sind PDF und Office-Dateien nicht durchsuchbar)",
+    )
+    p.add_argument(
+        "--ohne-verdichten",
+        action="store_true",
+        help="den Suchindex am Ende nicht verdichten. Für große "
+             "Bestände, die in mehreren Läufen hereinkommen: Verdichtet "
+             "wird der ganze Index, nicht nur das Neue – das lohnt "
+             "einmal am Schluss, nicht nach jedem Lauf",
     )
     p.add_argument(
         "--alles",
