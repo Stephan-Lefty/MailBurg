@@ -382,6 +382,28 @@ def _beispielkonten() -> list:
 #: Die Klasse steht als Pfad da, nicht als Import – so lässt sich die
 #: Tabelle lesen, ohne Qt zu starten. Die Bauanleitung bekommt die Klasse
 #: und die Werkstatt (Archiv, Treffer, Probekonto).
+def _berichtslage():
+    """Ein ausgefüllter Tagesbericht – gemessen wird an echtem Text.
+
+    Ein Dialog mit leeren Feldern verrät nicht, ob eine Mailadresse
+    hineinpasst. Dieselbe Begründung wie beim Vorführarchiv: Was
+    gemessen wird, muss aussehen wie der Betrieb.
+    """
+    from datetime import time as uhrzeit
+
+    from mailburg.core.bericht import Lage
+
+    return Lage(
+        an="verwaltung@beispielfirma.example",
+        zeit=uhrzeit(7, 0),
+        takt_tage=7,
+        smtp="mail.beispielfirma.example",
+        anschluss=587,
+        von="archiv@beispielfirma.example",
+        benutzer="archiv@beispielfirma.example",
+    )
+
+
 BAUPLAENE: list[tuple[str, str, object]] = [
     ("mailburg.ui.zeitplan.Zeitplandialog",
      "Zeitplan »Was von selbst laufen soll«",
@@ -421,6 +443,9 @@ BAUPLAENE: list[tuple[str, str, object]] = [
     ("mailburg.ui.zugaenge.Zugangsdialog",
      "Zugänge",
      lambda K, w: K(archiv=w.archiv)),
+    ("mailburg.ui.berichtsdialog.Berichtsdialog",
+     "Tagesbericht einrichten",
+     lambda K, w: K(_berichtslage())),
     ("mailburg.ui.konten.Kontenverwaltung",
      "Postfächer verwalten",
      lambda K, w: K()),

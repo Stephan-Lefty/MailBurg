@@ -493,9 +493,19 @@ def variablen_setzen(umgebung: Umgebung) -> list[str]:
 
     Gibt zurück, was getan wurde – für das Protokollfenster.
     """
+    return werte_setzen(umgebung.als_variablen())
+
+
+def werte_setzen(werte: dict[str, str]) -> list[str]:
+    """Schreibt beliebige Variablen an beide Orte.
+
+    Der Rumpf von :func:`variablen_setzen`, nur ohne die Annahme, dass
+    die Werte aus einer :class:`Umgebung` stammen. Der Tagesbericht hat
+    seine eigenen – und sie gehören an dieselben zwei Stellen.
+    """
     getan = []
     if not ist_windows():
-        for name, wert in umgebung.als_variablen().items():
+        for name, wert in werte.items():
             os.environ[name] = wert
             getan.append(f"{name}={wert} (nur in diesem Prozess)")
         return getan
@@ -506,7 +516,7 @@ def variablen_setzen(umgebung: Umgebung) -> list[str]:
     with winreg.OpenKey(
         winreg.HKEY_LOCAL_MACHINE, pfad, 0, winreg.KEY_SET_VALUE
     ) as schluessel:
-        for name, wert in umgebung.als_variablen().items():
+        for name, wert in werte.items():
             winreg.SetValueEx(schluessel, name, 0, winreg.REG_SZ, wert)
             os.environ[name] = wert
             getan.append(f"systemweit: {name}={wert}")
@@ -534,7 +544,7 @@ def variablen_setzen(umgebung: Umgebung) -> list[str]:
             except FileNotFoundError:
                 vorhanden = []
 
-            neue = umgebung.als_variablen()
+            neue = werte
             behalten = [
                 zeile for zeile in vorhanden
                 if zeile.split("=", 1)[0] not in neue

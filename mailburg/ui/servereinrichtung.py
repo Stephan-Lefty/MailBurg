@@ -391,6 +391,12 @@ class Einrichtungsfenster(QMainWindow):
              "Fehlt einem Postfach die Anmeldung, holt der Dienst von "
              "dort keine Post und meldet es nicht als Fehler.",
              "tresor_pruefen"),
+            ("Tagesbericht …",
+             "MailBurg schickt Ihnen täglich (oder seltener), was es "
+             "getan hat – und sofort, wenn etwas klemmt.\n\n"
+             "Bleibt die Mail aus, läuft der Dienst nicht mehr. Das ist "
+             "dann selbst der Befund.",
+             "bericht"),
             ("Mails einlesen …",
              "Post aus Dateien übernehmen – ein Verzeichnis mit "
              ".eml-Dateien, ein Maildir, eine MBOX-Datei oder ein "
@@ -618,6 +624,55 @@ class Einrichtungsfenster(QMainWindow):
             self._archiv_pruefen()
         elif ziel == "tresor_pruefen":
             self._tresor_pruefen()
+        elif ziel == "bericht":
+            self._bericht_einrichten()
+
+    def _bericht_einrichten(self) -> None:
+        """Wohin, wann und wie oft der Bericht geht.
+
+        **Ein eigenes Postfach, nicht eines der archivierten.** Wer den
+        Bericht über dasselbe Konto schickt, das archiviert wird,
+        bekommt ihn beim nächsten Abruf ins Archiv zurück – und ein
+        Archiv, das sich mit seinen eigenen Statusmeldungen füllt, ist
+        ein schlechter Scherz.
+        """
+        from mailburg.core import bericht as berichtsmodul
+        from mailburg.ui.berichtsdialog import Berichtsdialog
+
+        dialog = Berichtsdialog(berichtsmodul.Lage.aus_umgebung(), self)
+        if not dialog.exec():
+            return
+
+        neu, passwort = dialog.ergebnis()
+        self._melden("Tagesbericht einstellen …")
+        try:
+            for zeile in einrichtung.werte_setzen(neu.als_variablen()):
+                self._melden(f"  {zeile}")
+        except OSError as fehler:
+            self._melden(f"  Ging nicht: {fehler}")
+            return
+
+        if passwort:
+            from mailburg.core import tresor
+
+            if not tresor.verfuegbar():
+                QMessageBox.warning(
+                    self, "Kein Tresor",
+                    "Das Versandpasswort gehört in den Tresor, und der ist "
+                    "noch nicht eingerichtet. Ohne ihn stünde es im "
+                    "Klartext neben der Konfiguration.\n\n"
+                    "Richten Sie zuerst den Tresor ein; die übrigen "
+                    "Angaben sind gespeichert.",
+                )
+            else:
+                tresor.setzen(berichtsmodul.TRESORSCHLUESSEL, passwort)
+                self._melden("  Versandpasswort im Tresor abgelegt.")
+
+        self._melden(
+            "Der Dienst liest das beim Starten – bitte einmal anhalten "
+            "und starten."
+        )
+        self.auffrischen()
 
     def _archiv_pruefen(self) -> None:
         """Hash-Kette gegen Ablage – und sagen, was zu tun ist.
