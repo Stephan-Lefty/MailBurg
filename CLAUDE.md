@@ -3,6 +3,119 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-10-07, Mittwoch) – 589.058 Mails, und sieben Befunde
+
+**Der MailStore-Bestand ist drin.** 589.058 Mails, Hash-Kette
+unversehrt über 589.710 Einträge, und jede der 827.199 ausgegebenen
+Dateien ist erklärt:
+
+```
+827.199  Dateien ausgegeben
+-295.072  Papierkorb, Spamverdacht, Entwürfe – bewusst ausgelassen
+ 532.127  gelesen
+- 13.373  bereits vorhanden (dieselbe Mail aus mehreren MailStore-Archiven)
+ 518.754  neu aufgenommen
++ 70.283  Bestand vorher
+ 589.058  im Archiv
+```
+
+**Diese Rechnung ist das eigentliche Ergebnis des Tages**, nicht die
+Zahl darunter. Sie geht ohne Rest auf, von zwei Seiten gegengeprüft –
+und sie hat erst aufgehört, nicht aufzugehen, nachdem ich drei falsche
+Theorien darüber aufgestellt hatte.
+
+### Meine drei Fehlschlüsse, und was sie gemeinsam haben
+
+Alle drei sahen aus wie Befunde und waren Messfehler:
+
+1. **»Zwei Mails fehlen, der Defender war es.«** Das Ereignisprotokoll
+   mit `-MaxEvents 500` abgefragt – das holt erst die 500 jüngsten
+   Ereignisse und filtert *danach*. Serverseitig gefiltert
+   (`-FilterHashtable`) war am fraglichen Tag nichts.
+2. **»Die Sicherung ist beim Kopieren unvollständig geblieben.«** Ich
+   hielt `date` im Journal für den Aufnahmezeitpunkt. Das ist das Datum
+   *der Mail*; der Zeitpunkt steht in `ts`. **Stephan hat den Fehler
+   gefunden**, mit der Frage: »Hätte die Mail nicht schon im Archiv sein
+   müssen, das umgezogen ist?«
+3. **»295.072 Mails sind verloren.«** Nach »Übergangen« gesucht – und
+   in der Protokolldatei steht »▄bergangen«, weil die Windows-Konsole in
+   der OEM-Codepage schreibt und `Tee-Object` das durchreicht. Die
+   Meldung stand in **jedem** der achtzehn Läufe da.
+
+**Das Muster: Dreimal habe ich aus einer nicht gefundenen Ausgabe auf
+einen Fehler geschlossen.** Eine Suche, die nichts findet, ist kein
+Befund – sie ist eine Messung, und die kann falsch sein. Die Regel
+»Eine Zahl ist kein Befund« vom 09.09. gilt genauso für ihr Gegenteil.
+
+### Der schwerste Befund: eine Sicherung, die sich selbst widerspricht
+
+Die zwei fehlenden Mails waren echt, nur die Ursache lag woanders.
+`sicherung.packen()` erstellt die Dateiliste am Anfang und packt
+`meta/` alphabetisch **zuletzt**. Läuft während des Packens ein Abruf,
+wandert sein Journaleintrag mit – die Maildatei stand nicht mehr in der
+Liste.
+
+**Nachgewiesen am Objekt:** In der Sicherung vom 02.10. (70.140
+Einträge, vollständig durchsucht) fehlen die Dateien zu den Einträgen
+70763/70764, während `meta/000006.jsonl` – das damals offene Segment –
+beide enthält.
+
+**Und `packen()` meldet »Kette heil«.** Das stimmt sogar. Dass zum
+Journal Dateien fehlen, prüft es nicht. Eine Sicherung, die vollständig
+aussieht und es nicht ist – dieselbe Klasse wie »Alle Mails sind im
+Archiv« vom 09.09., nur mit fünf Tagen Verzögerung bis zum Auffallen.
+Steht als Aufgabe in der TODO.
+
+### Was sonst noch herauskam
+
+**`pruefen` nannte nur den Hash.** Bei einem Befund ist die erste Frage
+nicht »wie viele«, sondern »welche« – und Postfach, Ordner, Datum,
+Absender und Betreff stehen im Journaleintrag direkt daneben. Gebaut,
+mit zehn Tests, und noch am selben Tag am echten Archiv bewährt. Dabei
+getrennt ausgewiesen: das Datum der Mail und der Zeitpunkt der Aufnahme
+– der Unterschied, an dem Fehlschluss 2 hing.
+
+**Der Windows-Dienst hält den Suchindex**, und wer das nicht weiß,
+sucht eine halbe Stunde: Ein `abrufen` stand nach der Bilanz still, bei
+0,8 Minuten CPU in dreißig Minuten. Es rechnete nicht, es wartete –
+ohne eine Zeile Meldung. Strg+C wirkt dabei nicht, weil der Aufruf tief
+in SQLite steckt.
+
+**`winget install` bringt tesseract ohne deutsche Sprachdaten.**
+MailBurg meldet dann »Texterkennung: ja« und darunter klein »Benutzt
+wird: eng«. Der Modulkommentar in `extract/ocr.py` sagt ausdrücklich
+»Lieber gar nicht erkennen als falsch« – der Code tut das Gegenteil.
+Ohne Nachsehen wären 77.721 deutsche Rechnungen mit dem englischen
+Modell gelesen worden, und der Unsinn stünde im Suchindex.
+
+**`--budget` bei der Texterkennung wirkt nicht mehr.**
+`BUDGET_DOKUMENTE = 30` deckelt jeden Lauf; die Begründung im Kommentar
+stammt von einer Messung mit siebzehn Sekunden je Dokument. Gemessen
+sind es jetzt 3,9. Ein Lauf mit `--budget 600` endete nach 140
+Sekunden.
+
+**Doku-Änderungen laufen an der CI vorbei.** `paths-ignore` schließt
+`docs/**` aus, mit der Begründung »An Text ändert sich durch einen
+Testlauf nichts«. Elf Testdateien lesen die Doku.
+
+### Zwei Zahlen, die man sich merken sollte
+
+**Texterkennung: rund eine Sekunde je Seite.** Gemessen an zwei Läufen,
+mit `tessdata` und `tessdata_fast` – zwischen beiden war **kein**
+Unterschied messbar. Nicht das Sprachmodell bestimmt die Dauer, sondern
+die Seitenzahl. Mein vermuteter Faktor zwei bis drei ließ sich nicht
+belegen, und das steht hier, damit ihn niemand erneut annimmt.
+
+**`info` braucht Minuten, `pruefen` Sekunden.** `disk_usage()` ruft
+`stat()` für jede einzelne Datei auf – bei 589.058 Mails ebenso oft,
+für eine Zeile Anzeige. Das Journal mit 589.696 Einträgen liest sich in
+Sekunden.
+
+2377 Tests, `lesbarkeit.py` ohne Befund, CI grün (`8e6e3ee`). Die
+Anleitungen haben vier Lücken weniger (`09de088`): die
+Vollständigkeitsrechnung, die Codepage im Protokoll, die Sprachdaten
+und das Sichern neben dem Abruf.
+
 ## Hier war Schluss (Stand 2026-10-06, Dienstag) – der Server läuft
 
 **Das Firmenarchiv ist umgezogen und arbeitet.** 70.133 Mails auf einem
