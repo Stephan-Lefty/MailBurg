@@ -113,6 +113,38 @@ curl -T MailBurg-Archiv.tar.zst \
   https://cloud.example.org/remote.php/dav/files/benutzer/Sicherungen/
 ```
 
+## Nicht neben einem laufenden Abruf
+
+**Solange ein Abruf läuft, darf nicht gesichert werden.** Das ist kein
+Ratschlag, sondern die Lehre aus einem Schaden vom 07.10.2026 – und es
+betrifft die Server-Variante mit ihrem selbsttätigen Abruf genauso wie
+den Zeitplan am Arbeitsplatz.
+
+**Was passiert:** Beim Sichern wird zuerst die Liste aller Dateien
+erstellt, dann werden sie gepackt. Das Protokoll in `meta/` kommt dabei
+als Letztes dran. Nimmt der Abruf zwischendurch eine Mail auf, steht ihr
+Eintrag im gepackten Protokoll – ihre Datei stand nicht mehr in der
+Liste und fehlt.
+
+**Und die Sicherung sieht dabei vollständig aus.** Die Hash-Kette darin
+ist unversehrt, die Dateizahl plausibel. Erst wer sie zurückholt und
+anschließend `mailburg pruefen` laufen lässt, findet die Lücke – bei uns
+waren es zwei Mails von 70.283, entdeckt fünf Tage später am
+wiederhergestellten Archiv.
+
+Bis das Programm das selbst verhindert, gilt bei der Server-Variante:
+
+```
+sc.exe stop MailBurgServer
+```
+
+Erst wenn `sc.exe query MailBurgServer` den Zustand **STOPPED** meldet,
+sichern – und danach den Dienst wieder starten.
+
+Am Arbeitsplatz heißt dasselbe: nicht sichern, während das Hauptfenster
+abruft, und den Sicherungszeitplan nicht in dieselbe Stunde legen wie
+den Abruf.
+
 ## Von selbst
 
 Ein Backup, an das jemand denken muss, ist irgendwann keines mehr.

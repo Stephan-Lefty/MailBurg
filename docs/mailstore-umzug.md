@@ -131,6 +131,16 @@ sc.exe query MailBurgServer
 `sc.exe stop` kehrt zurück, bevor der Dienst unten ist – warten Sie,
 bis bei `query` der Zustand **STOPPED** steht.
 
+**Nach einem Neustart läuft er von selbst wieder**, denn er ist auf
+»verzögert automatisch« eingerichtet. Wer über mehrere Tage am Archiv
+arbeitet, muss ihn nach jedem Neustart erneut anhalten.
+
+**Und er hält den Suchindex, solange er läuft.** Das betrifft nicht nur
+das Einlesen: Auch `neuaufbau` und `texterkennung` schreiben in den
+Index und warten dann – ohne Meldung – darauf, dass er frei wird. Von
+außen sieht das aus wie ein hängender Befehl. Am 07.10.2026 hat uns das
+eine halbe Stunde Fehlersuche gekostet.
+
 ## 6. Erst einen, zum Messen
 
 Nehmen Sie das kleinste Postfach, am besten eines, das **auch weiterhin
@@ -176,6 +186,20 @@ Mit Protokoll, damit Sie hinterher nachsehen können:
 … | Tee-Object -Append "$quelle\einlesen.log"
 ```
 
+**Setzen Sie vorher einmal die Ausgabekodierung**, sonst ist das
+Protokoll hinterher nicht durchsuchbar:
+
+```
+$env:PYTHONIOENCODING = "utf-8"
+```
+
+Die Windows-Konsole schreibt in einer alten Codepage, und `Tee-Object`
+schreibt das durch. In der Datei steht dann »▄bergangen« statt
+»Übergangen« und »Gel÷schte Elemente« statt »Gelöschte Elemente« – eine
+Suche nach dem richtigen Wort findet nichts. Am 07.10.2026 hat das eine
+Stunde gekostet und zu der falschen Annahme geführt, es seien 295.072
+Mails verloren gegangen.
+
 **Oder einzeln und nacheinander.** Nach jedem Lauf steht die Bilanz da,
 und wenn etwas klemmt, betrifft es ein Postfach statt achtzehn.
 
@@ -215,7 +239,65 @@ Danach:
 sc.exe start MailBurgServer
 ```
 
-## 9. Beide Archive eine Weile parallel
+## 9. Die Vollständigkeit ausrechnen
+
+**Das ist der Nachweis, auf den es ankommt** – und er ist keine
+Stichprobe, sondern eine Rechnung, die ohne Rest aufgehen muss. Gefragt
+ist: Was ist aus jeder einzelnen ausgegebenen Datei geworden?
+
+Zuerst die Zahl, die alles verankert – wie viele Dateien tatsächlich
+dalagen:
+
+```
+Get-ChildItem "C:\…\admin" -Recurse -Filter *.eml | Measure-Object | Select-Object Count
+```
+
+Dann aus dem Protokoll die gelesenen Dateien und die Dubletten:
+
+```
+Select-String -Path "C:\…\einlesen.log" -Pattern "^Fertig:" | ForEach-Object { $_.Line }
+```
+
+Und die Ordner, die ausgelassen wurden:
+
+```
+Select-String -Path "C:\…\einlesen.log" -Pattern "bergangen" | ForEach-Object { $_.Line }
+```
+
+Die Rechnung sieht dann so aus – die Zahlen stammen vom Umzug am
+07.10.2026:
+
+```
+827.199  Dateien ausgegeben
+-295.072  Papierkorb, Spamverdacht, Entwürfe (nicht gelesen)
+ 532.127  gelesen
+- 13.373  bereits vorhanden
+ 518.754  neu aufgenommen
++ 70.283  Bestand vor der Übernahme
+ 589.037  erwartet  ·  589.058 im Archiv (21 aus dem laufenden Abruf)
+```
+
+**Geht die Rechnung nicht auf, suchen Sie nicht nach einer Erklärung,
+sondern nach der Ursache.** Bei uns schien zunächst ein Drittel des
+Bestands zu fehlen – tatsächlich hatten wir die Meldung über die
+übergangenen Ordner nicht gefunden, weil wir mit einem Umlaut gesucht
+haben (siehe Abschnitt 7).
+
+**Die Zahl der ausgelassenen Dateien lässt sich gegenprüfen**, ohne dem
+Protokoll zu glauben:
+
+```
+Get-ChildItem "C:\…\admin" -Recurse -Filter *.eml | Where-Object { $_.FullName -match "Gel.schte Elemente|Junk|Entw|Trash|Spam" } | Measure-Object | Select-Object Count
+```
+
+Stimmt diese Zahl mit der Differenz überein, ist die Rechnung von zwei
+Seiten belegt. Bei uns stimmte sie auf die Datei.
+
+**Und bewahren Sie `einlesen.log` auf.** Es ist der Beleg dafür, welche
+Ordner ausgelassen wurden – ohne die Datei steht in Ihrem Protokoll eine
+Behauptung.
+
+## 10. Beide Archive eine Weile parallel
 
 **Löschen Sie das alte Archiv nicht sofort.** Vier bis sechs Wochen
 beide laufen lassen und Stichproben machen – suchen Sie dieselben
@@ -225,7 +307,7 @@ Ein Archiv, aus dem etwas fehlt, sieht genauso aus wie ein
 vollständiges. Das ist der Grund für diese Wartezeit, und sie ist der
 einzige Weg, die Vollständigkeit zu belegen.
 
-## 10. Den Vorgang protokollieren
+## 11. Den Vorgang protokollieren
 
 **Bei geschäftlicher Post gehört der Umzug belegt.** Nachvollziehbar
 sein muss, wie die Daten in das System gekommen sind und dass dabei

@@ -153,11 +153,24 @@ fehlt der Text, und nichts sieht nach einem Fehler aus: Die Mails sind
 alle da, mit Anhang – nur wer nach einer Rechnungsnummer sucht, die
 ausschließlich im Scan steht, bekommt keinen Treffer.
 
-Auf dem Server nachzuerkennen hilft nicht: `mailburg texterkennung`
-prüft zuerst, ob tesseract vorhanden ist, und bricht sonst ab. Auf
-einem frischen Windows Server ist keines.
+Auf einem frischen Windows Server ist kein tesseract. `mailburg
+texterkennung` prüft das und bricht ab, statt stillschweigend nichts zu
+tun.
 
-**Also mitkopieren.** Auf dem Arbeitsplatz liegt er unter
+**Nachinstallieren geht** – am 07.10.2026 durchgespielt; der Weg samt
+der Falle mit den fehlenden deutschen Sprachdaten steht in [MailBurg
+unter Windows](windows.md). Rechnen Sie mit der Dauer: gemessen **rund
+eine Sekunde je Seite**. Bei 77.721 wartenden Dokumenten mit zwei bis
+vier Seiten im Schnitt sind das dreißig bis neunzig Stunden.
+
+**Und die Texterkennung schreibt in den Suchindex, den der Dienst
+hält** – ein Lauf braucht ihn also angehalten, und solange steht der
+Browser-Zugang. Wer das nicht will, lässt die Erkennung in Häppchen
+hinter den Abrufen mitlaufen, braucht dafür aber Wochen.
+
+**Deshalb bleibt das Mitkopieren der bessere Weg**, wenn am
+Arbeitsplatz schon erkannt wurde: Was einmal gelesen ist, muss nicht
+zweimal gelesen werden. Auf dem Arbeitsplatz liegt er unter
 `%LOCALAPPDATA%\MailBurg\ocr` (Linux: `~/.local/share/mailburg/ocr`)
 und gehört auf dem Server in den gemeinsamen Ordner:
 

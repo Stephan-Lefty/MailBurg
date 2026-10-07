@@ -270,11 +270,40 @@ winget install oschwartz10612.Poppler
 winget install UB-Mannheim.TesseractOCR
 ```
 
-Beim tesseract-Setup das Häkchen bei **German** unter den Sprachdaten nicht
-vergessen — ein deutscher Text mit englischem Modell gelesen wird zu
-Buchstabensalat mit zerstörten Umlauten. Beide `bin`-Ordner müssen anschließend
-im Suchpfad stehen. Ob es geklappt hat:
+**`winget` installiert tesseract still — und damit ohne deutsche
+Sprachdaten.** Das Setup hat ein Häkchen bei *German*, aber es erscheint
+nicht, wenn winget den Installer durchlaufen lässt. Danach stehen nur
+`eng` und `osd` bereit, und ein deutscher Text mit englischem Modell
+gelesen wird zu Buchstabensalat mit zerstörten Umlauten. Die Sprachdatei
+lässt sich nachladen:
+
+```powershell
+Invoke-WebRequest -Uri "https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata" -OutFile "C:\Program Files\Tesseract-OCR\tessdata\deu.traineddata"
+```
+
+Beide `bin`-Ordner müssen anschließend im Suchpfad stehen — und zwar im
+**systemweiten**, sonst findet der Windows-Dienst sie nicht:
+
+```powershell
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","Machine") + ";C:\Program Files\Tesseract-OCR", "Machine")
+```
+
+Der Befehl liest ausdrücklich den Maschinenpfad und schreibt ihn zurück.
+Mit `$env:Path` zu arbeiten wäre falsch: Das ist Benutzer- und
+Systempfad zusammengesetzt, und man würde beide dauerhaft vermischen.
+
+Danach ein **neues** Fenster öffnen – das alte kennt den neuen Pfad
+nicht – und nachsehen:
 
 ```powershell
 mailburg werkzeuge
 ```
+
+**Achten Sie auf die Zeile »Benutzt wird«.** Steht dort `eng` statt
+`deu+eng`, fehlt die Sprachdatei. Das ist schlimmer als keine
+Erkennung: Eine Suche, die Treffer meldet, die keine sind, führt in die
+Irre.
+
+Dieser Selbsttest gehört nach jeder Installation und nach jedem Update
+einmal gelaufen. poppler und tesseract liegen außerhalb von MailBurg –
+ein Update kann sie nicht verlieren, aber auch nicht nachrüsten.

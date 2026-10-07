@@ -11,6 +11,39 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Geändert
 
+- **Vier Lücken in den Anleitungen, alle aus dem Umzug vom 07.10.2026.**
+
+  **Die Vollständigkeitsrechnung fehlte ganz.** Die MailStore-Anleitung
+  sagte »mailburg info, mailburg pruefen« – aber nicht, wie man belegt,
+  dass jede ausgegebene Datei erklärt ist. Das war am Umzugstag die
+  eigentliche Arbeit: Dateien zählen, gelesene und ausgelassene aus dem
+  Protokoll holen, die Differenz von zwei Seiten gegenprüfen. Jetzt
+  steht die Rechnung dort, mit den echten Zahlen als Beispiel.
+
+  **Das Einleseprotokoll war nicht durchsuchbar.** Die empfohlene
+  Protokollierung über `Tee-Object` schreibt in der alten
+  Konsolen-Codepage; eine Suche nach »Übergangen« findet dort nichts,
+  weil »▄bergangen« dasteht. Das hat eine Stunde gekostet und zu der
+  falschen Annahme geführt, 295.072 Mails seien verloren. Die Anleitung
+  setzt jetzt vorher `PYTHONIOENCODING`.
+
+  **`winget` installiert tesseract ohne deutsche Sprachdaten.** Das
+  Setup hat ein Häkchen bei *German*, aber winget lässt es nie
+  erscheinen. Danach meldet MailBurg »Texterkennung: ja« und liest
+  deutsche Rechnungen mit dem englischen Modell – schlimmer als keine
+  Erkennung, weil die Suche dann Treffer liefert, die keine sind. Der
+  Weg zum Nachladen steht jetzt in der Windows-Anleitung, samt dem
+  Hinweis, auf die Zeile »Benutzt wird« zu achten.
+
+  **Sichern neben einem laufenden Abruf.** Dazu ein eigener Abschnitt in
+  der Sicherungsanleitung – die Ursache der zwei fehlenden Mails, die
+  dieser Umzug zutage gefördert hat.
+
+  Dazu: dass der Windows-Dienst nach einem Neustart von selbst wieder
+  läuft, und dass er den Suchindex hält – weshalb `neuaufbau` und
+  `texterkennung` ohne Meldung warten und wie ein hängender Befehl
+  aussehen.
+
 - **`mailburg pruefen` nennt fehlende Mails im Klartext.** Statt einer
   abgeschnittenen Prüfsumme stehen dort jetzt Postfach, Ordner, Datum,
   Absender und Betreff – und der Zeitpunkt, an dem die Mail ins Archiv
