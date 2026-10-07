@@ -51,7 +51,7 @@ down, with the date they were completed.
   rewrite stored names – the account name lives in the journal.
 
   No consequence for the MailStore import of October 2026: the names
-  there are all ASCII ("roesner (Mailstore)", "gaertner"). It affects
+  there are all ASCII ("mueller (Mailstore)", "schmidt"). It affects
   anyone assigning real names containing umlauts.
 
 - [ ] **The test suite is not green on Windows, and that hides real
@@ -84,28 +84,61 @@ down, with the date they were completed.
   gh workflow run Tests --ref main -f breit=true
   ```
 
-- [ ] **Move 827,199 emails over from MailStore.** The company archive
-  on the server (70,133 emails, live since 2026-10-06) is one twelfth
-  of the holdings. The rest sits in MailStore 26.1.0.23845.
+- [ ] **The MailStore migration is imported — now comes the proof.** On
+  2026-10-07 the archive stood at **589,058 emails** (170.4 GB raw,
+  106.9 GB on disk, journal 589,696 entries). The seventeen runs
+  overnight took 5 h 19 min: 451,985 files read, 444,086 taken in,
+  7,899 recognised as duplicates, not a single failure. The hash chain
+  is intact.
 
-  The export path, looked up in the vendor's documentation: right-click
-  in the folder tree → *Exportieren nach …* → target *Verzeichnis
-  (Dateisystem)*, file format **EML**, option *Ordnerstruktur
-  beibehalten*. *Vorhandenen Export aktualisieren* compares by filename
-  and writes only what is new — so the export can run in stages.
-  <https://help.mailstore.com/de/server/E-Mails_exportieren>
+  **What is open is completeness, and that is not measured.** MailStore
+  reported 827,198 emails; the archive holds 589,058. The difference
+  must be named before the old archive is deleted:
 
-  **Extrapolated from measurements** (70,133 emails = 19.2 GB raw,
-  1.07 GB index, 6075 s index run via pypdf): roughly **230 GB** raw,
-  **12 GB** index, **20 hours** of indexing. Those twenty hours are
-  where poppler pays for itself — with `pdftotext` it is a fraction of
-  that. So check whether poppler can be installed on the Windows server
-  before the big run.
+  - How many EML files actually sat in the export folders?
+    `Get-ChildItem … -Recurse -Filter *.eml | Measure-Object` — only
+    that number tells whether MailBurg read everything, or MailStore
+    handed out less than it counted.
+  - **Are there exports outside `Downloads\admin`?** The Defender
+    quarantine named `Downloads\mueller\…`, while the import ran from
+    `Downloads\admin\mueller (MailStore)\…`. Two places, and only the
+    second one was imported.
+  - "Übergangen" appears in none of the seventeen runs. So trash, spam
+    and drafts were not in the export at all — plausible, because
+    MailStore does not archive them by default, but unverified.
 
-  To settle first: one archive or one per MailStore archive, how the
-  mailbox assignment is set on import (`importieren --konto`), and
-  whether export and import should run in stages — 230 GB in one go is
-  a lot even to copy.
+  **Two emails are missing, and the cause is not established.** Entries
+  70763 and 70764, mailbox `mueller@…`, INBOX, taken in on 2026-10-02 at
+  13:59:05 UTC — both in the same second, both from the same sender,
+  both with attachments. Defender was not it (no event on 10-02), nor
+  was the server move on 10-05, because the files would have been in
+  place three days earlier. They are no longer in the mailbox's INBOX.
+
+  **Only then delete the exports on C:.** An archive with something
+  missing looks exactly like a complete one.
+
+- [ ] **`info` computes disk usage with half a million separate
+  calls.** `store.disk_usage()` sums `st_size` over `rglob("*.eml.*")`
+  — with 589,058 emails that is as many `stat()` calls for a single
+  line of output. Measured on 2026-10-07 on Windows Server 2025:
+  `mailburg info` ran for several minutes, while `mailburg pruefen`
+  walks the entire journal of 589,696 entries in seconds.
+
+  Every email's size is in the journal (`size`). Either take it from
+  there or make the line optional. **Measure first which share really
+  falls on `disk_usage()`** — `index.statistics()` feeds the same
+  output and has not been measured.
+
+- [ ] **`info` caps the account list at 40 lines.** At most 40
+  account/folder pairs are shown, with "… und N weitere" below. The
+  company archive has 1,086 pairs: the output stopped in the middle of
+  the second of eighteen accounts and said nothing about sixteen of
+  them.
+
+  What is needed is a per-account summary — `index.account_totals()`
+  already exists — with folder detail only on request, say
+  `info --ordner`. For the migration record, the account list was
+  exactly the figure that was missing.
 
 - [ ] **Prefill the search mask from a saved search.** Reported by
   joka63 (2026-09-22): opening "Ausführlich suchen" from the *Suchordner

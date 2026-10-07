@@ -52,7 +52,7 @@ wurde.
   die gespeicherten Namen umschreiben – der Kontoname steht im Journal.
 
   Für den MailStore-Import vom Oktober 2026 folgenlos: Die Namen dort
-  sind alle ASCII (»roesner (Mailstore)«, »gaertner«). Es trifft jeden,
+  sind alle ASCII (»mueller (Mailstore)«, »schmidt«). Es trifft jeden,
   der Klarnamen mit Umlauten vergibt.
 
 - [ ] **Die Testsuite ist unter Windows nicht grün, und das verdeckt
@@ -86,29 +86,62 @@ wurde.
   gh workflow run Tests --ref main -f breit=true
   ```
 
-- [ ] **827.199 Mails aus MailStore übernehmen.** Das Firmenarchiv auf
-  dem Server (70.133 Mails, seit 06.10.2026 im Betrieb) ist ein
-  Zwölftel des Bestands. Der Rest liegt in MailStore 26.1.0.23845.
+- [ ] **Der MailStore-Umzug ist eingelesen – jetzt kommt der Nachweis.**
+  Am 07.10.2026 stand das Archiv bei **589.058 Mails** (170,4 GB roh,
+  106,9 GB auf Platte, Journal 589.696 Einträge). Die siebzehn Läufe
+  der Nacht brauchten 5 h 19 min: 451.985 Dateien gelesen, 444.086
+  aufgenommen, 7.899 als Dublette erkannt, kein Fehlschlag. Die
+  Hash-Kette ist unversehrt.
 
-  Der Weg aus MailStore, in der Hersteller-Doku nachgeschlagen:
-  Rechtsklick im Ordnerbaum → *Exportieren nach …* → Ziel *Verzeichnis
-  (Dateisystem)*, Dateiformat **EML**, Option *Ordnerstruktur
-  beibehalten*. *Vorhandenen Export aktualisieren* gleicht über
-  Dateinamen ab und schreibt nur Neues – damit lässt sich der Export in
-  Etappen fahren.
-  <https://help.mailstore.com/de/server/E-Mails_exportieren>
+  **Offen ist die Vollständigkeit, und die ist nicht gemessen.**
+  MailStore meldete 827.198 Mails; im Archiv stehen 589.058. Die
+  Differenz muss benannt sein, bevor das alte Archiv gelöscht wird:
 
-  **Hochgerechnet aus Gemessenem** (70.133 Mails = 19,2 GB roh,
-  1,07 GB Index, 6075 s Indexlauf über pypdf): rund **230 GB**
-  Rohdaten, **12 GB** Index, **20 Stunden** Indexlauf. Die zwanzig
-  Stunden sind der Punkt, an dem sich poppler lohnt – mit `pdftotext`
-  ist es ein Bruchteil davon. Vor dem großen Lauf also prüfen, ob sich
-  poppler auf dem Windows Server einrichten lässt.
+  - Wie viele EML-Dateien lagen tatsächlich in den Exportordnern?
+    `Get-ChildItem … -Recurse -Filter *.eml | Measure-Object` – erst
+    diese Zahl sagt, ob MailBurg alles gelesen hat oder MailStore
+    weniger herausgegeben hat, als es zählte.
+  - **Liegen Exporte außerhalb von `Downloads\admin`?** Die
+    Defender-Quarantäne nannte `Downloads\mueller\…`, eingelesen wurde
+    aus `Downloads\admin\mueller (MailStore)\…`. Zwei Orte, und nur der
+    zweite ist eingelesen.
+  - »Übergangen« steht in keinem der siebzehn Läufe. Papierkorb, Spam
+    und Entwürfe waren also gar nicht im Export – plausibel, weil
+    MailStore sie standardmäßig nicht archiviert, aber ungeprüft.
 
-  Vorher zu klären: ein Archiv oder je MailStore-Archiv eines, wie die
-  Postfachzuordnung beim Einlesen gesetzt wird (`importieren --konto`),
-  und ob Export und Einlesen in Etappen laufen – 230 GB am Stück sind
-  auch beim Kopieren eine Hausnummer.
+  **Zwei Mails fehlen, und die Ursache ist nicht geklärt.** Einträge
+  70763 und 70764, Postfach `mueller@…`, INBOX, aufgenommen am
+  02.10.2026 um 13:59:05 UTC – beide in derselben Sekunde, beide vom
+  selben Absender, beide mit Anhang. Der Defender war es nicht (kein
+  Ereignis am 02.10.), der Serverumzug vom 05.10. auch nicht, denn die
+  Dateien hätten drei Tage vorher längst am Platz gelegen. In der
+  INBOX des Postfachs liegen sie nicht mehr.
+
+  **Und erst danach die Exporte auf C: löschen.** Ein Archiv, aus dem
+  etwas fehlt, sieht genauso aus wie ein vollständiges.
+
+- [ ] **`info` rechnet die Plattenbelegung über eine halbe Million
+  Einzelabfragen.** `store.disk_usage()` summiert `st_size` über
+  `rglob("*.eml.*")` – bei 589.058 Mails sind das ebenso viele
+  `stat()`-Aufrufe für eine Zeile Anzeige. Gemessen am 07.10.2026 auf
+  Windows Server 2025: `mailburg info` lief mehrere Minuten, während
+  `mailburg pruefen` das komplette Journal mit 589.696 Einträgen in
+  Sekunden durchgeht.
+
+  Die Größe jeder Mail steht im Journal (`size`). Entweder von dort
+  nehmen oder die Zeile auf Wunsch weglassen. **Vorher messen, welcher
+  Anteil wirklich auf `disk_usage()` entfällt** – `index.statistics()`
+  läuft über dieselbe Ausgabe und ist nicht gemessen.
+
+- [ ] **`info` deckelt die Kontoliste bei 40 Zeilen.** Gezeigt werden
+  höchstens 40 Konto/Ordner-Paare, darunter »… und N weitere«. Am
+  Geschäftsarchiv sind es 1.086 Paare: Die Ausgabe endete mitten im
+  zweiten von achtzehn Konten und sagte über sechzehn nichts.
+
+  Gebraucht wird eine Zusammenfassung je Konto – `index.account_totals()`
+  gibt es schon – und die Ordnertiefe erst auf Wunsch, etwa
+  `info --ordner`. Für das Übernahmeprotokoll war die Kontoliste genau
+  die Angabe, die fehlte.
 
 - [ ] **Aus einem Suchordner heraus die Maske vorfüllen.** Von joka63
   gemeldet (22.09.2026): Wer im Dialog *Suchordner bearbeiten* auf

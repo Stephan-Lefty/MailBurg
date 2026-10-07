@@ -1848,6 +1848,58 @@ def _angemeldet() -> str:
         return ""
 
 
+#: Wie viele fehlende Mails ausführlich genannt werden. Mehr wäre bei
+#: einem größeren Schaden eine Bildschirmflut, in der die Gesamtzahl
+#: untergeht – und die steht in der Zeile darüber.
+FEHLENDE_NENNEN = 10
+
+#: Länger wird ein Betreff nicht wiedergegeben. Betreffe aus
+#: Geschäftspost sind weitergeleitete Ketten; das Journal hält 200
+#: Zeichen, und die sprengen jede Zeile.
+BETREFF_LAENGE = 70
+
+
+def _fehlende_mail_nennen(mail: dict) -> None:
+    """Schreibt eine fehlende Mail so hin, dass man sie wiedererkennt.
+
+    **Vier Angaben, nicht eine.** Der Hash sagt, *welche* Datei fehlt;
+    Postfach, Datum, Absender und Betreff sagen, *was* fehlt – und nur
+    das lässt sich beurteilen, aus einer Sicherung holen oder im
+    Protokoll festhalten.
+    """
+    digest = (mail.get("hash") or "")[:16]
+    print(f"    - {digest}…", end="")
+
+    wo = " / ".join(
+        teil for teil in (mail.get("account"), mail.get("folder")) if teil
+    )
+    print(f"  {wo}" if wo else "")
+
+    beschreibung = []
+    if mail.get("date"):
+        beschreibung.append(sprache.zeitpunkt(mail["date"]))
+    if mail.get("sender"):
+        beschreibung.append(f"von {mail['sender']}")
+    if beschreibung:
+        print(f"      {', '.join(beschreibung)}")
+
+    betreff = (mail.get("subject") or "").strip()
+    if betreff:
+        if len(betreff) > BETREFF_LAENGE:
+            betreff = betreff[: BETREFF_LAENGE - 1].rstrip() + "…"
+        print(f"      {betreff}")
+
+    # **Wann sie aufgenommen wurde, nicht wann sie geschrieben wurde.**
+    # Am 07.10.2026 hing die ganze Ursachensuche an diesem Unterschied:
+    # Zwei Mails trugen den 02.10. im Kopf, und ich hielt das für den
+    # Zeitpunkt der Aufnahme. Erst ``ts`` zeigte, dass sie am selben Tag
+    # hereinkamen – und damit, dass der Umzug drei Tage später sie nicht
+    # verloren haben konnte.
+    if mail.get("ts"):
+        nummer = f" als Eintrag {mail['seq']}" if mail.get("seq") else ""
+        print(f"      aufgenommen {sprache.zeitpunkt(mail['ts'])}{nummer}")
+
+
 def cmd_pruefen(args: argparse.Namespace) -> int:
     """Prüft Hash-Kette und Ablage."""
     with oeffnen(Path(args.archiv), exclusive=False) as archive:
@@ -1893,8 +1945,16 @@ def cmd_pruefen(args: argparse.Namespace) -> int:
 
         if report["missing"]:
             print(f"  FEHLEND:     {sprache.mails(len(report['missing']))} ohne Datei")
-            for digest in report["missing"][:10]:
-                print(f"    - {digest[:16]}…")
+            # **Rückfall auf den bloßen Hash**, falls die Angaben fehlen.
+            # Ein Befund ohne Erläuterung ist mager, ein verschwiegener
+            # Befund ist falsch.
+            beschrieben = report.get("fehlend") or [
+                {"hash": digest} for digest in report["missing"]
+            ]
+            for mail in beschrieben[:FEHLENDE_NENNEN]:
+                _fehlende_mail_nennen(mail)
+            if len(beschrieben) > FEHLENDE_NENNEN:
+                print(f"    … und {len(beschrieben) - FEHLENDE_NENNEN} weitere")
 
         if report["unexpected"]:
             print(f"  UNBEKANNT:   {sprache.dateien(len(report['unexpected']))} "

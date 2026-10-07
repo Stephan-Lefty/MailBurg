@@ -1136,10 +1136,59 @@ class Archive:
             "expected": len(expected),
             "on_disk": len(on_disk),
             "missing": missing,
+            # **Zu jeder fehlenden Mail, was im Journal über sie steht.**
+            # Ein Hash allein ist keine Auskunft: Wer erfährt, dass
+            # »5286d604…« fehlt, weiß nicht, ob eine Rundmail von 2014
+            # abhanden ist oder die Reklamation von vorletzter Woche.
+            #
+            # **Am 07.10.2026 am Geschäftsarchiv aufgelaufen.** Zwei
+            # Mails von 589.060 fehlten; welche, war nur über ein
+            # Python-Schnipsel gegen das Journal herauszubekommen.
+            # Ausgerechnet das Werkzeug für den Schadensfall ließ den
+            # Anwender mit zwei Hexzahlen stehen.
+            "fehlend": self._fehlende_beschreiben(missing),
             "unexpected": unexpected,
             "ok": (chain.ok and not missing and not unexpected
                    and not unvollstaendig),
         }
+
+    def _fehlende_beschreiben(self, digests: list[str]) -> list[dict[str, Any]]:
+        """Holt zu fehlenden Mails die Angaben aus dem Journal.
+
+        **Ein zweiter Durchlauf, und nur im Schadensfall.** Die Angaben
+        zu allen Einträgen mitzuführen kostete bei 589.000 Mails über
+        hundert Megabyte Arbeitsspeicher – für einen Fall, der im
+        Regelbetrieb nicht eintritt. Das Journal liest sich dagegen
+        schnell: am 07.10.2026 waren 589.696 Einträge in wenigen
+        Sekunden durch.
+
+        **Der erste Eintrag gewinnt.** Liegt dieselbe Mail in mehreren
+        Postfächern, steht sie mehrfach im Journal; gefragt ist, wann
+        und woher sie zuerst ins Archiv kam.
+        """
+        if not digests:
+            return []
+
+        gesucht = set(digests)
+        gefunden: dict[str, dict[str, Any]] = {}
+        for entry in self.journal.read_all():
+            if entry.get("op") != "add":
+                continue
+            digest = entry.get("hash")
+            if digest in gesucht and digest not in gefunden:
+                gefunden[digest] = {
+                    feld: entry.get(feld) for feld in
+                    ("hash", "seq", "ts", "account", "folder", "date",
+                     "sender", "subject", "size")
+                }
+                if len(gefunden) == len(gesucht):
+                    break
+
+        # **Auch wer im Journal nicht auffindbar ist, bleibt in der
+        # Liste.** Sonst verschwände eine Mail aus dem Befund, weil die
+        # Auskunft über sie fehlt – und das ist der schlimmere Fall,
+        # nicht der harmlosere.
+        return [gefunden.get(digest, {"hash": digest}) for digest in digests]
 
     def rebuild_index(self, *, progress=None, mit_anhangstext: bool = True) -> int:
         """Baut den Suchindex vollständig aus Ablage und Journal neu.

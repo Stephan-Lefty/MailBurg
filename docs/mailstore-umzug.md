@@ -29,7 +29,41 @@ Dazu kommt der Suchindex mit rund 15 MB je 1.000 Mails.
 und das Journal wird nicht umgeschrieben – es ist der Nachweis.
 Überlegen Sie die Namen, bevor Sie den ersten Lauf starten.
 
-## 2. Aus MailStore exportieren
+## 2. Den Virenscanner aussperren – vor dem ersten Export
+
+**Ein Mailarchiv enthält zwangsläufig alte Schadsoftware.** Zwanzig
+Jahre Geschäftspost bringen Phishing-Mails, Makroviren und Trojaner
+mit; sie gehören ins Archiv, weil die Korrespondenz vollständig sein
+muss. Ein Virenscanner sieht das anders und greift zu.
+
+**Was dabei passiert, ist der schlimmste Fall:** Die Mail verschwindet,
+und das Archiv sieht weiterhin vollständig aus.
+
+Setzen Sie die Ausnahmen für **beide** Orte, bevor Sie anfangen:
+
+```
+Add-MpPreference -ExclusionPath "D:\Archiv"
+Add-MpPreference -ExclusionPath "C:\Users\…\Downloads\admin"
+```
+
+**Der Exportordner gehört dazu, nicht nur das Archiv.** Am 06.10.2026
+hat der Defender dem MailStore-Client eine Mail aus der Hand genommen,
+während er sie exportierte – Echtzeitschutz, `PWS:HTML/Phish`,
+Quarantäne. Sie kam nie als Datei im Ordner an und wurde folglich nie
+eingelesen. Im Protokoll des Einlesens steht davon nichts: MailBurg hat
+diese Datei nie gesehen.
+
+Nachsehen lässt sich das hinterher so:
+
+```
+Get-WinEvent -FilterHashtable @{LogName="Microsoft-Windows-Windows Defender/Operational"; Id=1116,1117} | Select-Object TimeCreated, Id | Format-Table
+```
+
+**Und die Ausnahme wieder herausnehmen, wenn der Umzug durch ist** –
+jedenfalls für den Exportordner. Für das Archiv bleibt sie: Dort liegt
+die Post dauerhaft, und sie soll dauerhaft liegen bleiben.
+
+## 3. Aus MailStore exportieren
 
 Nachgeschlagen in der
 [Hersteller-Dokumentation](https://help.mailstore.com/de/server/E-Mails_exportieren),
@@ -49,7 +83,7 @@ Etappen ist das der richtige Schalter.
 dann entscheiden Sie je Postfach, unter welchem Namen es in MailBurg
 erscheint.
 
-## 3. Die Verzeichnisse benennen
+## 4. Die Verzeichnisse benennen
 
 **Der Ordnername wird der Kontoname.** Das ist der ganze Trick an
 dieser Anleitung: Wenn Sie die Exporte gleich richtig benennen, ist das
@@ -83,7 +117,7 @@ der Postfachspalte des Browsers fast gleich aus. »Buchhaltung
 keine Einbahnstraße: Der Name des Unterverzeichnisses bleibt als
 Oberordner erhalten, Sie sehen also weiterhin, woher jede Mail kam.
 
-## 4. Den Dienst anhalten
+## 5. Den Dienst anhalten
 
 **Nur bei der Server-Variante, und dort ist es Pflicht.** Zwei
 Vorgänge, die gleichzeitig ins selbe Archiv schreiben, reißen die
@@ -97,13 +131,13 @@ sc.exe query MailBurgServer
 `sc.exe stop` kehrt zurück, bevor der Dienst unten ist – warten Sie,
 bis bei `query` der Zustand **STOPPED** steht.
 
-## 5. Erst einen, zum Messen
+## 6. Erst einen, zum Messen
 
 Nehmen Sie das kleinste Postfach, am besten eines, das **auch weiterhin
 abgerufen wird**:
 
 ```
-mailburg importieren D:\Archiv "C:\…\admin\sitebah (MailStore)" --konto "sitebah (MailStore)"
+mailburg importieren D:\Archiv "C:\…\admin\mueller (MailStore)" --konto "mueller (MailStore)"
 ```
 
 Zwei Zahlen in der Ausgabe sind wichtig:
@@ -125,7 +159,7 @@ einen Lauf statt nach zwanzig Stunden.
 > Dreifach-Dubletten: neun Dateien gelesen, fünf aufgenommen, vier
 > bereits vorhanden.
 
-## 6. Den Rest abarbeiten
+## 7. Den Rest abarbeiten
 
 Wenn die Zahlen stimmen, läuft der Rest von selbst:
 
@@ -145,20 +179,43 @@ Mit Protokoll, damit Sie hinterher nachsehen können:
 **Oder einzeln und nacheinander.** Nach jedem Lauf steht die Bilanz da,
 und wenn etwas klemmt, betrifft es ein Postfach statt achtzehn.
 
-## 7. Nachsehen und den Dienst starten
+## 8. Nachsehen und den Dienst starten
 
 ```
 mailburg info D:\Archiv
 mailburg pruefen D:\Archiv
 ```
 
-`pruefen` geht die Hash-Kette durch. Danach:
+`pruefen` rechnet die Hash-Kette nach und hält jeden Journaleintrag
+gegen die Ablage. Die Mails selbst werden dabei nicht gelesen, nur ihre
+Dateinamen – deshalb ist es schneller als `info`, das für die Zeile
+»Auf Platte« jede einzelne Datei anfasst.
+
+**Fehlt eine Mail, nennt MailBurg sie mit Postfach, Datum, Absender und
+Betreff** – und mit dem Zeitpunkt, an dem sie ins Archiv aufgenommen
+wurde:
+
+```
+  FEHLEND:     2 Mails ohne Datei
+    - 5286d60406624ea9…  mueller@firma.example / INBOX
+      02.10.2026, 15:45, von partner@beispiel.example
+      WG: Einkaufspreis für die OVL XL
+      aufgenommen 02.10.2026, 15:59 als Eintrag 70763
+```
+
+**Lesen Sie die beiden Datumsangaben getrennt.** Das erste steht im
+Kopf der Mail und kann Jahre zurückliegen; »aufgenommen« sagt, wann die
+Mail ins Archiv kam. Nur das Zweite beantwortet die Frage, wann der
+Verlust entstanden sein kann – und genau diese Verwechslung hat am
+07.10.2026 eine Ursachensuche in die falsche Richtung geschickt.
+
+Danach:
 
 ```
 sc.exe start MailBurgServer
 ```
 
-## 8. Beide Archive eine Weile parallel
+## 9. Beide Archive eine Weile parallel
 
 **Löschen Sie das alte Archiv nicht sofort.** Vier bis sechs Wochen
 beide laufen lassen und Stichproben machen – suchen Sie dieselben
@@ -168,7 +225,7 @@ Ein Archiv, aus dem etwas fehlt, sieht genauso aus wie ein
 vollständiges. Das ist der Grund für diese Wartezeit, und sie ist der
 einzige Weg, die Vollständigkeit zu belegen.
 
-## 9. Den Vorgang protokollieren
+## 10. Den Vorgang protokollieren
 
 **Bei geschäftlicher Post gehört der Umzug belegt.** Nachvollziehbar
 sein muss, wie die Daten in das System gekommen sind und dass dabei

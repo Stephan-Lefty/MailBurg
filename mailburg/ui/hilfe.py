@@ -635,6 +635,13 @@ alle Mails, die laut Protokoll da sein sollten, auch wirklich auf der
 Platte liegen – und ob dort Dateien liegen, die nie über MailBurg
 hereingekommen sind.</p>
 
+<p><b>Fehlt eine Mail, erfahren Sie welche.</b> MailBurg nennt dazu
+Postfach, Ordner, Datum, Absender und Betreff aus dem Protokoll – und
+getrennt davon den Zeitpunkt, an dem die Mail ins Archiv aufgenommen
+wurde. Beides zu unterscheiden ist wichtig: Das Datum der Mail kann
+Jahre zurückliegen, der Zeitpunkt der Aufnahme sagt Ihnen, wann der
+Verlust entstanden sein kann.</p>
+
 <p><b>Was es nicht leistet.</b> Wer Zugriff auf das Archiv hat und sich
 Zeit nimmt, kann die gesamte Kette neu berechnen. Dagegen hilft die
 Kette allein nicht; dagegen hilft nur ein Siegel, dessen Wert außerhalb

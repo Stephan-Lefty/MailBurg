@@ -11,6 +11,36 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Geändert
 
+- **`mailburg pruefen` nennt fehlende Mails im Klartext.** Statt einer
+  abgeschnittenen Prüfsumme stehen dort jetzt Postfach, Ordner, Datum,
+  Absender und Betreff – und der Zeitpunkt, an dem die Mail ins Archiv
+  aufgenommen wurde.
+
+  **Der Anlass kommt aus dem Betrieb (07.10.2026).** Nach der Übernahme
+  des MailStore-Bestands meldete die Prüfung am Geschäftsarchiv zwei
+  Mails ohne Datei – und nannte dazu nur `5286d60406624ea9…`. Alles
+  Übrige stand im Journal direkt daneben und wurde nicht ausgegeben;
+  herauszubekommen war es nur über ein Python-Schnipsel gegen das
+  Journal.
+
+  **Bei geschäftlicher Post ist die erste Frage nicht »wie viele«,
+  sondern »welche«.** Davon hängt ab, ob die Mails aus einer Sicherung
+  zu holen sind, ob eine Aufbewahrungsfrist betroffen ist und was im
+  Übernahmeprotokoll steht. Ausgerechnet das Werkzeug für den
+  Schadensfall ließ den Anwender mit zwei Hexzahlen stehen.
+
+  **Datum der Mail und Zeitpunkt der Aufnahme stehen getrennt da**, und
+  das ist mehr als Kosmetik: Beide Mails trugen den 02.10. im Kopf, und
+  ich hielt das für den Zeitpunkt der Aufnahme. Die naheliegende
+  Erklärung – ein Kopiervorgang beim Serverumzug drei Tage später –
+  stand und fiel mit diesem Unterschied. Aufgenommen wurden sie am
+  02.10., also lange vorher.
+
+  **Im Regelbetrieb kostet das nichts.** Die Angaben werden erst
+  geholt, wenn tatsächlich etwas fehlt; sie für alle Einträge
+  mitzuführen bräuchte bei 589.000 Mails über hundert Megabyte
+  Arbeitsspeicher.
+
 - **Die Postfachspalte im Browser kommt mit vielen Postfächern
   zurecht.** Enden alle Adressen auf dieselbe Domain, lässt die Spalte
   sie weg: Aus `buchhaltung@firma.example` wird `buchhaltung`. Der
