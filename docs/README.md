@@ -55,6 +55,12 @@
   dahinter. Was der Server können muss, welche Entscheidungen warum so
   gefallen sind und was noch offen ist.
 
+- **[Alle Befehle](befehle.md)** – die Kommandozeile vollständig, nach
+  Aufgaben geordnet statt nach dem Alphabet: nachsehen und prüfen, Post
+  hereinholen, suchen und herausholen, sichern, pflegen. Mit den drei
+  Befehlen, die es nur für die rote Fassung gibt, und drei Regeln, die
+  aus Schaden stammen.
+
 Die Suchsprache erklärt das Programm selbst:
 
 ```bash

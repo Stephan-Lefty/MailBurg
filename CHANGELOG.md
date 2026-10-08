@@ -9,6 +9,32 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- **Eine Übersicht aller Befehle** – [docs/befehle.md](docs/befehle.md).
+  Nach Aufgaben geordnet statt nach dem Alphabet: nachsehen und prüfen,
+  Post hereinholen, suchen und herausholen, sichern, pflegen. Dazu die
+  drei Befehle, die es allein für die rote Fassung gibt.
+
+  **Mit drei Regeln obenan, die aus Schaden stammen:** vor dem Sichern
+  den Abruf anhalten, der Dienst hält den Suchindex, Kontonamen sind
+  unveränderlich. Jede hat im Betrieb schon Stunden oder Daten
+  gekostet.
+
+  **Ein Wächtertest hält die Übersicht an der Wirklichkeit**
+  (`tests/test_befehlsuebersicht.py`): Jeder genannte Befehl und jede
+  genannte Option wird gegen `build_parser()` geprüft – also gegen das
+  Programm selbst. Eine Übersicht veraltet sonst still, und wer dann
+  abtippt, was dort steht, bekommt eine Fehlermeldung statt einer
+  Auskunft. Geprüft wird auch, dass keine echten Firmendaten
+  hineinrutschen.
+
+  **Die Gegenrichtung prüft er bewusst nicht.** Ein Befehl, der in der
+  Übersicht fehlt, ist eine Lücke; einer, den es nicht gibt, ist ein
+  Fehler. Nur das Zweite soll einen Testlauf anhalten – sonst stünde
+  jedem neuen Unterbefehl eine Doku-Pflicht im Weg, und das endet
+  damit, dass jemand den Test entschärft.
+
 ### Geändert
 
 - **Vier Lücken in den Anleitungen, alle aus dem Umzug vom 07.10.2026.**
