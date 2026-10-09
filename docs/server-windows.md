@@ -537,9 +537,22 @@ Warum der Dienst nicht startet, steht im Ereignisprotokoll, nicht auf
 der Konsole:
 
 ```
-$alle = Get-WinEvent -LogName Application -MaxEvents 50
-$alle | Where-Object { $_.Message -match "MailBurg" } | Format-List
+Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddHours(-2)} |
+  Where-Object { $_.Message -match "MailBurg" } | Format-List TimeCreated, Message
 ```
+
+> **Nicht `-MaxEvents`, und das ist keine Geschmacksfrage.** Hier stand
+> bis zum 09.10.2026 `Get-WinEvent -LogName Application -MaxEvents 50`
+> mit demselben Filter dahinter. Das holt erst die fünfzig jüngsten
+> Ereignisse **aller** Programme und filtert danach – auf einem Server
+> mit lebhaftem Anwendungsprotokoll ist die gesuchte Zeile längst
+> herausgefallen. Man sieht dann nichts und schließt, es sei nichts
+> gelaufen.
+>
+> `-FilterHashtable` filtert dagegen im Protokolldienst selbst. Genau
+> dieser Unterschied hat am 07.10.2026 zu dem Fehlschluss geführt, der
+> Defender habe zwei Mails verschluckt – serverseitig gefiltert war an
+> dem Tag nichts.
 
 Denselben Auszug holt im Fenster der Knopf *Ereignisprotokoll holen*.
 
