@@ -299,7 +299,30 @@ _KOPF = """<!doctype html>
 #: steht und ein Umzug des Repositorys sonst eine davon vergäße.
 QUELLE = "https://github.com/Stephan-Lefty/MailBurg"
 
-_FUSS = """<footer>MailBurg {fassung} &middot;
+
+def aenderungen(fassung: str) -> str:
+    """Wo steht, was sich in dieser Fassung geändert hat.
+
+    **Die Fassungsnummer war bis zum 2026-10-09 toter Text.** Sie
+    beantwortet die Frage »welche läuft hier«, nicht die nächste:
+    »und was ist daran anders als vorher«. Wer das wissen wollte,
+    musste das Repository suchen, den Änderungen-Reiter finden und den
+    richtigen Abschnitt – drei Schritte für eine Auskunft, die an
+    dieser Stelle hingehört.
+
+    **Die Release-Seite, nicht der Vergleich zweier Stände.** Ein
+    ``compare/v1.8.0...v1.8.1`` zeigt Quelltextzeilen; das beantwortet
+    die Frage für niemanden, der hier klickt. Die Release-Seite sagt
+    es in Sätzen und verweist unten selbst auf den Vergleich, für die,
+    die ihn brauchen.
+    """
+    return f"{QUELLE}/releases/tag/v{fassung}"
+
+
+_FUSS = """<footer>MailBurg
+<a href="{aenderungen}" rel="noopener noreferrer" target="_blank"
+   title="Was sich in dieser Fassung geändert hat">{fassung}</a>
+&middot;
 <a href="{quelle}" rel="noopener noreferrer" target="_blank">Quelltext</a>
 &middot; <a href="/rechtliches">Lizenz und Haftung</a></footer>
 </body>
@@ -442,7 +465,10 @@ def _rahmen(titel: str, inhalt: str, benutzer=None, thema: str = "system",
         f'<span class="name">MailBurg '
         f'<span class="marke">SERVER</span></span>{wer}</header>\n'
         f"<main>{inhalt}</main>\n"
-        + _FUSS.format(fassung=html.escape(__version__), quelle=QUELLE)
+        + _FUSS.format(
+            fassung=html.escape(__version__), quelle=QUELLE,
+            aenderungen=html.escape(aenderungen(__version__)),
+        )
     )
 
 

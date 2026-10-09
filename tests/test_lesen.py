@@ -419,6 +419,42 @@ class WebTest(unittest.TestCase):
                 # allein ein Skript mit `src`.
                 self.assertNotRegex(seite, r"<script[^>]+src\s*=")
 
+    def test_die_fassungsnummer_fuehrt_zu_den_aenderungen(self):
+        """**Sie beantwortet sonst nur die halbe Frage.**
+
+        »MailBurg 1.8.1« sagt, welche Fassung hier läuft – nicht, was
+        daran anders ist als vorher. Wer das wissen wollte, musste das
+        Repository suchen, den Änderungen-Teil finden und darin den
+        richtigen Abschnitt: drei Schritte für eine Auskunft, die an
+        diese Stelle gehört.
+
+        Geprüft wird auf allen drei Seiten, die Anmeldung
+        eingeschlossen: Gerade wer noch nicht angemeldet ist, hat
+        keinen anderen Weg.
+        """
+        from mailburg import __version__
+        from mailburg.server.seiten import aenderungen
+
+        ziel = aenderungen(__version__)
+
+        for name, seite in (
+            ("Suche", self._als("anna", "ein-anderes-langes").get("/").text),
+            ("Anmeldung", Kunde(self.anwendung).get("/anmelden").text),
+            ("Rechtliches", Kunde(self.anwendung).get("/rechtliches").text),
+        ):
+            with self.subTest(seite=name):
+                self.assertIn(ziel, seite)
+                self.assertIn(__version__, seite)
+
+    def test_der_link_zeigt_auf_diese_fassung(self):
+        """**Nicht auf die Übersicht aller Fassungen.** Ein Link
+        dorthin lässt den Leser wieder suchen – und auf einem Server
+        läuft selten die neueste."""
+        from mailburg.server.seiten import QUELLE, aenderungen
+
+        self.assertEqual(
+            aenderungen("1.7.3"), f"{QUELLE}/releases/tag/v1.7.3")
+
     def test_ein_verweis_nach_draussen_gibt_nichts_preis(self):
         """``target="_blank"`` ohne ``noreferrer`` verrät die Herkunft.
 
