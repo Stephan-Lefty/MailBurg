@@ -3,6 +3,110 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-10-09, Freitag) – zwei Fassungen, und eine Wand
+
+**Das Firmenarchiv arbeitet.** 589.321 Mails, Texterkennung durch
+(6.325 Dokumente mit 25.791 Seiten in der letzten Nacht), Dienst mit
+verzögertem Start, Sicherung täglich 17:30 im Ruhefenster des Abrufs.
+Die Suche an einem Arbeitsplatz im Büro antwortet in Sekundenbruchteilen
+– bei neunfachem Bestand gegenüber der Messung vom 12.09.
+
+**Vier Fehler kamen an diesem Vormittag heraus, und alle vier sind
+dieselbe Sorte: Sie machen nichts kaputt, sie unterlassen etwas
+stillschweigend.** Keiner wäre von selbst aufgefallen. Drei davon
+stammen aus Fragen Stephans, nicht aus Tests.
+
+### Die Messung, die an Platz eins gehört hätte
+
+**Mein Commit am Vormittag ließ die CI abstürzen** – nach dem letzten
+Test, mit Signal 11, beim nächsten Lauf mit Signal 6, während alle
+2395 Tests »OK« meldeten. Lokal: Rückgabewert 0.
+
+Ich habe **fünfmal** eine Vermutung gebaut und gepusht:
+
+1. Die Trefferliste fragte einen geschlossenen Suchindex (76 Meldungen
+   je Lauf). Echter Fehler, behoben – half hier nicht.
+2. Ein Test schickte ein Schein-Archiv in echten Erkennungscode.
+   Behoben, half nicht.
+3. Den auslösenden Aufruf ganz zurückgenommen. Half nicht.
+4. `atexit`-Handler, der Fenster schließt und die Anwendung beendet.
+   Half nicht.
+5. `atexit._run_exitfuncs()` vor `os._exit`. **Machte es schlimmer** –
+   der Aufruf führt *alle* Haken aus, auch den von PySide6, der Qt
+   abbaut, und stieß damit genau den Absturz an, der vermieden werden
+   sollte.
+
+**Dann die Messung: zehn Testmethoden, die nichts tun als
+`assertTrue(True)`, auf den grünen Stand davor gelegt – und der Lauf
+bricht ab.** 2383 gingen, 2393 nicht. Drei Minuten Arbeit, und sie
+klärte, was fünf Versuche nicht geschafft hatten: Es lag nie an meinem
+Code, sondern an der Zahl der Tests. Ein alter Qt-Fehler beim
+Herunterfahren, bisher unter der Schwelle.
+
+**Die Lehre ist nicht neu, sie ist nur teurer geworden.** Am 07.10.
+steht hier: »Dreimal habe ich aus einer nicht gefundenen Ausgabe auf
+einen Fehler geschlossen.« Heute fünfmal aus einer Vermutung auf eine
+Ursache. *Wenn eine Änderung die Lage nicht ändert, ist die nächste
+Handlung eine Messung und keine weitere Änderung.*
+
+Behoben mit `tests/lauf.py` – **am Symptom, nicht an der Ursache**, und
+genau so steht es im Modulkopf. Der Läufer beendet den Prozess selbst,
+bevor Python seine Module zerlegt. `faulthandler` sagt, warum dort
+nichts mehr zu holen ist: *Current thread: <no Python frame>*.
+
+**Der Preis gehört dazu und steht in README, CONTRIBUTING und im
+Modulkopf:** Fehler, die erst beim Aufräumen aufträten, fallen nicht
+mehr auf. Acht Tests wachen über den Läufer – ein Läufer, der immer
+`0` liefert, wäre schlimmer als jeder Absturz.
+
+### Die vier Befunde
+
+**Der Dienst machte keine Texterkennung.** `core/erkennung.py` sagt
+seit jeher »nach jedem Abruf ein kleines Zeitbudget«; `ui/arbeit.py`
+tat das, `server/abruf.py` rief es nie auf. Auf einem Server gibt es
+kein Fenster – dort blieb **jeder** eingehende Scan stumm liegen. Die
+Mail auffindbar, ihr Anhang nicht. Gefunden durch Stephans Frage
+»läuft die Texterkennung auch automatisch bei neuen Mails?«
+
+**Die Trefferliste fragte ein geschlossenes Archiv.** `suchen()` hatte
+die Prüfung von Anfang an, `fetchMore` nicht. Trifft im Betrieb jeden,
+der das Archiv wechselt, während Treffer angezeigt werden.
+
+**Ein Semikolon verschluckte alle Berichtsempfänger außer dem ersten** –
+und die Probe im Einrichtungsfenster meldete trotzdem Erfolg. Bei einem
+Störungsbericht heißt das: Die Vertretung wartet auf eine Warnung, die
+nie kommt. Aus Stephans Frage »kann ich mehrere Mailadressen mit ;
+angeben?«. Dabei gemessen: `getaddresses` verwirft bei einem
+Syntaxfehler die **ganze** Liste – `'chef@example.org,'` ergibt
+`[('', '')]`.
+
+**Der Protokollbefehl in der eigenen Anleitung lief in die eigene
+Falle.** `-MaxEvents 50 | Where-Object` – also erst holen, dann
+filtern. Genau der Fehler, der am 07.10. zum Defender-Fehlschluss
+führte. Die Lehre stand seit zwei Tagen hier, der auslösende Befehl
+weiter in der Anleitung.
+
+### Zwei Fassungen an einem Tag, und warum das die Regel nicht bricht
+
+1.8.1 um 9:30, 1.8.2 um 10:10. Beide Fehler trafen Anwender still –
+genau der Fall, für den die Regel vom 25.09. eine Ausnahme vorsieht.
+Gesammelt wird weiter bis zum 1. November.
+
+### Was im Betrieb offen blieb
+
+**Der Zustandsbericht war seit der Einrichtung nie angekommen** (falsche
+Absenderadresse, vom Mailserver abgelehnt) – und das stand ausschließlich
+im Ereignisprotokoll. Drei Tage lang hätte ein ausgefallener Abruf
+niemanden erreicht. Behoben in der Einstellung; dass ein wiederholt
+gescheiterter Versand auf die Statusseite gehört, steht in der TODO.
+
+**Neu: die Wochenprobe.** Ein Blatt mit 52 Kennungen, eine je Woche, die
+Stephan von außen an ein Firmenpostfach schickt und danach im Archiv
+sucht. Es prüft, was keine Selbstprüfung kann: ob die Zufuhr überhaupt
+noch läuft. Liegt außerhalb des Repos.
+
+2412 Tests, `lesbarkeit.py` ohne Befund, CI grün.
+
 ## Hier war Schluss (Stand 2026-10-07, Mittwoch) – 589.058 Mails, und sieben Befunde
 
 **Der MailStore-Bestand ist drin.** 589.058 Mails, Hash-Kette
@@ -2205,8 +2309,12 @@ System-Python:
 
 ```bash
 PYTHONPATH="$PWD" QT_QPA_PLATFORM=offscreen \
-  ~/.local/share/mailburg/venv/bin/python3 -m unittest discover -s tests
+  ~/.local/share/mailburg/venv/bin/python3 tests/lauf.py
 ```
+
+**Seit dem 2026-10-09 über ``tests/lauf.py``**, nicht mehr über
+``unittest discover``: Der Lauf brach sonst *nach* dem letzten Test
+ab, sobald es genug Tests waren. Begründung im Modulkopf dort.
 
 Das sind 1087 Tests. Mit `python -m unittest` aus dem Systempfad sind es
 1062, und 325 werden **stillschweigend übersprungen** – PySide6 liegt
@@ -2555,6 +2663,28 @@ gemeldet. »Nichts gefunden« sieht aus wie ein Ergebnis und wird
 geglaubt. Deshalb eng fangen (`keyring.errors.KeyringError`,
 `OSError`), und wo ein Aufrufer dem Anwender etwas schreibt, den Grund
 mitgeben statt ihn wegzuwerfen.
+
+**Wenn eine Änderung die Lage nicht ändert, ist die nächste Handlung
+eine Messung – keine zweite Änderung.** Am 2026-10-09 brach die CI
+nach dem letzten Test ab, während alle 2395 grün meldeten. Ich habe
+fünfmal eine Vermutung gebaut, gepusht und gewartet; zweieinhalb
+Stunden, fünfmal rot. Der fünfte Versuch machte es sogar schlimmer.
+
+Dann: zehn Testmethoden, die nichts tun als `assertTrue(True)`, auf
+den grünen Stand davor gelegt. **Drei Minuten, und die Lage war
+geklärt** – 2383 Tests gingen, 2393 nicht. Es lag nie an meinem Code,
+sondern an ihrer Zahl.
+
+**Die Messung war von Anfang an möglich und billiger als jeder
+Versuch.** Sie stand nur nicht am Anfang, weil ich eine Erklärung
+hatte, die plausibel klang. Das ist die Schwester der Regel oben: Dort
+geht eine nicht gefundene Ausgabe als Befund durch, hier eine
+plausible Erklärung als Ursache.
+
+**Die Faustregel:** Nach dem *ersten* wirkungslosen Versuch nicht den
+zweiten bauen, sondern fragen, welche Messung zwischen den Hypothesen
+entscheidet. Taugt keine dazu, ist die Hypothese zu vage, um sie zu
+reparieren.
 
 **Eine bestätigte Ursache ist nicht dasselbe wie die einzige.** Am
 2026-09-07 fanden wir, warum auf Stephans Rechner der falsche
