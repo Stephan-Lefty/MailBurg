@@ -9,6 +9,65 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.8.2] – 2026-10-09
+
+### Behoben
+
+- **Mehrere Berichtsempfänger: Ein Semikolon verschluckte alle außer
+  dem ersten.** Outlook zeigt das Semikolon als Trenner an, das
+  Mailformat kennt nur das Komma. Wer `a@example.org; b@example.net`
+  eintrug, bekam beim Zerlegen `[('', 'a@example.org'), ('', '')]` –
+  die zweite Adresse war weg, **ohne Fehlermeldung**.
+
+  **Bei einem Störungsbericht ist das die teuerste Sorte Fehler.** Die
+  Vertretung wartet auf eine Warnung, die nie kommt – und merkt es
+  nicht, denn ein ausbleibender Bericht sieht aus wie ein Tag ohne
+  Störung.
+
+  **Und die Probe im Einrichtungsfenster bestätigte das sogar.** Sie
+  nimmt denselben Weg, der Mailserver nimmt die Nachricht für den
+  ersten Empfänger an, nichts wirft – also meldete der Knopf Erfolg.
+  Ausgerechnet die Prüfung, die den Fehler aufdecken müsste, verdeckte
+  ihn. Sie nennt jetzt die tatsächlichen Empfänger einzeln, nicht mehr
+  den Wortlaut des Eingabefelds.
+
+  Das Semikolon wird umgesetzt, aber **nur außerhalb von
+  Anführungszeichen**: `"Müller; Hans" <h@example.org>` ist ein
+  einziger Empfänger, und den zu zerreißen wäre derselbe Schaden in
+  die andere Richtung.
+
+- **Ein Komma zu viel ließ den Bericht an niemanden gehen.** Gemessen
+  auf Python 3.14: Bei einem Syntaxfehler verwirft `getaddresses` die
+  **ganze** Liste, nicht nur den kaputten Teil – aus
+  `'chef@example.org,'` wird `[('', '')]`. Das Eingabefeld sah dabei
+  gefüllt aus. Eine Empfängerliste, aus der keine Adresse herauskommt,
+  gilt jetzt als nicht eingerichtet; dann sagt die Probe »Noch
+  unvollständig«, statt Erfolg für eine Mail ohne Empfänger zu melden.
+
+### Geändert
+
+- **Die Fassungsnummer in der Weboberfläche führt zu den Änderungen.**
+  Unten stand »MailBurg 1.8.1« als toter Text – das beantwortet,
+  welche Fassung läuft, nicht, was daran anders ist als vorher. Wer
+  das wissen wollte, musste das Repository suchen, den
+  Änderungen-Teil finden und darin den richtigen Abschnitt.
+
+  Verlinkt ist die Release-Seite **dieser** Fassung, nicht der
+  Vergleich zweier Stände: Ein `compare/v1.8.1...v1.8.2` zeigt
+  Quelltextzeilen und beantwortet die Frage für niemanden, der dort
+  klickt. Und nicht die Übersicht aller Fassungen – dort müsste man
+  wieder suchen, und auf einem Server läuft selten die neueste.
+
+- **Der Protokollbefehl in der Serveranleitung filterte an der eigenen
+  Falle vorbei.** Dort stand `Get-WinEvent -MaxEvents 50` mit einem
+  `Where-Object` dahinter – das holt erst die fünfzig jüngsten
+  Ereignisse **aller** Programme und filtert danach. Auf einem Server
+  mit lebhaftem Anwendungsprotokoll ist die gesuchte Zeile dann nicht
+  mehr dabei, und man schließt, es sei nichts gelaufen. Genau dieser
+  Unterschied führte am 07.10.2026 zu dem Fehlschluss, der Defender
+  habe zwei Mails verschluckt. Jetzt `-FilterHashtable`, also im
+  Protokolldienst selbst gefiltert.
+
 ## [1.8.1] – 2026-10-09
 
 ### Hinzugefügt
@@ -3696,6 +3755,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.8.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.9...v1.8.0
 [1.7.9]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.8...v1.7.9
