@@ -136,6 +136,13 @@ class Schleife:
         self.letzter_befund = ""
         self.laeufe = 0
 
+        #: Ob schon gemeldet wurde, dass die Texterkennung nicht
+        #: einsatzbereit ist. **Einmal je Dienstlauf, nicht alle dreißig
+        #: Minuten** – eine Meldung, die im Ereignisprotokoll steht wie
+        #: eine Tapete, liest niemand mehr, und dann geht die nächste
+        #: echte darin unter.
+        self._ocr_vermisst = False
+
     def starten(self) -> None:
         if not self.lage.an:
             return
@@ -237,9 +244,14 @@ class Schleife:
                 # für immer, ohne Spur.
                 zustand.speichern()
 
+            # **Noch im selben geöffneten Archiv**, siehe
+            # :meth:`_anhaenge_lesen`.
+            gelesen = self._anhaenge_lesen(archiv)
+
         self.zuletzt = datetime.now()
         self.laeufe += 1
-        self.letzter_befund = self._befund(neu, geholt, uebersprungen)
+        self.letzter_befund = self._befund(
+            neu, geholt, uebersprungen, gelesen)
         self._melden(self.letzter_befund, fehler=bool(uebersprungen))
 
         # **Der Bericht hängt am Abruf und braucht keinen zweiten
@@ -248,6 +260,65 @@ class Schleife:
         # steckenbleiben kann. Und berichtet wird über das, was der
         # Abruf getan hat – ohne ihn gäbe es nichts zu melden.
         self._berichten(neu, uebersprungen)
+
+    def _anhaenge_lesen(self, archiv) -> int:
+        """Ein Häppchen Texterkennung, im Anschluss an den Abruf.
+
+        **Das gab es im Dienst bis zum 2026-10-09 nicht**, obwohl der
+        Modulkopf von :mod:`mailburg.core.erkennung` seit jeher »nach
+        jedem Abruf« zusagt und die Oberfläche es tut
+        (``ui/arbeit.py``). Auf einem Server gibt es kein Fenster – dort
+        blieb damit **jeder** neu eingehende Scan stumm liegen. Die Mail
+        war auffindbar, ihr Anhang nicht, und das sieht nicht nach einer
+        Störung aus, sondern nach einem Dokument ohne Text. Gefunden
+        durch eine Frage Stephans, nicht durch einen Test.
+
+        **Im selben geöffneten Archiv, also innerhalb derselben
+        Sperre.** Eine Erkennung daneben – eigener Zeitplan, zweiter
+        Dienst – stünde dem Abruf regelmäßig im Weg, und dann bliebe
+        Post liegen, um Scans lesbar zu machen. Die Rangfolge ist
+        eindeutig: Archivieren ist Pflicht, Durchsuchbarmachen ist Kür.
+
+        **Ein Fehler hier darf den Abruf nicht kosten** – aber er wird
+        gemeldet. Eine Erkennung, die still aussetzt, ist genau der
+        Zustand, den niemand bemerkt.
+
+        Gibt zurück, wie viele Dokumente lesbar wurden.
+        """
+        from mailburg.core import erkennung
+        from mailburg.extract import ocr
+
+        try:
+            bereit, hinweis = ocr.bereit()
+            if not bereit:
+                if not self._ocr_vermisst:
+                    self._ocr_vermisst = True
+                    self._melden(
+                        f"Texterkennung nicht möglich: {hinweis} "
+                        f"Eingescannte Anhänge bleiben bis dahin "
+                        f"unauffindbar.",
+                        fehler=True,
+                    )
+                return 0
+            self._ocr_vermisst = False
+
+            if not erkennung.Warteschlange(archiv.index).anzahl():
+                return 0
+            # Ohne eigenes Budget: dieselbe Portion wie im Fenster. Der
+            # Takt ist hier zwar ein anderer, aber ein Dienst, der eine
+            # Viertelstunde am Stück Bilder liest, verzögert den
+            # nächsten Abruf – und das wäre die falsche Rangfolge.
+            stat = erkennung.durchlauf(
+                archiv, weiter=lambda: not self.halt.is_set()
+            )
+            return stat.gelesen
+        except Exception as fehler:  # noqa: BLE001
+            # **Weit gefangen, mit Grund und mit Meldung.** Was hier
+            # schiefgeht, darf die Post nicht aufhalten; verschweigen
+            # darf man es trotzdem nicht.
+            self._melden(
+                f"Texterkennung abgebrochen: {fehler}", fehler=True)
+            return 0
 
     def _berichten(self, neu: int, uebersprungen: int) -> None:
         """Tagesbericht und Störungsmeldung – beides nach Lage.
@@ -268,7 +339,8 @@ class Schleife:
             self._melden(f"Bericht nicht möglich: {fehler}", fehler=True)
 
     @staticmethod
-    def _befund(neu: int, geholt: int, uebersprungen: int) -> str:
+    def _befund(neu: int, geholt: int, uebersprungen: int,
+                gelesen: int = 0) -> str:
         """Was am Ende eines Laufs dasteht.
 
         **Übersprungene Postfächer dürfen nicht als geprüft gelten.** Am
@@ -287,6 +359,14 @@ class Schleife:
             teile.append(
                 f"{uebersprungen} Postfächer übersprungen – "
                 f"von dort kam nichts."
+            )
+        # **Mit in die Meldung, nicht nur getan.** Sonst ist von außen
+        # nicht nachprüfbar, ob die Erkennung im Dienst überhaupt läuft –
+        # und genau das war fünf Wochen lang der Fall, ohne dass es
+        # jemandem auffiel.
+        if gelesen:
+            teile.append(
+                f"{gelesen} eingescannte PDF durchsuchbar gemacht."
             )
         return " ".join(teile) or "Keine Postfächer geprüft."
 

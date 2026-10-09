@@ -164,9 +164,22 @@ eine Sekunde je Seite**. Bei 77.721 wartenden Dokumenten mit zwei bis
 vier Seiten im Schnitt sind das dreißig bis neunzig Stunden.
 
 **Und die Texterkennung schreibt in den Suchindex, den der Dienst
-hält** – ein Lauf braucht ihn also angehalten, und solange steht der
-Browser-Zugang. Wer das nicht will, lässt die Erkennung in Häppchen
-hinter den Abrufen mitlaufen, braucht dafür aber Wochen.
+hält** – ein Lauf von Hand braucht ihn also angehalten, und solange
+steht der Browser-Zugang.
+
+**Im laufenden Betrieb ist das nicht nötig.** Der Dienst arbeitet nach
+jedem Abruf ein Häppchen ab: zwei Minuten oder dreißig Dokumente, was
+zuerst kommt. Ein eingescannter Anhang, der vormittags hereinkommt, ist
+binnen einer halben Stunde durchsuchbar; wie viele es waren, steht in
+der Abrufmeldung im Ereignisprotokoll. Für den **erstmaligen**
+Nachholbedarf über zehntausende Dokumente reicht das nicht – dafür
+bleibt der Lauf von Hand mit angehaltenem Dienst.
+
+**Während der Abrufpause ruht auch die Erkennung.** Was abends
+hereinkommt, ist am nächsten Vormittag dran. Bei 26 Läufen am Tag und
+dreißig Dokumenten je Lauf stehen dem rund 780 Dokumente täglich
+gegenüber – eine Nacht gewöhnlicher Geschäftspost ist damit vor dem
+Dienstbeginn aufgeholt.
 
 **Deshalb bleibt das Mitkopieren der bessere Weg**, wenn am
 Arbeitsplatz schon erkannt wurde: Was einmal gelesen ist, muss nicht
