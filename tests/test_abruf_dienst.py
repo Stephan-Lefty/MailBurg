@@ -229,10 +229,20 @@ class SchleifeTest(unittest.TestCase):
             lambda archiv, konto, zustand: geholt.append(konto.name) or 0
         )
 
+        # **Die Texterkennung muss hier mit abgeschaltet sein.** Seit
+        # dem 2026-10-09 ruft ``_einmal`` sie auf, und ``Archive.open``
+        # ist hier ein Mock: ``Warteschlange.anzahl()`` liefert dann ein
+        # MagicMock, und das ist *wahr*. Der echte Erkennungscode liefe
+        # also mit einem Schein-Archiv – er findet zwar nichts zu tun,
+        # aber die CI brach danach beim Aufräumen mit einem
+        # Speicherzugriffsfehler ab, während alle Tests grün meldeten.
+        # Geprüft wird hier der Weg zu den Konten, nicht die Erkennung;
+        # die hat ihre eigenen Tests in ``ScansImDienstTest``.
         with mock.patch(
             "mailburg.core.paths.config_dir",
             return_value=Path(ordner.name),
-        ), mock.patch("mailburg.core.archive.Archive.open"):
+        ), mock.patch("mailburg.core.archive.Archive.open"), \
+             mock.patch.object(Schleife, "_anhaenge_lesen", return_value=0):
             schleife._einmal()
 
         self.assertEqual(geholt, ["buero"])
