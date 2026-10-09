@@ -192,11 +192,22 @@ class Berichtsdialog(QDialog):
             )
             return
 
+        # **Die tatsächlichen Empfänger, nicht das Eingabefeld.** Hier
+        # stand ``lage.an`` – also das, was jemand getippt hatte, und
+        # nicht das, was geschehen ist. Wer zwei Adressen einträgt und
+        # zwei bestätigt bekommt, prüft nichts nach; mit einem
+        # Semikolon dazwischen ging die Mail aber nur an die erste.
+        ziele = lage.adressen
+        liste = "\n".join(f"  • {adr}" for adr in ziele)
         QMessageBox.information(
             self, "Probe unterwegs",
-            f"Die Mail ging an {lage.an} hinaus.\n\n"
-            f"Kommt sie nicht an, sehen Sie im Spam-Ordner nach – eine "
-            f"erste Nachricht von einem neuen Absender landet dort gern.",
+            f"Die Mail ging an {len(ziele)} Empfänger hinaus:\n"
+            f"{liste}\n\n"
+            f"Stehen hier weniger, als Sie eingetragen haben, trennen "
+            f"Sie die Adressen mit einem Komma.\n\n"
+            f"Kommt die Mail nicht an, sehen Sie im Spam-Ordner nach – "
+            f"eine erste Nachricht von einem neuen Absender landet dort "
+            f"gern.",
         )
 
     def ergebnis(self) -> tuple[Lageanteil, str]:

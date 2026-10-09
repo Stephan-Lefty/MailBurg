@@ -97,8 +97,78 @@ class Lage:
         Postausgangsserver sieht eingerichtet aus und verschickt nichts –
         genau die Sorte Halbzustand, die dieses Projekt sonst bei anderen
         findet.
+
+        **Und es muss wirklich eine Adresse herauskommen.** Hier stand
+        bis zum 2026-10-09 nur ``bool(self.an …)``, also: steht etwas
+        im Feld. Was darin steht, kann aber unbrauchbar sein, und
+        Python verwirft dann die **ganze** Liste statt nur des
+        kaputten Teils – gemessen auf 3.14:
+
+            'chef@example.org,'  ->  [('', '')]
+            'a@example.org;b@example.net'  ->  [('', '')]
+
+        Ein Komma zu viel, und der Bericht ginge an niemanden,
+        während das Feld gefüllt aussieht.
         """
-        return bool(self.an and self.smtp and self.von)
+        return bool(self.adressen and self.smtp and self.von)
+
+    @property
+    def empfaenger(self) -> str:
+        """Die Empfängerliste, wie sie ins Mailformat gehört.
+
+        **Semikolon ist der Trenner, den Outlook anzeigt – nicht der,
+        den das Mailformat kennt.** Dort gilt das Komma. Wer
+        ``a@example.org; b@example.net`` einträgt, bekommt beim
+        Zerlegen genau das hier:
+
+            [('', 'a@example.org'), ('', '')]
+
+        Die zweite Adresse ist weg, **ohne Fehlermeldung**. Der Bericht
+        geht an den ersten Empfänger; der zweite wartet auf eine
+        Warnung, die nie kommt – und merkt es nicht, denn ein
+        ausbleibender Bericht sieht aus wie ein Tag ohne Störung.
+
+        **Und die Probe im Einrichtungsfenster bestätigte das sogar.**
+        Sie nimmt denselben Weg, der Mailserver nimmt die Nachricht für
+        den ersten Empfänger an, nichts wirft – also meldet der Knopf
+        Erfolg. Ausgerechnet die Prüfung, die den Fehler aufdecken
+        müsste, verdeckte ihn. Am 2026-10-09 aus einer Frage im Betrieb
+        gefallen: »Kann ich mehrere Mailadressen mit ; angeben?«
+
+        Deshalb wird das Semikolon angenommen und umgesetzt. **Nur
+        außerhalb von Anführungszeichen:** ``"Müller; Hans"
+        <h@example.org>`` ist ein einziger Empfänger mit einem
+        Semikolon im Namen, und den zu zerreißen wäre derselbe Schaden
+        in die andere Richtung.
+        """
+        heraus = []
+        in_anfuehrung = False
+        for zeichen in self.an:
+            if zeichen == '"':
+                in_anfuehrung = not in_anfuehrung
+            if zeichen == ";" and not in_anfuehrung:
+                heraus.append(",")
+            else:
+                heraus.append(zeichen)
+        return "".join(heraus)
+
+    @property
+    def adressen(self) -> list[str]:
+        """Wer den Bericht wirklich bekommt – eine Adresse je Eintrag.
+
+        **Damit eine Probe sagen kann, an wen sie ging.** Die Meldung
+        im Einrichtungsfenster nannte bis zum 2026-10-09 das
+        Eingabefeld im Wortlaut (»ging an a@…; b@… hinaus«) – also
+        das, was jemand getippt hatte, und nicht das, was geschehen
+        war. Wer zwei Adressen eintippt und zwei bestätigt bekommt,
+        prüft nichts nach.
+
+        Leere Einträge fallen heraus: Sie entstehen aus einem Komma zu
+        viel und sind keine Empfänger.
+        """
+        from email.utils import getaddresses
+
+        return [adr for _, adr in getaddresses([self.empfaenger]) if adr]
 
     @classmethod
     def aus_umgebung(cls) -> Lage:
@@ -509,7 +579,11 @@ def senden(lage: Lage, betreff: str, text: str, passwort: str = "",
 
     nachricht = EmailMessage()
     nachricht["From"] = lage.von
-    nachricht["To"] = lage.an
+    # ``empfaenger``, nicht ``an``: Dort wird ein Semikolon zum Komma.
+    # Siehe die Begründung an der Eigenschaft – ein Trenner, den das
+    # Mailformat nicht kennt, verschluckt stillschweigend alle
+    # Empfänger außer dem ersten.
+    nachricht["To"] = lage.empfaenger
     nachricht["Subject"] = betreff
     nachricht.set_content(text)
 

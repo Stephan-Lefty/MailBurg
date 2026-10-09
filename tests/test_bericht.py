@@ -379,5 +379,101 @@ class VersandTest(unittest.TestCase):
         self.assertIn("abgelehnt", str(gefangen.exception))
 
 
+class MehrereEmpfaengerTest(unittest.TestCase):
+    """**Ein Semikolon verschluckte alle außer dem ersten.**
+
+    Outlook zeigt das Semikolon als Trenner an, das Mailformat kennt
+    nur das Komma. Wer »a@…; b@…« einträgt, bekommt beim Zerlegen
+    ``[('', 'a@…'), ('', '')]`` – die zweite Adresse ist weg, ohne
+    Fehlermeldung.
+
+    Bei einem Störungsbericht ist das die teuerste Sorte Fehler: Die
+    Vertretung wartet auf eine Warnung, die nie kommt, und ein
+    ausbleibender Bericht sieht aus wie ein Tag ohne Störung.
+
+    Aufgefallen am 09.10.2026 durch eine Frage aus dem Betrieb, nicht
+    durch einen Test – und die Probe im Einrichtungsfenster hatte den
+    Fehler bis dahin sogar bestätigt.
+    """
+
+    def _lage(self, an: str) -> bericht.Lage:
+        return bericht.Lage(
+            an=an, smtp="mail.example.org", von="archiv@example.org")
+
+    def test_ein_semikolon_trennt_genauso(self):
+        lage = self._lage("chef@example.org; vertretung@example.net")
+
+        self.assertEqual(
+            lage.adressen, ["chef@example.org", "vertretung@example.net"])
+
+    def test_ein_komma_bleibt_ein_komma(self):
+        lage = self._lage("chef@example.org, vertretung@example.net")
+
+        self.assertEqual(
+            lage.adressen, ["chef@example.org", "vertretung@example.net"])
+
+    def test_eine_einzelne_adresse_bleibt_unberuehrt(self):
+        self.assertEqual(
+            self._lage("chef@example.org").adressen, ["chef@example.org"])
+
+    def test_ein_semikolon_im_namen_zerreisst_niemanden(self):
+        """``"Müller; Hans" <h@…>`` ist **ein** Empfänger.
+
+        Die Umsetzung blind über die ganze Zeichenkette laufen zu
+        lassen wäre derselbe Schaden in die andere Richtung – aus
+        einem Empfänger würden zwei, einer davon unsinnig.
+        """
+        lage = self._lage('"Müller; Hans" <hans@example.org>')
+
+        self.assertEqual(lage.adressen, ["hans@example.org"])
+
+    def test_die_mail_geht_wirklich_an_beide(self):
+        """**Der Test, der zählt.** Die Eigenschaft für sich wäre
+        wertlos, wenn ``senden`` weiterhin ``an`` nähme."""
+        gesehen = []
+
+        def verbinden(server, anschluss):
+            gesehen.append(VersandTest.FakeSMTP(server, anschluss))
+            return gesehen[-1]
+
+        bericht.senden(
+            self._lage("chef@example.org; vertretung@example.net"),
+            "Betreff", "Text", "geheim", verbinden=verbinden,
+        )
+
+        from email.utils import getaddresses
+
+        kopf = gesehen[0].nachricht.get_all("To", [])
+        self.assertEqual(
+            [adr for _, adr in getaddresses(kopf)],
+            ["chef@example.org", "vertretung@example.net"],
+        )
+
+    def test_ein_komma_zu_viel_gilt_als_nicht_eingerichtet(self):
+        """**Python verwirft die ganze Liste, nicht nur den Rest.**
+
+        Gemessen auf 3.14: ``getaddresses(['chef@example.org,'])``
+        ergibt ``[('', '')]`` – nicht etwa die eine brauchbare Adresse
+        und einen leeren Eintrag daneben. Ein Komma zu viel, und der
+        Bericht ginge an niemanden, während das Eingabefeld gefüllt
+        aussieht.
+
+        Deshalb gilt das als *nicht eingerichtet*: Dann sagt die Probe
+        »Noch unvollständig«, statt Erfolg für eine Mail zu melden,
+        die keinen Empfänger hat.
+        """
+        lage = self._lage("chef@example.org,")
+
+        self.assertEqual(lage.adressen, [])
+        self.assertFalse(lage.eingerichtet)
+
+    def test_eine_brauchbare_liste_gilt_als_eingerichtet(self):
+        """Die Gegenprobe – sonst prüfte der Test oben nur, dass
+        irgendetwas falsch ist."""
+        self.assertTrue(
+            self._lage("chef@example.org; vertretung@example.net")
+            .eingerichtet)
+
+
 if __name__ == "__main__":
     unittest.main()
