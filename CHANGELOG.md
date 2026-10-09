@@ -9,6 +9,8 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.8.1] – 2026-10-09
+
 ### Hinzugefügt
 
 - **Eine Übersicht aller Befehle** – [docs/befehle.md](docs/befehle.md).
@@ -96,6 +98,34 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   grün geblieben, während sie nie aufgerufen wird.
 
 ### Geändert
+
+- **Die Tests laufen über einen eigenen Läufer** – `python3 tests/lauf.py`
+  statt `python3 -m unittest discover -s tests`. Das betrifft
+  Mitwirkende, nicht Anwender, steht aber hier, weil es jeden trifft,
+  der die Suite ausführt.
+
+  **Der Grund:** Der Testlauf brach auf manchen Systemen **nach** dem
+  letzten Test mit einem Speicherzugriffsfehler ab, während unittest
+  zuvor »OK« gemeldet hatte. Der Absturz liegt im C++-Teil von Qt beim
+  Herunterfahren des Interpreters; `python -X faulthandler` meldet
+  dort nur noch »Current thread: <no Python frame>«.
+
+  **Es lag nicht an einem bestimmten Test, sondern an ihrer Zahl.**
+  Zehn Methoden, die nichts tun als `assertTrue(True)`, reichten zum
+  Absturz: 2383 gingen, 2393 nicht. Damit hätte jeder künftige Test
+  dieselbe Wirkung gehabt – bei einem Projekt, in dem jede Zusage
+  einen Test schuldet, eine Wand und keine Lästigkeit.
+
+  Der Läufer führt die Tests aus, merkt sich das Ergebnis, löscht das
+  Wegwerfverzeichnis und beendet den Prozess dann selbst. **Das behebt
+  das Symptom, nicht die Ursache**, und genau so steht es im
+  Modulkopf. Der Preis gehört dazu: Fehler, die erst beim Aufräumen
+  aufträten, fallen nicht mehr auf; wer danach sucht, nimmt weiterhin
+  den gewöhnlichen Weg.
+
+  **Acht Tests wachen über den Läufer selbst**, denn einer, der immer
+  `0` liefert, wäre schlimmer als jeder Absturz: Die CI wäre grün, und
+  kein gescheiterter Test fiele je wieder auf.
 
 - **Vier Lücken in den Anleitungen, alle aus dem Umzug vom 07.10.2026.**
 
@@ -3666,6 +3696,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.8.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.9...v1.8.0
 [1.7.9]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.8...v1.7.9
 [1.7.8]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.7...v1.7.8

@@ -68,7 +68,7 @@ MailBurg macht es andersherum:
 
 ## Stand
 
-**Fassung 1.8.0, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche samt
+**Fassung 1.8.1, im Alltag im Einsatz.** Archivformat, IMAP-Abruf, Suche samt
 Suchordnern, Oberfläche, Texterkennung für eingescannte PDF, Sicherung und der
 regelmäßige Abruf im Hintergrund stehen und werden täglich benutzt – unter
 Linux mit einem Bestand von rund 68.000 Mails, unter Windows mit der fertigen
