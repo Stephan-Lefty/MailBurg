@@ -29,7 +29,7 @@ Methodennamen sind deutsch. So laufen sie vollständig:
 
 ```bash
 PYTHONPATH="$PWD" QT_QPA_PLATFORM=offscreen \
-  ~/.local/share/mailburg/venv/bin/python3 -m unittest discover -s tests
+  ~/.local/share/mailburg/venv/bin/python3 tests/lauf.py
 ```
 
 **Prüfen Sie, ob Ihr Test rot werden kann.** Nehmen Sie Ihre Änderung

@@ -478,6 +478,20 @@ Synchronisationskonflikt erzeugen, den niemand mehr auflösen kann.
 ## Tests
 
 ```bash
+python3 tests/lauf.py
+```
+
+Das ist `unittest discover` mit einem sauberen Schluss: Der Läufer
+beendet den Prozess selbst, bevor Python seine Module abräumt und Qt
+dabei über die eigenen Füße fällt. Ohne ihn bricht die Suite auf
+manchen Systemen **nach** dem letzten Test ab, obwohl alle Tests grün
+gemeldet haben. Der Rückgabewert ist derselbe wie sonst: 0 bei Erfolg,
+1 bei jedem Fehlschlag.
+
+Wer Fehler sucht, die erst beim Aufräumen auftreten, nimmt den
+gewöhnlichen Weg:
+
+```bash
 python3 -m unittest discover -s tests -v
 ```
 

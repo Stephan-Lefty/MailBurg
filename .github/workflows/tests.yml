@@ -83,7 +83,7 @@ jobs:
           fi
 
       - name: Tests
-        run: python -m unittest discover -s tests
+        run: python tests/lauf.py
 
       # **Und noch einmal mit den Zusätzen.** Der Lauf darüber prüft, dass
       # MailBurg ohne ein einziges Fremdpaket auskommt - das ist die
@@ -110,7 +110,7 @@ jobs:
       - name: Tests mit allen Zusätzen
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests
+        run: python tests/lauf.py
 
       # **Jedes Fenster, jede einstellbare Schriftgröße.** Stephans
       # Regel vom 2026-09-07, und sie kam aus zwei Bildschirmfotos:
@@ -237,7 +237,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m compileall -q mailburg tests
-      - run: python -m unittest discover -s tests
+      - run: python tests/lauf.py
 
   # Der teure Teil: macOS kostet das Zehnfache, Windows das Doppelte. Nur
   # montags, oder wenn jemand den Ablauf von Hand mit »breit« startet.
@@ -258,7 +258,7 @@ jobs:
           python-version: "3.13"
 
       - name: Tests
-        run: python -m unittest discover -s tests
+        run: python tests/lauf.py
 
       - name: Einrichten und wieder abbauen (macOS)
         if: runner.os == 'macOS'

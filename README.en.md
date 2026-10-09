@@ -445,6 +445,19 @@ resolve.
 ## Tests
 
 ```bash
+python3 tests/lauf.py
+```
+
+This is `unittest discover` with a clean ending: the runner exits the
+process itself, before Python tears down its modules and Qt trips over
+its own feet. Without it the suite aborts on some systems **after** the
+last test, even though every test reported green. The exit code is the
+usual one: 0 on success, 1 on any failure.
+
+To hunt for errors that only surface during teardown, take the ordinary
+route:
+
+```bash
 python3 -m unittest discover -s tests -v
 ```
 
