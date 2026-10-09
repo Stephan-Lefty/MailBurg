@@ -229,10 +229,20 @@ class SchleifeTest(unittest.TestCase):
             lambda archiv, konto, zustand: geholt.append(konto.name) or 0
         )
 
+        # **Die Texterkennung muss hier mit abgeschaltet sein.** Seit
+        # dem 2026-10-09 ruft ``_einmal`` sie auf, und ``Archive.open``
+        # ist hier ein Mock: ``Warteschlange.anzahl()`` liefert dann ein
+        # MagicMock, und das ist *wahr*. Der echte Erkennungscode liefe
+        # also mit einem Schein-Archiv – er findet zwar nichts zu tun,
+        # aber die CI brach danach beim Aufräumen mit einem
+        # Speicherzugriffsfehler ab, während alle Tests grün meldeten.
+        # Geprüft wird hier der Weg zu den Konten, nicht die Erkennung;
+        # die hat ihre eigenen Tests in ``ScansImDienstTest``.
         with mock.patch(
             "mailburg.core.paths.config_dir",
             return_value=Path(ordner.name),
-        ), mock.patch("mailburg.core.archive.Archive.open"):
+        ), mock.patch("mailburg.core.archive.Archive.open"), \
+             mock.patch.object(Schleife, "_anhaenge_lesen", return_value=0):
             schleife._einmal()
 
         self.assertEqual(geholt, ["buero"])
@@ -305,6 +315,223 @@ class DienstTest(unittest.TestCase):
         self.assertLess(
             quelle.index("self.abruf.anhalten()"),
             quelle.index("faden.join(timeout=ABKLINGEN)"),
+        )
+
+
+class ScansImDienstTest(unittest.TestCase):
+    """**Was der Modulkopf zusagt, müssen beide Abrufwege tun.**
+
+    ``core/erkennung.py`` sagt seit jeher: »Nach jedem Abruf, also alle
+    halbe Stunde, wird ein kleines Zeitbudget abgearbeitet […] neu
+    ankommende Scans sind sofort dran.« Die Oberfläche tat das
+    (``ui/arbeit.py``), der Dienst nicht – und auf einem Server gibt es
+    nur den Dienst. Dort blieb damit jeder eingehende Scan stumm
+    liegen: Die Mail war auffindbar, ihr Anhang nicht.
+
+    Dieselbe Klasse wie der doppelt geöffnete Anhang vom 07.09. und die
+    Ausschlussliste vom selben Tag: **zwei Wege, einer nachgezogen, der
+    andere nicht.** Gefunden hat es am 09.10.2026 eine Frage Stephans,
+    kein Test – deshalb diese hier.
+    """
+
+    def _schleife(self):
+        schleife = Schleife("/irgendwo", Lage(takt=30))
+        schleife.gemeldet = []
+        schleife._melden = (
+            lambda text, fehler=False:
+            schleife.gemeldet.append((text, fehler))
+        )
+        return schleife
+
+    def test_der_dienst_arbeitet_die_warteschlange_ab(self):
+        schleife = self._schleife()
+        ergebnis = mock.Mock(gelesen=3)
+
+        with mock.patch("mailburg.extract.ocr.bereit",
+                        return_value=(True, "")), \
+             mock.patch("mailburg.core.erkennung.Warteschlange") as w, \
+             mock.patch("mailburg.core.erkennung.durchlauf",
+                        return_value=ergebnis) as lauf:
+            w.return_value.anzahl.return_value = 7
+            gelesen = schleife._anhaenge_lesen(mock.Mock())
+
+        self.assertEqual(gelesen, 3)
+        lauf.assert_called_once()
+
+    def test_ohne_wartende_scans_passiert_nichts(self):
+        """Kein Lauf, wenn nichts zu tun ist – sonst führe jeder Abruf
+        ohne Grund die Werkzeuge der Texterkennung hoch."""
+        schleife = self._schleife()
+
+        with mock.patch("mailburg.extract.ocr.bereit",
+                        return_value=(True, "")), \
+             mock.patch("mailburg.core.erkennung.Warteschlange") as w, \
+             mock.patch("mailburg.core.erkennung.durchlauf") as lauf:
+            w.return_value.anzahl.return_value = 0
+            self.assertEqual(schleife._anhaenge_lesen(mock.Mock()), 0)
+
+        lauf.assert_not_called()
+
+    def test_die_zahl_steht_in_der_meldung(self):
+        """**Sonst ist von außen nicht nachprüfbar, ob es läuft.**
+
+        Genau daran lag es, dass die Lücke so lange unentdeckt blieb:
+        Ein Dienst, der etwas nicht tut, sieht aus wie einer, der nichts
+        zu tun hatte.
+        """
+        befund = Schleife._befund(neu=12, geholt=7, uebersprungen=0,
+                                  gelesen=4)
+
+        self.assertIn("12 neue Mails", befund)
+        self.assertIn("4 eingescannte PDF", befund)
+
+    def test_ohne_gelesene_scans_steht_nichts_davon_da(self):
+        """Eine Null gehört nicht in eine Meldung – wer »0 Scans« liest,
+        hält es für einen Befund."""
+        self.assertNotIn(
+            "eingescannte",
+            Schleife._befund(neu=12, geholt=7, uebersprungen=0, gelesen=0),
+        )
+
+    def test_ein_fehler_kostet_nicht_den_abruf(self):
+        """**Archivieren ist Pflicht, Durchsuchbarmachen ist Kür.**
+
+        Eine klemmende Texterkennung darf die Post nicht aufhalten – und
+        sie muss trotzdem gemeldet werden.
+        """
+        schleife = self._schleife()
+
+        with mock.patch("mailburg.extract.ocr.bereit",
+                        return_value=(True, "")), \
+             mock.patch("mailburg.core.erkennung.Warteschlange") as w, \
+             mock.patch("mailburg.core.erkennung.durchlauf",
+                        side_effect=RuntimeError("Platte voll")):
+            w.return_value.anzahl.return_value = 5
+            gelesen = schleife._anhaenge_lesen(mock.Mock())
+
+        self.assertEqual(gelesen, 0)
+        self.assertTrue(
+            any("Platte voll" in t and f for t, f in schleife.gemeldet),
+            schleife.gemeldet,
+        )
+
+    def test_fehlende_texterkennung_wird_einmal_gemeldet(self):
+        """**Einmal je Dienstlauf, nicht alle dreißig Minuten.**
+
+        Eine Meldung, die 48-mal am Tag im Ereignisprotokoll steht,
+        liest niemand mehr – und dann geht die nächste echte darin
+        unter. Verschweigen wäre aber auch falsch: Fehlt tesseract,
+        bleibt jeder Scan dauerhaft unauffindbar, und das sieht nach
+        einem leeren Dokument aus, nicht nach einer Störung.
+        """
+        schleife = self._schleife()
+
+        with mock.patch("mailburg.extract.ocr.bereit",
+                        return_value=(False, "pdftoppm fehlt.")):
+            for _ in range(5):
+                schleife._anhaenge_lesen(mock.Mock())
+
+        treffer = [t for t, _ in schleife.gemeldet if "pdftoppm" in t]
+        self.assertEqual(len(treffer), 1, schleife.gemeldet)
+
+    def test_der_abbruch_wirkt_auch_dort(self):
+        """Hält der Dienst an, bricht auch die Erkennung ab – sonst
+        liefe sie noch Minuten weiter, während der Dienst schon als
+        beendet gilt."""
+        import inspect
+
+        self.assertIn(
+            "weiter=lambda: not self.halt.is_set()",
+            inspect.getsource(Schleife._anhaenge_lesen),
+        )
+
+    def test_es_bleibt_ein_haeppchen(self):
+        """Kein ``budget_sekunden=0`` – ein Dienst, der eine
+        Viertelstunde am Stück Bilder liest, verzögert den nächsten
+        Abruf. Das wäre die falsche Rangfolge."""
+        import inspect
+
+        quelle = inspect.getsource(Schleife._anhaenge_lesen)
+
+        self.assertNotIn("budget_sekunden=0", quelle)
+        self.assertNotIn("budget_dokumente=0", quelle)
+
+    def test_ein_echter_durchgang_liest_die_scans(self):
+        """**Der Test, der gefehlt hat.**
+
+        Die übrigen hier rufen ``_anhaenge_lesen`` unmittelbar auf –
+        und wären allesamt grün geblieben, während ``_einmal`` die
+        Methode nie aufruft. Genau das war fünf Wochen lang der
+        Zustand. Dieser geht den Weg, den der Dienst geht: echte
+        Kontenliste, echtes ``_einmal``.
+
+        Dieselbe Lehre wie am 06.10. beim Abruf selbst: Geprüft waren
+        Takt, Pause und ein klemmendes Postfach – also alles *um* die
+        Stelle herum, nie der Weg hinein.
+        """
+        import tempfile
+        from pathlib import Path
+
+        from mailburg.core.accounts import Konto, Kontenliste
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        liste = Kontenliste(Path(ordner.name) / "konten.json")
+        liste.konten = [
+            Konto(name="buero", server="imap.example.org",
+                  benutzer="buero@example.org"),
+        ]
+        liste.speichern()
+
+        schleife = self._schleife()
+        schleife._konto = lambda archiv, konto, zustand: 2
+
+        with mock.patch(
+            "mailburg.core.paths.config_dir",
+            return_value=Path(ordner.name),
+        ), mock.patch("mailburg.core.archive.Archive.open"), \
+             mock.patch("mailburg.core.sync.Abrufzustand"), \
+             mock.patch("mailburg.extract.ocr.bereit",
+                        return_value=(True, "")), \
+             mock.patch("mailburg.core.erkennung.Warteschlange") as w, \
+             mock.patch("mailburg.core.erkennung.durchlauf",
+                        return_value=mock.Mock(gelesen=4)) as lauf:
+            w.return_value.anzahl.return_value = 9
+            schleife._einmal()
+
+        lauf.assert_called_once()
+        self.assertIn("4 eingescannte PDF", schleife.letzter_befund)
+
+    def test_im_selben_geoeffneten_archiv(self):
+        """**Nicht daneben, sondern innerhalb derselben Sperre.**
+
+        Der Modulkopf von ``erkennung.py`` begründet es: Solange
+        MailBurg schreibend am Archiv ist, liegt eine Sperrdatei darin.
+        Eine Erkennung, die nebenher liefe, stünde dem Abruf im Weg –
+        und dann bliebe Post liegen, um Scans lesbar zu machen.
+
+        Der Test davor beweist, *dass* gelesen wird; dieser, *wo*.
+        Geprüft wird die Einrückung: Der Aufruf muss tiefer stehen als
+        das ``with Archive.open(...)``, also darin.
+        """
+        import inspect
+        import textwrap
+
+        zeilen = textwrap.dedent(
+            inspect.getsource(Schleife._einmal)).splitlines()
+        mit = next((i for i, z in enumerate(zeilen)
+                    if "with Archive.open(" in z), None)
+        ruf = next((i for i, z in enumerate(zeilen)
+                    if "self._anhaenge_lesen(archiv)" in z), None)
+
+        self.assertIsNotNone(mit, "Kein geöffnetes Archiv in _einmal.")
+        self.assertIsNotNone(
+            ruf, "_einmal ruft die Texterkennung nicht auf.")
+        self.assertGreater(ruf, mit)
+        self.assertGreater(
+            len(zeilen[ruf]) - len(zeilen[ruf].lstrip()),
+            len(zeilen[mit]) - len(zeilen[mit].lstrip()),
+            "Der Aufruf steht außerhalb des geöffneten Archivs.",
         )
 
 

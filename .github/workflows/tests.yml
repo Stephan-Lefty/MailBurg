@@ -83,7 +83,7 @@ jobs:
           fi
 
       - name: Tests
-        run: python -m unittest discover -s tests
+        run: python -X faulthandler -m unittest discover -s tests
 
       # **Und noch einmal mit den Zusätzen.** Der Lauf darüber prüft, dass
       # MailBurg ohne ein einziges Fremdpaket auskommt - das ist die
@@ -110,7 +110,7 @@ jobs:
       - name: Tests mit allen Zusätzen
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests
+        run: python -X faulthandler -m unittest discover -s tests
 
       # **Jedes Fenster, jede einstellbare Schriftgröße.** Stephans
       # Regel vom 2026-09-07, und sie kam aus zwei Bildschirmfotos:
@@ -258,7 +258,7 @@ jobs:
           python-version: "3.13"
 
       - name: Tests
-        run: python -m unittest discover -s tests
+        run: python -X faulthandler -m unittest discover -s tests
 
       - name: Einrichten und wieder abbauen (macOS)
         if: runner.os == 'macOS'
