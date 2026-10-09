@@ -37,6 +37,30 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Behoben
 
+- **Die Trefferliste fragte einen geschlossenen Suchindex.** Beim
+  Schließen eines Fensters sortiert und blättert Qt noch einmal – und
+  `fetchMore` lief dabei in ein `sqlite3.ProgrammingError: Cannot
+  operate on a closed database`, geworfen aus einem Python-Override
+  heraus, das Qt selbst aufruft.
+
+  **`suchen` hatte die Prüfung von Anfang an**, mit der Begründung im
+  Kommentar daneben: »Ein geschlossener Index ist kein Fehler, sondern
+  der Normalfall beim Schließen eines Fensters.« `fetchMore` prüfte
+  nur auf `None`. Zwei Stellen, eine nachgezogen, die andere nicht –
+  dieselbe Klasse wie der doppelt geöffnete Anhang vom 07.09. Beide
+  fragen jetzt dieselbe Methode, damit die dritte sie nicht vergessen
+  kann.
+
+  **Im Betrieb trifft es den, der das Archiv wechselt**, während die
+  Trefferliste gefüllt ist. Im Testlauf trat es 76-mal auf, und am
+  Ende zerbrach der Prozess beim Aufräumen daran – einmal mit
+  Speicherzugriffsfehler, einmal mit Abbruch. Gemessen: 76 Meldungen
+  vorher, keine danach.
+
+  **`canFetchMore` prüft es mit**, nicht nur `fetchMore`. Bliebe das
+  Ja stehen, während das Nachholen nichts mehr tut, fragte Qt endlos
+  weiter.
+
 - **Der Dienst machte keine Texterkennung – auf einem Server blieb
   jeder neue Scan stumm.** `core/erkennung.py` sagt seit jeher zu:
   »Nach jedem Abruf, also alle halbe Stunde, wird ein kleines

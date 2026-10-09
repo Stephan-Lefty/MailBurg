@@ -57,19 +57,35 @@ class Trefferliste(QAbstractTableModel):
 
     # ------------------------------------------------------------- Abfragen
 
+    def _befragbar(self) -> bool:
+        """Ob der Suchindex noch Antworten geben kann.
+
+        **Ein geschlossener Index ist kein Fehler, sondern der
+        Normalfall beim Schließen eines Fensters** – Qt sortiert und
+        holt dabei noch einmal nach, und das Archiv ist zu diesem
+        Zeitpunkt längst zu.
+
+        ``getattr``, weil hier in Tests auch andere Objekte stehen.
+
+        **Warum das eine eigene Methode ist.** Die Prüfung stand bis
+        zum 2026-10-09 allein in :meth:`suchen`; :meth:`fetchMore`
+        fragte nur auf ``None`` ab und lief danach in ein
+        ``sqlite3.ProgrammingError: Cannot operate on a closed
+        database``. Zwei Stellen, eine nachgezogen, die andere nicht –
+        dieselbe Klasse wie der doppelt geöffnete Anhang. Mit einer
+        gemeinsamen Methode kann die dritte sie nicht mehr vergessen.
+        """
+        return self.suchindex is not None and not getattr(
+            self.suchindex, "geschlossen", False
+        )
+
     def suchen(self, ausdruck: str) -> None:
         """Setzt die Liste auf ein neues Suchergebnis."""
         self.beginResetModel()
         self.ausdruck = ausdruck
         self.treffer = []
         self.gesamt = 0
-        # ``getattr``, weil hier in Tests auch andere Objekte stehen
-        # können. Ein geschlossener Index ist kein Fehler, sondern der
-        # Normalfall beim Schließen eines Fensters - Qt sortiert dabei
-        # noch einmal.
-        if self.suchindex is not None and not getattr(
-            self.suchindex, "geschlossen", False
-        ):
+        if self._befragbar():
             self.gesamt = self.suchindex.count(ausdruck)
             self.treffer = self.suchindex.search(
                 ausdruck, limit=BLOCK,
@@ -91,10 +107,18 @@ class Trefferliste(QAbstractTableModel):
         return len(self.SPALTEN)
 
     def canFetchMore(self, eltern=QModelIndex()) -> bool:
-        return not eltern.isValid() and len(self.treffer) < self.gesamt
+        # **Auch hier, nicht nur in fetchMore.** Bliebe das Ja stehen,
+        # während das Nachholen nichts mehr tut, fragte Qt endlos
+        # weiter – genau der Fall, den fetchMore unten für eine
+        # veraltete Gesamtzahl abfängt.
+        return (
+            not eltern.isValid()
+            and len(self.treffer) < self.gesamt
+            and self._befragbar()
+        )
 
     def fetchMore(self, eltern=QModelIndex()) -> None:
-        if eltern.isValid() or self.suchindex is None:
+        if eltern.isValid() or not self._befragbar():
             return
         nachschub = self.suchindex.search(
             self.ausdruck, limit=BLOCK, offset=len(self.treffer),

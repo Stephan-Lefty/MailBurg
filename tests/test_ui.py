@@ -272,6 +272,54 @@ class TrefferlisteTest(OberflaechenTest):
             modell.data(modell.index(0, 3), Qt.DisplayRole), "(kein Betreff)"
         )
 
+    def test_ein_geschlossener_index_wird_nicht_mehr_gefragt(self):
+        """**Qt holt nach, wenn das Archiv längst zu ist.**
+
+        Beim Schließen eines Fensters sortiert und blättert Qt noch
+        einmal – und ``fetchMore`` fragte dabei bis zum 2026-10-09 in
+        einen geschlossenen Suchindex hinein: ``sqlite3.
+        ProgrammingError: Cannot operate on a closed database``,
+        geworfen aus einem Python-Override heraus, das Qt aufruft.
+        76-mal in einem Testlauf, und am Ende ein
+        Speicherzugriffsfehler beim Aufräumen des Prozesses.
+
+        **``suchen`` hatte die Prüfung von Anfang an**, mit genau
+        dieser Begründung im Kommentar daneben. ``fetchMore`` prüfte
+        nur auf ``None``. Zwei Stellen, eine nachgezogen, die andere
+        nicht – dieselbe Klasse wie der doppelt geöffnete Anhang vom
+        07.09.
+
+        Und es trifft nicht nur Tests: Wer das Archiv wechselt,
+        während die Trefferliste gefüllt ist, läuft im Betrieb in
+        dieselbe Ausnahme.
+        """
+        modell = self.modell(1000)
+        modell.suchen("")
+        vorher = modell.rowCount()
+        modell.suchindex.geschlossen = True
+
+        self.assertFalse(
+            modell.canFetchMore(),
+            "Qt bekommt ein Ja und fragt dann endlos nach.",
+        )
+        modell.fetchMore()           # darf nicht werfen
+
+        self.assertEqual(modell.rowCount(), vorher)
+
+    def test_auch_die_suche_fragt_dann_nicht(self):
+        """Die Gegenprobe zur gemeinsamen Prüfung: Beide Wege müssen
+        dieselbe Antwort geben, sonst ist das Zusammenlegen nichts
+        wert."""
+        modell = self.modell(1000)
+        modell.suchen("")
+        modell.suchindex.geschlossen = True
+        abfragen = modell.suchindex.abfragen
+
+        modell.suchen("etwas anderes")
+
+        self.assertEqual(modell.suchindex.abfragen, abfragen)
+        self.assertEqual(modell.rowCount(), 0)
+
 
 class VorschauTest(OberflaechenTest):
     def test_auszeichnung_im_betreff_wird_entschaerft(self):
