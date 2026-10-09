@@ -56,13 +56,43 @@ class RueckgabewertTest(unittest.TestCase):
         unterscheiden von einem, der funktioniert."""
         self.assertEqual(self._lauf(1).returncode, 1)
 
-    def test_das_aufraeumen_findet_trotzdem_statt(self):
+    def test_das_wegwerfverzeichnis_verschwindet(self):
         """``os._exit`` überspringt die ``atexit``-Haken.
 
         Einer davon löscht das Wegwerfverzeichnis der Tests. Ohne den
         ausdrücklichen Aufruf bliebe nach jedem Lauf ein Ordner unter
         ``/tmp`` zurück – genau der Müll, den ``tests/__init__.py`` am
         26.08.2026 abstellen sollte (5.585 Dateien, 1,5 GB).
+        """
+        lauf = _in_eigenem_prozess(f"""
+            import sys
+            sys.path.insert(0, {str(WURZEL)!r})
+            import tests
+            from tests import lauf
+            print(tests._WEGWERFBAR)
+            lauf.laufen = lambda *a, **k: 0
+            lauf.main(["lauf.py"])
+        """)
+
+        self.assertEqual(lauf.returncode, 0, lauf.stderr)
+        ordner = Path(lauf.stdout.strip().splitlines()[0])
+        self.assertFalse(
+            ordner.exists(),
+            f"»{ordner}« liegt noch da – das Aufräumen lief nicht.",
+        )
+
+    def test_die_fremden_haken_laufen_nicht(self):
+        """**Und genau das ist der Witz an der Sache.**
+
+        Hier stand zuerst ``atexit._run_exitfuncs()`` – das führt
+        *alle* Haken aus, auch den von PySide6, der Qt abbaut. Damit
+        stieß der Läufer denselben Absturz an, den er vermeiden soll:
+        Der Prozess starb drei Sekunden nach der Zeile »OK«, mit
+        Signal 6.
+
+        Geprüft wird also, dass ein fremder Haken **nicht** läuft. Das
+        ist eine ungewöhnliche Zusage für einen Test – deshalb steht
+        hier, warum sie richtig ist.
         """
         with tempfile.TemporaryDirectory() as ordner:
             spur = Path(ordner) / "spur.txt"
@@ -78,9 +108,10 @@ class RueckgabewertTest(unittest.TestCase):
             """)
 
             self.assertEqual(lauf.returncode, 0, lauf.stderr)
-            self.assertTrue(
+            self.assertFalse(
                 spur.is_file(),
-                "atexit lief nicht – das Wegwerfverzeichnis bleibt liegen.",
+                "Ein fremder atexit-Haken lief – dann läuft auch der "
+                "von PySide6, und der bringt den Prozess um.",
             )
 
     def test_die_ergebniszeile_kommt_noch_an(self):

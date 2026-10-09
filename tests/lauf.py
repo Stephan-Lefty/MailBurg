@@ -46,7 +46,6 @@ muss.
 
 from __future__ import annotations
 
-import atexit
 import os
 import sys
 import unittest
@@ -89,12 +88,22 @@ def main(argv: list[str] | None = None) -> None:
     argv = sys.argv if argv is None else argv
     code = laufen(argv[1] if len(argv) > 1 else "test*.py")
 
-    # **Erst aufräumen, dann abschießen.** ``os._exit`` überspringt die
-    # ``atexit``-Haken – und einer davon löscht das Wegwerfverzeichnis
-    # der Tests. Ohne diesen Aufruf bliebe nach jedem Lauf ein Ordner
-    # unter ``/tmp`` zurück; genau der Müll, den ``tests/__init__.py``
-    # am 2026-08-26 abstellen sollte (5.585 Dateien, 1,5 GB).
-    atexit._run_exitfuncs()
+    # **Erst aufräumen, dann abschießen** – aber nur den eigenen Haken.
+    #
+    # Hier stand zuerst ``atexit._run_exitfuncs()``, und das war genau
+    # falsch: Der Aufruf führt *alle* registrierten Haken aus, auch den
+    # von PySide6, der Qt abbaut. Damit stieß er denselben Absturz an,
+    # den dieser Läufer vermeiden soll – der Prozess starb drei
+    # Sekunden nach der Zeile »OK«, mit Signal 6.
+    #
+    # Gebraucht wird genau einer: der, der das Wegwerfverzeichnis der
+    # Tests löscht. Ohne ihn bliebe nach jedem Lauf ein Ordner unter
+    # ``/tmp`` zurück – der Müll, den ``tests/__init__.py`` am
+    # 2026-08-26 abstellen sollte (5.585 Dateien, 1,5 GB).
+    testpaket = sys.modules.get("tests")
+    aufraeumen = getattr(testpaket, "_aufraeumen", None)
+    if aufraeumen is not None:
+        aufraeumen()
 
     # **Und erst danach die Puffer leeren.** ``os._exit`` schreibt
     # nichts mehr weg: Ohne das fehlte am Ende die Zeile »OK« – und ein
