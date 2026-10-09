@@ -167,17 +167,19 @@ vier Seiten im Schnitt sind das dreißig bis neunzig Stunden.
 hält** – ein Lauf von Hand braucht ihn also angehalten, und solange
 steht der Browser-Zugang.
 
-> **Und der Dienst nimmt sie Ihnen nicht ab.** Das Programmfenster
-> arbeitet nach jedem Abruf ein Häppchen ab; der Dienst tut das
-> **nicht**, und auf einem Server gibt es kein Fenster. Jeder neu
-> eingehende Scan bleibt dort liegen, bis jemand den Lauf von Hand
-> anstößt. Die Mail ist auffindbar, ihr Anhang nicht – und das sieht
-> nicht nach einer Störung aus, sondern nach einem Dokument ohne
-> Text.
->
-> Sehen Sie deshalb regelmäßig nach, wie viele warten; die Zahl nennt
-> `mailburg texterkennung` beim Start. Eine Behebung ist in Arbeit
-> (siehe [TODO](../TODO.md)).
+**Im laufenden Betrieb ist das nicht nötig.** Der Dienst arbeitet nach
+jedem Abruf ein Häppchen ab: zwei Minuten oder dreißig Dokumente, was
+zuerst kommt. Ein eingescannter Anhang, der vormittags hereinkommt, ist
+binnen einer halben Stunde durchsuchbar; wie viele es waren, steht in
+der Abrufmeldung im Ereignisprotokoll. Für den **erstmaligen**
+Nachholbedarf über zehntausende Dokumente reicht das nicht – dafür
+bleibt der Lauf von Hand mit angehaltenem Dienst.
+
+**Während der Abrufpause ruht auch die Erkennung.** Was abends
+hereinkommt, ist am nächsten Vormittag dran. Bei 26 Läufen am Tag und
+dreißig Dokumenten je Lauf stehen dem rund 780 Dokumente täglich
+gegenüber – eine Nacht gewöhnlicher Geschäftspost ist damit vor dem
+Dienstbeginn aufgeholt.
 
 **Deshalb bleibt das Mitkopieren der bessere Weg**, wenn am
 Arbeitsplatz schon erkannt wurde: Was einmal gelesen ist, muss nicht

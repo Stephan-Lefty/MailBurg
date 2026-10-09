@@ -456,11 +456,6 @@ class ScansImDienstTest(unittest.TestCase):
         self.assertNotIn("budget_sekunden=0", quelle)
         self.assertNotIn("budget_dokumente=0", quelle)
 
-    @unittest.skip(
-        "Der Aufruf in _einmal ist seit 2026-10-09 vorübergehend "
-        "abgeschaltet – mit ihm bricht die CI nach dem Testlauf mit "
-        "einem Speicherzugriffsfehler ab. Siehe TODO."
-    )
     def test_ein_echter_durchgang_liest_die_scans(self):
         """**Der Test, der gefehlt hat.**
 
@@ -507,12 +502,6 @@ class ScansImDienstTest(unittest.TestCase):
         lauf.assert_called_once()
         self.assertIn("4 eingescannte PDF", schleife.letzter_befund)
 
-    @unittest.skip(
-        "Siehe oben – und dieser hier wäre sogar grün geblieben, weil "
-        "er den Aufruf als Text sucht und ihn im Kommentar findet, der "
-        "die Abschaltung erklärt. Grün aus dem falschen Grund ist "
-        "schlimmer als rot."
-    )
     def test_im_selben_geoeffneten_archiv(self):
         """**Nicht daneben, sondern innerhalb derselben Sperre.**
 

@@ -61,9 +61,8 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Ja stehen, während das Nachholen nichts mehr tut, fragte Qt endlos
   weiter.
 
-- **Der Dienst macht keine Texterkennung – auf einem Server bleibt
-  jeder neue Scan stumm.** **Noch nicht behoben**, und der Grund
-  steht unten. `core/erkennung.py` sagt seit jeher zu:
+- **Der Dienst machte keine Texterkennung – auf einem Server blieb
+  jeder neue Scan stumm.** `core/erkennung.py` sagt seit jeher zu:
   »Nach jedem Abruf, also alle halbe Stunde, wird ein kleines
   Zeitbudget abgearbeitet […] neu ankommende Scans sind sofort dran.«
   Die Oberfläche tat das. Der Abruf im Dienst rief die Erkennung nie
@@ -75,17 +74,13 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   steht. Wer eine Rechnungsnummer sucht, die ausschließlich auf dem
   Scan steht, bekommt keinen Treffer und sucht den Fehler bei sich.
 
-  **Gebaut ist die Abhilfe, eingeschaltet ist sie nicht.** Der Dienst
-  soll nach jedem Abruf dasselbe Häppchen abarbeiten wie das
-  Programmfenster – im selben geöffneten Archiv, also innerhalb
-  derselben Sperre; eine Erkennung daneben stünde dem Abruf im Weg,
-  und dann bliebe Post liegen, um Scans lesbar zu machen. Mit diesem
-  einen Aufruf bricht der Testlauf in der CI jedoch **nach** dem
-  letzten Test mit einem Speicherzugriffsfehler ab, während alle 2395
-  Tests grün melden; lokal tritt es nicht auf. Solange die Ursache
-  nicht verstanden ist, bleibt der Aufruf heraus – ein Hauptzweig, aus
-  dem sich keine Fassung bauen lässt, hilft niemandem. Die Methode
-  samt Tests steht, die Tests sind als übersprungen gekennzeichnet.
+  Der Dienst arbeitet jetzt nach jedem Abruf dasselbe Häppchen ab wie
+  das Programmfenster – **im selben geöffneten Archiv**, also
+  innerhalb derselben Sperre. Eine Erkennung daneben stünde dem Abruf
+  im Weg, und dann bliebe Post liegen, um Scans lesbar zu machen: die
+  falsche Rangfolge. Die Zahl der gelesenen Dokumente steht in der
+  Abrufmeldung, sonst wäre von außen wieder nicht nachprüfbar, ob es
+  läuft.
 
   Fehlt tesseract, wird das **einmal je Dienstlauf** gemeldet statt
   achtundvierzigmal am Tag – und nicht verschwiegen, denn dann bleibt

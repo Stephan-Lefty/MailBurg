@@ -244,21 +244,9 @@ class Schleife:
                 # für immer, ohne Spur.
                 zustand.speichern()
 
-            # **Vorübergehend abgeschaltet, Stand 2026-10-09.** Hier
-            # stand ``gelesen = self._anhaenge_lesen(archiv)`` – noch
-            # im selben geöffneten Archiv, so wie es sein soll. Mit
-            # diesem Aufruf bricht der Testlauf in der CI nach dem
-            # letzten Test mit einem Speicherzugriffsfehler ab, während
-            # alle 2395 Tests grün melden; lokal tritt es nicht auf.
-            # Die Ursache ist noch nicht verstanden, und ein
-            # Hauptzweig, aus dem sich keine Fassung bauen lässt,
-            # blockiert alles andere.
-            #
-            # **Die Methode bleibt samt Tests stehen** – sie ist
-            # richtig, nur ihr Aufrufer wartet. Was fehlt, steht in der
-            # TODO; bis dahin gilt auf einem Server wieder: Scans
-            # werden erst durch einen Lauf von Hand durchsuchbar.
-            gelesen = 0
+            # **Noch im selben geöffneten Archiv**, siehe
+            # :meth:`_anhaenge_lesen`.
+            gelesen = self._anhaenge_lesen(archiv)
 
         self.zuletzt = datetime.now()
         self.laeufe += 1
