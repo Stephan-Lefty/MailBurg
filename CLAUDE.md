@@ -726,9 +726,27 @@ Stephans Vorgabe vom 25.09.2026:
 > neue Version raus, wenn wirklich ein Fehler behoben wird oder nach 4 Wochen.
 > […] Mache den Stichtag zum ersten eines Monats.
 
-Also: **Ein Fehler, der Anwender trifft, geht sofort raus** – besonders die
-stille Sorte, bei der Post ausbleibt, ohne dass jemand es merkt. Alles andere
-wird gesammelt und erscheint **am Ersten des Monats**.
+**Präzisiert am 2026-10-19, und diese Fassung gilt:** Sofort heraus geht
+nur, was die **Funktion mit der letzten Fassung nicht mehr
+gewährleistet**. Alles andere wird gesammelt und erscheint **am Ersten
+des Monats**.
+
+Hier stand vorher »ein Fehler, der Anwender trifft«, und das ist zu
+weit – fast jeder Fehler trifft irgendwen. Daran gemessen wären
+zwischen dem 09. und 19.10. vier Fassungen herausgegangen, und genau
+das widerspricht der Zusage oben.
+
+**Die Frage lautet nicht »ist das schlimm«, sondern: Kann jemand mit
+der letzten veröffentlichten Fassung noch das tun, wofür er MailBurg
+benutzt?** Danach gingen zu Recht sofort heraus: die 1.8.1 (der Dienst
+machte keine Texterkennung, Scans blieben auf jedem Server
+unauffindbar), die 1.8.2 (ein Semikolon verschluckte alle
+Berichtsempfänger außer dem ersten) und die 1.8.3 (das AppImage fand
+keine Zertifikate, also scheiterte jede IMAP-Verbindung).
+
+Gesammelt wird dagegen, was sichtbar ist und sich umgehen lässt – etwa
+der Zeitplan-Haken, der nach dem Abwählen wieder erschien: ärgerlich,
+aber man sieht es sofort, und das Archiv arbeitet weiter.
 
 Der nächste Termin ist damit der **1. November 2026**; der 1. Oktober liegt
 sechs Tage nach der 1.7.6 und wäre keine Sammlung, sondern ein Nachschlag.
