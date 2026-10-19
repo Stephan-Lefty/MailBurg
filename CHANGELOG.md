@@ -9,6 +9,8 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.8.3] – 2026-10-19
+
 ### Behoben
 
 - **Das AppImage fand auf manchen Distributionen keine
@@ -3788,6 +3790,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.8.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.2...v1.8.3
 [1.8.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.7.9...v1.8.0
