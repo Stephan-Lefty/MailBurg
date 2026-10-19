@@ -125,7 +125,23 @@ class Zeitplanwahl(QWidget):
         stand = zeitplan.zustand(self.archiv)
 
         self.an = QCheckBox("Neue Post regelmäßig im Hintergrund holen")
-        self.an.setChecked(stand.laeuft or stand.moeglich)
+        # **Nur was läuft, nicht was ginge.** Hier stand bis zum
+        # 2026-10-19 ``stand.laeuft or stand.moeglich`` – und
+        # ``moeglich`` heißt lediglich, dass dieses System systemd hat.
+        # Der Haken beschrieb damit die Maschine statt den Wunsch des
+        # Anwenders: Wer ihn abwählte, bekam den Zeitplan zwar
+        # gelöscht, beim nächsten Öffnen aber das Feld wieder
+        # angekreuzt. Es sah aus, als sei die Entscheidung nicht
+        # angekommen.
+        #
+        # **Der Sicherungsdialog weiter unten macht es seit dem
+        # 2026-08-30 richtig** (``setChecked(stand.laeuft)``) – damals
+        # aus demselben Anlass behoben und hier nicht nachgezogen. Zwei
+        # Stellen, eine nachgezogen, die andere nicht.
+        #
+        # Gemeldet von joka63 (Linux-Guides-Forum), Fassung 1.8.2 auf
+        # Fedora 44.
+        self.an.setChecked(stand.laeuft)
         self.an.toggled.connect(self._umschalten)
 
         self.takt = QComboBox()

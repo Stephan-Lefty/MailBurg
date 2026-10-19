@@ -9,6 +9,28 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Behoben
+
+- **Ein abgewählter Zeitplan war beim nächsten Öffnen wieder
+  angekreuzt.** Im Dialog »Was von selbst laufen soll« stand
+  `setChecked(stand.laeuft or stand.moeglich)` – und `moeglich` heißt
+  lediglich, dass dieses System systemd hat. Der Haken beschrieb damit
+  die Maschine statt den Wunsch des Anwenders.
+
+  Wer ihn abwählte, bekam den Timer zwar gelöscht; beim nächsten
+  Öffnen saß er wieder da. Für den, der davorsitzt, sieht das aus, als
+  sei seine Entscheidung nicht angekommen – und ein Klick auf
+  »Übernehmen« legte den Zeitplan wieder an, den er gerade loswerden
+  wollte.
+
+  **Der Sicherungsdialog machte es seit dem 30.08.2026 richtig** –
+  damals aus genau diesem Anlass behoben und hier nicht nachgezogen.
+  Zwei Stellen, eine nachgezogen, die andere nicht. Der neue Test
+  prüft deshalb **beide** nebeneinander.
+
+  Gemeldet von **joka63** im Linux-Guides-Forum, Fassung 1.8.2 auf
+  Fedora 44.
+
 ## [1.8.3] – 2026-10-19
 
 ### Behoben

@@ -6946,6 +6946,102 @@ class SpamfilterImZeitplanTest(OberflaechenTest):
         self.assertIn("Spam-Marke", dialog.spamfilter.an.text())
 
 
+class AbgewaehltBleibtAbgewaehltTest(OberflaechenTest):
+    """**Ein Haken muss zeigen, was läuft – nicht, was ginge.**
+
+    Im Zeitplandialog stand bis zum 19.10.2026
+    ``setChecked(stand.laeuft or stand.moeglich)``. ``moeglich`` heißt
+    aber lediglich, dass dieses System systemd hat – es beschreibt die
+    Maschine, nicht den Wunsch des Anwenders.
+
+    Die Wirkung meldete joka63 aus dem Linux-Guides-Forum (Fassung
+    1.8.2 auf Fedora 44): Wer das Feld abwählt, bekommt den Timer
+    gelöscht – und beim nächsten Öffnen steht der Haken wieder da.
+    Für den, der davorsitzt, sieht das aus, als sei seine
+    Entscheidung nicht angekommen. Schlimmer noch: Ein Klick auf
+    »Übernehmen« legt den Zeitplan dann wieder an, den er gerade
+    loswerden wollte.
+
+    **Der Sicherungsdialog machte es seit dem 30.08.2026 richtig** –
+    damals aus genau diesem Anlass behoben und hier nicht nachgezogen.
+    Deshalb prüft dieser Test beide, nebeneinander: Zwei Dialoge, die
+    dasselbe tun, laufen sonst wieder auseinander, und der seltener
+    benutzte ist dann der falsche.
+    """
+
+    def _stand(self, *, laeuft: bool, moeglich: bool = True):
+        from mailburg.core.zeitplan import Zustand
+
+        return Zustand(
+            moeglich=moeglich, laeuft=laeuft, takt=30,
+            takt_sicherung="täglich" if laeuft else "",
+        )
+
+    def test_der_abruf_zeigt_nur_was_laeuft(self):
+        from unittest import mock
+
+        from mailburg.ui.zeitplan import Zeitplanwahl
+
+        with mock.patch("mailburg.core.zeitplan.zustand",
+                        return_value=self._stand(laeuft=False)):
+            wahl = Zeitplanwahl()
+        self.addCleanup(wahl.deleteLater)
+
+        self.assertFalse(
+            wahl.an.isChecked(),
+            "Der Haken behauptet einen Zeitplan, den es nicht gibt.",
+        )
+
+    def test_und_zeigt_ihn_an_wenn_er_laeuft(self):
+        """Die Gegenprobe – sonst prüfte der Test oben nur, dass das
+        Feld immer leer ist."""
+        from unittest import mock
+
+        from mailburg.ui.zeitplan import Zeitplanwahl
+
+        with mock.patch("mailburg.core.zeitplan.zustand",
+                        return_value=self._stand(laeuft=True)):
+            wahl = Zeitplanwahl()
+        self.addCleanup(wahl.deleteLater)
+
+        self.assertTrue(wahl.an.isChecked())
+
+    def test_beide_dialoge_entscheiden_gleich(self):
+        """**Der eigentliche Wächter – und zwar am Verhalten.**
+
+        Hier stand zuerst eine Textsuche nach ``or stand.moeglich`` im
+        Quelltext. Die schlug prompt an: Sie fand den Ausdruck in dem
+        Kommentar, der erklärt, warum er dort nicht mehr steht. Ein
+        Wächter, der auf einen Wortlaut zeigt, hält den Wortlaut fest
+        und nicht seinen Sinn – im Projekt seit dem 07.09.2026
+        wiederholt aufgelaufen, hier zum nächsten Mal.
+
+        Geprüft wird deshalb, was beide Felder *tun*, wenn nichts
+        eingerichtet, aber alles möglich ist.
+        """
+        from unittest import mock
+
+        from mailburg.ui.zeitplan import Sicherungswahl, Zeitplanwahl
+
+        with mock.patch("mailburg.core.zeitplan.zustand",
+                        return_value=self._stand(laeuft=False)), \
+             mock.patch("mailburg.core.zeitplan.sicherung_zustand",
+                        return_value=self._stand(laeuft=False)):
+            fuer_abruf = Zeitplanwahl()
+            fuer_sicherung = Sicherungswahl()
+
+        self.addCleanup(fuer_abruf.deleteLater)
+        self.addCleanup(fuer_sicherung.deleteLater)
+
+        for name, wahl in (("Abruf", fuer_abruf),
+                           ("Sicherung", fuer_sicherung)):
+            with self.subTest(dialog=name):
+                self.assertFalse(
+                    wahl.an.isChecked(),
+                    f"{name}: Der Haken behauptet etwas, das nicht läuft.",
+                )
+
+
 class SuchordnerImBaumTest(OberflaechenTest):
     """Der Zweig »Suchordner« und was ein Klick darauf tut.
 
