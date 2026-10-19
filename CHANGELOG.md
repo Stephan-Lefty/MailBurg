@@ -9,6 +9,39 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Behoben
+
+- **Das AppImage fand auf manchen Distributionen keine
+  CA-Zertifikate – und damit scheiterte jede IMAP-Verbindung.**
+  MailBurg baut TLS über `ssl.create_default_context()` und verlässt
+  sich auf die Zertifikatsablage des Systems. Im AppImage steckt aber
+  ein mitgeliefertes OpenSSL, dem die Pfade des **Bausystems**
+  einkompiliert sind. Wo die Distribution sie woanders ablegt, findet
+  es nichts.
+
+  **Das AppImage war dort nicht eingeschränkt, sondern für seinen
+  Zweck unbrauchbar** – Mailserver ohne TLS gibt es praktisch nicht
+  mehr. `certifi` bringt MailBurg nicht mit, einen Ausweg gab es also
+  auch nicht.
+
+  Der Starter sucht die Zertifikate jetzt beim Wirtssystem und setzt
+  `SSL_CERT_FILE`, wenn es nicht schon gesetzt ist – zuerst
+  `$NIX_SSL_CERT_FILE`, dann die üblichen Orte von Debian, Fedora,
+  openSUSE und Alpine. **Eine eigene Angabe bleibt unangetastet:** Wer
+  sie setzt, hat einen Grund, etwa ein Firmenzertifikat für einen
+  aufbrechenden Proxy.
+
+  Gemeldet von **joka63** im Linux-Guides-Forum, der MailBurg für
+  NixOS paketiert hat. Dort gibt es
+  `/etc/ssl/certs/ca-certificates.crt` nicht – Fedora und openSUSE
+  legen sie ebenfalls anders ab, dort dürfte dasselbe passiert sein,
+  es hat nur niemand gemeldet.
+
+  **Geprüft wird durch Ausführen, nicht durch Lesen.** Ob eine
+  Fallunterscheidung in `sh` stimmt, sieht man ihr nicht an – dieselbe
+  Lehre wie bei `install.sh` am 03.09.2026, wo der Block den Suchpfad
+  der *eigenen* Shell prüfte statt den des Anwenders.
+
 ## [1.8.2] – 2026-10-09
 
 ### Behoben

@@ -63,6 +63,26 @@ DATEINAME = "MailBurg-x86_64.AppImage"
 #: * ``QT_QPA_PLATFORM`` bleibt **ungesetzt**. Qt entscheidet dann
 #:   selbst zwischen Wayland und X11. Wer hier etwas festschreibt,
 #:   bricht die jeweils andere Sitzung.
+#: * ``SSL_CERT_FILE`` wird gesucht, falls es fehlt – siehe unten.
+#:
+#: **Warum die Zertifikate hier stehen müssen.** MailBurg baut TLS über
+#: ``ssl.create_default_context()`` und verlässt sich damit auf die
+#: Zertifikatsablage des Systems. Im AppImage steckt aber ein
+#: mitgeliefertes OpenSSL, dem die Pfade des *Bausystems* einkompiliert
+#: sind. Auf einer Distribution, die sie woanders ablegt, findet es
+#: nichts – und dann scheitert **jede** IMAP-Verbindung, denn Mailserver
+#: ohne TLS gibt es praktisch nicht mehr.
+#:
+#: Das AppImage ist damit nicht eingeschränkt, sondern für seinen Zweck
+#: unbrauchbar. Gemeldet am 2026-10-12 von joka63 aus dem
+#: Linux-Guides-Forum, der MailBurg für NixOS paketiert hat; dort gibt
+#: es ``/etc/ssl/certs/ca-certificates.crt`` nicht. Fedora und openSUSE
+#: legen sie ebenfalls anders ab – dort dürfte dasselbe passieren, es
+#: hat nur noch niemand gemeldet.
+#:
+#: **Gesetzt wird nur, was fehlt.** Wer ``SSL_CERT_FILE`` selbst
+#: mitbringt – etwa mit einem Firmenzertifikat für einen
+#: aufbrechenden Proxy –, soll es behalten.
 APPRUN = """\
 #!/bin/sh
 # Von werkzeuge/appimage_bauen.py erzeugt - nicht von Hand aendern.
@@ -71,6 +91,33 @@ HIER="$(dirname "$(readlink -f "$0")")"
 # Der Suchpfad des Wirtssystems bleibt erhalten: Die Texterkennung
 # braucht pdftotext und tesseract von dort.
 export PATH="$HIER/usr/bin:$PATH"
+
+# Die Zertifikate des Wirtssystems suchen, wenn sie nicht schon
+# angegeben sind. Ohne sie scheitert jede TLS-Verbindung - und das
+# mitgelieferte OpenSSL kennt nur die Pfade des Bausystems.
+#
+# NIX_SSL_CERT_FILE zuerst: Auf NixOS ist das die Stelle, die gilt.
+if [ -z "$SSL_CERT_FILE" ]; then
+    for KANDIDAT in \\
+        "$NIX_SSL_CERT_FILE" \\
+        /etc/ssl/certs/ca-certificates.crt \\
+        /etc/pki/tls/certs/ca-bundle.crt \\
+        /etc/ssl/ca-bundle.pem \\
+        /etc/ssl/cert.pem \\
+        /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+    do
+        if [ -n "$KANDIDAT" ] && [ -r "$KANDIDAT" ]; then
+            export SSL_CERT_FILE="$KANDIDAT"
+            break
+        fi
+    done
+fi
+
+# Und das Verzeichnis dazu, fuer Programme, die einzelne Dateien lesen
+# statt eines Buendels.
+if [ -z "$SSL_CERT_DIR" ] && [ -d /etc/ssl/certs ]; then
+    export SSL_CERT_DIR=/etc/ssl/certs
+fi
 
 exec "$HIER/usr/bin/MailBurg" "$@"
 """

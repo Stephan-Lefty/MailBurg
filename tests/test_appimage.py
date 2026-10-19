@@ -127,6 +127,112 @@ class AufbauTest(unittest.TestCase):
         self.assertIn("pyinstaller", str(gefangen.exception))
 
 
+class ZertifikateTest(unittest.TestCase):
+    """**Ohne Zertifikate scheitert jede IMAP-Verbindung.**
+
+    MailBurg baut TLS über ``ssl.create_default_context()`` und
+    verlässt sich damit auf die Zertifikatsablage des Systems. Im
+    AppImage steckt aber ein mitgeliefertes OpenSSL, dem die Pfade des
+    *Bausystems* einkompiliert sind. Auf einer Distribution, die sie
+    woanders ablegt, findet es nichts – und dann geht keine einzige
+    Verbindung mehr, denn Mailserver ohne TLS gibt es praktisch nicht.
+
+    Das AppImage ist damit nicht eingeschränkt, sondern für seinen
+    Zweck unbrauchbar. Gemeldet am 12.10.2026 von joka63, der MailBurg
+    für NixOS paketiert hat; dort gibt es
+    ``/etc/ssl/certs/ca-certificates.crt`` nicht.
+
+    **Geprüft wird durch Ausführen, nicht durch Lesen.** Ob eine
+    Fallunterscheidung in ``sh`` stimmt, sieht man ihr nicht an –
+    dieselbe Lehre wie bei ``install.sh`` am 03.09.2026, wo der Block
+    den Suchpfad der *eigenen* Shell prüfte statt den des Anwenders.
+    """
+
+    def setUp(self):
+        self.werkzeug = _werkzeug()
+        self.ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(self.ordner.cleanup)
+        self.basis = Path(self.ordner.name)
+
+        dist = self.basis / "dist"
+        dist.mkdir()
+        # Ein Stellvertreter, der verrät, was der Starter gesetzt hat.
+        (dist / "MailBurg").write_text(
+            '#!/bin/sh\necho "SSL_CERT_FILE=$SSL_CERT_FILE"\n',
+            encoding="utf-8",
+        )
+        (dist / "MailBurg").chmod(0o755)
+        self.appdir = self.werkzeug.appdir_bauen(dist, self.basis)
+
+    def _starten(self, **umgebung) -> str:
+        umwelt = dict(os.environ)
+        # Beide ausräumen, damit das Testsystem nicht hereinredet.
+        umwelt.pop("SSL_CERT_FILE", None)
+        umwelt.pop("NIX_SSL_CERT_FILE", None)
+        umwelt.update({k: v for k, v in umgebung.items() if v is not None})
+
+        ergebnis = subprocess.run(
+            [str(self.appdir / "AppRun")], env=umwelt,
+            capture_output=True, text=True, check=False, timeout=30,
+        )
+        self.assertEqual(ergebnis.returncode, 0, ergebnis.stderr)
+        return ergebnis.stdout.strip()
+
+    def test_eine_eigene_angabe_bleibt_stehen(self):
+        """**Wer sie selbst setzt, hat einen Grund** – etwa ein
+        Firmenzertifikat für einen aufbrechenden Proxy. Ein Starter,
+        der das überschreibt, nimmt ihm die Verbindung."""
+        eigene = self.basis / "firma.pem"
+        eigene.write_text("# nicht echt\n", encoding="utf-8")
+
+        ausgabe = self._starten(SSL_CERT_FILE=str(eigene))
+
+        self.assertEqual(ausgabe, f"SSL_CERT_FILE={eigene}")
+
+    def test_der_nix_pfad_wird_genommen(self):
+        """Auf NixOS ist ``NIX_SSL_CERT_FILE`` die Stelle, die gilt –
+        und sie steht deshalb an erster Stelle der Suche."""
+        nix = self.basis / "nix-ca-bundle.crt"
+        nix.write_text("# nicht echt\n", encoding="utf-8")
+
+        ausgabe = self._starten(NIX_SSL_CERT_FILE=str(nix))
+
+        self.assertEqual(ausgabe, f"SSL_CERT_FILE={nix}")
+
+    def test_ein_pfad_ins_leere_wird_uebergangen(self):
+        """**Eine gesetzte Variable ist keine vorhandene Datei.**
+
+        Zeigt sie ins Leere, muss weitergesucht werden – sonst stünde
+        am Ende ein Pfad da, den OpenSSL nicht lesen kann, und der
+        Fehler sähe aus wie ein kaputtes Zertifikat statt wie ein
+        fehlendes.
+        """
+        ausgabe = self._starten(
+            NIX_SSL_CERT_FILE=str(self.basis / "gibtesnicht.crt"))
+
+        self.assertNotIn("gibtesnicht", ausgabe)
+
+    def test_ohne_jeden_fund_startet_er_trotzdem(self):
+        """**Kein Fund ist kein Grund, nicht zu starten.** Dann greift
+        eben, was OpenSSL selbst mitbringt, und der Anwender bekommt im
+        Zweifel eine Zertifikatsmeldung, die MailBurg erklärt. Ein
+        Starter, der hier abbräche, nähme ihm auch die Kommandozeile
+        und den Zugang zum Archiv.
+        """
+        ausgabe = self._starten(NIX_SSL_CERT_FILE="")
+
+        self.assertTrue(ausgabe.startswith("SSL_CERT_FILE="))
+
+    def test_die_suche_steht_vor_dem_start_des_programms(self):
+        """Sonst liefe MailBurg, bevor die Umgebung steht."""
+        starter = (self.appdir / "AppRun").read_text(encoding="utf-8")
+
+        self.assertLess(
+            starter.index("SSL_CERT_FILE"),
+            starter.index('exec "$HIER/usr/bin/MailBurg"'),
+        )
+
+
 class DateinameTest(unittest.TestCase):
     """**Keine Fassungsnummer im Dateinamen, und das ist Absicht.**
 
