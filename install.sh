@@ -86,6 +86,58 @@ if [[ $ENTFERNEN -eq 1 ]]; then
     exit 0
 fi
 
+# --------------------------------------------------- Wo dieser Weg nicht geht
+
+# **Auf NixOS kann dieses Skript nicht zum Ziel führen, und das liegt
+# nicht an ihm.** Es legt eine venv an und holt die Pakete von PyPI. Bei
+# reinen Python-Bibliotheken geht das dort genauso gut wie überall; bei
+# solchen mit C-Teil nicht. Ein PySide6-Wheel ist gegen ein klassisches
+# Dateisystem gebaut und erwartet etwa »libstdc++« an einem festen Ort
+# (auf Fedora »/usr/lib64/libstdc++.so.6«).
+#
+# NixOS hat diesen Ort nicht. Dort liegt jede Bibliothek im Nix-Store,
+# in beliebig vielen Fassungen nebeneinander, und es gibt auch keine
+# symbolischen Verweise darauf. Das lässt sich in einer venv nicht
+# auflösen – nur mit einem in Nix gebauten Paket.
+#
+# **Erklärt am 2026-10-19 von joka63 im Linux-Guides-Forum**, der
+# MailBurg für NixOS paketiert hat. Vorher brach das Skript dort
+# irgendwo tief in pip ab, mit einer Meldung über eine fehlende
+# Bibliothek – und wer die liest, sucht den Fehler bei sich.
+#
+# Lieber hier aufhören und sagen, warum, als eine halbe Stunde später an
+# einer Stelle, die nichts erklärt. ``/etc/NIXOS`` ist die Marke, an der
+# sich das System erkennen lässt; sie liegt dort auf jedem Installierten.
+#
+# Der Pfad steht in einer Variablen, damit die Tests diesen Zweig
+# wirklich *ausführen* können statt seinen Text zu lesen. Ob eine
+# Fallunterscheidung in der Shell stimmt, sieht man ihr nicht an –
+# dieselbe Lehre wie beim Suchpfad-Block am 2026-09-03, der den Pfad der
+# eigenen Shell prüfte statt den des Anwenders.
+NIXOS_MARKE="${MAILBURG_NIXOS_MARKE:-/etc/NIXOS}"
+if [[ -e $NIXOS_MARKE ]]; then
+    melde "NixOS erkannt"
+    hinweis "Dieses Skript kann hier nicht zum Ziel führen."
+    hinweis ""
+    hinweis "Es holt die Oberfläche (PySide6) von PyPI, und dieses Paket"
+    hinweis "erwartet Systembibliotheken an festen Orten wie /usr/lib64."
+    hinweis "Die gibt es auf NixOS nicht – dort liegt jede Bibliothek im"
+    hinweis "Nix-Store, in mehreren Fassungen nebeneinander."
+    hinweis ""
+    hinweis "Zwei Wege führen trotzdem zum Ziel:"
+    hinweis ""
+    hinweis "  1. Das AppImage von der Release-Seite. Es bringt alles mit,"
+    hinweis "     was es braucht, und sucht die Zertifikate auch dort, wo"
+    hinweis "     NixOS sie ablegt."
+    hinweis "     https://github.com/Stephan-Lefty/MailBurg/releases"
+    hinweis ""
+    hinweis "  2. Nur die Kommandozeile, ohne Fenster – dafür reicht:"
+    hinweis "     pip install --user '.[imap,anhaenge,packen]'"
+    hinweis "     Archivieren, Suchen und Sichern gehen damit vollständig;"
+    hinweis "     es fehlt allein die grafische Oberfläche."
+    exit 0
+fi
+
 # ------------------------------------------------------------ Systempakete
 
 paketverwaltung() {

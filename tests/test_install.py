@@ -7,6 +7,7 @@ einsortiert wurde, bleibt es bei jedem, der nicht neu installiert.
 
 from __future__ import annotations
 
+import os
 import pathlib
 import sys
 import unittest
@@ -72,6 +73,77 @@ class AnleitungenTest(unittest.TestCase):
                 continue
             with self.subTest(datei=datei.name):
                 self.assertIn(datei.name, verzeichnis)
+
+
+class NixosHinweisTest(unittest.TestCase):
+    """**Auf NixOS kann dieses Skript nicht zum Ziel führen.**
+
+    Es legt eine venv an und holt die Pakete von PyPI. Bei reinen
+    Python-Bibliotheken geht das dort wie überall; bei solchen mit
+    C-Teil nicht. Ein PySide6-Wheel erwartet Systembibliotheken an
+    festen Orten wie ``/usr/lib64/libstdc++.so.6`` – und die gibt es
+    auf NixOS nicht, dort liegt jede Bibliothek im Nix-Store, in
+    mehreren Fassungen nebeneinander.
+
+    Vorher brach das Skript irgendwo tief in pip ab, mit einer Meldung
+    über eine fehlende Bibliothek. Wer die liest, sucht den Fehler bei
+    sich. Erklärt am 19.10.2026 von joka63 im Linux-Guides-Forum, der
+    MailBurg für NixOS paketiert hat.
+
+    **Geprüft wird durch Ausführen, nicht durch Lesen** – dieselbe
+    Lehre wie beim Suchpfad-Block vom 03.09.2026, der den Pfad der
+    eigenen Shell prüfte statt den des Anwenders.
+    """
+
+    def _lauf(self, mit_marke: bool):
+        import subprocess
+        import tempfile
+
+        wurzel = pathlib.Path(__file__).resolve().parent.parent
+        with tempfile.TemporaryDirectory() as ordner:
+            marke = pathlib.Path(ordner) / "NIXOS"
+            if mit_marke:
+                marke.write_text("", encoding="utf-8")
+            return subprocess.run(
+                ["bash", str(wurzel / "install.sh")],
+                cwd=str(wurzel),
+                env={**os.environ, "MAILBURG_NIXOS_MARKE": str(marke)},
+                capture_output=True, text=True, timeout=120,
+            )
+
+    def test_auf_nixos_wird_abgebrochen_und_erklaert(self):
+        fertig = self._lauf(mit_marke=True)
+
+        self.assertEqual(fertig.returncode, 0, fertig.stderr)
+        self.assertIn("NixOS erkannt", fertig.stdout)
+
+    def test_und_es_steht_dabei_was_stattdessen_geht(self):
+        """**Ein Abbruch ohne Ausweg ist eine Sackgasse.** Wer hier
+        landet, soll nicht im Forum fragen müssen, wie es weitergeht."""
+        ausgabe = self._lauf(mit_marke=True).stdout
+
+        self.assertIn("AppImage", ausgabe)
+        self.assertIn("pip install", ausgabe)
+
+    def test_und_warum_es_nicht_geht(self):
+        """Ohne den Grund klingt es wie eine Laune des Programms."""
+        ausgabe = self._lauf(mit_marke=True).stdout
+
+        self.assertIn("PySide6", ausgabe)
+        self.assertIn("/usr/lib64", ausgabe)
+
+    def test_anderswo_laeuft_es_weiter(self):
+        """**Die Gegenprobe, und sie ist die wichtigere.** Ein Skript,
+        das überall abbricht, bestünde die drei Tests oben auch – und
+        wäre für jeden anderen unbrauchbar.
+
+        Geprüft wird nur, dass der Lauf *nicht* bei NixOS stehen
+        bleibt; was danach kommt, braucht eine Python-Umgebung und
+        gehört nicht in einen Testlauf.
+        """
+        fertig = self._lauf(mit_marke=False)
+
+        self.assertNotIn("NixOS erkannt", fertig.stdout)
 
 
 class BeispieldatenTest(unittest.TestCase):

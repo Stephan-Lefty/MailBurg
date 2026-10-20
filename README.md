@@ -276,6 +276,25 @@ Wer lieber selbst bestimmt, wohin es geht, nimmt `pip install ".[alles]"` – od
 lässt die Installation ganz weg und ruft `python3 -m mailburg` direkt im
 Quellverzeichnis auf.
 
+> **Auf NixOS und Guix führt dieser Weg nicht zum Ziel**, und das liegt
+> nicht am Skript. Es holt die Oberfläche (PySide6) von PyPI, und dieses
+> Paket erwartet Systembibliotheken an festen Orten – etwa
+> `/usr/lib64/libstdc++.so.6`. Den gibt es dort nicht: Jede Bibliothek
+> liegt im Nix-Store, in mehreren Fassungen nebeneinander, und auch
+> keine Verweise führen dorthin. In einer venv lässt sich das nicht
+> auflösen, nur mit einem in Nix gebauten Paket.
+>
+> `./install.sh` erkennt das und bricht mit dieser Erklärung ab, statt
+> später tief in pip zu scheitern. **Zwei Wege führen trotzdem zum
+> Ziel:** das [AppImage](https://github.com/Stephan-Lefty/MailBurg/releases),
+> das alles mitbringt und die Zertifikate auch dort findet, wo NixOS sie
+> ablegt – oder `pip install --user '.[imap,anhaenge,packen]'` für die
+> Kommandozeile allein. Archivieren, Suchen und Sichern gehen damit
+> vollständig; es fehlt nur das Fenster.
+>
+> Erklärt von **joka63** im Linux-Guides-Forum, der MailBurg für NixOS
+> paketiert hat.
+
 **Wenn Sie einzelne Zusätze wählen:** Der Kern kommt ohne Fremdpakete aus, aber
 er kann dann auch nur das Nötigste. Was wozu gehört:
 

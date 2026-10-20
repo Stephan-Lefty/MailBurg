@@ -266,6 +266,25 @@ If you would rather decide where things go, use `pip install ".[alles]"` — or
 skip installing altogether and run `python3 -m mailburg` from the source
 directory.
 
+> **On NixOS and Guix this route cannot work**, and that is not the
+> script's fault. It fetches the interface (PySide6) from PyPI, and that
+> package expects system libraries at fixed locations — for instance
+> `/usr/lib64/libstdc++.so.6`. No such location exists there: every
+> library lives in the Nix store, in several versions side by side, with
+> no symlinks pointing at them. A venv cannot resolve that; only a
+> package built in Nix can.
+>
+> `./install.sh` detects this and stops with that explanation, rather
+> than failing deep inside pip later on. **Two routes still work:** the
+> [AppImage](https://github.com/Stephan-Lefty/MailBurg/releases), which
+> brings everything along and finds the certificates where NixOS keeps
+> them — or `pip install --user '.[imap,anhaenge,packen]'` for the
+> command line alone. Archiving, searching and backing up all work that
+> way; only the window is missing.
+>
+> Explained by **joka63** in the Linux-Guides forum, who packaged
+> MailBurg for NixOS.
+
 Note that the command names are German throughout: `anlegen` (create),
 `importieren` (import), `abrufen` (fetch), `suchen` (search), `pruefen`
 (verify), `konten` (accounts).

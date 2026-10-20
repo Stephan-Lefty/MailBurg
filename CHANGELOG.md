@@ -9,6 +9,28 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Geändert
+
+- **`install.sh` erkennt NixOS und sagt, warum es dort nicht geht.**
+  Das Skript legt eine venv an und holt die Pakete von PyPI. Bei reinen
+  Python-Bibliotheken geht das überall; bei solchen mit C-Teil nicht.
+  Ein PySide6-Wheel erwartet Systembibliotheken an festen Orten – etwa
+  `/usr/lib64/libstdc++.so.6`. Auf NixOS gibt es diesen Ort nicht: Jede
+  Bibliothek liegt im Nix-Store, in mehreren Fassungen nebeneinander,
+  und auch keine Verweise führen dorthin.
+
+  **Das ist nicht behebbar**, nur erklärbar. Vorher brach das Skript
+  irgendwo tief in pip ab, mit einer Meldung über eine fehlende
+  Bibliothek – wer die liest, sucht den Fehler bei sich. Jetzt hört es
+  vorher auf, nennt den Grund und zwei Wege, die zum Ziel führen: das
+  AppImage oder eine Installation ohne Oberfläche.
+
+  Beide READMEs nennen das ebenfalls, im Abschnitt zur Installation.
+
+  Erklärt von **joka63** im Linux-Guides-Forum, der MailBurg für NixOS
+  paketiert hat. Geprüft wird der Zweig durch **Ausführen** – ob eine
+  Fallunterscheidung in der Shell stimmt, sieht man ihr nicht an.
+
 ### Behoben
 
 - **Ein abgewählter Zeitplan war beim nächsten Öffnen wieder
