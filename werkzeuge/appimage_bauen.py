@@ -161,18 +161,41 @@ def _symbol(ziel: Path) -> None:
     **Ein AppImage ohne Symbol ist kein kaputtes, aber ein namenloses.**
     In der Menüleiste steht dann ein grauer Platzhalter, und wer drei
     Programme offen hat, findet seines nicht wieder.
-    """
-    quelle = WURZEL / "assets" / "icon.svg"
-    if not quelle.is_file():
-        raise SystemExit(f"Das Symbol fehlt: {quelle}")
 
-    # Zweimal: einmal als Datei neben AppRun – dort sucht AppImage sie –
-    # und einmal am ordentlichen Platz nach Freedesktop-Standard, damit
-    # die Menüs des Systems sie nach dem Einhängen auch finden.
-    shutil.copy2(quelle, ziel / "mailburg.svg")
-    ordner = ziel / "usr" / "share" / "icons" / "hicolor" / "scalable" / "apps"
-    ordner.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(quelle, ordner / "mailburg.svg")
+    **Warum hier ein PNG stehen muss und das SVG allein nicht reicht.**
+    appimagetool braucht im obersten Verzeichnis des AppDir ein ``.DirIcon``
+    – das Symbol, das der Dateimanager an der AppImage-Datei selbst zeigt.
+    Fehlt es, versucht das Werkzeug, es aus einer ``mailburg.png`` oder
+    ``mailburg.xpm`` daneben zu erzeugen (der Name kommt aus ``Icon=`` im
+    Desktop-Eintrag). Ein SVG zählt dafür **nicht**: Bis Build 340
+    (2026-10-31) machte appimagetool trotzdem stillschweigend weiter, seit
+    dem Tag bricht es ab – »no mailburg.png or mailburg.xpm was found […]
+    to create it from«. Der Bau der 1.8.4 scheiterte genau daran, ohne
+    dass sich an MailBurg etwas geändert hätte. Deshalb legen wir das
+    ``.DirIcon`` gleich selbst als fertiges PNG ab und verlassen uns nicht
+    darauf, dass das Werkzeug es noch baut.
+    """
+    svg = WURZEL / "assets" / "icon.svg"
+    png = WURZEL / "assets" / "icon-256.png"
+    for quelle in (svg, png):
+        if not quelle.is_file():
+            raise SystemExit(f"Das Symbol fehlt: {quelle}")
+
+    # Das PNG: einmal als .DirIcon – das nimmt appimagetool unverändert und
+    # muss nichts mehr selbst erzeugen –, einmal als mailburg.png daneben
+    # (der Name aus dem Desktop-Eintrag, für die Menüs des Systems) und
+    # einmal am ordentlichen Platz nach Freedesktop-Standard.
+    shutil.copy2(png, ziel / ".DirIcon")
+    shutil.copy2(png, ziel / "mailburg.png")
+    png_ordner = ziel / "usr" / "share" / "icons" / "hicolor" / "256x256" / "apps"
+    png_ordner.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(png, png_ordner / "mailburg.png")
+
+    # Das SVG zusätzlich nach Freedesktop-Standard: Es skaliert besser auf
+    # hochauflösenden Bildschirmen, wo das System es dem PNG vorzieht.
+    svg_ordner = ziel / "usr" / "share" / "icons" / "hicolor" / "scalable" / "apps"
+    svg_ordner.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(svg, svg_ordner / "mailburg.svg")
 
 
 def appdir_bauen(dist: Path, ziel: Path) -> Path:

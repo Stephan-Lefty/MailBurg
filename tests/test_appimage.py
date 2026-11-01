@@ -105,11 +105,32 @@ class AufbauTest(unittest.TestCase):
             with self.subTest(zeile=zeile):
                 self.assertIn(zeile, eintrag)
 
-    def test_das_symbol_liegt_an_beiden_stellen(self):
-        """AppImage sucht es neben ``AppRun``, die Menüs des Systems im
-        Freedesktop-Baum. Fehlt es, steht in der Leiste ein grauer
-        Platzhalter."""
-        self.assertTrue((self.appdir / "mailburg.svg").is_file())
+    def test_das_diricon_liegt_als_png_vor(self):
+        """**Ohne ``.DirIcon`` baut appimagetool kein AppImage mehr.**
+
+        Es ist das Symbol, das der Dateimanager an der AppImage-Datei
+        selbst zeigt. Fehlt es, versucht das Werkzeug, es aus einer
+        ``mailburg.png`` daneben zu erzeugen – ein SVG zählt dafür nicht.
+        Bis Build 340 (2026-10-31) machte appimagetool trotzdem
+        stillschweigend weiter; seit dem Tag bricht es ab, und der Bau
+        der 1.8.4 scheiterte genau daran. Deshalb legen wir das
+        ``.DirIcon`` selbst als fertiges PNG ab.
+        """
+        diricon = self.appdir / ".DirIcon"
+        self.assertTrue(diricon.is_file())
+        self.assertEqual(diricon.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+
+    def test_das_symbol_liegt_an_allen_stellen(self):
+        """AppImage sucht ``mailburg.png`` neben ``AppRun`` (der Name aus
+        ``Icon=`` im Desktop-Eintrag), die Menüs des Systems im
+        Freedesktop-Baum. Das SVG skaliert dort zusätzlich auf
+        hochauflösenden Bildschirmen. Fehlt beides, steht in der Leiste
+        ein grauer Platzhalter."""
+        self.assertTrue((self.appdir / "mailburg.png").is_file())
+        self.assertTrue(
+            (self.appdir / "usr" / "share" / "icons" / "hicolor"
+             / "256x256" / "apps" / "mailburg.png").is_file()
+        )
         self.assertTrue(
             (self.appdir / "usr" / "share" / "icons" / "hicolor"
              / "scalable" / "apps" / "mailburg.svg").is_file()
