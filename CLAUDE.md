@@ -138,12 +138,35 @@ Lösung:** global auf `archiviert` umstellen – 589.058 Mails sind am
 07.10. in einem Zug aufgenommen worden und tragen alle denselben
 Zeitpunkt.
 
-2454 Tests, `lesbarkeit.py` ohne Befund, CI grün (`9f5ba85`).
+2454 Tests, `lesbarkeit.py` ohne Befund, CI grün.
 
-**Offen:** Die Weboberfläche ist am Vorführarchiv geprüft, nicht an
-589.000 Mails – derselbe Vorbehalt wie immer, und er gehört stehen
-gelassen, bis es jemand benutzt hat. Der Umschalter im Fenster ist am
-selben Tag im Alltag gelaufen.
+### Die 1.8.5, und warum sie außer der Reihe kommt
+
+**Der Vorbehalt ist ausgeräumt, noch am selben Tag.** Er stand hier
+zwei Stunden lang – »am Vorführarchiv geprüft, nicht an 589.000
+Mails«. Stephan hat die Fassung auf den Firmenserver gezogen und
+gemeldet: *»Auf dem Server im Browser läuft das jetzt schon in der
+1.8.5«* und *»Am Windows PC funktioniert es auch sauber!«* Damit ist
+die Vorschau an einem echten Bestand gelaufen, nicht nur gegen meine
+eigenen Annahmen.
+
+**Die Fassung bricht die Sammelregel, und das steht im CHANGELOG.**
+Nach der Schwelle vom 19.10. hätte sie bis zum 1. Dezember warten
+müssen: Die Vorschau ist eine Erleichterung, kein Fehler. Der Grund
+dafür ist kein Komfort, sondern ein anderer Grundsatz –
+`docs/server-windows.md` sagt, ein Archivserver ziehe *keine
+Zwischenstände*, er aktualisiere auf veröffentlichte Fassungen.
+
+Beides zusammen ließ nur die Wahl zwischen zwei gebrochenen Regeln.
+Stephans Entscheidung: lieber eine Fassung zu viel als ein Server,
+der an der eigenen Regel vorbei beliefert wird. *Wer eine Regel
+bricht, soll wenigstens sagen, welche und warum* – deshalb steht die
+Begründung im CHANGELOG und im Release-Text, nicht nur hier.
+
+**Nebenbei beantwortet:** Der Server stand auf 1.8.2 und hatte zwei
+Fassungen nie bekommen. Der Updateknopf im Einrichtungsfenster hat
+die 1.8.5 dann gefunden – es war also eine fehlende Gewohnheit und
+kein Fehler im Knopf. Die Frage war offen und ist damit erledigt.
 
 ## Hier war Schluss (Stand 2026-10-09, Freitag) – zwei Fassungen, und eine Wand
 

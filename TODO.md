@@ -1796,10 +1796,14 @@ fortgeschrieben wurde. Die ausführliche Fassung steht in
   im Journaleintrag direkt daneben.
 
 - [x] **Die Weboberfläche zeigt die Nachricht neben der
-  Trefferliste.** (2026-11-04) Gewünscht von einem Mitarbeiter, mit
-  MailStore als Vorbild. Ein Drittel Liste, zwei Drittel Mail, ohne
-  JavaScript – die Auswahl hängt an der Adresse. Im Fenster gibt es
-  dazu einen Umschalter unter *Ansicht*.
+  Trefferliste.** (2026-11-04, Fassung 1.8.5) Gewünscht von einem
+  Mitarbeiter, mit MailStore als Vorbild. Ein Drittel Liste, zwei
+  Drittel Mail, ohne JavaScript – die Auswahl hängt an der Adresse. Im
+  Fenster gibt es dazu einen Umschalter unter *Ansicht*.
+
+  **Am selben Tag am Firmenarchiv gelaufen**, im Browser wie im
+  Fenster – der übliche Vorbehalt »nur gegen Testdaten geprüft« gilt
+  hier also nicht mehr.
 
 - [x] **Virenscanner-Ausnahmen stehen in den Anleitungen.**
   (2026-10-09)

@@ -1676,10 +1676,14 @@ time. The detailed account is in [CLAUDE.md](CLAUDE.md) (in German).
   sit right there in the journal entry.
 
 - [x] **The web interface shows the message next to the hit list.**
-  (2026-11-04) Requested by a colleague, with MailStore as the model.
-  One third list, two thirds message, without JavaScript – the
-  selection hangs on the address. The window has a toggle for it under
-  *Ansicht*.
+  (2026-11-04, version 1.8.5) Requested by a colleague, with MailStore
+  as the model. One third list, two thirds message, without
+  JavaScript – the selection hangs on the address. The window has a
+  toggle for it under *Ansicht*.
+
+  **Run against the company archive the same day**, in the browser as
+  well as in the window – so the usual caveat »only checked against
+  test data« does not apply here.
 
 - [x] **Virus scanner exclusions are in the guides.** (2026-10-09)
 
