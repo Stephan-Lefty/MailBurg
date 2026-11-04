@@ -47,6 +47,21 @@ SPALTE_DATUM = 1
 
 BAUMANTEIL = 0.20
 TREFFERANTEIL = 0.42
+
+#: Wie viel die Trefferliste bekommt, wenn die Vorschau **daneben**
+#: steht statt darunter.
+#:
+#: **Ein Drittel, nicht die Hälfte** – Stephans Maß vom 2026-11-04,
+#: und es stimmt mit MailStore überein, das die Mitarbeiter kennen.
+#: Eine Mail ist breit und hoch; eine Trefferzeile braucht nur den
+#: Betreff.
+#:
+#: Dass die Vorschau überhaupt neben die Liste darf, ist eine Wahl und
+#: nicht die Vorgabe: Die Trefferliste hier hat fünf Spalten, und in
+#: einem Drittel der Fensterbreite bleibt vom Betreff wenig übrig. Wer
+#: es trotzdem so will, bekommt es – wer die Spalten braucht, behält
+#: sie.
+TREFFERANTEIL_DANEBEN = 0.34
 from mailburg.core.accounts import Kontenliste
 from mailburg.core.archive import Archive, ArchiveError, ArchiveLocked
 from mailburg.core.index import IndexOutdated
@@ -477,6 +492,36 @@ class Hauptfenster(QMainWindow):
         )
         zuruecksetzen.triggered.connect(self._standardansicht)
         ansicht.addAction(zuruecksetzen)
+
+        ansicht.addSeparator()
+        # **Zwei Haken für die Vorschau, und beide lesen den
+        # tatsächlichen Zustand.** Der Teiler lässt sich bis auf null
+        # zuziehen; bis zum 2026-11-04 war die Vorschau danach weg, und
+        # zurück kam sie nur über »Fenster auf Standard zurücksetzen« –
+        # einen Eintrag, auf den niemand kommt, der eine verschwundene
+        # Vorschau sucht.
+        #
+        # Was *gewählt* ist und was *gilt*, sind zwei Dinge: Der Haken
+        # wird deshalb beim Öffnen des Menüs gesetzt und nicht beim
+        # Anklicken gemerkt.
+        self.vorschau_zeigen_aktion = QAction("Vorschau anzeigen", self)
+        self.vorschau_zeigen_aktion.setCheckable(True)
+        self.vorschau_zeigen_aktion.setStatusTip(
+            "Die gewählte Nachricht neben oder unter der Trefferliste zeigen."
+        )
+        self.vorschau_zeigen_aktion.triggered.connect(self._vorschau_zeigen)
+        ansicht.addAction(self.vorschau_zeigen_aktion)
+
+        self.vorschau_rechts_aktion = QAction("Vorschau rechts", self)
+        self.vorschau_rechts_aktion.setCheckable(True)
+        self.vorschau_rechts_aktion.setStatusTip(
+            "Die Nachricht neben die Trefferliste stellen statt darunter – "
+            "wie im Browser und in MailStore."
+        )
+        self.vorschau_rechts_aktion.triggered.connect(self._vorschau_rechts)
+        ansicht.addAction(self.vorschau_rechts_aktion)
+
+        ansicht.aboutToShow.connect(self._ansichtshaken_richten)
 
         ansicht.addSeparator()
         groesser = QAction("Schrift größer", self)
@@ -956,6 +1001,67 @@ class Hauptfenster(QMainWindow):
             else f"Schrift {self.schriftstufe:+d} Punkte."
         )
 
+    # -- Die Vorschau: ob und wo -----------------------------------------
+
+    def _vorschau_sichtbar(self) -> bool:
+        """Ob von der Vorschau tatsächlich etwas zu sehen ist.
+
+        **Gemessen, nicht gemerkt.** Ein Teiler lässt sich mit der Maus
+        zuziehen, ohne dass jemand einen Menüpunkt anfasst – eine
+        mitgeführte Variable sagte danach etwas anderes als das Fenster.
+        """
+        return self.senkrecht.sizes()[1] > 0
+
+    def _vorschau_steht_rechts(self) -> bool:
+        return self.senkrecht.orientation() == Qt.Horizontal
+
+    def _ansichtshaken_richten(self) -> None:
+        """Setzt die beiden Haken nach dem, was das Fenster gerade zeigt."""
+        self.vorschau_zeigen_aktion.setChecked(self._vorschau_sichtbar())
+        self.vorschau_rechts_aktion.setChecked(self._vorschau_steht_rechts())
+        # Eine Richtung zu wählen, während nichts zu sehen ist, wäre
+        # eine Einstellung ohne Wirkung.
+        self.vorschau_rechts_aktion.setEnabled(self._vorschau_sichtbar())
+
+    def _vorschau_anteile_setzen(self) -> None:
+        """Verteilt Trefferliste und Vorschau nach der Richtung.
+
+        Verhältniszahlen statt Pixel, aus demselben Grund wie in
+        :meth:`_standardansicht`.
+        """
+        anteil = (
+            TREFFERANTEIL_DANEBEN if self._vorschau_steht_rechts()
+            else TREFFERANTEIL
+        )
+        self.senkrecht.setSizes([
+            round(anteil * 1000), round((1 - anteil) * 1000),
+        ])
+
+    def _vorschau_zeigen(self, an: bool) -> None:
+        """Blendet die Vorschau ein oder zu."""
+        if an:
+            self._vorschau_anteile_setzen()
+            self.stand.setText("Vorschau eingeblendet.")
+        else:
+            # Nicht ``hide()``: Ein verstecktes Widget nimmt der Teiler
+            # aus seiner Rechnung, und beim Einblenden stünde er wieder
+            # auf einer Größe, die niemand gewählt hat. Zuziehen ist
+            # genau das, was die Maus auch täte.
+            self.senkrecht.setSizes([1000, 0])
+            self.stand.setText("Vorschau zugeschoben.")
+
+    def _vorschau_rechts(self, rechts: bool) -> None:
+        """Dreht den Teiler zwischen Trefferliste und Vorschau."""
+        self.senkrecht.setOrientation(
+            Qt.Horizontal if rechts else Qt.Vertical
+        )
+        self._vorschau_anteile_setzen()
+        self._kanten_setzen()
+        self.stand.setText(
+            "Vorschau rechts neben der Liste." if rechts
+            else "Vorschau unter der Liste."
+        )
+
     def _standardansicht(self, nur_aufbauen: bool = False) -> None:  # noqa: ARG002
         """Die Ansicht, mit der MailBurg das erste Mal aufgeht.
 
@@ -989,9 +1095,11 @@ class Hauptfenster(QMainWindow):
         self.waagerecht.setSizes([
             round(BAUMANTEIL * 1000), round((1 - BAUMANTEIL) * 1000),
         ])
-        self.senkrecht.setSizes([
-            round(TREFFERANTEIL * 1000), round((1 - TREFFERANTEIL) * 1000),
-        ])
+        # **Die Richtung bleibt, wie sie gewählt ist.** Zurückgesetzt
+        # werden Größen und Aufteilung – wo die Vorschau steht, ist
+        # eine Entscheidung und keine verrutschte Zahl. Wer sie ändern
+        # will, hat dafür den Menüpunkt daneben.
+        self._vorschau_anteile_setzen()
         self._spalten_einrichten()
         self._baumspalten_einrichten()
 
@@ -1011,6 +1119,11 @@ class Hauptfenster(QMainWindow):
         merken_unter("maximiert", self.isMaximized())
         merken_unter("waagerecht",
                      bytes(self.waagerecht.saveState().toBase64()).decode())
+        # **Die Richtung braucht keinen eigenen Eintrag.**
+        # ``QSplitter.saveState`` nimmt sie mit – nachgemessen am
+        # 2026-11-04, weil ich das Gegenteil vermutet und bereits
+        # gebaut hatte: Ein frischer senkrechter Teiler steht nach
+        # ``restoreState`` eines waagerechten Zustands waagerecht.
         merken_unter("senkrecht",
                      bytes(self.senkrecht.saveState().toBase64()).decode())
         merken_unter(

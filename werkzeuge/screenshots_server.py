@@ -346,15 +346,34 @@ def main() -> int:
             knipser.ablegen("server-postfaecher")
             knipser.oeffnen("/postfaecher?wahl=zu&weiter=%2F%3Fq%3Drechnung")
 
-            # Die erste Nachricht öffnen – welche das ist, steht nicht
-            # fest, deshalb über den ersten Treffer gehen.
+            # **Zwei Bilder, zwei Wege zur selben Mail.** Seit dem
+            # 2026-11-04 führt ein Treffer nicht mehr auf eine eigene
+            # Seite, sondern holt die Nachricht neben die Liste. Die
+            # eigene Seite gibt es weiter – über »Ganze Seite« in der
+            # Vorschau –, und beide gehören abgebildet.
+            #
+            # Beide Male über den Link im Dokument statt über eine
+            # gebaute Adresse: Welche Mail der erste Treffer ist, steht
+            # nicht fest, und eine selbst zusammengesetzte Adresse
+            # prüfte nur meine Erinnerung an das Linkformat.
             ziel = knipser.ausfuehren(
                 "(function(){var a=document.querySelector('ol.treffer a');"
                 "return a ? a.getAttribute('href') : '';})()"
             )
             if ziel:
                 knipser.oeffnen(ziel)
-                knipser.ablegen("server-lesen")
+                knipser.ablegen("server-vorschau")
+
+                ganze = knipser.ausfuehren(
+                    "(function(){var a=document.querySelector("
+                    "'.vorschau .wege a');"
+                    "return a ? a.getAttribute('href') : '';})()"
+                )
+                if ganze:
+                    knipser.oeffnen(ganze)
+                    knipser.ablegen("server-lesen")
+                else:
+                    print("  (kein Weg zur ganzen Seite – Lesebild fehlt)")
             else:
                 print("  (keine Treffer – Lesebild übersprungen)")
 

@@ -200,10 +200,24 @@ class WebTest(unittest.TestCase):
         return kunde
 
     def _kennungen(self, kunde: Kunde, ausdruck: str = "") -> list[str]:
+        """Die Kennungen der Treffer, aus der Liste gelesen.
+
+        **Beide Linkformen**, und das ist kein Entgegenkommen: Seit dem
+        2026-11-04 führt ein Treffer zur Liste zurück und hängt seine
+        Kennung als ``zeigen`` an; die eigene Seite der Nachricht gibt
+        es weiter. Ein Regex auf genau eine Form hielte hier eine
+        Bauentscheidung fest statt der Sache – und machte sechzehn
+        Tests rot, die mit dem Linkziel nichts zu tun haben.
+        """
         import re
 
         seite = kunde.get(f"/?q={ausdruck}").text
-        return re.findall(r'/nachricht/([a-f0-9]{64})"', seite)
+        gefunden = re.findall(
+            r'(?:/nachricht/|zeigen=)([a-f0-9]{64})', seite
+        )
+        # Reihenfolge wie in der Liste, aber jede Kennung einmal: Ein
+        # Treffer kann künftig an zwei Stellen verlinkt sein.
+        return list(dict.fromkeys(gefunden))
 
     # -- Anmeldung ---------------------------------------------------------
 
@@ -876,7 +890,8 @@ class WebTest(unittest.TestCase):
 
         seite = anna.get("/").text
 
-        self.assertIn('class="zweispaltig"', seite)
+        self.assertIn('class="zweispaltig', seite)
+        self.assertNotIn("zweispaltig zu", seite)
         # Die Postfächer im Seitenteil, die Treffer im Hauptteil.
         seitenteil = seite.split("<aside>")[1].split("</aside>")[0]
         self.assertIn("buchhaltung", seitenteil)
@@ -933,7 +948,11 @@ class WebTest(unittest.TestCase):
 
         seite = anna.get("/").text
 
-        self.assertIn('class="zweispaltig zu"', seite)
+        # »zu« im Klassennamen, nicht der ganze Wert: Daneben kann
+        # »mitvorschau« stehen, und das hat mit der Postfachspalte
+        # nichts zu tun. Ein Wächter auf den vollständigen Wortlaut
+        # hielte hier eine Bauentscheidung fest statt der Sache.
+        self.assertIn("zweispaltig zu", seite)
         self.assertNotIn("<aside>", seite)
 
     def test_der_griff_schiebt_auf_und_wieder_zu(self):
@@ -952,6 +971,133 @@ class WebTest(unittest.TestCase):
         anna.get("/postfaecher?wahl=auf")
 
         self.assertIn("<aside>", anna.get("/?q=rechnung").text)
+
+    # -- Die Vorschau neben der Trefferliste -------------------------------
+
+    def test_ohne_auswahl_fordert_die_vorschau_zum_klicken_auf(self):
+        """**Eine leere Fläche sieht kaputt aus.**
+
+        Wer die Spalte zum ersten Mal sieht, soll wissen, wozu sie da
+        ist – ohne sie vorher angeklickt zu haben.
+        """
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/").text
+
+        self.assertIn('class="vorschau"', seite)
+        self.assertIn("Links eine Nachricht anklicken", seite)
+
+    def test_der_gewaehlte_treffer_steht_mit_text_daneben(self):
+        anna = self._als("anna", "ein-anderes-langes")
+        kennung = self._kennungen(anna, "mai")[0]
+
+        seite = anna.get(f"/?q=mai&zeigen={kennung}").text
+
+        vorschau = seite.split('class="vorschau"')[1]
+        self.assertIn("Rechnung Mai", vorschau)
+        self.assertIn("Der Text von Rechnung Mai.", vorschau)
+        self.assertIn("wer@example.org", vorschau)
+
+    def test_der_gewaehlte_treffer_bleibt_in_der_liste_erkennbar(self):
+        """Sonst weiß niemand, zu welchem Eintrag die Mail rechts gehört."""
+        anna = self._als("anna", "ein-anderes-langes")
+        kennung = self._kennungen(anna, "mai")[0]
+
+        liste = anna.get(f"/?q=mai&zeigen={kennung}").text.split(
+            'class="vorschau"')[0]
+
+        self.assertIn('class="offen"', liste)
+
+    def test_eine_fremde_mail_erscheint_nicht_in_der_vorschau(self):
+        """**Der Weg, auf dem eine Rechteprüfung am ehesten fehlt.**
+
+        Die eigene Seite der Nachricht ist gegen fremde Kennungen
+        abgesichert, seit es sie gibt. Die Vorschau ist ein zweiter Weg
+        zu demselben Inhalt – und genau so entstehen Lecks: zwei Wege,
+        einer geprüft, der andere nicht.
+        """
+        chef = self._als("chef", "ein-langes-passwort")
+        fremd = self._kennungen(chef, "vertraulich")
+        self.assertEqual(len(fremd), 1, "Testdaten stimmen nicht")
+
+        anna = self._als("anna", "ein-anderes-langes")
+        seite = anna.get(f"/?zeigen={fremd[0]}")
+
+        # Keine Fehlerseite: Die Liste steht da, nur ohne Vorschau.
+        # Ein unterscheidbares »dürfen Sie nicht« verriete, dass es
+        # diese Mail gibt.
+        self.assertEqual(seite.status_code, 200)
+        self.assertNotIn("Vertraulich", seite.text)
+        self.assertIn("Links eine Nachricht anklicken", seite.text)
+
+    def test_eine_kennung_die_es_nicht_gibt_bricht_die_liste_nicht(self):
+        """Sie kann aus einem alten Lesezeichen stammen."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        for unsinn in ("a" * 64, "schräg", "../../etc/passwd", ""):
+            with self.subTest(unsinn=unsinn):
+                seite = anna.get(f"/?zeigen={unsinn}")
+                self.assertEqual(seite.status_code, 200)
+                self.assertIn("Rechnung Mai", seite.text)
+
+    def test_ein_treffer_fuehrt_zur_liste_und_nicht_von_ihr_weg(self):
+        anna = self._als("anna", "ein-anderes-langes")
+        kennung = self._kennungen(anna, "mai")[0]
+
+        liste = anna.get("/?q=mai").text
+
+        self.assertIn(f"zeigen={kennung}", liste)
+
+    def test_die_anhaenge_stehen_auch_in_der_vorschau(self):
+        """Sonst müsste man für einen Anhang die ganze Seite öffnen."""
+        anna, kennung = self._mit_anhang()
+
+        seite = anna.get(f"/?q=hat:anhang&zeigen={kennung}").text
+
+        vorschau = seite.split('class="vorschau"')[1]
+        self.assertIn("Rechnung.pdf", vorschau)
+        self.assertIn(f"/nachricht/{kennung}/anhang/0", vorschau)
+
+    def test_aus_der_vorschau_fuehren_dieselben_wege_hinaus(self):
+        anna, kennung = self._mit_anhang()
+
+        vorschau = anna.get(f"/?q=hat:anhang&zeigen={kennung}").text.split(
+            'class="vorschau"')[1]
+
+        self.assertIn(f"/nachricht/{kennung}/oeffnen", vorschau)
+        self.assertIn(f"/nachricht/{kennung}/datei", vorschau)
+        self.assertIn(f'href="/nachricht/{kennung}"', vorschau)
+
+    def test_ohne_treffer_gibt_es_keine_vorschauspalte(self):
+        """Sie könnte dort nie etwas zeigen und nähme nur Platz weg."""
+        anna = self._als("anna", "ein-anderes-langes")
+
+        seite = anna.get("/?q=gibtesnicht").text
+
+        self.assertIn("nichts gefunden", seite)
+        self.assertNotIn('class="vorschau"', seite)
+        self.assertNotIn('class="weit"', seite)
+
+    def test_die_vorschau_zeigt_kein_html_der_mail(self):
+        """**Fremdes HTML bleibt Text.**
+
+        Ein Betreff und ein Mailtext kommen von einem Fremden. Würden
+        sie als HTML gelten, holte eine Mail mit ``<img>`` beim Lesen
+        ein Bild von einem fremden Server – und meldete dem Absender,
+        wann jemand seine alte Post durchsieht.
+        """
+        anna = self._als("anna", "ein-anderes-langes")
+        with Archive.open(self.wo) as a:
+            a.add(
+                _mail("<script>alert(1)</script>"),
+                account="buchhaltung", folder="INBOX",
+            )
+        kennung = self._kennungen(anna, "script")[0]
+
+        seite = anna.get(f"/?q=script&zeigen={kennung}").text
+
+        self.assertNotIn("<script>alert(1)</script>", seite)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", seite)
 
     def test_eine_unbekannte_wahl_schiebt_zu(self):
         """Der Wert kommt aus der Adresszeile – er darf alles sein."""
@@ -1089,6 +1235,60 @@ class WebTest(unittest.TestCase):
 
         self.assertEqual(kunde.get("/zustand").status_code, 200)
         self.assertEqual(kunde.get("/lebt").json(), {"lebt": True})
+
+
+class SuchadresseTest(unittest.TestCase):
+    """Die Adresse der Trefferliste – ohne Dienst, ohne Archiv.
+
+    Sie trägt den Suchausdruck, die Seitenzahl und die Kennung der
+    Vorschau. Jeder dieser Werte kommt von einem Menschen oder aus dem
+    Archiv und darf die Adresse nicht zerlegen.
+    """
+
+    def _adresse(self, *args, **kwargs) -> str:
+        from mailburg.server.seiten import _suchadresse
+
+        return _suchadresse(*args, **kwargs)
+
+    def test_eine_leere_suche_bleibt_kurz(self):
+        self.assertEqual(self._adresse(""), "/?q=")
+
+    def test_die_erste_seite_steht_nicht_in_der_adresse(self):
+        """Sie ist die Vorgabe – ``s=1`` wäre Ballast in jedem Link."""
+        self.assertEqual(self._adresse("rechnung"), "/?q=rechnung")
+        self.assertEqual(self._adresse("rechnung", 2), "/?q=rechnung&amp;s=2")
+
+    def test_ein_kaufmaennisches_und_zerlegt_die_adresse_nicht(self):
+        """**Der Fehler, der bis zum 2026-11-04 in den Blätterlinks stand.**
+
+        Dort stand ``html.escape`` statt ``quote``. Aus »Meier & Sohn«
+        wurde ``q=Meier &amp; Sohn`` – und der Browser las das ``&``
+        als Parametertrenner. Beim Blättern kam die Suche als »Meier«
+        an, und niemand konnte sich erklären, warum die zweite Seite
+        andere Treffer hatte als die erste.
+        """
+        adresse = self._adresse("Meier & Sohn", 2)
+
+        self.assertIn("%26", adresse)
+        # Genau ein Trenner, und der gehört zur Seitenzahl.
+        self.assertEqual(adresse.count("&amp;"), 1)
+        self.assertTrue(adresse.endswith("s=2"))
+
+    def test_auch_das_fragezeichen_und_das_gatter(self):
+        """``#`` schnitte den Rest der Adresse ab, ``?`` verdoppelte sie."""
+        adresse = self._adresse("was? #eilig")
+
+        self.assertNotIn("#", adresse)
+        self.assertEqual(adresse.count("?"), 1)
+
+    def test_die_kennung_haengt_hinten_an(self):
+        adresse = self._adresse("rechnung", 1, "a" * 64)
+
+        self.assertEqual(adresse, "/?q=rechnung&amp;zeigen=" + "a" * 64)
+
+    def test_ohne_kennung_steht_kein_leeres_zeigen_da(self):
+        """Ein ``zeigen=`` ohne Wert sähe aus wie ein Fehler."""
+        self.assertNotIn("zeigen", self._adresse("rechnung", 1, ""))
 
 
 @unittest.skipUnless(HAT_STARLETTE, "starlette fehlt")

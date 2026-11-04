@@ -865,8 +865,16 @@ class FadenLebensdauerTest(OberflaechenTest):
         self.assertFalse(laeufer.faden.isRunning())
 
 
-class FenstergroesseTest(OberflaechenTest):
-    """Der Assistent soll bei jedem Schritt gleich groß bleiben."""
+class AssistentengroesseTest(OberflaechenTest):
+    """Der Assistent soll bei jedem Schritt gleich groß bleiben.
+
+    **Hieß bis zum 2026-11-04 ebenfalls ``FenstergroesseTest``** – wie
+    die Klasse weiter unten. Python nimmt bei zwei gleichen Namen
+    stillschweigend die zweite, und damit liefen diese beiden Tests
+    monatelang nicht, ohne dass etwas rot wurde. Derselbe Fehler stand
+    schon am 2026-09-21 in CLAUDE.md; gefunden hat ihn diesmal ein
+    Wächter, nicht ein Mensch.
+    """
 
     def test_alle_schritte_gleich_gross(self):
         # Ein Fenster, das bei jedem "Weiter" springt, wirkt unfertig -
@@ -1449,6 +1457,111 @@ class FenstergroesseTest(OberflaechenTest):
         stand = gemerktes()
         self.assertEqual(stand["breite"], 1111)
         self.assertIn("archiv", stand)
+
+
+class VorschaurichtungTest(FenstergroesseTest):
+    """Ob die Vorschau zu sehen ist, und wo sie steht.
+
+    Beides war bis zum 2026-11-04 nicht einstellbar: Die Vorschau stand
+    fest unter der Trefferliste, und wer den Teiler zuzog, bekam sie nur
+    über »Fenster auf Standard zurücksetzen« wieder – einen Eintrag, auf
+    den niemand kommt, der eine verschwundene Vorschau sucht.
+    """
+
+    def test_zugezogen_laesst_sie_sich_wieder_einblenden(self):
+        """**Der eigentliche Befund.** Ohne Weg zurück ist sie weg."""
+        fenster = self._fenster()
+        fenster.senkrecht.setSizes([1000, 0])
+        self.assertFalse(fenster._vorschau_sichtbar())
+
+        fenster._vorschau_zeigen(True)
+
+        self.assertTrue(fenster._vorschau_sichtbar())
+
+    def test_der_haken_liest_den_wirklichen_zustand(self):
+        """**Was gewählt ist und was gilt, sind zwei Dinge.**
+
+        Der Teiler lässt sich mit der Maus zuziehen, ohne dass jemand
+        das Menü anfasst. Ein Haken, der nur das letzte Anklicken
+        wiedergibt, zeigte danach etwas anderes als das Fenster.
+        """
+        fenster = self._fenster()
+
+        fenster.senkrecht.setSizes([1000, 0])
+        fenster._ansichtshaken_richten()
+        self.assertFalse(fenster.vorschau_zeigen_aktion.isChecked())
+
+        fenster.senkrecht.setSizes([600, 400])
+        fenster._ansichtshaken_richten()
+        self.assertTrue(fenster.vorschau_zeigen_aktion.isChecked())
+
+    def test_ohne_vorschau_ist_die_richtung_nicht_waehlbar(self):
+        """Eine Einstellung ohne Wirkung gehört nicht anklickbar."""
+        fenster = self._fenster()
+
+        fenster.senkrecht.setSizes([1000, 0])
+        fenster._ansichtshaken_richten()
+
+        self.assertFalse(fenster.vorschau_rechts_aktion.isEnabled())
+
+    def test_rechts_dreht_den_teiler_und_laesst_der_liste_weniger(self):
+        from PySide6.QtCore import Qt
+
+        fenster = self._fenster()
+        self.assertEqual(fenster.senkrecht.orientation(), Qt.Vertical)
+
+        fenster._vorschau_rechts(True)
+
+        self.assertEqual(fenster.senkrecht.orientation(), Qt.Horizontal)
+        liste, vorschau = fenster.senkrecht.sizes()
+        self.assertLess(liste, vorschau, "die Liste soll das kleinere Feld sein")
+
+    def test_und_zurueck_nach_unten(self):
+        from PySide6.QtCore import Qt
+
+        fenster = self._fenster()
+        fenster._vorschau_rechts(True)
+
+        fenster._vorschau_rechts(False)
+
+        self.assertEqual(fenster.senkrecht.orientation(), Qt.Vertical)
+
+    def test_die_richtung_ueberlebt_den_neustart(self):
+        """Wer die Vorschau nach rechts stellt, findet sie dort wieder.
+
+        **Dass das von selbst geht, ist eine Messung und keine
+        Annahme.** Ich hatte dafür einen eigenen Eintrag gebaut, im
+        Glauben, ``QSplitter.saveState`` halte nur die Größen fest. Die
+        Gegenprobe zeigte, dass der Test auch ohne ihn grün blieb –
+        Qt nimmt die Richtung mit. Der Eintrag ist wieder draußen, der
+        Test bleibt: Er prüft die Sache und nicht den Weg dorthin.
+        """
+        from PySide6.QtCore import Qt
+
+        fenster = self._fenster()
+        fenster._vorschau_rechts(True)
+        fenster._groesse_merken()
+
+        wieder = self._fenster()
+
+        self.assertEqual(wieder.senkrecht.orientation(), Qt.Horizontal)
+
+    def test_auf_standard_zuruecksetzen_behaelt_die_richtung(self):
+        """Wo die Vorschau steht, ist eine Wahl und keine verrutschte Zahl.
+
+        Zurückgesetzt werden Größe und Aufteilung. Wer die Richtung
+        ändern will, hat den Menüpunkt daneben.
+        """
+        from PySide6.QtCore import Qt
+
+        fenster = self._fenster()
+        fenster._vorschau_rechts(True)
+
+        fenster._standardansicht()
+
+        self.assertEqual(fenster.senkrecht.orientation(), Qt.Horizontal)
+        liste, vorschau = fenster.senkrecht.sizes()
+        self.assertLess(liste, vorschau)
 
 
 class StandardansichtTest(FenstergroesseTest):

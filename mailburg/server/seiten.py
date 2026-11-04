@@ -12,10 +12,26 @@ den ein Fremder geschrieben hat – er darf niemals als HTML gelten.
 from __future__ import annotations
 
 import html
-from typing import Any
+from typing import Any, NamedTuple
 
 from mailburg import __version__
 from mailburg.core import sprache
+
+
+class Nachrichtenteile(NamedTuple):
+    """Was eine Nachricht zum Anzeigen braucht.
+
+    Zweimal gebraucht – für die eigene Seite und für die Vorschau
+    neben der Trefferliste – und deshalb einmal zusammengestellt.
+    Gefüllt wird sie in :mod:`mailburg.server.lesen`.
+    """
+
+    kennung: str
+    kopf: dict[str, Any]
+    text: str
+    anhaenge: tuple
+    verlauf: tuple
+
 
 #: Die drei Einstellungen für die Helligkeit.
 #:
@@ -165,11 +181,49 @@ _KOPF = """<!doctype html>
   /* Zugeschoben gibt es keine zweite Spalte: Die Treffer bekommen die
      ganze Breite, der Griff sitzt neben der Trefferzahl. */
   .zweispaltig.zu {{ grid-template-columns: 1fr; }}
+  /* **Mit Vorschau: ein Drittel Liste, zwei Drittel Mail.** Stephans
+     Maß vom 2026-11-04, und es trifft die Sache - eine Mail ist hoch
+     und breit, eine Trefferzeile braucht nur den Betreff. Wie in
+     MailStore, das die Mitarbeiter kennen.
+     Die Postfachspalte startet zugeschoben; wer sie aufklappt, nimmt
+     den Platz von der Liste, nicht von der Vorschau. */
+  .zweispaltig.mitvorschau {{ grid-template-columns:
+                              minmax(11rem, 15rem) 1fr 2fr; }}
+  .zweispaltig.zu.mitvorschau {{ grid-template-columns: 1fr 2fr; }}
   /* Auf einem schmalen Bildschirm untereinander: Zwei Spalten à 50 %
-     wären dort zwei zu schmale Spalten. */
+     wären dort zwei zu schmale Spalten. Mit Vorschau gilt das erst
+     recht - und sie steht dann unter der Liste, wo man sie nach dem
+     Klick erwartet. */
   @media (max-width: 55rem) {{
-    .zweispaltig, .zweispaltig.zu {{ grid-template-columns: 1fr; }}
+    .zweispaltig, .zweispaltig.zu,
+    .zweispaltig.mitvorschau, .zweispaltig.zu.mitvorschau
+      {{ grid-template-columns: 1fr; }}
   }}
+  /* **Breiter nur, wenn die Vorschau danebensteht.** 78 rem sind für
+     eine Trefferliste allein das Richtige - eine Zeile, die über einen
+     ganzen 27-Zoll-Bildschirm läuft, liest niemand gern. Daneben eine
+     Mail, und der Platz wird gebraucht. */
+  main.weit {{ max-width: 110rem; }}
+  /* **Die Vorschau rollt für sich.** Sonst schiebt eine lange Mail die
+     Trefferliste aus dem Bild, und der nächste Klick beginnt mit
+     Scrollen. Die Höhe richtet sich nach dem Fenster, nicht nach dem
+     Inhalt. */
+  .vorschau {{ border-left: 1px solid #d6dde8; padding-left: 1.5rem;
+               max-height: calc(100vh - 12rem); overflow-y: auto;
+               min-width: 0; }}
+  @media (max-width: 55rem) {{
+    .vorschau {{ border-left: none; border-top: 1px solid #d6dde8;
+                 padding-left: 0; padding-top: 1rem; max-height: none; }}
+  }}
+  .vorschau h2 {{ margin: 0 0 .8rem; font-size: 1.15rem; }}
+  .vorschau dl.kopf {{ margin-bottom: 1rem; font-size: .92rem; }}
+  .vorschau .wege {{ margin: 1rem 0; }}
+  .vorschau .wege a {{ padding: .35rem .7rem; font-size: .9rem; }}
+  /* Der gewählte Treffer bleibt sichtbar, auch wenn die Maus weiterzieht -
+     sonst weiß niemand, wozu die Mail rechts gehört. */
+  ol.treffer a.offen {{ background: rgba(198, 40, 40, .12);
+                        box-shadow: inset 3px 0 0 var(--marke); }}
+  .vorschau .leer {{ padding: 1rem 0; }}
   /* **``min-width: 0`` auf beiden Seiten.** Ein Grid-Feld wird sonst
      nie schmaler als sein längstes unteilbares Wort - und eine
      Mailadresse wie »buchhaltung@beispielfirma.example« ist für den
@@ -441,7 +495,7 @@ def werkzeugleiste(hier: str, ausdruck: str = "", zusatz=()) -> str:
 
 
 def _rahmen(titel: str, inhalt: str, benutzer=None, thema: str = "system",
-            hier: str = "/") -> str:
+            hier: str = "/", weit: bool = False) -> str:
     if benutzer is not None:
         wer = (
             f'<span class="wer">{html.escape(benutzer.anzeigename or benutzer.name)}'
@@ -452,6 +506,12 @@ def _rahmen(titel: str, inhalt: str, benutzer=None, thema: str = "system",
         # gibt es keine Werkzeugleiste, und wer schlecht liest, soll die
         # Helligkeit umstellen können, *bevor* er ein Passwort eintippt.
         wer = f'<span class="wer">{_themenwahl(thema, hier)}</span>'
+    # **Als eigene Variable, nicht im f-string.** Ein Backslash im
+    # Ausdrucksteil ist erst ab Python 3.12 erlaubt (PEP 701); auf 3.11,
+    # der ältesten Fassung, die wir bewerben, ließe sich das Modul dann
+    # nicht einmal importieren. Genau daran startete am 2026-10-01 die
+    # ganze Weboberfläche dort nicht.
+    breite = ' class="weit"' if weit else ""
     # **Das Wappen mit fester Größe im Markup, nicht nur im Stylesheet.**
     # Sonst springt die Kopfzeile, während das Bild noch lädt – und beim
     # ersten Aufruf springt sie bei jedem Anwender.
@@ -464,7 +524,7 @@ def _rahmen(titel: str, inhalt: str, benutzer=None, thema: str = "system",
         f'height="28" alt="">'
         f'<span class="name">MailBurg '
         f'<span class="marke">SERVER</span></span>{wer}</header>\n'
-        f"<main>{inhalt}</main>\n"
+        f"<main{breite}>{inhalt}</main>\n"
         + _FUSS.format(
             fassung=html.escape(__version__), quelle=QUELLE,
             aenderungen=html.escape(aenderungen(__version__)),
@@ -618,6 +678,21 @@ def hilfeseite(benutzer=None, thema: str = "system") -> str:
    Absender, Empfänger und in den Anhängen. Wer genauer sucht, schreibt
    es dazu; die ausführliche Suche setzt dieselben Ausdrücke aus
    Feldern zusammen.</p>
+
+<h2>Die Mail steht gleich daneben</h2>
+<p>Ein Klick auf einen Treffer öffnet die Nachricht <b>rechts neben der
+   Liste</b> – die Treffer bleiben stehen, Sie können sich also durch
+   sie hindurcharbeiten, ohne jedes Mal zurückzugehen. Der Eintrag, der
+   gerade rechts steht, ist in der Liste hervorgehoben.</p>
+<p>In der Vorschau stehen Absender, Empfänger, Datum, die Anhänge zum
+   Herunterladen und der Text. Wer mehr braucht – den Gesprächsverlauf
+   etwa oder eine Seite zum Ausdrucken –, klickt dort auf <b>Ganze
+   Seite</b>. Auf einem schmalen Bildschirm steht die Nachricht statt
+   daneben darunter.</p>
+<p><b>Bilder aus der Mail werden nicht geladen</b>, auch wenn sie
+   darin stehen. Das ist Absicht: Ein nachgeladenes Bild meldete dem
+   Absender, wann jemand seine Post durchsieht. Angezeigt wird der
+   Text.</p>
 
 <h2>In welchen Postfächern suche ich?</h2>
 <p>In allen, die Sie sehen dürfen – ohne dass Sie etwas tun müssen.
@@ -851,7 +926,8 @@ def quoten_wenn_noetig(wert: str) -> str:
     return quoten(wert)
 
 
-def _zeile(treffer) -> str:
+def _zeile(treffer, ausdruck: str = "", seite_nr: int = 1,
+           offen: str = "") -> str:
     """Ein Treffer: Absender und Datum oben, Betreff darunter.
 
     **Zweizeilig statt vier Spalten.** So zeigt es MailStore, und die
@@ -867,6 +943,11 @@ def _zeile(treffer) -> str:
     **Der ganze Eintrag ist der Link**, nicht nur der Betreff. Ein
     Klickziel von zwei Zeilen Höhe trifft man auch mit einer Maus, die
     nicht mehr ganz jung ist.
+
+    **Der Link bleibt auf der Trefferliste**, statt auf die eigene
+    Seite der Nachricht zu führen: Er hängt die Kennung als ``zeigen``
+    an dieselbe Adresse, und die Mail erscheint daneben. Wer die ganze
+    Seite will, kommt über die Vorschau dorthin.
     """
     from mailburg.core import sprache as s
 
@@ -875,13 +956,37 @@ def _zeile(treffer) -> str:
     absender = treffer.from_name or treffer.from_addr or ""
     klammer = ' <span class="klammer">📎</span>' if treffer.has_attachments else ""
     betreff = treffer.subject or "(ohne Betreff)"
+    jetzt = ' class="offen"' if treffer.hash == offen else ""
     return (
-        f'<li><a href="/nachricht/{html.escape(treffer.hash)}">'
+        f'<li><a href="{_suchadresse(ausdruck, seite_nr, treffer.hash)}"{jetzt}>'
         f'<span class="wer">{html.escape(absender)}</span>'
         f'<span class="wann">{html.escape(datum)}</span>'
         f'<span class="was">{html.escape(betreff)}{klammer}</span>'
         f"</a></li>"
     )
+
+
+def _suchadresse(ausdruck: str, seite_nr: int = 1, zeigen: str = "") -> str:
+    """Die Adresse der Trefferliste, mit allem, was ihren Zustand ausmacht.
+
+    **Mit ``quote``, nicht mit ``html.escape``.** Die beiden sehen
+    verwandt aus und tun Verschiedenes. ``escape`` macht aus einem
+    ``&`` ein ``&amp;`` – für den Browser bleibt das ein
+    Parametertrenner, und die Suche nach »Meier & Sohn« kam beim
+    Blättern als »Meier« an. ``quote`` macht daraus ``%26``. Genau so
+    stand es bis zum 2026-11-04 in den Blätterlinks.
+    """
+    from urllib.parse import quote
+
+    teile = [f"q={quote(ausdruck)}"]
+    if seite_nr > 1:
+        teile.append(f"s={seite_nr}")
+    if zeigen:
+        teile.append(f"zeigen={quote(zeigen)}")
+    # ``&amp;`` und nicht ``&``: Das hier landet in einem
+    # HTML-Attribut, und dort ist ein nacktes ``&`` der Anfang einer
+    # Entität. Der Browser liest beides gleich, ein Prüfprogramm nicht.
+    return "/?" + "&amp;".join(teile)
 
 
 def ergebniszeile(gesamt: int, ausdruck: str, im_archiv: int = 0) -> str:
@@ -927,7 +1032,7 @@ def ergebniszeile(gesamt: int, ausdruck: str, im_archiv: int = 0) -> str:
 def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
                  seite_nr: int, je_seite: int, postfaecher=None,
                  thema: str = "system", spalte: str = "zu",
-                 im_archiv: int = 0) -> str:
+                 im_archiv: int = 0, vorschau=None) -> str:
     """Die Suchseite mit ihrer Trefferliste.
 
     ``postfaecher`` sind die, die dieser Benutzer sehen darf, mit ihrer
@@ -937,6 +1042,11 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
 
     ``spalte`` ist ``auf`` oder ``zu``. Zugeschoben bleibt nur der
     Griff stehen, und die Treffer bekommen die ganze Breite.
+
+    ``vorschau`` ist eine :class:`Nachrichtenteile` oder ``None`` – die
+    Mail, die rechts neben der Liste steht. Die Spalte dafür erscheint
+    nur, wenn es überhaupt Treffer gibt; auf einer leeren Seite nähme
+    sie Platz weg, ohne je etwas zeigen zu können.
     """
     # **Der Griff nur, wenn es etwas zu zeigen gibt.** Wer genau ein
     # Postfach sehen darf, braucht keine Spalte mit einem Eintrag –
@@ -950,7 +1060,11 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
     )
 
     if treffer:
-        zeilen = "".join(_zeile(t) for t in treffer)
+        zeilen = "".join(
+            _zeile(t, ausdruck, seite_nr,
+                   vorschau.kennung if vorschau else "")
+            for t in treffer
+        )
         tabelle = f'<ol class="treffer">{zeilen}</ol>'
     elif ausdruck:
         tabelle = '<p class="leer">MailBurg hat nichts gefunden.</p>'
@@ -967,15 +1081,18 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
     blaettern = ""
     if seiten > 1:
         stellen = []
+        # **Ohne ``zeigen``.** Die Vorschau gehört zu einer Mail dieser
+        # Seite; auf der nächsten stünde sie neben einer Liste, in der
+        # ihr Treffer gar nicht vorkommt.
         if seite_nr > 1:
             stellen.append(
-                f'<a href="/?q={html.escape(ausdruck)}&s={seite_nr - 1}">'
+                f'<a href="{_suchadresse(ausdruck, seite_nr - 1)}">'
                 f"← zurück</a>"
             )
         stellen.append(f"<span>Seite {seite_nr} von {seiten}</span>")
         if seite_nr < seiten:
             stellen.append(
-                f'<a href="/?q={html.escape(ausdruck)}&s={seite_nr + 1}">'
+                f'<a href="{_suchadresse(ausdruck, seite_nr + 1)}">'
                 f"weiter →</a>"
             )
         blaettern = f'<div class="blaettern">{"".join(stellen)}</div>'
@@ -986,6 +1103,16 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
     # über der Tabelle wuchs sie außerdem mit jedem Postfach in die
     # Breite – bei den sechzig eines Firmenarchivs wäre daraus ein Block
     # geworden, der die Treffer nach unten schiebt.
+    # Die Vorschauspalte gibt es nur, solange links etwas steht, das
+    # sich anklicken lässt.
+    mit_vorschau = bool(treffer)
+    vorschaubereich = _vorschauspalte(vorschau) if mit_vorschau else ""
+    klassen = "zweispaltig"
+    if not offen:
+        klassen += " zu"
+    if mit_vorschau:
+        klassen += " mitvorschau"
+
     return _rahmen("Suchen – MailBurg", f"""
 {werkzeugleiste("/", ausdruck)}
 <form class="suche" method="get" action="/">
@@ -993,7 +1120,7 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
          placeholder="Suchen … z. B. rechnung · von:müller · jahr:2025">
   <button type="submit">Suchen</button>
 </form>
-<div class="zweispaltig{'' if offen else ' zu'}">
+<div class="{klassen}">
   {spaltenbereich}
   <section>
     <p class="ergebnis">{griff}{html.escape(ergebnis)}
@@ -1002,8 +1129,73 @@ def trefferliste(benutzer, ausdruck: str, treffer, gesamt: int,
     {tabelle}
     {blaettern}
   </section>
+  {vorschaubereich}
 </div>
-""", benutzer, thema=thema, hier="/")
+""", benutzer, thema=thema, hier="/", weit=mit_vorschau)
+
+
+def _vorschauspalte(teile) -> str:
+    """Die Mail neben der Trefferliste – oder die Aufforderung, eine zu wählen.
+
+    **Dieselben Bausteine wie die eigene Seite der Nachricht.** Kopf
+    und Anhangsliste kommen aus denselben Funktionen; sonst liefen die
+    beiden Darstellungen mit der Zeit auseinander, und niemand merkte
+    es, weil beide für sich richtig aussähen.
+
+    **Nur der Text, kein HTML der Mail** – wie im Fenster. Fremdes HTML
+    lädt Bilder von fremden Servern nach und meldet dem Absender damit,
+    wann jemand seine alte Post durchsieht. Die Begründung steht
+    ausführlich im Kopf von ``ui/vorschau.py``.
+    """
+    # **``article``, nicht ``aside``.** Die Mail ist der Inhalt, nach
+    # dem jemand gesucht hat, und kein Beiwerk am Rand – ``aside``
+    # gehört der Postfachspalte. Vorlesewerkzeuge machen den
+    # Unterschied hörbar.
+    if teile is None:
+        return (
+            '<article class="vorschau"><p class="leer">Links eine Nachricht '
+            "anklicken, dann steht sie hier.</p></article>"
+        )
+
+    kennung = html.escape(teile.kennung)
+    betreff = str(teile.kopf.get("Betreff") or "(ohne Betreff)")
+    return f"""<article class="vorschau">
+<h2>{html.escape(betreff)}</h2>
+<dl class="kopf">{_kopfzeilen(teile.kopf)}</dl>
+{_anhangsliste(teile.anhaenge, teile.kennung)}
+<p class="wege">
+   <a href="/nachricht/{kennung}">Ganze Seite</a>
+   <a href="/nachricht/{kennung}/oeffnen">Im Mailprogramm öffnen</a>
+   <a href="/nachricht/{kennung}/datei">Als Datei speichern (.eml)</a>
+</p>
+<hr>
+<pre class="text">{html.escape(teile.text)}</pre>
+</article>"""
+
+
+def _kopfzeilen(kopf: dict[str, Any]) -> str:
+    """Von, An, Datum, Betreff, Größe – was gefüllt ist."""
+    return "".join(
+        f"<dt>{html.escape(k)}</dt><dd>{html.escape(str(v))}</dd>"
+        for k, v in kopf.items() if v
+    )
+
+
+def _anhangsliste(anhaenge, kennung: str) -> str:
+    """Die Anhänge zum Herunterladen, mit Name und Größe."""
+    if not anhaenge:
+        return ""
+    stuecke = "".join(
+        f'<li><a href="/nachricht/{html.escape(kennung)}/anhang/{nummer}">'
+        f"{html.escape(stueck.filename or f'Anhang {nummer + 1}')}</a>"
+        f"<span> · {html.escape(sprache.groesse(stueck.size))}</span></li>"
+        for nummer, stueck in enumerate(anhaenge)
+    )
+    return (
+        f'<div class="anhaenge"><h2>'
+        f"{html.escape(sprache.anzahl(len(anhaenge), 'Anhang', 'Anhänge'))}"
+        f"</h2><ul>{stuecke}</ul></div>"
+    )
 
 
 def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
@@ -1090,27 +1282,14 @@ def suchmaske(benutzer, werte: dict[str, str], konten, ordner,
 
 def nachricht(benutzer, kopf: dict[str, Any], text: str, kennung: str,
               anhaenge=(), verlauf=(), thema: str = "system") -> str:
-    """Eine einzelne Nachricht, mit ihren Anhängen zum Herunterladen."""
-    zeilen = "".join(
-        f"<dt>{html.escape(k)}</dt><dd>{html.escape(str(v))}</dd>"
-        for k, v in kopf.items() if v
-    )
+    """Eine einzelne Nachricht, mit ihren Anhängen zum Herunterladen.
 
-    if anhaenge:
-        stuecke = "".join(
-            f'<li><a href="/nachricht/{html.escape(kennung)}/anhang/{nummer}">'
-            f"{html.escape(stueck.filename or f'Anhang {nummer + 1}')}</a>"
-            f"<span> · {html.escape(sprache.groesse(stueck.size))}</span></li>"
-            for nummer, stueck in enumerate(anhaenge)
-        )
-        anhangsliste = (
-            f'<div class="anhaenge"><h2>'
-            f"{html.escape(sprache.anzahl(len(anhaenge), 'Anhang', 'Anhänge'))}"
-            f"</h2><ul>{stuecke}</ul></div>"
-        )
-    else:
-        anhangsliste = ""
-
+    **Kopf und Anhänge kommen aus denselben Funktionen wie die
+    Vorschau** neben der Trefferliste – zwei Darstellungen desselben,
+    aus einer Quelle.
+    """
+    zeilen = _kopfzeilen(kopf)
+    anhangsliste = _anhangsliste(anhaenge, kennung)
     gespraech = _verlauf(verlauf, kennung)
     # **Die zwei Wege aus der Nachricht stehen oben in der Leiste.**
     # Wie in MailStore, wo »E-Mail öffnen« und »E-Mail wiederherstellen«

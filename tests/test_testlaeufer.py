@@ -206,5 +206,44 @@ class EntdeckenTest(unittest.TestCase):
                    ausgabe=io.StringIO()), 1)
 
 
+class EindeutigeKlassennamenTest(unittest.TestCase):
+    """Zwei Testklassen gleichen Namens in einer Datei.
+
+    **Python meldet das nicht.** Die zweite Zuweisung überschreibt die
+    erste stillschweigend, und alle Tests in der ersten laufen nie
+    wieder – ohne dass etwas rot wird oder die Zahl der Tests
+    auffällig einbricht.
+
+    Zweimal passiert: am 2026-09-21 mit vier Tests, am 2026-11-04
+    erneut mit zweien (``FenstergroesseTest`` stand in ``test_ui.py``
+    zweimal da). Beim zweiten Mal fiel es nur auf, weil eine
+    Gegenprobe an einer ganz anderen Stelle nicht rot wurde.
+
+    **Deshalb ein Wächter und kein Merksatz.** Eine Regel, deren
+    Einhaltung von Aufmerksamkeit abhängt, gilt irgendwann nicht mehr
+    – und meldet dabei weiter grün.
+    """
+
+    def test_keine_testdatei_vergibt_einen_namen_zweimal(self):
+        import ast
+        import collections
+
+        befunde = []
+        for datei in sorted(WURZEL.joinpath("tests").glob("test_*.py")):
+            baum = ast.parse(datei.read_text(encoding="utf-8"))
+            oben = [k for k in baum.body if isinstance(k, ast.ClassDef)]
+            haeufig = collections.Counter(k.name for k in oben)
+            for name, wieoft in sorted(haeufig.items()):
+                if wieoft > 1:
+                    zeilen = [k.lineno for k in oben if k.name == name]
+                    befunde.append(f"{datei.name}: {name} in Zeile {zeilen}")
+
+        self.assertEqual(
+            befunde, [],
+            "Gleichnamige Klassen in einer Datei – die erste läuft nie:\n"
+            + "\n".join(befunde),
+        )
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

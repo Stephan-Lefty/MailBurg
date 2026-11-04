@@ -9,6 +9,53 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- **Im Browser steht die Nachricht jetzt neben der Trefferliste.** Ein
+  Klick auf einen Treffer holt die Mail nach rechts, statt die Liste zu
+  verlassen – mit Absender, Empfänger, Datum, den Anhängen zum
+  Herunterladen und dem Text. Der Eintrag, der gerade rechts steht, ist
+  in der Liste hervorgehoben. So arbeitet man sich durch die Treffer,
+  statt nach jeder gelesenen Nachricht zurückzugehen.
+
+  Links ein Drittel, rechts zwei Drittel; auf einem schmalen Bildschirm
+  steht die Mail darunter. **Ohne JavaScript**, wie alles dort: Die
+  Auswahl hängt an der Adresse, deshalb wirken Zurück-Taste,
+  Lesezeichen und ein weitergeschickter Link unverändert. Die eigene
+  Seite der Nachricht gibt es weiter, über *Ganze Seite*.
+
+  Angeregt von einem Mitarbeiter, der MailBurg im Browser benutzt, mit
+  MailStore als Vorbild.
+
+- **Im Fenster: »Ansicht → Vorschau rechts«.** Wer es so haben will wie
+  im Browser, stellt die Vorschau neben die Trefferliste statt darunter.
+  Die Vorgabe bleibt unten – die Tabelle dort hat fünf Spalten, und in
+  einem Drittel der Fensterbreite bliebe vom Betreff wenig übrig.
+
+### Behoben
+
+- **Eine zugezogene Vorschau ließ sich nicht wieder einblenden.** Der
+  Teiler zwischen Trefferliste und Vorschau geht bis auf null, und
+  dieser Zustand wurde beim Beenden gespeichert. Zurück kam sie nur
+  über *Fenster auf Standard zurücksetzen* – einen Eintrag, auf den
+  niemand kommt, der eine verschwundene Vorschau sucht. Jetzt gibt es
+  *Ansicht → Vorschau anzeigen*, und der Haken liest den tatsächlichen
+  Zustand statt des letzten Anklickens.
+
+- **Ein »&« im Suchausdruck zerlegte die Adresse beim Blättern.** In den
+  Blätterlinks stand `html.escape` statt `quote`; aus »Meier & Sohn«
+  wurde `q=Meier &amp; Sohn`, und der Browser las das `&` als
+  Parametertrenner. Auf Seite 2 kam die Suche als »Meier« an – mit
+  anderen Treffern und ohne erkennbaren Grund. Dasselbe galt für `#`
+  und `?`.
+
+- **Zwei Testklassen hießen gleich, und die erste lief nie.** Python
+  überschreibt bei gleichem Namen stillschweigend; zwei Tests waren
+  damit außer Betrieb, ohne dass etwas rot wurde. Derselbe Fehler steht
+  schon unter dem 21.09.2026. Dagegen gibt es jetzt einen Wächter –
+  eine Regel, deren Einhaltung von Aufmerksamkeit abhängt, gilt
+  irgendwann nicht mehr und meldet dabei weiter grün.
+
 ## [1.8.4] – 2026-11-01
 
 ### Geändert

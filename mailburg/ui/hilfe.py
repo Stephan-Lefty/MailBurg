@@ -1286,6 +1286,18 @@ def kapitel() -> list[Kapitel]:
                    "Größe und Aufteilung so, wie MailBurg das erste Mal "
                    "aufging. Ihre gespeicherte eigene Ansicht bleibt dabei "
                    "erhalten.")
+            + _menue("Ansicht → Vorschau anzeigen",
+                     "Blendet die gewählte Nachricht ein oder zu. Der Haken "
+                     "zeigt, wie es gerade steht – auch wenn Sie den Teiler "
+                     "mit der Maus zugezogen haben. So kommt die Vorschau "
+                     "wieder zurück.")
+            + _menue("Ansicht → Vorschau rechts",
+                     "Stellt die Nachricht neben die Trefferliste statt "
+                     "darunter – so, wie es MailBurg im Browser zeigt. Die "
+                     "Liste bekommt dann ein Drittel der Breite; ihre "
+                     "Spalten rücken enger zusammen. Ohne Haken steht die "
+                     "Vorschau unter der Liste, und die Spalten haben die "
+                     "volle Breite.")
             + _menue("Ansicht → Schrift größer (Strg++)",
                      "Vergrößert die Schrift im ganzen Fenster. Auf einem "
                      "kleinen Bildschirm ist die Vorgabe vieler "

@@ -257,10 +257,27 @@ def routen(lage, sitzungen):
                 offset=(seite_nr - 1) * JE_SEITE,
                 sicht=blick,
             )
+
+            # **Die Vorschau hängt an der Adresse, nicht an einem
+            # Klickzustand im Browser.** Damit funktionieren die
+            # Zurück-Taste, ein Lesezeichen und ein weitergeschickter
+            # Link – und es bleibt bei dem einen Skript für den
+            # Ladehinweis, das die Weboberfläche bisher hat.
+            #
+            # Eine unbekannte Kennung ist kein Fehler: Sie kann aus
+            # einem alten Lesezeichen stammen oder auf eine Mail
+            # zeigen, die dieser Benutzer nicht sehen darf. Die Liste
+            # steht dann ohne Vorschau da, wie vor dem ersten Klick.
+            zeigen = anfrage.query_params.get("zeigen", "").strip()
+            vorschau = (
+                _nachricht_teile(archiv, benutzer, zeigen) if zeigen else None
+            )
+
             return HTMLResponse(seiten.trefferliste(
                 benutzer, ausdruck, treffer, gesamt, seite_nr, JE_SEITE,
                 postfaecher=archiv.index.account_totals(sicht=blick),
                 thema=_thema(anfrage), spalte=_spalte(anfrage),
+                vorschau=vorschau,
                 # **Ohne Sicht, und das ist eine Entscheidung.**
                 # Überall sonst gilt: Was jemand nicht sehen darf,
                 # taucht in keiner Zahl auf – schon eine Trefferzahl
@@ -328,6 +345,52 @@ def routen(lage, sitzungen):
         """
         return archiv.index.nachricht(kennung, sicht=Sicht.fuer(benutzer))
 
+    def _nachricht_teile(archiv, benutzer, kennung: str):
+        """Alles, was eine Nachricht zum Anzeigen braucht – oder ``None``.
+
+        **An einer Stelle, weil es zwei Anzeigen gibt.** Die eigene
+        Seite und die Vorschau neben der Trefferliste zeigen dieselbe
+        Mail; stünden die Kopfzeilen zweimal im Code, liefen sie
+        auseinander. Genau so entstand am 2026-09-07 der Anhang, der
+        sich zweimal öffnete: zwei Wege, einer nachgezogen, der andere
+        nicht.
+
+        ``None`` heißt »gibt es nicht oder darf dieser Benutzer nicht
+        sehen« – ununterscheidbar, und das ist Absicht.
+        """
+        from mailburg.extract.message import parse
+
+        treffer = _sichtbarer_treffer(archiv, benutzer, kennung)
+        if treffer is None:
+            return None
+
+        # Ohne ``with_payloads``: Für Kopf, Text und die Liste der
+        # Anhänge genügen deren Namen und Größen. Eine Mail mit einem
+        # 40-MB-Anhang soll nicht bei jedem Blick im Speicher liegen.
+        zerlegt = parse(archiv.store.get(treffer.hash, treffer.bucket))
+        absender = treffer.from_name or ""
+        if treffer.from_addr:
+            absender = (
+                f"{absender} <{treffer.from_addr}>" if absender
+                else treffer.from_addr
+            )
+        return seiten.Nachrichtenteile(
+            kennung=kennung,
+            kopf={
+                "Von": absender,
+                "An": ", ".join(zerlegt.to_addrs),
+                "Datum": sprache.zeitpunkt(treffer.date or ""),
+                "Betreff": treffer.subject,
+                "Größe": sprache.groesse(treffer.size),
+            },
+            text=zerlegt.body or "",
+            anhaenge=zerlegt.attachments,
+            # Mit derselben Sicht: Ein Gespräch kann über mehrere
+            # Postfächer laufen, und wer nur eines sehen darf, bekommt
+            # auch nur die Teile daraus.
+            verlauf=archiv.index.verlauf(kennung, sicht=Sicht.fuer(benutzer)),
+        )
+
     async def nachricht(anfrage):
         kennung = anfrage.path_params["kennung"]
         with _archiv(lage) as archiv:
@@ -335,8 +398,8 @@ def routen(lage, sitzungen):
             if benutzer is None:
                 return _weiter_zur_anmeldung()
 
-            treffer = _sichtbarer_treffer(archiv, benutzer, kennung)
-            if treffer is None:
+            teile = _nachricht_teile(archiv, benutzer, kennung)
+            if teile is None:
                 # **Dieselbe Antwort wie »gibt es nicht«.** Ein
                 # unterscheidbares »dürfen Sie nicht« verriete, dass es
                 # sie gibt.
@@ -351,30 +414,10 @@ def routen(lage, sitzungen):
                     status_code=404,
                 )
 
-            from mailburg.extract.message import parse
-
-            rohdaten = archiv.store.get(treffer.hash, treffer.bucket)
-            zerlegt = parse(rohdaten)
-            absender = treffer.from_name or ""
-            if treffer.from_addr:
-                absender = (
-                    f"{absender} <{treffer.from_addr}>" if absender
-                    else treffer.from_addr
-                )
-            kopf = {
-                "Von": absender,
-                "An": ", ".join(zerlegt.to_addrs),
-                "Datum": sprache.zeitpunkt(treffer.date or ""),
-                "Betreff": treffer.subject,
-                "Größe": sprache.groesse(treffer.size),
-            }
             return HTMLResponse(seiten.nachricht(
-                benutzer, kopf, zerlegt.body or "", kennung,
-                anhaenge=zerlegt.attachments,
-                # Mit derselben Sicht: Ein Gespräch kann über mehrere
-                # Postfächer laufen, und wer nur eines sehen darf,
-                # bekommt auch nur die Teile daraus.
-                verlauf=archiv.index.verlauf(kennung, sicht=Sicht.fuer(benutzer)),
+                benutzer, teile.kopf, teile.text, kennung,
+                anhaenge=teile.anhaenge,
+                verlauf=teile.verlauf,
                 thema=_thema(anfrage),
             ))
 

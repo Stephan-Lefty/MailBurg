@@ -412,11 +412,27 @@ erfährt nicht einmal, wie das Archiv heißt.
 
 ![Die Anmeldeseite: Kopfzeile mit rotem Wappen und dem Schriftzug MailBurg SERVER, rechts der Umschalter System · Hell · Dunkel. In der Mitte zwei Felder für Anmeldename und Passwort mit einer Schaltfläche Anmelden.](bilder/server-anmelden.png)
 
-Nach der Anmeldung die Suche. Die Treffer bekommen die volle Breite –
-gesucht wird ohnehin über alle Postfächer, die dieser Zugang sehen
-darf.
+Nach der Anmeldung die Suche. Links die Treffer, rechts der Platz für
+die Nachricht – gesucht wird über alle Postfächer, die dieser Zugang
+sehen darf.
 
-![Die Trefferliste nach einer Suche nach »rechnung«: oben die Werkzeugleiste, darunter das Suchfeld, dann der Knopf »Postfächer« neben der Trefferzahl und darunter drei Treffer über die volle Breite, je zwei Zeilen mit Absender, Betreff, Datum und einer Büroklammer für den Anhang.](bilder/server-trefferliste.png)
+![Die Trefferliste nach einer Suche nach »rechnung«: oben die Werkzeugleiste, darunter das Suchfeld, dann der Knopf »Postfächer« neben der Trefferzahl. Links darunter drei Treffer, je zwei Zeilen mit Absender, Betreff, Datum und einer Büroklammer für den Anhang. Die rechte Spalte ist noch leer und fordert auf, links eine Nachricht anzuklicken.](bilder/server-trefferliste.png)
+
+**Ein Klick auf einen Treffer holt die Mail nach rechts**, ohne die
+Liste zu verlassen. So arbeitet man sich durch die Treffer, statt nach
+jeder gelesenen Nachricht zurückzugehen – wie in MailStore, das die
+Mitarbeiter kennen. Der Eintrag, der gerade rechts steht, ist in der
+Liste hervorgehoben.
+
+![Dieselbe Trefferliste, jetzt mit geöffneter Nachricht rechts. Der erste Treffer ist rot hinterlegt und trägt am linken Rand einen roten Balken. Rechts stehen der Betreff als Überschrift, darunter Von, An, Datum, Betreff und Größe, ein Kasten mit einem Anhang namens Unterlagen.pdf, drei Schaltflächen – Ganze Seite, Im Mailprogramm öffnen, Als Datei speichern – und darunter der Text der Mail.](bilder/server-vorschau.png)
+
+**Bilder aus der Mail werden dabei nicht geladen.** Das ist Absicht:
+Ein nachgeladenes Bild meldete dem Absender, wann jemand seine alte
+Post durchsieht. Angezeigt wird der Text.
+
+Wer mehr braucht – den Gesprächsverlauf etwa oder eine Seite zum
+Ausdrucken –, klickt auf **Ganze Seite**. Auf einem schmalen Bildschirm
+steht die Nachricht statt rechts daneben darunter.
 
 Wer wissen will, **worin** er eigentlich sucht, drückt auf
 *Postfächer*. Die Spalte zeigt jedes Postfach mit seiner Mailzahl, und
