@@ -8,6 +8,164 @@ wurde.
 
 ## Offen
 
+### Aus dem Betrieb des Firmenarchivs
+
+Diese Punkte stammen aus dem laufenden Einsatz seit dem 02.10.2026 –
+ein Windows Server 2025, 592.000 Mails, sechs Zugänge, Abruf alle
+dreißig Minuten. Die ausführliche Fassung steht jeweils in
+[CLAUDE.md](CLAUDE.md) unter »Hier war Schluss«.
+
+**Das Muster der meisten:** Sie machen nichts kaputt, sie unterlassen
+etwas stillschweigend. Keiner wäre von selbst aufgefallen.
+
+- [ ] **Einer Mail aus dem Dienst-Abruf fehlt der Anhangstext im
+  Index.** Die Mail liegt vollständig im Archiv, der PDF-Anhang lässt
+  sich öffnen – aber kein Wort daraus ist auffindbar. Gemessen:
+  Dasselbe von Hand (`mailburg abrufen`) meldet »Mit Anhangstext: 1
+  Mails«; alle vier Werkzeuge stehen im Maschinen-PATH. Verdächtig
+  bleibt allein die Dienst-Umgebung (LocalSystem, Prozesspool).
+
+  **Der wichtigste offene Punkt**: Ein Archiv, in dem Scans
+  unauffindbar bleiben, erfüllt seinen Zweck nicht – und man sieht es
+  ihm nicht an.
+
+- [ ] **Sichern bei laufendem Abruf erzeugt eine widersprüchliche
+  Sicherung – und meldet »Kette heil«.** `sicherung.packen()` erstellt
+  die Dateiliste am Anfang und packt `meta/` alphabetisch zuletzt.
+  Läuft dabei ein Abruf, wandert sein Journaleintrag mit, die Maildatei
+  nicht. Nachgewiesen am Objekt: In der Sicherung vom 02.10. fehlen die
+  Dateien zu den Einträgen 70763/70764, während das damals offene
+  Segment beide enthält.
+
+  Bis zur Behebung: den Dienst vor dem Sichern anhalten.
+
+- [ ] **Die Texterkennung läuft mit der falschen Sprache weiter, statt
+  zu warnen.** `winget install` bringt tesseract ohne deutsche
+  Sprachdaten; MailBurg meldet dann »Texterkennung: ja« und darunter
+  klein »Benutzt wird: eng«. Der Modulkopf von `extract/ocr.py` sagt
+  ausdrücklich »Lieber gar nicht erkennen als falsch« – der Code tut
+  das Gegenteil. Ohne Nachsehen wären 77.721 deutsche Rechnungen mit
+  dem englischen Modell gelesen worden.
+
+- [ ] **Der Neuaufbau verschluckt beschädigte Mails.** Was sich nicht
+  zerlegen lässt, fällt aus dem Index und taucht in keiner Meldung auf.
+
+- [ ] **Ein wiederholt gescheiterter Zustandsbericht steht nur im
+  Ereignisprotokoll.** Der Bericht war nach der Einrichtung drei Tage
+  lang nie angekommen (falsche Absenderadresse, vom Mailserver
+  abgelehnt), und niemand hätte es bemerkt – ein ausgefallener Abruf
+  hätte in dieser Zeit niemanden erreicht. Gehört auf die Statusseite.
+
+- [ ] **Der Archivinhalt hängt vom Zufall des Abruftakts ab.** Wer eine
+  Mail empfängt und löscht, bevor der nächste Lauf kommt, hat sie nie
+  im Archiv. Das ist keine Lücke, die sich schließen lässt – aber eine,
+  die dastehen muss, sonst liest sich »vollständig« falsch.
+
+- [ ] **Der erste Seitenaufruf am Tag dauert im Browser rund 50
+  Sekunden**, jeder weitere antwortet in Sekundenbruchteilen.
+  **Vier Erklärungen sind gemessen und widerlegt:** die Trefferzahl
+  (läuft über einen Covering-Index), der Virenscanner (Ausnahme sitzt
+  richtig), ein großes Schreibprotokoll (es liegt keines dort) und der
+  doppelte Sortierschlüssel (0,1 ms mit wie ohne).
+
+  Nächster Schritt: morgens vor dem ersten Zugriff erst das Fenster,
+  dann den Browser starten. Beide benutzen denselben Index – der
+  Vergleich sagt, ob es an den Daten liegt oder am Dienst.
+
+- [ ] **Mails mit Datum in der Zukunft kleben oben in der
+  Trefferliste.** Spam mit gefälschtem `Date`-Kopf (2029, 2030) steht
+  in beiden Oberflächen dauerhaft vor jeder echten Mail; eine
+  Plausibilitätsprüfung gibt es nirgends. Finden lassen sie sich mit
+  `seit:TT.MM.JJJJ`.
+
+  **Nicht die Lösung:** global auf die Spalte `archiviert` sortieren –
+  589.058 Mails sind am 07.10. in einem Zug aufgenommen worden und
+  tragen alle denselben Zeitpunkt. Richtig ist, nur bei einem Datum in
+  der Zukunft darauf auszuweichen.
+
+- [ ] **Die Statusseite summiert die Mailgrößen über einen vollen
+  Tabellenscan.** Drei der vier Zahlen in `Index.statistics()` laufen
+  über schmale Indizes, `SUM(size)` nicht. Bei einer Indexdatei von
+  7,26 GB heißt das, den Großteil davon zu lesen – für eine Zeile
+  Anzeige. Betrifft auch den täglichen Zustandsbericht.
+
+- [ ] **`info` rechnet die Plattenbelegung über 590.000
+  stat-Aufrufe.** Deshalb braucht der Befehl Minuten, während `pruefen`
+  in Sekunden durch ist. Und **`info` deckelt die Kontoliste bei 40
+  Zeilen**, ohne zu sagen, dass gekürzt wurde.
+
+- [ ] **Ein Warten auf die Indexsperre sieht aus wie ein Hänger.** Ein
+  `abrufen` stand nach der Bilanz still, bei 0,8 Minuten CPU in
+  dreißig Minuten – es rechnete nicht, es wartete auf den Dienst, ohne
+  eine Zeile Meldung. Strg+C wirkt dabei nicht, weil der Aufruf tief in
+  SQLite steckt.
+
+- [ ] **`--ordner` hebt die Ausschlussliste beim Abruf nicht auf.** Wer
+  ausdrücklich einen Ordner nennt, hat entschieden – so steht es beim
+  Einlesen von der Platte seit dem 07.09. richtig, beim Abruf nicht.
+  Zwei Stellen, eine nachgezogen, die andere nicht.
+
+- [ ] **Zeitangaben stehen in UTC statt in Ortszeit.** An mehreren
+  Stellen der Ausgabe; in einem Archiv, aus dem Belege kommen, ist eine
+  Uhrzeit, die um zwei Stunden danebenliegt, mehr als Kosmetik.
+
+- [ ] **Protokolldateien unter Windows sind wegen der Codepage nicht
+  durchsuchbar.** Die Konsole schreibt in der OEM-Codepage,
+  `Tee-Object` reicht das durch – aus »Übergangen« wird »▄bergangen«.
+  Am 07.10. hat das zu der Fehldiagnose »295.072 Mails sind verloren«
+  geführt; die Meldung stand in jedem der achtzehn Läufe da.
+
+- [ ] **Der Stückzahl-Deckel entwertet `--budget` bei der
+  Texterkennung.** `BUDGET_DOKUMENTE = 30` deckelt jeden Lauf; die
+  Begründung im Kommentar stammt von einer Messung mit siebzehn
+  Sekunden je Dokument. Gemessen sind es jetzt 3,9.
+
+- [ ] **Nachts läuft keine Texterkennung, obwohl der Rechner frei
+  ist.** Der Dienst ruht von 17:10 bis 4:00, und in dieser Zeit
+  passiert nichts – dabei wäre genau dann Platz für die wartenden
+  Scans.
+
+- [ ] **Wie viele Scans warten, sieht man nur über einen
+  Schreibbefehl.** Es gibt keine lesende Auskunft darüber; wer
+  nachsehen will, stößt einen Lauf an.
+
+- [ ] **Doku-Änderungen laufen an der CI vorbei, obwohl Tests die Doku
+  prüfen.** `paths-ignore` schließt `docs/**` aus, mit der Begründung
+  »An Text ändert sich durch einen Testlauf nichts«. Elf Testdateien
+  lesen die Doku.
+
+- [ ] **Die Importbilanz zählt neue Fundorte nicht.** Eine Mail, die in
+  einem zweiten Ordner auftaucht, erscheint in keiner Zahl – obwohl der
+  Fundort protokolliert wird.
+
+- [ ] **Der Ladehinweis im Browser sagt »sucht«, auch wenn er
+  anmeldet.**
+
+- [ ] **Die Ausschlussliste lässt sich nur auf der Kommandozeile
+  ändern.** Wer MailBurg über das Fenster benutzt – fast jeder –, kommt
+  nicht an sie heran.
+
+- [ ] **Die AppImage-Tests laufen im Windows-Lauf in einen Fehler
+  statt übersprungen zu werden.** Fünf Tests führen das
+  AppRun-Shellskript aus; unter Windows endet das in `WinError 193`.
+  Ein fehlendes `skipUnless`, kein Programmfehler – aber es trägt zu
+  einem Lauf bei, der ohnehin rot ist und deshalb keine Frage mehr
+  beantwortet.
+
+- [ ] **Die Testsuite ist unter Windows nicht grün.** Gemessen im
+  breiten Lauf: 62 Meldungen `WinError 32`, jedes Mal beim Aufräumen
+  eines `TemporaryDirectory` mit noch offener SQLite-Datei. Ein
+  Testproblem, kein Programmfehler – aber deshalb blieb der
+  `os.kill`-Fehler fünf Wochen unentdeckt.
+
+  Der breite Lauf ist nur von Hand zu bekommen:
+
+  ```bash
+  gh workflow run Tests --ref main -f breit=true
+  ```
+
+### Älteres
+
 - [ ] **Der Import nutzt die Kerne nicht aus – gemessen 1,5 von 12.**
   Am 06.10.2026 an einem Windows Server mit zwölf logischen Kernen,
   mitten im Einlesen von 80.000 Mails:
@@ -1561,6 +1719,89 @@ Prüfung steht es hier und nicht in der laufenden Liste.
   Antwort, privat eilt nichts.
 
 ## Erledigtes
+
+### Oktober und November 2026 – das Firmenarchiv geht in Betrieb
+
+Fünf Wochen in einem Block, weil diese Liste in dieser Zeit nicht
+fortgeschrieben wurde. Die ausführliche Fassung steht in
+[CLAUDE.md](CLAUDE.md).
+
+- [x] **Das Firmenarchiv läuft auf einem Windows Server.**
+  (2026-10-02 bis 2026-10-07) Erst 70.133 Mails, dann der
+  MailStore-Bestand: **589.058 Mails, Hash-Kette unversehrt über
+  589.710 Einträge.** Jede der 827.199 ausgegebenen Dateien ist
+  erklärt, die Rechnung geht ohne Rest auf und ist von zwei Seiten
+  gegengeprüft.
+
+  Damit ist der Punkt »700.000 Mails aus MailStore« erledigt, der seit
+  dem 26.08. hier stand – samt der Frage, ob die Suche bei einer
+  halben Million noch trägt. Sie tut es: Sekundenbruchteile an einem
+  Arbeitsplatz im Büro.
+
+- [x] **Der Windows-Dienst funktioniert.** (2026-10-02) Er war seit
+  seinem Einbau am 31.08. nie gestartet worden; fünf Wochen stand
+  »nicht geprüft« im Quelltext. Der erste Lauf förderte fünf Fehler
+  zutage, darunter zwei, die den Einsatz gekippt hätten: uvicorns
+  Protokoll setzt eine Bildschirmausgabe voraus, und der Dienst fand
+  als LocalSystem den Suchindex nicht – ohne es zu sagen.
+
+- [x] **Der Abruf im Dienst ist nie gelaufen.** (2026-10-06, Fassungen
+  1.7.8 und 1.7.9) Zwei Fehler in derselben Funktion, die nie zur
+  Ausführung gekommen war. Es gab Tests für alles *um* sie herum, nie
+  für den Weg hinein. Und die Schlussmeldung sagte »Nichts Neues in 7
+  Postfächern«, während alle sieben gescheitert waren.
+
+- [x] **Der Dienst macht jetzt Texterkennung.** (2026-10-09, Fassung
+  1.8.1) `core/erkennung.py` sagt seit jeher »nach jedem Abruf ein
+  kleines Zeitbudget«; `ui/arbeit.py` tat das, `server/abruf.py` rief
+  es nie auf. Auf einem Server gibt es kein Fenster – dort blieb
+  **jeder** eingehende Scan stumm liegen.
+
+- [x] **Ein Semikolon verschluckte alle Berichtsempfänger außer dem
+  ersten.** (2026-10-09, Fassung 1.8.2) Und die Probe im
+  Einrichtungsfenster meldete trotzdem Erfolg. Bei einem
+  Störungsbericht heißt das: Die Vertretung wartet auf eine Warnung,
+  die nie kommt.
+
+- [x] **Das AppImage fand keine Zertifikate.** (2026-10-19, Fassung
+  1.8.3) Das mitgelieferte OpenSSL kennt nur die Pfade des
+  Bausystems; ohne `SSL_CERT_FILE` scheiterte jede TLS-Verbindung.
+  Gemeldet von joka63, der es auf NixOS versucht hatte. Der Starter
+  sucht die Zertifikate jetzt beim Wirtssystem.
+
+- [x] **`install.sh` erkennt NixOS und sagt, warum es dort nicht
+  geht.** (2026-11-01, Fassung 1.8.4) Ein PySide6-Wheel von PyPI
+  erwartet Systembibliotheken an festen Orten wie `/usr/lib64`; auf
+  NixOS gibt es die nicht. Behoben werden kann das nicht, erklärt
+  schon – mit zwei Wegen daneben, denn ein Abbruch ohne Ausweg wäre
+  eine Sackgasse. Der Hinweis von joka63 war die nützlichere Antwort
+  als jede Fehlermeldung.
+
+- [x] **Der Testlauf stürzte beim Beenden ab, sobald es mehr Tests
+  wurden.** (2026-10-09) Signal 11 nach dem letzten Test, während alle
+  2395 »OK« meldeten. Fünf Vermutungen gebaut und gepusht, die fünfte
+  machte es schlimmer – dann klärten zehn Tests mit `assertTrue(True)`
+  die Lage in drei Minuten: Es lag nie am Code, sondern an der Zahl
+  der Tests. Behoben mit `tests/lauf.py`, am Symptom und mit acht
+  Tests, die über den Läufer wachen.
+
+- [x] **`pruefen` nennt fehlende Mails im Klartext.** (2026-10-07) Bei
+  einem Befund ist die erste Frage nicht »wie viele«, sondern
+  »welche« – und Postfach, Ordner, Datum, Absender und Betreff stehen
+  im Journaleintrag direkt daneben.
+
+- [x] **Die Weboberfläche zeigt die Nachricht neben der
+  Trefferliste.** (2026-11-04) Gewünscht von einem Mitarbeiter, mit
+  MailStore als Vorbild. Ein Drittel Liste, zwei Drittel Mail, ohne
+  JavaScript – die Auswahl hängt an der Adresse. Im Fenster gibt es
+  dazu einen Umschalter unter *Ansicht*.
+
+- [x] **Virenscanner-Ausnahmen stehen in den Anleitungen.**
+  (2026-10-09)
+
+- [x] **Browser-Screenshots entstehen im Screenshot-Werkzeug.**
+  (2026-10-02) `werkzeuge/screenshots_server.py`, mit QtWebEngine
+  statt Playwright – kein zweiter Browser-Download für ein paar Bilder.
 
 ### Am 2026-09-04
 

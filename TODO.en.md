@@ -7,6 +7,162 @@ down, with the date they were completed.
 
 ## Open
 
+### From running the company archive
+
+These came out of daily use since 2026-10-02 – a Windows Server 2025,
+592,000 messages, six accounts, a fetch every thirty minutes. The full
+story is in [CLAUDE.md](CLAUDE.md) (in German) under »Hier war
+Schluss«.
+
+**What most of them have in common:** they break nothing, they omit
+something quietly. Not one would have surfaced on its own.
+
+- [ ] **A message fetched by the service is missing its attachment
+  text in the index.** The message is fully archived, the PDF opens –
+  but not a word from it can be found. Measured: the same fetch by
+  hand (`mailburg abrufen`) reports »Mit Anhangstext: 1 Mails«, and
+  all four tools are on the machine PATH. That leaves the service
+  environment itself (LocalSystem, process pool).
+
+  **The most important open item**: an archive where scans stay
+  unfindable fails at its job – and nothing about it looks wrong.
+
+- [ ] **Backing up during a fetch produces a self-contradictory
+  backup – and reports »chain intact«.** `sicherung.packen()` builds
+  its file list first and packs `meta/` last, alphabetically. If a
+  fetch runs meanwhile, its journal entry travels along, the message
+  file does not. Proven on the object: the backup from 2026-10-02 is
+  missing the files for entries 70763/70764, while the segment open at
+  the time contains both.
+
+  Until fixed: stop the service before backing up.
+
+- [ ] **OCR keeps running in the wrong language instead of warning.**
+  `winget install` installs tesseract without German language data;
+  MailBurg then reports »OCR: yes« and, in small print, »using: eng«.
+  The module header of `extract/ocr.py` says plainly »better not to
+  recognise at all than to recognise wrongly« – the code does the
+  opposite. Unchecked, 77,721 German invoices would have been read
+  with the English model.
+
+- [ ] **Rebuilding the index silently drops damaged messages.**
+  Whatever cannot be parsed falls out of the index and appears in no
+  report.
+
+- [ ] **A repeatedly failing status report only shows up in the event
+  log.** After setup it never arrived for three days (wrong sender
+  address, rejected by the mail server), and nobody would have
+  noticed – a failed fetch would have reached no one in that time.
+  This belongs on the status page.
+
+- [ ] **What ends up in the archive depends on the timing of the
+  fetch.** A message received and deleted before the next run was
+  never archived. That gap cannot be closed – but it has to be
+  stated, or »complete« reads as more than it is.
+
+- [ ] **The first page view of the day takes about 50 seconds in the
+  browser**, every later one answers in fractions of a second.
+  **Four explanations have been measured and ruled out:** the hit
+  count (runs over a covering index), the virus scanner (the exclusion
+  is in place), a large write-ahead log (there is none) and the
+  duplicated sort key (0.1 ms either way).
+
+  Next step: in the morning, before any other access, start the window
+  first and the browser second. Both use the same index – the
+  comparison says whether it is the data or the service.
+
+- [ ] **Messages dated in the future stick to the top of the hit
+  list.** Spam with a forged `Date` header (2029, 2030) sits ahead of
+  every real message in both interfaces; there is no plausibility
+  check anywhere. They can be found with `seit:DD.MM.YYYY`.
+
+  **Not the fix:** sorting by the `archiviert` column globally –
+  589,058 messages were taken in on 2026-10-07 in a single run and all
+  carry the same timestamp. The right move is to fall back to it only
+  when the message date lies in the future.
+
+- [ ] **The status page sums message sizes with a full table scan.**
+  Three of the four numbers in `Index.statistics()` run over narrow
+  indexes, `SUM(size)` does not. With an index file of 7.26 GB that
+  means reading most of it – for one line of display. This also
+  affects the daily status report.
+
+- [ ] **`info` computes disk usage with 590,000 stat calls.** That is
+  why the command takes minutes while `pruefen` is done in seconds.
+  And **`info` caps the account list at 40 lines** without saying that
+  it truncated.
+
+- [ ] **Waiting for the index lock looks like a hang.** A fetch stood
+  still after its summary, at 0.8 minutes of CPU in thirty – it was
+  not computing, it was waiting for the service, without a single line
+  of output. Ctrl+C has no effect there, because the call sits deep
+  inside SQLite.
+
+- [ ] **`--ordner` does not override the exclusion list when
+  fetching.** Naming a folder explicitly is a decision – that is how
+  it works for reading from disk since 2026-09-07, but not for
+  fetching. Two places, one updated, the other not.
+
+- [ ] **Timestamps are shown in UTC instead of local time.** In
+  several places of the output; in an archive that produces records, a
+  time that is two hours off is more than cosmetic.
+
+- [ ] **Log files on Windows are not searchable because of the code
+  page.** The console writes in the OEM code page and `Tee-Object`
+  passes it through – »Übergangen« becomes »▄bergangen«. On
+  2026-10-07 that led to the false diagnosis »295,072 messages are
+  lost«; the line had been there in every one of the eighteen runs.
+
+- [ ] **A hard cap on documents makes `--budget` meaningless for
+  OCR.** `BUDGET_DOKUMENTE = 30` limits every run; the reasoning in
+  the comment comes from a measurement of seventeen seconds per
+  document. Measured now: 3.9.
+
+- [ ] **No OCR runs at night, although the machine is idle.** The
+  service rests from 17:10 to 4:00 and nothing happens in that
+  window – which is exactly when there would be room for the waiting
+  scans.
+
+- [ ] **How many scans are waiting can only be learned through a
+  writing command.** There is no read-only way to ask; whoever wants
+  to know starts a run.
+
+- [ ] **Documentation changes bypass CI, although tests read the
+  documentation.** `paths-ignore` excludes `docs/**`, on the grounds
+  that »text does not change from a test run«. Eleven test files read
+  the docs.
+
+- [ ] **The import summary does not count new locations.** A message
+  that turns up in a second folder appears in no number – even though
+  the location is journalled.
+
+- [ ] **The loading hint in the browser says »searching« even while
+  signing in.**
+
+- [ ] **The exclusion list can only be changed from the command
+  line.** Anyone using MailBurg through the window – almost
+  everyone – cannot reach it.
+
+- [ ] **The AppImage tests error out in the Windows run instead of
+  being skipped.** Five tests execute the AppRun shell script; on
+  Windows that ends in `WinError 193`. A missing `skipUnless`, not a
+  program fault – but it adds to a run that is red anyway and
+  therefore answers no questions.
+
+- [ ] **The test suite is not green on Windows.** Measured in the
+  broad run: 62 `WinError 32` messages, every one of them while
+  cleaning up a `TemporaryDirectory` with an open SQLite file. A test
+  problem, not a program fault – but it is why the `os.kill` bug went
+  unnoticed for five weeks.
+
+  The broad run has to be triggered by hand:
+
+  ```bash
+  gh workflow run Tests --ref main -f breit=true
+  ```
+
+### Older
+
 - [ ] **The import does not use the available cores – measured 1.5 out
   of 12.** On 2026-10-06, on a Windows server with twelve logical
   cores, while reading in 80,000 messages:
@@ -1447,6 +1603,85 @@ they sit here and not in the running list.
   urgent.
 
 ## Done
+
+### October and November 2026 – the company archive goes live
+
+Five weeks in one block, because this list was not kept up during that
+time. The detailed account is in [CLAUDE.md](CLAUDE.md) (in German).
+
+- [x] **The company archive runs on a Windows server.** (2026-10-02 to
+  2026-10-07) First 70,133 messages, then the MailStore corpus:
+  **589,058 messages, hash chain intact across 589,710 entries.** Every
+  one of the 827,199 exported files is accounted for; the arithmetic
+  balances without remainder and was checked from both ends.
+
+  That closes the item »700,000 messages from MailStore« which had
+  been sitting here since 2026-08-26 – along with the question whether
+  search still holds up at half a million. It does: fractions of a
+  second at an office workstation.
+
+- [x] **The Windows service works.** (2026-10-02) It had never been
+  started since it was built on 2026-08-31; for five weeks the source
+  said »not verified«. The first run turned up five faults, two of
+  which would have sunk the deployment: uvicorn's logging assumes a
+  console, and as LocalSystem the service could not find the search
+  index – without saying so.
+
+- [x] **The fetch inside the service had never run.** (2026-10-06,
+  versions 1.7.8 and 1.7.9) Two faults in the same function, which had
+  never been reached. There were tests for everything *around* it,
+  none for the way in. And the closing message said »nothing new in 7
+  mailboxes« while all seven had failed.
+
+- [x] **The service now runs OCR.** (2026-10-09, version 1.8.1)
+  `core/erkennung.py` has always said »a small time budget after every
+  fetch«; `ui/arbeit.py` did that, `server/abruf.py` never called it.
+  A server has no window – so **every** incoming scan stayed mute.
+
+- [x] **A semicolon swallowed every report recipient but the first.**
+  (2026-10-09, version 1.8.2) And the test in the setup window
+  reported success anyway. For a fault report that means: the stand-in
+  waits for a warning that never comes.
+
+- [x] **The AppImage could not find any certificates.** (2026-10-19,
+  version 1.8.3) The bundled OpenSSL only knows the paths of the build
+  system; without `SSL_CERT_FILE` every TLS connection failed.
+  Reported by joka63, who had tried it on NixOS. The launcher now
+  looks for certificates on the host system.
+
+- [x] **`install.sh` detects NixOS and explains why it cannot work
+  there.** (2026-11-01, version 1.8.4) A PySide6 wheel from PyPI
+  expects system libraries at fixed places such as `/usr/lib64`; NixOS
+  has no such place. It cannot be fixed, only explained – with two
+  routes alongside, because a dead end without a way out is worse than
+  no message. joka63's explanation was more useful than any error
+  message would have been.
+
+- [x] **The test run crashed on shutdown once there were enough
+  tests.** (2026-10-09) Signal 11 after the last test, while all 2,395
+  reported »OK«. Five guesses built and pushed, the fifth made it
+  worse – then ten tests doing nothing but `assertTrue(True)` settled
+  it in three minutes: it was never the code, it was the number of
+  tests. Fixed with `tests/lauf.py`, at the symptom, and with eight
+  tests watching the runner.
+
+- [x] **`pruefen` names missing messages in plain words.**
+  (2026-10-07) Faced with a finding, the first question is not »how
+  many« but »which« – and mailbox, folder, date, sender and subject
+  sit right there in the journal entry.
+
+- [x] **The web interface shows the message next to the hit list.**
+  (2026-11-04) Requested by a colleague, with MailStore as the model.
+  One third list, two thirds message, without JavaScript – the
+  selection hangs on the address. The window has a toggle for it under
+  *Ansicht*.
+
+- [x] **Virus scanner exclusions are in the guides.** (2026-10-09)
+
+- [x] **Browser screenshots are produced by the screenshot tool.**
+  (2026-10-02) `werkzeuge/screenshots_server.py`, using QtWebEngine
+  rather than Playwright – no second browser download for a handful of
+  pictures.
 
 ### 2026-09-04
 
