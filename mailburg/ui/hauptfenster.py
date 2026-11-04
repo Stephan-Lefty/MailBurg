@@ -912,15 +912,27 @@ class Hauptfenster(QMainWindow):
         self.tabelle.model().sort(SPALTE_DATUM, Qt.DescendingOrder)
 
     def _ansicht_speichern(self) -> None:
-        """Legt die jetzige Ansicht ausdrücklich ab.
+        """Legt die jetzige Ansicht ab – der einzige Weg dorthin.
 
-        Gemerkt wird zwar ohnehin beim Schließen. Aber wer das Fenster
-        gerade so hat, wie er es haben will, soll das festhalten können,
-        ohne es dafür zu schließen – und ohne darauf zu vertrauen, dass
-        beim Beenden schon alles gutgeht.
+        **Das Schließen merkt sich nichts**, und das ist Absicht; die
+        Begründung steht in :meth:`closeEvent`. Wer seine Ansicht
+        dauerhaft ändern will, geht also hier entlang. Stephans
+        Entscheidung vom 2026-11-04, nachdem ein automatisches Merken
+        beim Beenden gebaut und wieder verworfen war: *Wer seine
+        Ansicht dauerhaft verändern möchte, der muss über das Menü
+        gehen und dort bewusst speichern.*
+
+        **Hier stand bis dahin das Gegenteil** – »gemerkt wird zwar
+        ohnehin beim Schließen«. Ein Satz, der nie gestimmt hat, und
+        der jede Suche nach »warum vergisst MailBurg meine
+        Fenstergröße« an die falsche Stelle geschickt hätte. Dass er
+        auffiel, lag an einer Meldung aus dem Betrieb, nicht an einem
+        Test.
         """
         self._groesse_merken()
-        self.stand.setText("Eigene Ansicht gespeichert.")
+        self.stand.setText(
+            "Eigene Ansicht gespeichert – sie gilt ab dem nächsten Start."
+        )
 
     def _ansicht_laden(self) -> None:
         """Kehrt zur gespeicherten eigenen Ansicht zurück."""
@@ -1051,15 +1063,24 @@ class Hauptfenster(QMainWindow):
             self.stand.setText("Vorschau zugeschoben.")
 
     def _vorschau_rechts(self, rechts: bool) -> None:
-        """Dreht den Teiler zwischen Trefferliste und Vorschau."""
+        """Dreht den Teiler zwischen Trefferliste und Vorschau.
+
+        **Gilt bis zum Beenden**, wie jede andere Änderung an der
+        Ansicht auch; dauerhaft wird sie über *Eigene Ansicht
+        speichern*. Das steht so im Handbuch – aber im Augenblick des
+        Umschaltens liest niemand das Handbuch, deshalb steht es auch
+        in der Statuszeile. Stephan am 2026-11-04: »Beim Neustart ist
+        das Vorschaufenster wieder unten.«
+        """
         self.senkrecht.setOrientation(
             Qt.Horizontal if rechts else Qt.Vertical
         )
         self._vorschau_anteile_setzen()
         self._kanten_setzen()
         self.stand.setText(
-            "Vorschau rechts neben der Liste." if rechts
-            else "Vorschau unter der Liste."
+            ("Vorschau rechts neben der Liste." if rechts
+             else "Vorschau unter der Liste.")
+            + " Dauerhaft über »Ansicht → Eigene Ansicht speichern«."
         )
 
     def _standardansicht(self, nur_aufbauen: bool = False) -> None:  # noqa: ARG002

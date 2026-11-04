@@ -1297,7 +1297,8 @@ def kapitel() -> list[Kapitel]:
                      "Liste bekommt dann ein Drittel der Breite; ihre "
                      "Spalten rücken enger zusammen. Ohne Haken steht die "
                      "Vorschau unter der Liste, und die Spalten haben die "
-                     "volle Breite.")
+                     "volle Breite. Damit es über den nächsten Start "
+                     "hinaus gilt: <i>Eigene Ansicht speichern</i>.")
             + _menue("Ansicht → Schrift größer (Strg++)",
                      "Vergrößert die Schrift im ganzen Fenster. Auf einem "
                      "kleinen Bildschirm ist die Vorgabe vieler "

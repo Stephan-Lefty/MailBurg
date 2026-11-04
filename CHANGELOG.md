@@ -49,6 +49,17 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   anderen Treffern und ohne erkennbaren Grund. Dasselbe galt für `#`
   und `?`.
 
+- **Der Hinweis fehlte, dass eine geänderte Ansicht nicht von selbst
+  bleibt.** MailBurg merkt sich beim Schließen nichts – sonst
+  überschriebe ein versehentliches Verziehen die Ansicht, die jemand
+  sich eingerichtet hat. Im Handbuch stand das, in der Oberfläche
+  nicht. Wer die Vorschau umstellt, liest es jetzt in der Statuszeile
+  gleich daneben.
+
+  Im Quelltext behauptete eine Stelle außerdem das Gegenteil
+  (»gemerkt wird ohnehin beim Schließen«) – ein Satz, der nie gestimmt
+  hat und jede Suche an die falsche Stelle geschickt hätte.
+
 - **Zwei Testklassen hießen gleich, und die erste lief nie.** Python
   überschreibt bei gleichem Namen stillschweigend; zwei Tests waren
   damit außer Betrieb, ohne dass etwas rot wurde. Derselbe Fehler steht

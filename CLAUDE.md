@@ -3,6 +3,148 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-11-04, Mittwoch) – die Vorschau, und fünf widerlegte Vermutungen
+
+**Aus einem Wunsch wurde ein Umbau in beiden Oberflächen.** Ein
+Mitarbeiter wollte im Browser die Mail neben der Trefferliste sehen,
+wie in MailStore. Im Fenster gab es das längst – der Wunsch betraf
+also nur die rote Fassung, und das ist derselbe Befund wie am 03.09.:
+*Der Wunsch nach etwas Vorhandenem ist ein Befund über die Oberfläche,
+nicht über den Funktionsumfang.* Nur stand das Vorhandene diesmal in
+der anderen Oberfläche.
+
+### Was dabei gebaut wurde
+
+**Im Browser hängt die Auswahl an der Adresse** (`?q=…&zeigen=<hash>`),
+nicht an einem Klickzustand. Damit bleibt es bei den dreißig Zeilen
+JavaScript für den Ladehinweis, und Zurück-Taste, Lesezeichen und ein
+weitergeschickter Link wirken unverändert. Ein Drittel Liste, zwei
+Drittel Mail – Stephans Maß.
+
+**Kopf und Anhangsliste kommen aus denselben Funktionen** wie die
+eigene Seite der Nachricht (`_kopfzeilen`, `_anhangsliste`). Zwei
+Darstellungen aus einer Quelle: Genau so entstand am 07.09. der
+Anhang, der sich zweimal öffnete.
+
+**Im Fenster zwei Umschalter unter »Ansicht«.** »Vorschau anzeigen«
+holt eine zugezogene Vorschau zurück – bisher ging das nur über
+»Fenster auf Standard zurücksetzen«, einen Eintrag, auf den niemand
+kommt, der eine verschwundene Vorschau sucht. »Vorschau rechts« dreht
+den Teiler. **Beide Haken werden beim Öffnen des Menüs gesetzt, nicht
+beim Anklicken gemerkt** – was gewählt ist und was gilt, sind zwei
+Dinge.
+
+Die Vorgabe bleibt unten: Die Tabelle im Fenster hat fünf Spalten, in
+einem Drittel Breite bliebe vom Betreff wenig. Die Weboberfläche
+dagegen hat eine zweizeilige Liste, die schmal funktioniert. **Die
+beiden Ansichten unterscheiden sich, weil die Listen sich
+unterscheiden** – nicht aus Nachlässigkeit.
+
+### Die Lehre des Tages: fünf Vermutungen, fünfmal widerlegt
+
+Stephan meldete, der erste Seitenaufruf im Browser dauere 50 Sekunden.
+Ich habe nacheinander vermutet und **jede Vermutung gemessen statt
+gebaut**:
+
+1. Die Trefferzahl über 592.315 Mails – läuft über einen Covering
+   Index (`SCAN m USING COVERING INDEX idx_messages_year`).
+2. Der Virenscanner – `D:\…` steht in den Defender-Ausnahmen, und der
+   Index liegt darin.
+3. Ein großes Schreibprotokoll, das der erste Leser durchgehen muss –
+   es liegt weder eine `.db-wal` noch eine `.db-shm` dort.
+4. Der doppelte Sortierschlüssel (`ORDER BY m.date DESC, m.date DESC`)
+   – erzeugt zwar einen temporären B-Baum, kostet aber nichts:
+   gemessen 0,1 ms mit wie ohne.
+5. `statistics()` – der einzige volle Tabellenscan im ganzen
+   Serverpfad, aber er liegt auf `/zustand` und nicht auf dem Weg, den
+   Stephan nimmt. Als eigener Befund festgehalten.
+
+**Keine davon war die Ursache, und das ist das Ergebnis.** Fünf
+Messungen in einer Stunde statt fünf Commits in zweieinhalb – die
+Regel vom 09.10. hat zum ersten Mal von Anfang an gegriffen. Die
+entscheidende Messung kam dann von Stephan: Fenster und Browser
+benutzen denselben Index; wer beide **kalt** nacheinander startet,
+weiß hinterher, ob es an den Daten liegt oder am Dienst.
+
+### Zwei Rückmeldungen aus dem Betrieb, zwei Stunden nach dem Bau
+
+Stephan hat die Fassung installiert und gemeldet: **»Beim Neustart ist
+das Vorschaufenster wieder unten«** und **»Größe wird auch nicht
+gemerkt! Immer in Standard gestartet!«**
+
+Beides hat dieselbe Wurzel, und sie steht im Code offen da: *Eigene
+Ansicht* und *was beim Start gilt* schreiben in **dieselben Felder**.
+Weil das Schließen sonst jede abgelegte Ansicht überschriebe, merkt
+sich `closeEvent` ausdrücklich nichts – mit der Folge, dass auch die
+Fenstergröße bei jedem Beenden verfällt.
+
+**Zwei Kommentare sagten dazu das Gegenteil voneinander:**
+`closeEvent` – »hier wird ausdrücklich *nichts* gemerkt«;
+`_ansicht_speichern` – »gemerkt wird zwar ohnehin beim Schließen«. Der
+zweite hat nie gestimmt. *Ein Kommentar, der eine Zusage macht,
+schuldet einen Test* – dieser hatte keinen, und er hätte jede Suche
+nach »warum vergisst MailBurg meine Fenstergröße« an die falsche
+Stelle geschickt.
+
+**Mein Test war grün, während es im Alltag nicht ging.** Er rief
+`_groesse_merken()` von Hand auf – also genau den Weg, den das
+Schließen nicht geht. *Eine Prüfung, die die fragliche Umgebung nicht
+nachstellt, misst etwas anderes* – hier in ihrer teuersten Form, weil
+eine Gegenprobe sie zuvor sogar bestätigt hatte.
+
+**Gebaut, und wieder verworfen:** die Trennung in zwei Fächer, mit
+automatischem Merken beim Schließen. Stephans Entscheidung danach:
+*»Wir lassen das mit der Ansicht wie bisher. Wer seine Ansicht
+dauerhaft verändern möchte, der muss über das Menü gehen und dort
+bewusst speichern.«* Dazu hatte er eine Nachfrage beim Beenden
+erwogen; davon habe ich abgeraten – ein Dialog, der bei jedem Beenden
+kommt, wird nach einer Woche blind weggeklickt.
+
+**Geblieben sind zwei Dinge:** der falsche Kommentar ist weg, und die
+Statuszeile sagt beim Umschalten dazu, dass es bis zum Beenden gilt.
+Im Handbuch stand es längst (»Gespeichert wird nur auf Befehl«) – nur
+liest im Augenblick des Umschaltens niemand das Handbuch. *Eine
+Auskunft ist erst dann eine, wenn sie dort landet, wo jemand
+hinsieht.*
+
+### Und eine Änderung, die wieder herausgeflogen ist
+
+Ich hatte die Richtung des Teilers eigens gespeichert, mit einem
+ausführlichen Kommentar darüber, dass `QSplitter.saveState` nur die
+Größen festhalte. **Die Gegenprobe zeigte, dass der Test auch ohne den
+Zusatz grün blieb** – Qt nimmt die Orientierung mit; nachgemessen an
+einem nackten Splitter. Beides wieder draußen. *Eine Änderung, die
+nichts bewirkt, gehört nicht ins Repository – sie sieht später aus wie
+eine Begründung.*
+
+Dieselbe Gegenprobe deckte einen zweiten Fehler auf: **Zwei
+Testklassen hießen `FenstergroesseTest`.** Python nimmt stillschweigend
+die zweite; zwei Tests liefen monatelang nicht. Derselbe Fehler steht
+unter dem 21.09. – deshalb jetzt ein Wächter in
+`tests/test_testlaeufer.py` und kein Merksatz.
+
+### Zwei weitere Befunde nebenbei
+
+**Ein `&` im Suchausdruck zerlegte beim Blättern die Adresse.** In den
+Blätterlinks stand `html.escape` statt `quote`; »Meier & Sohn« kam auf
+Seite 2 als »Meier« an, mit anderen Treffern und ohne erkennbaren
+Grund.
+
+**Mails mit gefälschtem Datum kleben oben.** Zwei Spam-Nachrichten aus
+2029 und 2030 stehen im Firmenarchiv dauerhaft vor jeder echten Mail,
+weil nach `m.date` sortiert wird und es keine Plausibilitätsprüfung
+gibt. Finden lassen sie sich mit `seit:TT.MM.JJJJ`. **Nicht die
+Lösung:** global auf `archiviert` umstellen – 589.058 Mails sind am
+07.10. in einem Zug aufgenommen worden und tragen alle denselben
+Zeitpunkt.
+
+2454 Tests, `lesbarkeit.py` ohne Befund, CI grün (`9f5ba85`).
+
+**Offen:** Die Weboberfläche ist am Vorführarchiv geprüft, nicht an
+589.000 Mails – derselbe Vorbehalt wie immer, und er gehört stehen
+gelassen, bis es jemand benutzt hat. Der Umschalter im Fenster ist am
+selben Tag im Alltag gelaufen.
+
 ## Hier war Schluss (Stand 2026-10-09, Freitag) – zwei Fassungen, und eine Wand
 
 **Das Firmenarchiv arbeitet.** 589.321 Mails, Texterkennung durch
