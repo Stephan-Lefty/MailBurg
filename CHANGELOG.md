@@ -9,6 +9,21 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.8.5] – 2026-11-04
+
+**Außer der Reihe, und das gehört dazugesagt.** Seit dem 25.09.2026
+gilt: gesammelt wird bis zum Ersten des Monats, sofort heraus geht
+nur, was die Funktion mit der letzten Fassung nicht gewährleistet.
+Das trifft hier nicht zu – die Vorschau ist eine Erleichterung, kein
+Fehler.
+
+Herausgegeben wird sie trotzdem, auf Stephans Entscheidung vom
+04.11.2026: Das Firmenarchiv, an dem mehrere Menschen täglich
+arbeiten, soll sie haben, und ein Archivserver zieht keine
+Zwischenstände – er aktualisiert auf veröffentlichte Fassungen. Lieber
+eine Fassung zu viel als ein Server, der an der Regel vorbei
+beliefert wird.
+
 ### Hinzugefügt
 
 - **Im Browser steht die Nachricht jetzt neben der Trefferliste.** Ein
@@ -3894,6 +3909,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.8.5]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.4...v1.8.5
 [1.8.4]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.2...v1.8.3
 [1.8.2]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.1...v1.8.2
