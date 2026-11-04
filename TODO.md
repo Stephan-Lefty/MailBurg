@@ -130,9 +130,14 @@ etwas stillschweigend. Keiner wäre von selbst aufgefallen.
   nachsehen will, stößt einen Lauf an.
 
 - [ ] **Doku-Änderungen laufen an der CI vorbei, obwohl Tests die Doku
-  prüfen.** `paths-ignore` schließt `docs/**` aus, mit der Begründung
-  »An Text ändert sich durch einen Testlauf nichts«. Elf Testdateien
-  lesen die Doku.
+  prüfen.** `paths-ignore` schließt `**.md` aus – also **jede**
+  Markdown-Datei, nicht nur `docs/**`: auch README, CHANGELOG, TODO
+  und CLAUDE.md. Begründet war das mit »An Text ändert sich durch
+  einen Testlauf nichts«. Elf Testdateien lesen die Doku, und einige
+  prüfen genau diese Dateien.
+
+  Nachgemessen am 2026-11-04: Für den Commit, der diese Liste
+  fortschrieb, lief kein einziger Test.
 
 - [ ] **Die Importbilanz zählt neue Fundorte nicht.** Eine Mail, die in
   einem zweiten Ordner auftaucht, erscheint in keiner Zahl – obwohl der

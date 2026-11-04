@@ -128,9 +128,14 @@ something quietly. Not one would have surfaced on its own.
   to know starts a run.
 
 - [ ] **Documentation changes bypass CI, although tests read the
-  documentation.** `paths-ignore` excludes `docs/**`, on the grounds
-  that »text does not change from a test run«. Eleven test files read
-  the docs.
+  documentation.** `paths-ignore` excludes `**.md` – that is **every**
+  Markdown file, not just `docs/**`: README, CHANGELOG, TODO and
+  CLAUDE.md as well. The stated reason was »text does not change from
+  a test run«. Eleven test files read the docs, and some check exactly
+  these files.
+
+  Measured on 2026-11-04: for the commit that brought this list up to
+  date, not a single test ran.
 
 - [ ] **The import summary does not count new locations.** A message
   that turns up in a second folder appears in no number – even though
