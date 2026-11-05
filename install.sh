@@ -76,6 +76,7 @@ if [[ $ENTFERNEN -eq 1 ]]; then
     rm -f "$DIENSTE/mailburg-abruf.service" "$DIENSTE/mailburg-abruf.timer"
     rm -f "$BIN/mailburg" "$BIN/mailburg-gui"
     rm -f "$HOME/.local/share/applications/de.stephanlefty.MailBurg.desktop"
+    rm -f "$HOME/.local/share/metainfo/de.stephanlefty.MailBurg.metainfo.xml"
     rm -f "$HOME/.local/share/icons/hicolor/scalable/apps/mailburg.svg"
     rm -rf "$VENV"
     hinweis "Programm entfernt."
