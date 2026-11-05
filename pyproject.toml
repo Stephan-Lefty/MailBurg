@@ -128,7 +128,7 @@ include = ["mailburg*"]
 # `mailburg/assets/server/`. Die Banner für README und Anleitungen bleiben
 # in `assets/` – die zeigt GitHub, nicht das Programm.
 [tool.setuptools.package-data]
-mailburg = ["assets/server/*"]
+mailburg = ["assets/server/*", "paketdaten/*.xml"]
 
 [tool.setuptools.dynamic]
 version = {attr = "mailburg.__version__"}

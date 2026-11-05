@@ -449,8 +449,30 @@ Categories=Office;Email;
 Keywords=Mail;E-Mail;Archiv;Suche;IMAP;
 StartupNotify=true
 EOF
+    # Die Angaben für die Software-Verwaltung. Ohne sie kennt GNOME
+    # Software, Discover oder pamac MailBurg nicht - es erscheint dort
+    # weder unter den installierten Programmen noch lässt es sich von
+    # dort entfernen. Die Datei liegt im Paket, damit sie bei jeder
+    # Installationsart ankommt; hier wird sie nur an die Stelle kopiert,
+    # an der die Arbeitsumgebung sie sucht.
+    METADATEN="$HOME/.local/share/metainfo"
+    # Das Paket nach seinem eigenen Ort fragen statt den Pfad zu raten -
+    # die Python-Fassung im venv-Pfad ändert sich mit jedem Sprung.
+    PAKETDATEN="$("$VENV/bin/python3" -c \
+        'import mailburg, pathlib; print(pathlib.Path(mailburg.__file__).parent / "paketdaten")' \
+        2>/dev/null || true)"
+    if [[ -n "$PAKETDATEN" && -d "$PAKETDATEN" ]]; then
+        mkdir -p "$METADATEN"
+        cp "$PAKETDATEN"/*.metainfo.xml "$METADATEN/" 2>/dev/null || true
+    fi
+
     command -v update-desktop-database >/dev/null 2>&1 \
         && update-desktop-database "$ANWENDUNGEN" 2>/dev/null || true
+    # Unter KDE bliebe der Menüeintrag sonst bis zum nächsten Anmelden
+    # unsichtbar - der Menüzwischenspeicher merkt neue Dateien nicht von
+    # allein. Anderswo läuft die Zeile ins Leere.
+    command -v kbuildsycoca6 >/dev/null 2>&1 \
+        && kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
     hinweis "Menüeintrag angelegt – MailBurg steht im Anwendungsmenü."
 fi
 

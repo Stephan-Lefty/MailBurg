@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream-Metadaten. Ohne diese Datei kennen die Software-Verwaltungen
+  (GNOME Software, KDE Discover, Cinnamons Anwendungsverwaltung) das
+  Programm nicht - es taucht dort weder unter den installierten
+  Anwendungen auf noch lässt es sich von dort entfernen.
+
+  Sie liegt bewusst im Python-Paket und nicht daneben: Nur so kommt sie
+  bei jeder Installationsart mit, und install.sh kann sie an die Stelle
+  kopieren, an der die Arbeitsumgebung sie sucht.
+
+  Die Kennung folgt der umgekehrten Domänenschreibweise und stimmt mit
+  dem Namen der .desktop-Datei überein; verknüpft wird beides über
+  <launchable>.
+-->
+<component type="desktop-application">
+  <id>de.stephanlefty.MailBurg</id>
+
+  <name>MailBurg</name>
+  <summary>Ein Archiv für E-Mail, an einem Ort Ihrer Wahl</summary>
+
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+
+  <developer id="de.stephanlefty">
+    <name>Stephan Rösner</name>
+  </developer>
+
+  <description>
+    <p>
+      MailBurg holt Ihre Post aus beliebig vielen Postfächern zusammen,
+      legt sie an einer Stelle ab und macht sie durchsuchbar - Mailtexte,
+      Kopfzeilen und den Inhalt der Anhänge. Wo dieses Archiv liegt,
+      bestimmen Sie: auf der eigenen Platte, einem Netzlaufwerk oder im
+      eigenen Speicher.
+    </p>
+    <p>
+      Gedacht als Ersatz für MailStore Home, aber für Linux und ohne
+      Bindung an einen Anbieter:
+    </p>
+    <ul>
+      <li>Abruf über IMAP und POP3, auch aus mehreren Konten</li>
+      <li>Volltextsuche über Text, Kopfzeilen und Anhänge</li>
+      <li>Das Archiv bleibt lesbar, auch ohne MailBurg</li>
+      <li>Nachvollziehbare Aufbewahrung im Sinne von GoBD und DSGVO</li>
+    </ul>
+    <p>
+      Die Zugangsdaten liegen im Schlüsselbund des Systems, nicht in
+      einer Datei. Das Archiv lässt sich verschlüsseln.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">de.stephanlefty.MailBurg.desktop</launchable>
+
+  <!--
+    Das Symbol liegt unter seinem schlichten Namen im Symbolthema
+    (~/.local/share/icons/hicolor/scalable/apps/mailburg.svg).
+  -->
+  <icon type="stock">mailburg</icon>
+
+  <categories>
+    <category>Office</category>
+    <category>Email</category>
+  </categories>
+
+  <keywords>
+    <keyword>E-Mail</keyword>
+    <keyword>Archiv</keyword>
+    <keyword>IMAP</keyword>
+    <keyword>POP3</keyword>
+    <keyword>Suche</keyword>
+    <keyword>Aufbewahrung</keyword>
+    <keyword>GoBD</keyword>
+  </keywords>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Das Hauptfenster mit dem Archiv</caption>
+      <image>https://raw.githubusercontent.com/Stephan-Lefty/MailBurg/main/docs/bilder/hauptfenster.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Eine Nachricht im Lesefenster</caption>
+      <image>https://raw.githubusercontent.com/Stephan-Lefty/MailBurg/main/docs/bilder/lesefenster.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Die Übersicht des Serverdienstes</caption>
+      <image>https://raw.githubusercontent.com/Stephan-Lefty/MailBurg/main/docs/bilder/server-uebersicht.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/Stephan-Lefty/MailBurg</url>
+  <url type="bugtracker">https://github.com/Stephan-Lefty/MailBurg/issues</url>
+  <url type="help">https://github.com/Stephan-Lefty/MailBurg/blob/main/README.md</url>
+
+  <provides>
+    <binary>mailburg</binary>
+    <binary>mailburg-gui</binary>
+  </provides>
+
+  <content_rating type="oars-1.1"/>
+
+  <!--
+    Nur die laufende Fassung: Das ausführliche Änderungsprotokoll steht
+    in CHANGELOG.md und wird hier nicht zweimal gepflegt.
+  -->
+  <releases>
+    <release version="1.8.5" date="2026-11-05"/>
+  </releases>
+</component>
