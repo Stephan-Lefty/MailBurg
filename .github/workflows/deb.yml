@@ -48,7 +48,7 @@ jobs:
           apt-get update -qq
           apt-get install -y -qq --no-install-recommends \
             ca-certificates git python3 dpkg-dev \
-            debhelper dh-python pybuild-plugin-pyproject \
+            build-essential debhelper dh-python pybuild-plugin-pyproject \
             python3-all python3-setuptools
 
       - uses: actions/checkout@v4
