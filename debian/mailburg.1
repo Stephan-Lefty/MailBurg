@@ -1,0 +1,88 @@
+.TH MAILBURG 1 "06. November 2026" "MailBurg 1.8.5" "Benutzerbefehle"
+.SH BEZEICHNUNG
+mailburg \- E-Mails archivieren, aufbewahren und durchsuchen
+.SH ÜBERSICHT
+.B mailburg
+.I BEFEHL
+.RI [ ARGUMENTE ]
+.SH BESCHREIBUNG
+.B MailBurg
+holt E\-Mails aus beliebig vielen Postfächern und legt sie
+unveränderlich an einem Ort der eigenen Wahl ab \(em auf der eigenen
+Platte, einer externen Platte oder im eigenen Netz.
+.PP
+Ein Protokoll mit Hash\-Kette hält fest, was wann aufgenommen wurde;
+nachträgliche Änderungen fallen damit auf. Die Volltextsuche erfasst
+auch Anhänge: PDF, Office\-Dateien und auf Wunsch gescannte Dokumente
+über Texterkennung.
+.PP
+Das Postfach wird dabei ausschließlich gelesen. MailBurg benutzt
+.B EXAMINE
+statt
+.B SELECT
+und
+.B BODY.PEEK
+statt
+.BR BODY ,
+damit ungelesene Post ungelesen bleibt.
+.SH WICHTIGE BEFEHLE
+.TP
+.B anlegen
+Legt ein neues Archiv an.
+.TP
+.B abrufen
+Holt neue Nachrichten aus den eingerichteten Postfächern. Mit
+.B \-\-alle
+durch jedes bekannte Archiv.
+.TP
+.B importieren
+Liest lokale Mailordner ein \(em Thunderbird, Maildir, MBOX oder
+einen Ordner mit .eml\-Dateien.
+.TP
+.B suchen
+Durchsucht das Archiv.
+.TP
+.B pruefen
+Prüft die Hash\-Kette und meldet, welche Nachricht beanstandet wird.
+.TP
+.B abgleich
+Hält jede Nachrichtennummer im Postfach gegen das Archiv und
+beantwortet damit die Frage, ob wirklich alles aufgenommen wurde.
+.TP
+.B sichern ", " wiederherstellen
+Sicherung in eine Datei und zurück.
+.TP
+.B zurueckspielen
+Gibt Nachrichten wieder heraus \(em als Maildir, MBOX, .eml oder
+unmittelbar in ein Postfach.
+.PP
+Die vollständige Liste zeigt
+.BR "mailburg \-\-help" .
+.SH DATEIEN
+.TP
+.I ~/.config/mailburg/
+Einstellungen und Kontenliste.
+.TP
+.I ~/.local/share/mailburg/
+Suchindex. Er liegt bewusst außerhalb des Archivs: SQLite auf einem
+synchronisierten Laufwerk geht kaputt.
+.SH UMGEBUNGSVARIABLEN
+.TP
+.B MAILBURG_DATEN
+Legt fest, wo der Suchindex liegt. Auf einem Server nötig, weil der
+Dienst ein anderes Benutzerprofil hat als der Mensch, der das Archiv
+angelegt hat.
+.TP
+.B MAILBURG_ARCHIVPASSWORTDATEI
+Datei mit dem Passwort eines verschlüsselten Archivs.
+.SH RECHTLICHES
+MailBurg unterstützt revisionssicheren Betrieb, es stellt ihn nicht
+her. Keine Software kann für sich GoBD\-Konformität beanspruchen.
+.SH FEHLER
+Fehler bitte melden unter
+.UR https://github.com/Stephan-Lefty/MailBurg/issues
+.UE .
+.SH SIEHE AUCH
+.BR mailburg-gui (1)
+.SH AUTOR
+Stephan Rösner

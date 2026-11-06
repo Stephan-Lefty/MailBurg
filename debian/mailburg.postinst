@@ -1,0 +1,41 @@
+#!/bin/sh
+# Sagt beim Einrichten, wenn die Oberflaeche fehlt - bevor jemand
+# vergeblich auf den Menueintrag klickt. Gemeldet am 14.09.2026 von
+# einem Anwender unter Linux Mint, wo python3-pyside6 nicht existiert.
+set -e
+
+if [ "$1" != "configure" ]; then
+    exit 0
+fi
+
+if python3 -c 'import PySide6.QtWidgets' 2>/dev/null; then
+    exit 0
+fi
+
+cat >&2 <<'ENDE'
+
+  ------------------------------------------------------------------
+  MailBurg ist installiert - die grafische Oberflaeche fehlt aber noch.
+
+  Es fehlt PySide6. MailBurg bringt kein eigenes Qt mit, damit es die
+  Sicherheitsupdates Ihrer Distribution bekommt.
+
+  Unter Debian 13 und GuideOS:
+
+      sudo apt install python3-pyside6.qtwidgets
+
+  Ubuntu, Linux Mint und ihre Verwandten fuehren dieses Paket nicht.
+  Dort ist die Einrichtung im Benutzerordner der Weg:
+
+      git clone https://github.com/Stephan-Lefty/MailBurg.git
+      cd MailBurg
+      ./install.sh
+
+  Die Kommandozeile laeuft auch ohne Oberflaeche:  mailburg --help
+  ------------------------------------------------------------------
+
+ENDE
+
+#DEBHELPER#
+
+exit 0

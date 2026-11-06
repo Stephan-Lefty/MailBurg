@@ -1,0 +1,17 @@
+mailburg (1.8.5) unstable; urgency=medium
+
+  * Erstes Paket, das mit dpkg-buildpackage gebaut wird. Damit kann eine
+    Distribution es selbst nachbauen und aufnehmen - angeregt am
+    06.11.2026 vom Admin der GuideOS-Distribution.
+  * Das Änderungsprotokoll im Paket liegt jetzt im Debian-Format. Bisher
+    wurde die Markdown-Fassung gezippt abgelegt; lintian beanstandete
+    daran achtzehn Zeilen. Der Kommentar im Bauskript berief sich auf
+    lintian, gelaufen war es dort nie.
+  * Die AppStream-Angaben werden nach /usr/share/metainfo installiert.
+    Sie lagen bisher nur im Python-Paket - und damit an einer Stelle,
+    an der keine Software-Verwaltung sie sucht. Nach einer
+    .deb-Installation erschien MailBurg deshalb weder in GNOME Software
+    noch in Discover, und entfernen ließ es sich dort auch nicht.
+  * Handbuchseiten für mailburg und mailburg-gui.
+
+ -- Stephan Roesner <noreply@github.com>  Fri, 06 Nov 2026 14:30:00 +0100

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=MailBurg
+GenericName=E-Mail-Archiv
+Comment=E-Mails sammeln, aufbewahren und durchsuchen
+Exec=mailburg-gui %f
+Icon=mailburg
+Terminal=false
+Categories=Office;Email;
+Keywords=Mail;E-Mail;Archiv;Suche;IMAP;
+StartupNotify=true

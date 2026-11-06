@@ -1,0 +1,32 @@
+.TH MAILBURG-GUI 1 "06. November 2026" "MailBurg 1.8.5" "Benutzerbefehle"
+.SH BEZEICHNUNG
+mailburg\-gui \- das Fenster von MailBurg öffnen
+.SH ÜBERSICHT
+.B mailburg-gui
+.RI [ DATEI ]
+.SH BESCHREIBUNG
+Öffnet das Fenster von
+.BR mailburg (1)
+mit Suche, Postfachbaum und Vorschau. Hinter dem Eintrag im
+Anwendungsmenü steht dieser Befehl.
+.PP
+Beim ersten Start führt ein Assistent durch die Einrichtung: Archiv
+anlegen, Postfächer eintragen, erster Abruf.
+.SH VORAUSSETZUNG
+Setzt PySide6 voraus. MailBurg bringt bewusst kein eigenes Qt mit,
+damit es die Sicherheitsupdates der Distribution bekommt.
+.PP
+Unter Debian und GuideOS:
+.PP
+.RS
+.B sudo apt install python3-pyside6.qtwidgets
+.RE
+.PP
+Ubuntu, Linux Mint und ihre Verwandten führen dieses Paket nicht.
+Fehlt die Oberfläche, sagt MailBurg das beim Einrichten und beim
+Start \(em ein Menüeintrag hat kein Terminal, in dem man eine
+Meldung lesen könnte. Die Kommandozeile läuft auch ohne Qt.
+.SH SIEHE AUCH
+.BR mailburg (1)
+.SH AUTOR
+Stephan Rösner

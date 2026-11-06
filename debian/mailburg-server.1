@@ -1,0 +1,44 @@
+.TH MAILBURG-SERVER 1 "06. November 2026" "MailBurg 1.8.5" "Benutzerbefehle"
+.SH BEZEICHNUNG
+mailburg\-server \- das Archiv im Browser bereitstellen
+.SH ÜBERSICHT
+.B mailburg-server
+.RI [ OPTIONEN ]
+.SH BESCHREIBUNG
+Stellt ein MailBurg\-Archiv über eine Weboberfläche bereit, damit
+mehrere Menschen darin suchen können \(em jeder mit eigenem Zugang und
+eigenen Rechten.
+.PP
+Die Rechteprüfung steht
+.I in
+der Datenbankabfrage, nicht dahinter: Schon eine Trefferzahl verriete
+sonst, dass es Post gibt, die man nicht sehen darf.
+.PP
+Die Zugänge liegen im Archiv, nicht beim Dienst \(em ein Archiv, das
+umzieht, nimmt sie mit.
+.SH SICHERHEIT
+Der Dienst spricht HTTP ohne TLS. Er gehört deshalb hinter einen
+Reverse\-Proxy oder in ein vertrauenswürdiges Netz, nicht unmittelbar
+ins Internet.
+.PP
+Wer von außen zugreifen will, ohne einen Proxy einzurichten, nimmt
+einen SSH\-Tunnel:
+.PP
+.RS
+.B ssh -L 8383:127.0.0.1:8383 benutzer@server
+.RE
+.SH UMGEBUNGSVARIABLEN
+.TP
+.B MAILBURG_DATEN
+Legt fest, wo der Suchindex liegt. Auf einem Server nötig: Der Dienst
+läuft unter einem anderen Konto als der Mensch, der das Archiv angelegt
+hat, und fände den Index sonst nicht \(em jede Suche bliebe leer, ohne
+dass es nach einer Störung aussähe.
+.TP
+.B MAILBURG_ARCHIVPASSWORTDATEI
+Datei mit dem Passwort eines verschlüsselten Archivs.
+.SH SIEHE AUCH
+.BR mailburg (1),
+.BR mailburg-server-einrichten (1)
+.SH AUTOR
+Stephan Rösner

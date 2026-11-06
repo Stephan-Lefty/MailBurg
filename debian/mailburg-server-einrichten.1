@@ -1,0 +1,25 @@
+.TH MAILBURG-SERVER-EINRICHTEN 1 "06. November 2026" "MailBurg 1.8.5" "Benutzerbefehle"
+.SH BEZEICHNUNG
+mailburg\-server\-einrichten \- Prüfliste für die Server-Einrichtung
+.SH ÜBERSICHT
+.B mailburg-server-einrichten
+.SH BESCHREIBUNG
+Öffnet ein Fenster, das Schritt für Schritt durch die Einrichtung des
+Serverbetriebs führt: Archiv, Zugänge, Dienst, Starttyp, Tresor,
+Abruf, Symbole und Aktualisierungen.
+.PP
+Gedacht als Ersatz für ein Dutzend abgetippter Befehle. Jeder Punkt
+zeigt an, ob er erledigt ist, und lässt sich einzeln anstoßen.
+.PP
+Die Prüfungen selbst liegen im Kern des Programms, nicht im Fenster:
+Sie handeln fast ausschließlich von Dingen, die nur unter Windows
+geschehen, und wären sonst nirgends prüfbar.
+.SH HINWEIS
+Das Werkzeug ist für Windows\-Server gedacht. Unter Linux richtet man
+den Dienst über systemd ein; die Anleitung dazu steht in
+.IR docs/server-einrichten.md .
+.SH SIEHE AUCH
+.BR mailburg-server (1),
+.BR mailburg (1)
+.SH AUTOR
+Stephan Rösner

@@ -1,0 +1,47 @@
+Source: mailburg
+Section: mail
+Priority: optional
+Maintainer: Stephan Roesner <noreply@github.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               pybuild-plugin-pyproject,
+               python3-all,
+               python3-setuptools
+Standards-Version: 4.7.0
+Homepage: https://github.com/Stephan-Lefty/MailBurg
+Rules-Requires-Root: no
+
+Package: mailburg
+Architecture: all
+Depends: ${python3:Depends},
+         ${misc:Depends},
+         python3-keyring,
+         python3-zstandard
+# PySide6 steht hier und nicht unter Depends, damit das Paket auch auf
+# einen Server passt, der keine Oberfläche braucht - die Server-Variante
+# kommt ohne Qt aus. Der Preis ist bekannt und wird in Kauf genommen:
+# Führt eine Distribution python3-pyside6 gar nicht (Ubuntu und Linux
+# Mint tun das nicht), installiert apt es schweigend nicht. Dagegen
+# steht das postinst, das es sagt, bevor jemand vergeblich klickt.
+#
+# python3-zstandard dagegen gehört zu Depends: Ohne es lässt sich ein
+# Archiv mit gepackten Nachrichten gar nicht lesen. Das stand bis zum
+# 22.09.2026 unter Suggests, dann unter Recommends - beide Male zu
+# wenig, eine Anwenderin konnte keine einzige Mail öffnen.
+Recommends: python3-pyside6.qtwidgets,
+            python3-cryptography,
+            python3-pypdf,
+            poppler-utils
+Description: Archiv für E-Mail, an einem Ort Ihrer Wahl
+ MailBurg holt E-Mails aus beliebig vielen Postfächern und legt sie
+ unveränderlich ab - auf der eigenen Platte, einer externen Platte oder
+ im eigenen Netz. Ein Protokoll mit Hash-Kette hält fest, was wann
+ aufgenommen wurde; nachträgliche Änderungen fallen damit auf.
+ .
+ Gedacht für alle, die Geschäftspost aufbewahren müssen oder ihre
+ private Post nicht beim Anbieter lassen wollen. Die Volltextsuche
+ erfasst auch Anhänge - PDF, Office-Dateien und auf Wunsch gescannte
+ Dokumente über Texterkennung.
+ .
+ MailBurg unterstützt revisionssicheren Betrieb, es stellt ihn nicht
+ her: Keine Software kann für sich GoBD-Konformität beanspruchen.

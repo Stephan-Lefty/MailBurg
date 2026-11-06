@@ -1,0 +1,35 @@
+#!/usr/bin/make -f
+# Gebaut wird mit pybuild aus der pyproject.toml - dasselbe Paket wie
+# bei pip, nur an die Debian-Pfade installiert.
+
+export PYBUILD_NAME=mailburg
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+# Die Tests laufen beim Paketbau nicht mit. Sie brauchen Qt, einen
+# Schlüsselbund und schreibbare Verzeichnisse; auf einem Bauserver ist
+# nichts davon verlässlich da. Geprüft wird in der CI (tests.yml), und
+# der Release-Lauf baut erst danach.
+override_dh_auto_test:
+
+# Menüeintrag, Symbole und die Angaben für die Software-Verwaltung
+# liegen im Python-Paket, damit sie jede Installationsart erreichen.
+# Für ein Systempaket müssen sie zusätzlich dorthin, wo die
+# Arbeitsumgebung sie sucht.
+override_dh_install:
+	dh_install
+	install -Dm644 mailburg/paketdaten/de.stephanlefty.MailBurg.desktop \
+		debian/mailburg/usr/share/applications/de.stephanlefty.MailBurg.desktop
+	# Ohne diese Datei kennt keine Software-Verwaltung das Programm: Es
+	# erscheint dort weder zum Finden noch zum Entfernen. Sie fehlte im
+	# .deb bis zum 06.11.2026 - sie lag nur im Python-Paket, und dort
+	# sucht sie niemand.
+	install -Dm644 mailburg/paketdaten/de.stephanlefty.MailBurg.metainfo.xml \
+		debian/mailburg/usr/share/metainfo/de.stephanlefty.MailBurg.metainfo.xml
+	set -e; for groesse in 16 32 48 64 128 256; do \
+		install -Dm644 "assets/icon-$$groesse.png" \
+			"debian/mailburg/usr/share/icons/hicolor/$${groesse}x$${groesse}/apps/mailburg.png"; \
+	done
+	install -Dm644 assets/icon.svg \
+		debian/mailburg/usr/share/icons/hicolor/scalable/apps/mailburg.svg

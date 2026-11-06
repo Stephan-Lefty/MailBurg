@@ -47,12 +47,21 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y -qq --no-install-recommends \
-            ca-certificates git python3 dpkg-dev
+            ca-certificates git python3 dpkg-dev \
+            debhelper dh-python pybuild-plugin-pyproject \
+            python3-all python3-setuptools
 
       - uses: actions/checkout@v4
 
       - name: Bauen
-        run: python3 werkzeuge/deb_bauen.py dist
+        # **Mit dpkg-buildpackage, nicht mehr von Hand.** Angeregt am
+        # 06.11.2026 vom Admin der GuideOS-Distribution: Nur so kann
+        # eine Distribution das Paket selbst nachbauen und aufnehmen.
+        # Die Paketquellen liegen in debian/.
+        run: |
+          dpkg-buildpackage -us -uc
+          mkdir -p dist
+          mv ../mailburg_*.deb dist/
 
       - name: Was steht drin?
         # Im Protokoll soll nachlesbar sein, was ausgeliefert wurde -
@@ -161,13 +170,15 @@ jobs:
           mailburg pruefen /tmp/Probe
 
       - name: Was lintian sagt
-        # Nicht blockierend: lintian ist streng, und manche seiner
-        # Regeln zielen auf Pakete in der Distribution, nicht auf ein
-        # Paket zum Herunterladen. Im Protokoll soll es trotzdem stehen.
-        continue-on-error: true
+        # **Seit dem 06.11.2026 blockierend.** Vorher lief der Schritt
+        # mit continue-on-error und einem abschließenden `|| true` -
+        # eine Prüfung, die nie rot wird, liest niemand. Genau deshalb
+        # fiel monatelang nicht auf, dass das Änderungsprotokoll im
+        # Paket im falschen Format lag: achtzehn Beanstandungen, jede
+        # davon seit jeher da.
         run: |
           apt-get install -y -qq lintian
-          lintian --no-tag-display-limit dist/*.deb || true
+          lintian --no-tag-display-limit --fail-on warning dist/*.deb
 
       - name: Prüfsumme
         run: |
