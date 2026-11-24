@@ -675,5 +675,184 @@ class ScansImDienstTest(unittest.TestCase):
         )
 
 
+class VorwaermenTest(unittest.TestCase):
+    """Einmal am Tag den Suchindex anfassen, bevor es jemand tut.
+
+    **Verschiebt eine Wartezeit, behebt sie nicht.** Der erste
+    Seitenaufruf an einem Arbeitstag dauert auf dem Firmenserver eine
+    halbe Minute (592.000 Mails, 7,26 GB Index); woran es liegt, ist
+    offen. Vier Erklärungen sind gemessen und widerlegt.
+
+    Die Dauer steht deshalb im Ereignisprotokoll – ein Vorwärmen, das
+    die Beobachtung verdeckt, wäre ein schlechter Tausch.
+    """
+
+    def _schleife(self, **lage):
+        schleife = Schleife("/irgendwo", Lage(takt=30, **lage))
+        schleife.gemeldet = []
+        schleife._melden = (
+            lambda text, fehler=False:
+            schleife.gemeldet.append((text, fehler))
+        )
+        return schleife
+
+    def _morgens(self, stunde=7, tag=15):
+        from datetime import datetime as dt
+
+        return dt(2026, 12, tag, stunde, 0)
+
+    def test_ohne_uhrzeit_passiert_nichts(self):
+        """Die Vorgabe. Wer nichts einstellt, bekommt nichts."""
+        schleife = self._schleife()
+
+        with mock.patch("mailburg.core.archive.Archive.open") as oeffnen:
+            self.assertFalse(
+                schleife._vielleicht_vorwaermen(self._morgens()))
+
+        oeffnen.assert_not_called()
+
+    def test_vor_der_uhrzeit_passiert_nichts(self):
+        from datetime import time as uhrzeit
+
+        schleife = self._schleife(vorwaermen=uhrzeit(6, 0))
+
+        with mock.patch("mailburg.core.archive.Archive.open") as oeffnen:
+            self.assertFalse(
+                schleife._vielleicht_vorwaermen(self._morgens(stunde=5)))
+
+        oeffnen.assert_not_called()
+
+    def test_danach_wird_einmal_gewaermt(self):
+        from datetime import time as uhrzeit
+
+        schleife = self._schleife(vorwaermen=uhrzeit(6, 0))
+
+        with mock.patch("mailburg.core.archive.Archive.open") as oeffnen:
+            self.assertTrue(
+                schleife._vielleicht_vorwaermen(self._morgens()))
+
+        oeffnen.assert_called_once()
+        archiv = oeffnen.return_value.__enter__.return_value
+        archiv.index.count.assert_called_once_with("")
+        archiv.index.search.assert_called_once()
+
+    def test_aber_nur_einmal_am_tag(self):
+        """**Der Takt ist halbstündlich.** Ohne diese Sperre liefe das
+        Vorwärmen von sechs Uhr bis Mitternacht sechsunddreißigmal –
+        und schriebe ebenso viele Zeilen ins Protokoll."""
+        from datetime import time as uhrzeit
+
+        schleife = self._schleife(vorwaermen=uhrzeit(6, 0))
+
+        with mock.patch("mailburg.core.archive.Archive.open") as oeffnen:
+            schleife._vielleicht_vorwaermen(self._morgens(stunde=6))
+            schleife._vielleicht_vorwaermen(self._morgens(stunde=7))
+            schleife._vielleicht_vorwaermen(self._morgens(stunde=15))
+
+        self.assertEqual(oeffnen.call_count, 1)
+
+    def test_am_naechsten_tag_wieder(self):
+        """Ein Haken müsste um Mitternacht zurückgesetzt werden – und
+        dafür bräuchte es wieder jemanden, der daran denkt."""
+        from datetime import time as uhrzeit
+
+        schleife = self._schleife(vorwaermen=uhrzeit(6, 0))
+
+        with mock.patch("mailburg.core.archive.Archive.open") as oeffnen:
+            schleife._vielleicht_vorwaermen(self._morgens(tag=15))
+            schleife._vielleicht_vorwaermen(self._morgens(tag=16))
+
+        self.assertEqual(oeffnen.call_count, 2)
+
+    def test_die_dauer_steht_in_der_meldung(self):
+        """**Sonst verdeckt das Vorwärmen die einzige Spur.**
+
+        Ohne Zahl wäre die Wartezeit weg – und mit ihr die
+        Beobachtung, aus der sich die Ursache noch finden ließe. Wird
+        aus einer halben Minute eine ganze, soll das dastehen.
+        """
+        from datetime import time as uhrzeit
+
+        schleife = self._schleife(vorwaermen=uhrzeit(6, 0))
+
+        with mock.patch("mailburg.core.archive.Archive.open"):
+            schleife._vielleicht_vorwaermen(self._morgens())
+
+        texte = [t for t, _ in schleife.gemeldet]
+        self.assertTrue(
+            any("vorgewärmt in" in t and "Sekunden" in t for t in texte),
+            schleife.gemeldet,
+        )
+
+    def test_ein_fehler_haelt_den_dienst_nicht_auf(self):
+        """**Vorwärmen ist Kür.** Ein Archiv, das gerade nicht
+        aufgeht, ist kein Grund, keine Post mehr zu holen."""
+        from datetime import time as uhrzeit
+
+        schleife = self._schleife(vorwaermen=uhrzeit(6, 0))
+
+        with mock.patch("mailburg.core.archive.Archive.open",
+                        side_effect=OSError("Platte weg")):
+            self.assertFalse(
+                schleife._vielleicht_vorwaermen(self._morgens()))
+
+        self.assertTrue(
+            any("Vorwärmen fehlgeschlagen" in t and f
+                for t, f in schleife.gemeldet),
+            schleife.gemeldet,
+        )
+
+    def test_und_wird_nicht_in_jedem_takt_wiederholt(self):
+        """Achtundvierzig Fehlermeldungen am Tag statt einer wären
+        genau die Tapete, hinter der die nächste echte untergeht."""
+        from datetime import time as uhrzeit
+
+        schleife = self._schleife(vorwaermen=uhrzeit(6, 0))
+
+        with mock.patch("mailburg.core.archive.Archive.open",
+                        side_effect=OSError("Platte weg")) as oeffnen:
+            schleife._vielleicht_vorwaermen(self._morgens(stunde=6))
+            schleife._vielleicht_vorwaermen(self._morgens(stunde=7))
+
+        self.assertEqual(oeffnen.call_count, 1)
+
+    def test_die_uhrzeit_kommt_aus_der_umgebung(self):
+        from datetime import time as uhrzeit
+
+        with mock.patch.dict(os.environ, {"MAILBURG_VORWAERMEN": "06:30"}):
+            self.assertEqual(
+                Lage.aus_umgebung().vorwaermen, uhrzeit(6, 30))
+
+    def test_ein_tippfehler_schaltet_es_ab_statt_zu_krachen(self):
+        """Dieselbe Haltung wie bei der Pause: Was sich nicht lesen
+        lässt, gilt als nicht eingestellt – es darf nicht den Dienst
+        anhalten."""
+        for unsinn in ("sechs", "25:00", "6", "-"):
+            with self.subTest(unsinn=unsinn), \
+                    mock.patch.dict(os.environ,
+                                    {"MAILBURG_VORWAERMEN": unsinn}):
+                self.assertIsNone(Lage.aus_umgebung().vorwaermen)
+
+    def test_es_steht_vor_der_pausenpruefung(self):
+        """**Sonst käme es auf einem Server mit nächtlicher Sicherung
+        nie dran.** Die Ruhe reicht dort bis in den frühen Morgen, und
+        genau dann soll vorgewärmt werden – hinter dem ``continue``
+        wäre der Aufruf unerreichbar.
+        """
+        import inspect
+        import textwrap
+
+        zeilen = textwrap.dedent(
+            inspect.getsource(Schleife._schleife)).splitlines()
+        waermen = next((i for i, z in enumerate(zeilen)
+                        if "_vielleicht_vorwaermen()" in z), None)
+        pause = next((i for i, z in enumerate(zeilen)
+                      if "self.lage.pausiert()" in z), None)
+
+        self.assertIsNotNone(waermen, "Die Schleife wärmt nie vor.")
+        self.assertIsNotNone(pause)
+        self.assertLess(waermen, pause)
+
+
 if __name__ == "__main__":
     unittest.main()

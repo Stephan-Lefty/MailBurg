@@ -568,6 +568,37 @@ class GemeinsamerOrtTest(unittest.TestCase):
         self.assertEqual(mit[paths.EINSTELLUNGEN], "/b")
         self.assertEqual(mit[paths.DATEN], "/c")
 
+    def test_die_vorwaermzeit_geht_an_den_dienst(self):
+        """Sonst bliebe die Einstellung im Fenster stehen und käme nie
+        dort an, wo sie wirken soll."""
+        from mailburg.server import abruf
+
+        werte = Umgebung(
+            archiv=Path("/a"), vorwaermen="06:00"
+        ).als_variablen()
+
+        self.assertEqual(werte[abruf.VORWAERMEN], "06:00")
+
+    def test_ohne_vorwaermzeit_steht_die_variable_nicht_da(self):
+        from mailburg.server import abruf
+
+        self.assertNotIn(
+            abruf.VORWAERMEN, Umgebung(archiv=Path("/a")).als_variablen())
+
+    def test_vorwaermen_haengt_nicht_am_abruf(self):
+        """**Getrennt, und das ist Absicht.** Vorgewärmt wird der
+        Suchindex – den gibt es auch auf einem Server, der seine Post
+        von anderswo bekommt, etwa über ``importieren`` von einem
+        zweiten Rechner."""
+        from mailburg.server import abruf
+
+        werte = Umgebung(
+            archiv=Path("/a"), abruf=0, vorwaermen="06:00"
+        ).als_variablen()
+
+        self.assertNotIn(abruf.TAKT, werte)
+        self.assertEqual(werte[abruf.VORWAERMEN], "06:00")
+
 
 class AktualisierungTest(unittest.TestCase):
     """Nachsehen, ob eine neue Fassung da ist.

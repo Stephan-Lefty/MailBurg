@@ -504,6 +504,34 @@ Das ist wichtiger, als es klingt: Ein Postfach ohne Passwort wird beim
 Abruf übersprungen, ohne dass etwas rot wird. Der Dienst läuft weiter,
 die Statusseite ist grün, und es kommt nur nichts mehr an.
 
+## Morgens vorwärmen (bei großen Archiven)
+
+**Der erste Seitenaufruf an einem Arbeitstag kann eine halbe Minute
+dauern**, jeder weitere antwortet in Sekundenbruchteilen. Gemessen auf
+einem Server mit 592.000 Mails und einer Indexdatei von 7,26 GB.
+Woran es genau liegt, ist offen – vier naheliegende Erklärungen sind
+nachgemessen und widerlegt.
+
+Es trifft nur den, der morgens als Erster hineinsieht. Wer ihm das
+abnehmen will, trägt beim Abruf-Knopf im Einrichtungsfenster eine
+Uhrzeit vor Dienstbeginn ein. Der Dienst tut dann einmal täglich
+dasselbe, was der erste Mitarbeiter täte.
+
+**Die gemessene Dauer landet im Ereignisprotokoll:**
+
+```
+Suchindex vorgewärmt in 48,3 Sekunden. Der erste Zugriff danach
+sollte sofort antworten.
+```
+
+Das ist der eigentliche Grund für diese Zeile. Ein Vorwärmen allein
+nähme die Wartezeit weg – und mit ihr die einzige Spur zur Ursache.
+So steht stattdessen jeden Tag eine Zahl da, an der sich ablesen
+lässt, ob es schlimmer wird.
+
+Die Einstellung hängt **nicht** am Abruf: Sie wirkt auch auf einem
+Server, der seine Post von anderswo bekommt.
+
 ## Ohne Internet auf dem Server
 
 Auf einem Rechner **mit** Internet, gleiche Python-Fassung und

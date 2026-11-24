@@ -471,6 +471,7 @@ class Einrichtungsfenster(QMainWindow):
             abruf=int(takt) if (takt := werte.get(
                 "MAILBURG_ABRUF", "").strip()).isdigit() else 0,
             abrufpause=werte.get("MAILBURG_ABRUF_PAUSE", "").strip(),
+            vorwaermen=werte.get("MAILBURG_VORWAERMEN", "").strip(),
         )
 
     def _aus_den_feldern(self) -> Umgebung:
@@ -492,6 +493,7 @@ class Einrichtungsfenster(QMainWindow):
             # LOCALAPPDATA, nur eine Ebene höher.
             abruf=self.umgebung.abruf,
             abrufpause=self.umgebung.abrufpause,
+            vorwaermen=self.umgebung.vorwaermen,
         )
 
     def auffrischen(self) -> None:
@@ -1031,12 +1033,33 @@ class Einrichtungsfenster(QMainWindow):
             if not gut:
                 return
 
+        # **Getrennt vom Takt gefragt, und auch wenn der Abruf aus
+        # ist.** Vorgewärmt wird der Suchindex; den gibt es auch auf
+        # einem Server, der seine Post von anderswo bekommt.
+        vorwaermen, gut = QInputDialog.getText(
+            self, "Morgens vorwärmen?",
+            "Bei großen Archiven dauert der erste Seitenaufruf am Tag "
+            "eine halbe Minute,\njeder weitere antwortet sofort. Wer "
+            "hier eine Uhrzeit vor Dienstbeginn\neinträgt, nimmt dem "
+            "Ersten im Büro das Warten ab.\n\n"
+            "Format HH:MM, etwa 06:00. Leer lassen heißt: nicht "
+            "vorwärmen.\n\n"
+            "Die gemessene Dauer steht danach im Ereignisprotokoll.",
+            text=self.umgebung.vorwaermen or "",
+        )
+        if not gut:
+            return
+
         self.umgebung.abruf = takt
         self.umgebung.abrufpause = pause.strip()
+        self.umgebung.vorwaermen = vorwaermen.strip()
 
         self._melden(
             f"Abruf: alle {takt} Minuten" if takt else "Abruf: aus"
         )
+        if self.umgebung.vorwaermen:
+            self._melden(
+                f"Vorwärmen: täglich um {self.umgebung.vorwaermen}")
         try:
             for zeile in einrichtung.variablen_setzen(self.umgebung):
                 self._melden(f"  {zeile}")

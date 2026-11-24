@@ -9,6 +9,24 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+
+- **Der Dienst kann den Suchindex morgens vorwärmen.** Bei großen
+  Archiven dauert der erste Seitenaufruf an einem Arbeitstag eine
+  halbe Minute, jeder weitere antwortet sofort – gemessen an 592.000
+  Mails und einer Indexdatei von 7,26 GB. Wer im Einrichtungsfenster
+  beim Abruf-Knopf eine Uhrzeit vor Dienstbeginn einträgt, nimmt dem
+  Ersten im Büro das Warten ab.
+
+  **Die gemessene Dauer steht danach im Ereignisprotokoll**, und das
+  ist der wichtigere Teil: Ein Vorwärmen allein nähme die Wartezeit
+  weg – und mit ihr die einzige Spur zu ihrer Ursache, die bis heute
+  offen ist. So steht jeden Tag eine Zahl da, an der sich ablesen
+  lässt, ob es schlimmer wird.
+
+  Die Einstellung hängt nicht am Abruf: Sie wirkt auch auf einem
+  Server, der seine Post von anderswo bekommt.
+
 ### Geändert
 
 - **Der Dienst sagt jetzt, ob er Anhangstext erzeugt hat.** Bisher

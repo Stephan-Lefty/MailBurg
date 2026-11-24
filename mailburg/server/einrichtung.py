@@ -105,6 +105,16 @@ class Umgebung:
     #: Sicherung.
     abrufpause: str = ""
 
+    #: Wann der Suchindex vorgewärmt wird, als »HH:MM«. Leer heißt:
+    #: gar nicht.
+    #:
+    #: **Für große Archive.** Der erste Seitenaufruf an einem
+    #: Arbeitstag dauert dort eine halbe Minute, jeder weitere
+    #: antwortet sofort – gemessen an 592.000 Mails. Wer morgens vor
+    #: Dienstbeginn einmal dasselbe tut, nimmt dem Ersten im Büro das
+    #: Warten ab. Die Dauer steht danach im Ereignisprotokoll.
+    vorwaermen: str = ""
+
     def als_variablen(self) -> dict[str, str]:
         werte = {
             lage.ARCHIV: str(self.archiv) if self.archiv else "",
@@ -124,6 +134,14 @@ class Umgebung:
             werte[abrufmodul.TAKT] = str(self.abruf)
             if self.abrufpause:
                 werte[abrufmodul.PAUSE] = self.abrufpause
+        # **Außerhalb des Abruf-Zweigs.** Vorgewärmt wird der
+        # Suchindex, und den gibt es auch bei einem Server, der die
+        # Post von anderswo bekommt – etwa über ``importieren`` von
+        # einem zweiten Rechner.
+        if self.vorwaermen:
+            from mailburg.server import abruf as abrufmodul
+
+            werte[abrufmodul.VORWAERMEN] = self.vorwaermen
         return werte
 
 
@@ -469,6 +487,7 @@ GELESEN = (
     paths.DATEN,
     "MAILBURG_ABRUF",
     "MAILBURG_ABRUF_PAUSE",
+    "MAILBURG_VORWAERMEN",
 )
 
 

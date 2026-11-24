@@ -54,6 +54,24 @@ PAUSE = "MAILBURG_ABRUF_PAUSE"
 #: ersten Fehlschlag abschaltet, fällt niemandem auf.
 NACH_EINEM_FEHLER = 5 * 60
 
+#: Wann der Suchindex einmal täglich vorgewärmt wird, als ``HH:MM``.
+#: Leer schaltet ab.
+#:
+#: **Der erste Seitenaufruf an einem Arbeitstag dauert eine halbe
+#: Minute**, jeder weitere antwortet in Sekundenbruchteilen – gemeldet
+#: am 2026-11-04 von einem Firmenserver mit 592.000 Mails und einer
+#: Indexdatei von 7,26 GB. Vier Erklärungen sind gemessen und
+#: widerlegt; die Ursache ist offen.
+#:
+#: **Das hier behebt sie nicht, es verschiebt die Wartezeit** – auf
+#: eine Uhrzeit, zu der niemand davorsitzt. Ein Vorwärmen, das die
+#: Ursache verdeckt, wäre allerdings ein schlechter Tausch: Dann wäre
+#: die Beobachtung weg, aus der sie sich noch finden ließe. Deshalb
+#: schreibt der Lauf seine Dauer ins Ereignisprotokoll. Aus einer
+#: Unannehmlichkeit wird so eine tägliche Messreihe – wird aus einer
+#: halben Minute eine ganze, steht es da.
+VORWAERMEN = "MAILBURG_VORWAERMEN"
+
 
 @dataclass
 class Lage:
@@ -62,6 +80,7 @@ class Lage:
     takt: int = STANDARDTAKT
     pause_von: uhrzeit | None = None
     pause_bis: uhrzeit | None = None
+    vorwaermen: uhrzeit | None = None
 
     @property
     def an(self) -> bool:
@@ -76,7 +95,10 @@ class Lage:
             takt = STANDARDTAKT
 
         von, bis = _pause_lesen(os.environ.get(PAUSE, ""))
-        return cls(takt=max(0, takt), pause_von=von, pause_bis=bis)
+        return cls(
+            takt=max(0, takt), pause_von=von, pause_bis=bis,
+            vorwaermen=_uhrzeit_lesen(os.environ.get(VORWAERMEN, "")),
+        )
 
     def pausiert(self, jetzt: uhrzeit | None = None) -> bool:
         """Ob gerade Ruhe herrscht.
@@ -113,6 +135,22 @@ def _pause_lesen(roh: str) -> tuple[uhrzeit | None, uhrzeit | None]:
         return None, None
 
 
+def _uhrzeit_lesen(roh: str) -> uhrzeit | None:
+    """»06:00« als Uhrzeit, oder ``None``.
+
+    Dieselbe Haltung wie bei der Pause: Was sich nicht lesen lässt,
+    gilt als »nicht eingestellt«. Ein Tippfehler schaltet das
+    Vorwärmen ab – er darf nicht den Dienst anhalten.
+    """
+    roh = (roh or "").strip()
+    if not roh:
+        return None
+    try:
+        return uhrzeit.fromisoformat(roh)
+    except ValueError:
+        return None
+
+
 class Schleife:
     """Holt in festem Takt Post, bis jemand sie anhält.
 
@@ -143,6 +181,12 @@ class Schleife:
         #: echte darin unter.
         self._ocr_vermisst = False
 
+        #: An welchem Tag zuletzt vorgewärmt wurde. **Das Datum, nicht
+        #: ein Haken** – ein Haken müsste um Mitternacht zurückgesetzt
+        #: werden, und dafür bräuchte es wieder jemanden, der daran
+        #: denkt. Ein Datumsvergleich kommt ohne das aus.
+        self._gewaermt_am = None
+
     def starten(self) -> None:
         if not self.lage.an:
             return
@@ -172,6 +216,12 @@ class Schleife:
             return
 
         while not self.halt.is_set():
+            # **Vor der Pausenprüfung.** Die übliche Ruhe reicht bis in
+            # den frühen Morgen, und genau dann soll vorgewärmt werden –
+            # stünde das hinter dem ``continue``, käme es an einem
+            # Server mit nächtlicher Sicherung nie dran.
+            self._vielleicht_vorwaermen()
+
             if self.lage.pausiert():
                 # Während der Pause im Minutentakt nachsehen, ob sie
                 # vorbei ist – nicht den vollen Takt verschlafen.
@@ -265,6 +315,65 @@ class Schleife:
         # steckenbleiben kann. Und berichtet wird über das, was der
         # Abruf getan hat – ohne ihn gäbe es nichts zu melden.
         self._berichten(neu, uebersprungen)
+
+    def _vielleicht_vorwaermen(self, jetzt: datetime | None = None) -> bool:
+        """Einmal am Tag den Suchindex anfassen, bevor es jemand tut.
+
+        **Verschiebt eine Wartezeit, behebt sie nicht.** Der erste
+        Seitenaufruf an einem Arbeitstag dauert auf dem Firmenserver
+        eine halbe Minute, jeder weitere antwortet sofort; woran das
+        liegt, ist offen (vier Erklärungen sind gemessen und
+        widerlegt). Wer morgens um sechs einmal dasselbe tut, was der
+        erste Mitarbeiter um acht täte, nimmt ihm das Warten ab.
+
+        **Und misst dabei.** Ein Vorwärmen, das die Beobachtung
+        verdeckt, wäre ein schlechter Tausch – dann wäre die einzige
+        Spur zur Ursache weg. Die Dauer steht deshalb im
+        Ereignisprotokoll: eine Zeile am Tag, aus der sich später
+        ablesen lässt, ob es schlimmer wird.
+
+        Gibt zurück, ob gewärmt wurde – für die Tests und damit die
+        Schleife nicht raten muss.
+        """
+        wann = self.lage.vorwaermen
+        if wann is None:
+            return False
+
+        nun = jetzt or datetime.now()
+        if nun.time() < wann or self._gewaermt_am == nun.date():
+            return False
+
+        # **Vor dem Versuch vermerken, nicht danach.** Scheitert das
+        # Öffnen, soll es nicht in jedem Takt erneut versucht werden –
+        # das wären achtundvierzig Fehlermeldungen am Tag statt einer.
+        self._gewaermt_am = nun.date()
+
+        from mailburg.core.archive import Archive
+
+        begonnen = time.monotonic()
+        try:
+            # Ohne Sperrdatei, wie der lesende Dienst: Ein Vorwärmen
+            # darf einem laufenden Abruf nicht im Weg stehen.
+            with Archive.open(
+                self.archiv, exclusive=False, passwort=self.passwort
+            ) as archiv:
+                # Dasselbe, was die Trefferseite tut – nicht mehr.
+                # ``statistics()`` wäre gründlicher, zieht aber die
+                # ganze Tabelle durch (siehe die Byte-Summe dort); das
+                # wärmt mehr, als die Suche je braucht.
+                archiv.index.count("")
+                archiv.index.search("", limit=50)
+        except Exception as fehler:  # noqa: BLE001
+            self._melden(
+                f"Vorwärmen fehlgeschlagen: {fehler}", fehler=True)
+            return False
+
+        dauer = time.monotonic() - begonnen
+        self._melden(
+            f"Suchindex vorgewärmt in {dauer:.1f} Sekunden. "
+            f"Der erste Zugriff danach sollte sofort antworten."
+        )
+        return True
 
     def _anhaenge_lesen(self, archiv) -> int:
         """Ein Häppchen Texterkennung, im Anschluss an den Abruf.
