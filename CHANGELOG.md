@@ -9,6 +9,29 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+### Geändert
+
+- **Der Dienst sagt jetzt, ob er Anhangstext erzeugt hat.** Bisher
+  meldete er nach jedem Abruf nur, wie viele Mails er geholt hat. Ob
+  aus deren PDF-Anhängen durchsuchbarer Text wurde, stand nirgends –
+  und genau das ist seit dem 09.10.2026 eine offene Frage: Eine Mail
+  kam über den Dienst an, liegt vollständig im Archiv, und kein Wort
+  aus ihrem Anhang ist auffindbar. Von Hand aufgerufen erzeugt
+  derselbe Server sauber Text.
+
+  In der Meldung steht nun »Anhangstext aus N Mails gelesen« – und,
+  wenn Post kam, aber kein Text entstand, ausdrücklich »Kein
+  Anhangstext erzeugt«. **Die Null gehört hier hin**, obwohl sie es
+  sonst nirgends tut: Dieser Zustand sieht aus wie ein Tag ohne
+  Anhänge, und genau deshalb hat ihn vier Wochen lang niemand bemerkt.
+
+  Dazu die Zahl der PDF ohne Textebene, die auf die Texterkennung
+  warten.
+
+  Das behebt den Fehler nicht, es macht ihn messbar. Der nächste
+  Dienst-Abruf beantwortet die Frage selbst, statt dass wir sie
+  erraten.
+
 ## [1.8.5] – 2026-11-04
 
 **Außer der Reihe, und das gehört dazugesagt.** Seit dem 25.09.2026

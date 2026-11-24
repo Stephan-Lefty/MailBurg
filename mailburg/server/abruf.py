@@ -223,6 +223,7 @@ class Schleife:
         from mailburg.core.sync import Abrufzustand
 
         neu = geholt = uebersprungen = 0
+        mit_text = eingescannt = 0
         with Archive.open(
             self.archiv, exclusive=True, passwort=self.passwort
         ) as archiv:
@@ -231,11 +232,14 @@ class Schleife:
                 for konto in konten:
                     if self.halt.is_set():
                         break
-                    zahl = self._konto(archiv, konto, zustand)
-                    if zahl is None:
+                    bilanz = self._konto(archiv, konto, zustand)
+                    if bilanz is None:
                         uebersprungen += 1
                     else:
+                        zahl, text, scans = bilanz
                         neu += zahl
+                        mit_text += text
+                        eingescannt += scans
                         geholt += 1
             finally:
                 # **Auch bei einem Abbruch.** Sonst gehen die
@@ -251,7 +255,8 @@ class Schleife:
         self.zuletzt = datetime.now()
         self.laeufe += 1
         self.letzter_befund = self._befund(
-            neu, geholt, uebersprungen, gelesen)
+            neu, geholt, uebersprungen, gelesen,
+            mit_text=mit_text, eingescannt=eingescannt)
         self._melden(self.letzter_befund, fehler=bool(uebersprungen))
 
         # **Der Bericht hängt am Abruf und braucht keinen zweiten
@@ -340,7 +345,8 @@ class Schleife:
 
     @staticmethod
     def _befund(neu: int, geholt: int, uebersprungen: int,
-                gelesen: int = 0) -> str:
+                gelesen: int = 0, mit_text: int = 0,
+                eingescannt: int = 0) -> str:
         """Was am Ende eines Laufs dasteht.
 
         **Übersprungene Postfächer dürfen nicht als geprüft gelten.** Am
@@ -364,17 +370,44 @@ class Schleife:
         # nicht nachprüfbar, ob die Erkennung im Dienst überhaupt läuft –
         # und genau das war fünf Wochen lang der Fall, ohne dass es
         # jemandem auffiel.
+        #
+        # Dasselbe gilt für den Anhangstext, und dort steht die Frage
+        # seit dem 2026-10-09 offen: Eine Mail mit PDF kam über den
+        # Dienst an und ist bis heute nicht nach ihrem Inhalt
+        # auffindbar, während derselbe Server von Hand sauber Text
+        # erzeugt. Ohne diese Zahl bleibt jeder Lauf eine Vermutung;
+        # mit ihr sagt der nächste es selbst.
+        if mit_text:
+            teile.append(f"Anhangstext aus {mit_text} Mails gelesen.")
+        elif neu:
+            # **Auch die Null gehört hin, aber nur wenn Post kam.**
+            # »0 von 0« wäre Rauschen; »neue Post, kein Anhangstext«
+            # ist dagegen genau der Zustand, den niemand bemerkt hat.
+            teile.append("Kein Anhangstext erzeugt.")
+        if eingescannt:
+            teile.append(
+                f"Darunter {eingescannt} PDF ohne Textebene – sie warten "
+                f"auf die Texterkennung."
+            )
         if gelesen:
             teile.append(
                 f"{gelesen} eingescannte PDF durchsuchbar gemacht."
             )
         return " ".join(teile) or "Keine Postfächer geprüft."
 
-    def _konto(self, archiv, konto, zustand) -> int | None:
+    def _konto(self, archiv, konto, zustand) -> tuple[int, int, int] | None:
         """Ein Postfach – Fehler bleiben bei ihm.
 
-        Gibt die Zahl der neuen Mails zurück, oder ``None``, wenn das
-        Postfach übersprungen wurde.
+        Gibt ``(neu, mit_anhangstext, eingescannt)`` zurück, oder
+        ``None``, wenn das Postfach übersprungen wurde.
+
+        **Nicht nur die Zahl der neuen Mails, und das ist der Grund:**
+        Am 2026-10-09 kam über den Dienst eine Mail mit einem PDF an,
+        das vollständig im Archiv liegt und aus dem sich trotzdem kein
+        Wort finden lässt. Von Hand aufgerufen erzeugt derselbe Server
+        sauber Anhangstext; was der *Dienst* dabei tut, war von außen
+        nicht nachprüfbar – er meldete nur, wie viele Mails er geholt
+        hat.
 
         **Ein klemmendes Postfach beendet den Lauf nicht.** Dieselbe
         Regel wie beim Abgleich: Wer nach dem ersten Fehler aufhört,
@@ -438,7 +471,11 @@ class Schleife:
                 )
             finally:
                 quelle.close()
-            return int(getattr(statistik, "neu", 0))
+            return (
+                int(getattr(statistik, "neu", 0)),
+                int(getattr(statistik, "mit_anhangstext", 0)),
+                int(getattr(statistik, "eingescannt", 0)),
+            )
         except Exception as fehler:  # noqa: BLE001
             self._melden(
                 f"Postfach »{konto.name}« übersprungen: {fehler}", fehler=True

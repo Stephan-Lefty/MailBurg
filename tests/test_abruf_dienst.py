@@ -142,15 +142,23 @@ class SchleifeTest(unittest.TestCase):
         konto.betreffmarken = ()
         zustand = mock.Mock()
 
+        # **Die echte Bilanzklasse, kein Mock.** Ein ``Mock(neu=3)``
+        # liefert für jedes weitere Feld wieder einen Mock, und
+        # ``int()`` darauf wirft – der Fehler landete dann im
+        # Auffangnetz von ``_konto``, und der Test las ein
+        # »übersprungen«, wo keines war. Eine Attrappe, die nicht
+        # aussieht wie die Wirklichkeit, misst etwas anderes.
+        from mailburg.core.importer import Statistik
+
         with mock.patch(
             "mailburg.core.accounts.passwort_holen", return_value="geheim"
         ), mock.patch("mailburg.sources.quelle_fuer") as quelle_fuer, \
                 mock.patch(
                     "mailburg.core.importer.importieren",
-                    return_value=mock.Mock(neu=3)):
-            zahl = schleife._konto(mock.Mock(), konto, zustand)
+                    return_value=Statistik(neu=3)):
+            bilanz = schleife._konto(mock.Mock(), konto, zustand)
 
-        self.assertEqual(zahl, 3)
+        self.assertEqual(bilanz[0], 3)
         args, kwargs = quelle_fuer.call_args
         self.assertEqual(args[1], "geheim")
         self.assertIn("hoechststand", kwargs)
@@ -225,8 +233,11 @@ class SchleifeTest(unittest.TestCase):
         schleife = Schleife("/irgendwo", Lage(takt=30))
         schleife._melden = lambda text, fehler=False: None
         geholt: list[str] = []
+        # ``_konto`` liefert seit dem 2026-11-04 (neu, mit_anhangstext,
+        # eingescannt) statt einer blanken Zahl.
         schleife._konto = (
-            lambda archiv, konto, zustand: geholt.append(konto.name) or 0
+            lambda archiv, konto, zustand:
+                geholt.append(konto.name) or (0, 0, 0)
         )
 
         # **Die Texterkennung muss hier mit abgeschaltet sein.** Seit
@@ -393,6 +404,49 @@ class ScansImDienstTest(unittest.TestCase):
             Schleife._befund(neu=12, geholt=7, uebersprungen=0, gelesen=0),
         )
 
+    def test_der_anhangstext_steht_auch_in_der_meldung(self):
+        """**Die Zahl, die seit dem 2026-10-09 gefehlt hat.**
+
+        An jenem Tag kam über den Dienst eine Mail mit einem PDF an,
+        das vollständig im Archiv liegt und aus dem sich bis heute kein
+        Wort finden lässt – während derselbe Server von Hand sauber
+        Anhangstext erzeugt. Ob der *Dienst* das tut, war von außen
+        nicht nachprüfbar: Er meldete nur, wie viele Mails er geholt
+        hat.
+        """
+        befund = Schleife._befund(neu=12, geholt=7, uebersprungen=0,
+                                  mit_text=3)
+
+        self.assertIn("Anhangstext aus 3 Mails", befund)
+
+    def test_ohne_anhangstext_steht_das_ausdruecklich_da(self):
+        """**Hier gehört die Null hin, und das ist die Ausnahme.**
+
+        Sonst gilt: Eine Null ist kein Befund. Aber »neue Post
+        angekommen, kein Anhangstext erzeugt« ist genau der Zustand,
+        den vier Wochen lang niemand bemerkt hat – er sieht aus wie
+        ein Tag ohne Anhänge.
+        """
+        befund = Schleife._befund(neu=12, geholt=7, uebersprungen=0,
+                                  mit_text=0)
+
+        self.assertIn("Kein Anhangstext erzeugt", befund)
+
+    def test_ohne_neue_post_schweigt_die_zahl(self):
+        """»0 von 0« wäre Rauschen in jeder halben Stunde."""
+        befund = Schleife._befund(neu=0, geholt=7, uebersprungen=0,
+                                  mit_text=0)
+
+        self.assertNotIn("Anhangstext", befund)
+
+    def test_wartende_scans_werden_genannt(self):
+        """Ein PDF ohne Textebene ist noch nicht durchsuchbar – wer das
+        nicht weiß, hält den Abruf für vollständig erledigt."""
+        befund = Schleife._befund(neu=12, geholt=7, uebersprungen=0,
+                                  mit_text=3, eingescannt=2)
+
+        self.assertIn("2 PDF ohne Textebene", befund)
+
     def test_ein_fehler_kostet_nicht_den_abruf(self):
         """**Archivieren ist Pflicht, Durchsuchbarmachen ist Kür.**
 
@@ -484,7 +538,7 @@ class ScansImDienstTest(unittest.TestCase):
         liste.speichern()
 
         schleife = self._schleife()
-        schleife._konto = lambda archiv, konto, zustand: 2
+        schleife._konto = lambda archiv, konto, zustand: (2, 0, 0)
 
         with mock.patch(
             "mailburg.core.paths.config_dir",
@@ -501,6 +555,92 @@ class ScansImDienstTest(unittest.TestCase):
 
         lauf.assert_called_once()
         self.assertIn("4 eingescannte PDF", schleife.letzter_befund)
+
+    def test_der_anhangstext_findet_den_weg_bis_in_die_meldung(self):
+        """**Der Weg hinein, nicht nur die Formulierung am Ende.**
+
+        Die Tests zu ``_befund`` prüfen, wie die Zahl *klingt*, wenn
+        sie ankommt. Dieser prüft, dass sie ankommt: aus der echten
+        ``Statistik`` von ``importieren`` über ``_konto`` und
+        ``_einmal`` bis in ``letzter_befund``.
+
+        Dieselbe Lehre wie am 06.10. und am 09.10.: Geprüft war jedes
+        Mal alles *um* die Stelle herum. Eine Zahl, die unterwegs
+        verlorengeht, sieht am Ende aus wie eine Null – und eine Null
+        liest sich hier wie »heute kam nichts mit Anhang«.
+        """
+        import tempfile
+        from pathlib import Path
+
+        from mailburg.core.accounts import Konto, Kontenliste
+        from mailburg.core.importer import Statistik
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        liste = Kontenliste(Path(ordner.name) / "konten.json")
+        liste.konten = [
+            Konto(name="buero", server="imap.example.org",
+                  benutzer="buero@example.org"),
+        ]
+        liste.speichern()
+
+        schleife = self._schleife()
+        bilanz = Statistik(neu=5, mit_anhangstext=3)
+        # ``eingescannt`` ist eine abgeleitete Eigenschaft und liest
+        # genau diesen Schlüssel (importer.py). Den Namen geraten zu
+        # haben hat diesen Test beim ersten Lauf rot gemacht – zu
+        # Recht.
+        bilanz.anhaenge["pdf:eingescannt"] = 2
+
+        with mock.patch(
+            "mailburg.core.paths.config_dir",
+            return_value=Path(ordner.name),
+        ), mock.patch("mailburg.core.archive.Archive.open"), \
+             mock.patch("mailburg.core.sync.Abrufzustand"), \
+             mock.patch("mailburg.core.accounts.passwort_holen",
+                        return_value="geheim"), \
+             mock.patch("mailburg.sources.quelle_fuer"), \
+             mock.patch("mailburg.core.importer.importieren",
+                        return_value=bilanz), \
+             mock.patch.object(Schleife, "_anhaenge_lesen", return_value=0):
+            schleife._einmal()
+
+        self.assertIn("Anhangstext aus 3 Mails", schleife.letzter_befund)
+        self.assertIn("2 PDF ohne Textebene", schleife.letzter_befund)
+
+    def test_und_die_null_kommt_genauso_an(self):
+        """Der Fall vom 2026-10-09: Post kam, Anhangstext nicht."""
+        import tempfile
+        from pathlib import Path
+
+        from mailburg.core.accounts import Konto, Kontenliste
+        from mailburg.core.importer import Statistik
+
+        ordner = tempfile.TemporaryDirectory()
+        self.addCleanup(ordner.cleanup)
+        liste = Kontenliste(Path(ordner.name) / "konten.json")
+        liste.konten = [
+            Konto(name="buero", server="imap.example.org",
+                  benutzer="buero@example.org"),
+        ]
+        liste.speichern()
+
+        schleife = self._schleife()
+
+        with mock.patch(
+            "mailburg.core.paths.config_dir",
+            return_value=Path(ordner.name),
+        ), mock.patch("mailburg.core.archive.Archive.open"), \
+             mock.patch("mailburg.core.sync.Abrufzustand"), \
+             mock.patch("mailburg.core.accounts.passwort_holen",
+                        return_value="geheim"), \
+             mock.patch("mailburg.sources.quelle_fuer"), \
+             mock.patch("mailburg.core.importer.importieren",
+                        return_value=Statistik(neu=1, mit_anhangstext=0)), \
+             mock.patch.object(Schleife, "_anhaenge_lesen", return_value=0):
+            schleife._einmal()
+
+        self.assertIn("Kein Anhangstext erzeugt", schleife.letzter_befund)
 
     def test_im_selben_geoeffneten_archiv(self):
         """**Nicht daneben, sondern innerhalb derselben Sperre.**
