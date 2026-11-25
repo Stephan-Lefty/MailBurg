@@ -107,6 +107,17 @@ DEPENDS = ", ".join((
     # Stephans Entscheidung vom 2026-11-25. Damit gilt die Regel aus
     # CLAUDE.md jetzt ohne Ausnahme: *Was MailBurg zum Laufen braucht,
     # gehört unter Depends.*
+    #
+    # **Eine Stunde später trat der Fall ein.** Stephan installierte
+    # die 1.8.5 – die noch unter Recommends gebaute – auf GuideOS, und
+    # MailBurg meldete beim Start, die Oberfläche fehle. Die
+    # Empfehlung war bei seinem Installationsweg nicht mitgekommen.
+    # Eine Entscheidung aus einer Überlegung heraus, vom Betrieb am
+    # selben Tag bestätigt.
+    #
+    # Dass die Umstellung dort trägt statt zu blockieren, ist geprüft:
+    # ``apt-cache policy python3-pyside6.qtwidgets`` liefert auf
+    # GuideOS 6.8.2.1-4 aus debian trixie/main.
     "python3-pyside6.qtwidgets",
 ))
 
