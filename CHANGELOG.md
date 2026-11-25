@@ -27,6 +27,27 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Die Einstellung hängt nicht am Abruf: Sie wirkt auch auf einem
   Server, der seine Post von anderswo bekommt.
 
+### Geändert
+
+- **Die Oberfläche steht im Debian-Paket jetzt unter `Depends`.** Qt
+  war die letzte Ausnahme von der Regel »Was MailBurg zum Laufen
+  braucht, gehört unter Depends« – mit einer Begründung, die für sich
+  trug: Wer nur die Kommandozeile braucht, soll sich kein Qt
+  installieren müssen.
+
+  **Der Anlass für die Umkehr ist GuideOS**, wo MailBurg künftig
+  mitgeliefert wird. Wem es mitgeliefert wird, der hat es nicht
+  gesucht – und ob der ISO-Bau Empfehlungen mitzieht, entschiede dann
+  darüber, ob das Programm ein Fenster hat. Das Fehlen sähe so aus:
+  »Wenn ich das Tool starte, passiert gar nichts.« Genau dieser Satz
+  kam am 14.09.2026 von einem Anwender, dem das Paket fehlte.
+
+  **Der Preis, und er wurde abgewogen:** Ein Linux-Server bekommt Qt
+  mit, ohne es zu brauchen. Und auf Ubuntu und Linux Mint, die
+  `python3-pyside6.qtwidgets` nicht führen, schlägt die Installation
+  jetzt fehl – vorher blieb sie leise unvollständig. Lieber ein
+  lauter Abbruch als ein Programm, das sich nicht öffnen lässt.
+
 ### Behoben
 
 - **Das Debian-Paket legte seine AppStream-Datei am falschen Ort ab.**

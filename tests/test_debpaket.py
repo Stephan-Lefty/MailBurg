@@ -39,33 +39,39 @@ class SteuerdatenTest(unittest.TestCase):
     def setUp(self):
         self.werkzeug = _werkzeug()
 
-    def test_kein_qt_unter_den_erforderlichen(self):
-        """**Die Zusage des Projekts, auch im Paket.**
+    def test_die_oberflaeche_ist_erforderlich(self):
+        """**Seit dem 2026-11-25, und damit fällt die letzte Ausnahme.**
 
-        Wer nur die Kommandozeile braucht – etwa auf einem Server –,
-        soll sich kein Qt installieren müssen. Die Oberfläche steht
-        deshalb unter Recommends und lässt sich abwählen.
+        Qt stand bis dahin unter *Recommends*, mit einer Begründung,
+        die für sich trug: Wer nur die Kommandozeile braucht – etwa
+        auf einem Server –, soll sich kein Qt installieren müssen.
 
-        **Der Schlüsselbund stand hier bis zum 2026-09-23 ebenfalls**,
-        mit derselben Begründung. Sie trägt bei ihm nicht: Qt braucht
-        wirklich nur, wer ein Fenster will – ohne Schlüsselbund dagegen
-        wird jedes Passwort bei jedem Abruf neu erfragt, auch auf der
-        Kommandozeile, und ein Abruf im Hintergrund läuft gar nicht.
+        **Der Anlass für die Umkehr ist GuideOS.** MailBurg wird dort
+        mitgeliefert, und wem es mitgeliefert wird, der hat es nicht
+        gesucht. Ob der ISO-Bau Empfehlungen mitzieht, entschiede dann
+        darüber, ob das Programm ein Fenster hat. Für den Anwender
+        sähe das Fehlen so aus: *»Wenn ich das Tool starte, passiert
+        gar nichts.«* Genau dieser Satz kam am 2026-09-14 von einem
+        Anwender auf Linux Mint, dem das Paket fehlte.
 
-        Den Ausschlag gab, dass ein bloß empfohlenes Paket von
-        ``apt autoremove`` weggeräumt werden darf. Genau das ist einer
-        Anwenderin passiert; sie hätte daraufhin ihre Passwörter neu
-        eingetippt – in einen Speicher, den es nicht mehr gab. Ein
-        kleines, auf manchen Servern unnötiges Paket wiegt weniger.
+        Der Preis ist bekannt: Ein Linux-Server bekommt Qt mit, ohne
+        es zu brauchen. Das wiegt leichter – den Server bestückt
+        jemand, der weiß, was er tut; der Arbeitsplatz gehört jemandem,
+        der MailBurg vorfindet.
+
+        Damit gilt die Regel aus CLAUDE.md ohne Ausnahme: *Was
+        MailBurg zum Laufen braucht, gehört unter Depends.*
         """
         self.assertIn("python3", self.werkzeug.DEPENDS)
-        for unerwuenscht in ("pyside", "qt", "tesseract"):
+        self.assertIn("pyside6", self.werkzeug.DEPENDS.lower())
+
+    def test_die_texterkennung_bleibt_draussen(self):
+        """**tesseract nicht**, und das bleibt so: Es wiegt schwer und
+        wird selten gebraucht. Ohne Texterkennung ist MailBurg
+        benutzbar, nur ein eingescanntes PDF bleibt unauffindbar."""
+        for unerwuenscht in ("tesseract", "poppler"):
             with self.subTest(paket=unerwuenscht):
                 self.assertNotIn(unerwuenscht, self.werkzeug.DEPENDS.lower())
-
-    def test_die_oberflaeche_wird_empfohlen(self):
-        """Sonst installiert apt ein MailBurg ohne Fenster."""
-        self.assertIn("pyside6", self.werkzeug.RECOMMENDS)
 
     def test_die_texterkennung_ist_nur_ein_vorschlag(self):
         """tesseract wiegt schwer und wird selten gebraucht."""

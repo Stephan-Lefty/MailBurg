@@ -84,36 +84,63 @@ DEPENDS = ", ".join((
     # entscheidet es darüber, ob sich ein Archiv überhaupt lesen lässt –
     # und das ist keine Empfehlung, sondern eine Voraussetzung.
     "python3-zstandard",
+    # **Seit dem 2026-11-25 hier, und damit fällt die letzte
+    # Ausnahme.** Qt stand bis dahin bewusst unter *Recommends*: Die
+    # Server-Variante braucht keine Oberfläche, und 150 MB für ein
+    # Fenster, das auf einem Server niemand öffnet, sind viel.
+    #
+    # **Der Anlass ist GuideOS.** MailBurg wird dort mitgeliefert –
+    # und für wen es mitgeliefert wird, der hat es nicht gesucht und
+    # installiert es nicht selbst. Ob der ISO-Bau Empfehlungen
+    # mitzieht, entscheidet dann darüber, ob das Programm ein Fenster
+    # hat. Für den Anwender sähe das Fehlen so aus: *»Wenn ich das
+    # Tool starte, passiert gar nichts.«* Genau dieser Satz kam am
+    # 2026-09-14 schon einmal von einem Anwender auf Linux Mint, dem
+    # dieses Paket fehlte.
+    #
+    # **Der Preis ist bekannt und wurde abgewogen.** Wer das Paket auf
+    # einem Linux-Server einsetzt, bekommt Qt mit, ohne es zu
+    # brauchen. Das wiegt leichter als ein Arbeitsplatz ohne
+    # Oberfläche: Den Server bestückt jemand, der weiß, was er tut;
+    # der Arbeitsplatz gehört jemandem, der MailBurg vorfindet.
+    #
+    # Stephans Entscheidung vom 2026-11-25. Damit gilt die Regel aus
+    # CLAUDE.md jetzt ohne Ausnahme: *Was MailBurg zum Laufen braucht,
+    # gehört unter Depends.*
+    "python3-pyside6.qtwidgets",
 ))
 
-#: Die übliche Ausstattung eines Arbeitsplatzes. **Recommends und nicht
-#: Depends**, damit MailBurg auch auf einen Server passt, auf dem es
-#: kein Qt gibt – die Server-Variante braucht keine Oberfläche.
+#: Was den Alltag abrundet, aber nicht darüber entscheidet, ob MailBurg
+#: überhaupt benutzbar ist.
 RECOMMENDS = ", ".join((
-    "python3-pyside6.qtwidgets",   # die Oberfläche
     "python3-cryptography",        # verschlüsselte Archive und Tresor
     "python3-pypdf",               # PDF-Anhänge durchsuchbar
     "poppler-utils",               # pdftotext, der schnellere Weg
 ))
 
-#: Was den Funktionsumfang abrundet, aber selten gebraucht wird.
 #: **Was nach dem Auspacken gesagt wird, wenn die Oberfläche fehlt.**
 #:
-#: PySide6 steht in ``Recommends`` und nicht in ``Depends``, damit das
-#: Paket auch auf einen Server passt, der keine Oberfläche braucht. Der
-#: Preis dafür: Führt eine Distribution das Paket gar nicht – Ubuntu und
-#: Linux Mint tun das nicht –, dann installiert ``apt`` es schweigend
-#: nicht. MailBurg liegt auf der Platte, die Verknüpfung ist da, und beim
-#: Klick passiert nichts.
+#: **Seit dem 2026-11-25 steht PySide6 unter Depends**, und damit kann
+#: ``apt`` es nicht mehr stillschweigend weglassen. Dieses Skript
+#: bleibt trotzdem – es greift noch in zwei Fällen:
 #:
-#: So gemeldet am 2026-09-14 von einem Anwender auf Linux Mint. Deshalb
-#: diese zweite Linie: **Gesagt wird es, bevor jemand vergeblich
-#: klickt.** Die erste Linie ist die Meldung beim Start
-#: (``ui/app.py``), aber da hat er schon einmal umsonst geklickt.
+#: * ``dpkg -i`` ohne anschließendes ``apt install -f``. dpkg zieht
+#:   nichts nach; es meldet die fehlende Abhängigkeit, aber wer die
+#:   Datei nur angeklickt hat, liest diese Meldung womöglich nicht.
+#: * Ein Paket, das die Distribution gar nicht führt. Ubuntu und Linux
+#:   Mint führen ``python3-pyside6.qtwidgets`` nicht – dort schlägt die
+#:   Installation jetzt **laut** fehl statt leise unvollständig zu
+#:   bleiben. Das ist die bessere Hälfte des Tauschs, aber sie nimmt
+#:   diesen Distributionen den bequemen Weg.
+#:
+#: Gemeldet hatte den stillen Fall am 2026-09-14 ein Anwender auf
+#: Linux Mint: MailBurg lag auf der Platte, die Verknüpfung war da,
+#: und beim Klick passierte nichts. Die erste Linie dagegen ist die
+#: Meldung beim Start (``ui/app.py``) – aber da hat er schon einmal
+#: umsonst geklickt.
 #:
 #: ``exit 0`` in jedem Fall: Ein Hinweis ist kein Grund, eine
-#: Installation scheitern zu lassen. Die Kommandozeile läuft auch ohne
-#: Qt, und wer einen Server bestückt, will genau das.
+#: Installation scheitern zu lassen.
 #: Dateien in ``DEBIAN/``, die ausführbar sein müssen. dpkg-deb verweigert
 #: den Bau, wenn nicht – zu Recht.
 BETREUERSKRIPTE = ("postinst", "postrm", "preinst", "prerm")
