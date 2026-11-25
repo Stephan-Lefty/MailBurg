@@ -76,6 +76,51 @@ class PaketdatenTest(unittest.TestCase):
             "install.sh legt einen anders benannten Menüeintrag an",
         )
 
+    def test_sie_nennt_ihr_paket(self):
+        """**Ohne ``pkgname`` gibt es nichts zu deinstallieren.**
+
+        Die Software-Verwaltung muss wissen, welches Paket zu dieser
+        Anwendung gehört – sonst zeigt sie MailBurg gar nicht erst
+        unter den installierten Programmen an. Bei Paketen aus einer
+        Distributionsquelle ergänzt das der AppStream-Generator der
+        Distribution; bei einem von Hand installierten ``.deb`` tut
+        es niemand.
+
+        Gemeldet von Stephan am 2026-11-25 auf einem frischen
+        GuideOS: »MailBurg erscheint nicht unter Software, um es zu
+        deinstallieren.«
+        """
+        wurzel = ET.parse(
+            _paketdaten() / "de.stephanlefty.MailBurg.metainfo.xml"
+        ).getroot()
+
+        self.assertEqual(wurzel.findtext("pkgname"), "mailburg")
+
+    def test_sie_haelt_der_pruefung_von_appstream_stand(self):
+        """**Gegen das Werkzeug der Sache, nicht gegen meine Annahme.**
+
+        ``appstreamcli`` kennt die Spezifikation; ich kenne sie
+        ungefähr. Wo es fehlt – etwa auf dem Bauserver –, wird der
+        Test übersprungen statt grün zu melden.
+        """
+        import shutil
+        import subprocess
+
+        werkzeug = shutil.which("appstreamcli")
+        if not werkzeug:
+            self.skipTest("appstreamcli ist hier nicht installiert")
+
+        datei = _paketdaten() / "de.stephanlefty.MailBurg.metainfo.xml"
+        lauf = subprocess.run(
+            [werkzeug, "validate", str(datei)],
+            capture_output=True, text=True, check=False,
+        )
+
+        self.assertEqual(
+            lauf.returncode, 0,
+            f"appstreamcli beanstandet die Datei:\n{lauf.stdout}{lauf.stderr}",
+        )
+
     def test_die_fassung_stimmt_mit_dem_programm_ueberein(self):
         """Eine veraltete Angabe lässt die Software-Verwaltung eine
         Aktualisierung anbieten, die es nicht gibt."""

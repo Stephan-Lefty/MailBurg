@@ -69,7 +69,19 @@ class Baustein:
     """Das Programm oder Modul, an dem sich das Vorhandensein zeigt."""
 
     art: str = "programm"
-    """``programm`` sucht im Suchpfad, ``modul`` versucht einen Import."""
+    """Wie geprüft wird.
+
+    ``programm`` sucht im Suchpfad, ``modul`` versucht einen Import,
+    ``sprachdaten`` fragt tesseract nach seinen Sprachen.
+
+    **Die dritte Art gibt es, weil die zweite nicht reichte.** Am
+    2026-11-25 entfernte Stephan zum Prüfen ``tesseract-ocr-deu`` –
+    und MailBurg bot nichts zum Nachrüsten an. ``tesseract`` war ja
+    noch da. Gleichzeitig sagte ``ocr.bereit()`` »nicht bereit«: Zwei
+    Prüfungen, die dasselbe beurteilen sollen und sich widersprechen,
+    und das ist in diesem Projekt die häufigste Fehlerklasse
+    überhaupt.
+    """
 
     pakete: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
@@ -81,6 +93,14 @@ class Baustein:
                 return importlib.util.find_spec(self.pruefen) is not None
             except (ImportError, ValueError):
                 return False
+        if self.art == "sprachdaten":
+            from mailburg.extract import ocr
+
+            # Ohne tesseract gibt es nichts zu fragen – dann meldet
+            # der Baustein darüber, und dieser hier schweigt.
+            if not shutil.which("tesseract"):
+                return True
+            return bool(ocr.sprachwahl())
         return shutil.which(self.pruefen) is not None
 
 
@@ -98,6 +118,21 @@ BAUSTEINE = (
             "pacman": ("tesseract", "tesseract-data-deu"),
             "dnf": ("tesseract", "tesseract-langpack-deu"),
             "zypper": ("tesseract-ocr", "tesseract-ocr-traineddata-german"),
+        },
+    ),
+    Baustein(
+        name="Deutsche Sprachdaten",
+        wofuer="Tesseract liest sonst mit dem englischen Modell – aus "
+               "deutschem Text wird dabei Buchstabensalat mit "
+               "zerstörten Umlauten. Lieber gar nicht erkennen als "
+               "falsch.",
+        pruefen="deu",
+        art="sprachdaten",
+        pakete={
+            "apt": ("tesseract-ocr-deu",),
+            "pacman": ("tesseract-data-deu",),
+            "dnf": ("tesseract-langpack-deu",),
+            "zypper": ("tesseract-ocr-traineddata-german",),
         },
     ),
     Baustein(

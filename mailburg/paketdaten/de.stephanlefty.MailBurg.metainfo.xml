@@ -16,6 +16,21 @@
 <component type="desktop-application">
   <id>de.stephanlefty.MailBurg</id>
 
+  <!--
+    Welches Paket zu dieser Anwendung gehört. Ohne diese Zeile weiß
+    die Software-Verwaltung nicht, was sie entfernen soll – und
+    zeigt MailBurg deshalb gar nicht erst unter den installierten
+    Programmen an.
+
+    Bei Paketen aus einer Distributionsquelle ergänzt das der
+    AppStream-Generator der Distribution von selbst; bei einem von
+    Hand installierten .deb tut es niemand. Genau das ist unser Fall.
+    Gemeldet von Stephan am 2026-11-25, nach der Installation auf
+    einem frischen GuideOS: »MailBurg erscheint nicht unter Software,
+    um es zu deinstallieren.«
+  -->
+  <pkgname>mailburg</pkgname>
+
   <name>MailBurg</name>
   <summary>Ein Archiv für E-Mail, an einem Ort Ihrer Wahl</summary>
 

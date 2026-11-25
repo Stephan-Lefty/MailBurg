@@ -306,6 +306,64 @@ class BausteineTest(unittest.TestCase):
                 self.assertGreater(len(baustein.wofuer), 30)
                 self.assertNotIn("tesseract", baustein.name.lower())
 
+    def test_was_ocr_vermisst_steht_auch_hier(self) -> None:
+        """**Zwei Prüfungen über dieselbe Sache müssen übereinstimmen.**
+
+        Am 2026-11-25 entfernte Stephan zum Prüfen
+        ``tesseract-ocr-deu``. ``ocr.bereit()`` meldete »nicht
+        bereit – ohne brauchbare Sprachdaten«; ``fehlendes()`` sagte
+        »nichts fehlt«, weil es nur nach dem Programm ``tesseract``
+        sah. Der Nachrüstdialog bekam eine leere Liste und tat
+        nichts – genau in dem Augenblick, für den er gebaut war.
+
+        Dieser Wächter hält beide zusammen: Was die Texterkennung
+        vermisst, muss hier nachrüstbar sein.
+        """
+        from mailburg.extract import ocr
+
+        faelle = (
+            ("tesseract fehlt ganz",
+             {"which": lambda w: None if w == "tesseract" else f"/x/{w}"}),
+            ("nur die Sprachdaten fehlen",
+             {"which": lambda w: f"/x/{w}", "sprachen": None}),
+        )
+        for name, lage in faelle:
+            with self.subTest(fall=name):
+                flicken = [
+                    mock.patch.object(nachruesten.shutil, "which",
+                                      side_effect=lage["which"]),
+                    mock.patch.object(ocr.shutil, "which",
+                                      side_effect=lage["which"]),
+                    mock.patch.object(ocr, "_windows", return_value=False),
+                ]
+                if "sprachen" in lage:
+                    flicken.append(
+                        mock.patch.object(ocr, "sprachwahl",
+                                          return_value=lage["sprachen"]))
+                    flicken.append(
+                        mock.patch.object(ocr, "sprachen_vorhanden",
+                                          return_value={"eng"}))
+                with self._alle(flicken):
+                    bereit = ocr.bereit()[0]
+                    offen = [b.name for b in nachruesten.BAUSTEINE
+                             if not b.da()]
+
+                self.assertFalse(bereit, "Testlage stimmt nicht")
+                self.assertTrue(
+                    offen,
+                    "Die Texterkennung ist nicht bereit, aber es gibt "
+                    "nichts zum Nachrüsten.",
+                )
+
+    @staticmethod
+    def _alle(flicken):
+        import contextlib
+
+        stapel = contextlib.ExitStack()
+        for einer in flicken:
+            stapel.enter_context(einer)
+        return stapel
+
     def test_pyside6_steht_nicht_drin(self) -> None:
         """**Henne und Ei.** Ohne Qt gibt es kein Fenster, in dem ein
         Knopf stehen könnte. Dafür ist seit dem 2026-11-25 das
