@@ -196,6 +196,21 @@ class Texterkennungsdialog(QDialog):
     # ------------------------------------------------------------- Ablauf
 
     def _starten(self) -> None:
+        # **Erst nachsehen, ob überhaupt etwas da ist, womit gelesen
+        # werden kann.** Bis zum 2026-11-25 lief der Durchgang los,
+        # las null Dokumente und schrieb darunter klein, dass
+        # tesseract fehle – samt Befehl zum Abtippen. Wer kein
+        # Terminal benutzt, war an dieser Stelle fertig.
+        #
+        # Derselbe Dialog wie überall sonst; die Begründung steht im
+        # Kopf von ``ui/nachruesten.py``.
+        from mailburg.extract import ocr
+        from mailburg.ui.nachruesten import fehlendes_nachruesten
+
+        if not ocr.bereit()[0] and not fehlendes_nachruesten(self):
+            # Abgebrochen – dann bleibt der Dialog, wie er war.
+            return
+
         self.knoepfe.button(QDialogButtonBox.Ok).setEnabled(False)
         self.balken.setVisible(True)
         self.stand.setText("Beginne …")

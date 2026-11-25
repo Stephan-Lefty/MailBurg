@@ -345,6 +345,30 @@ class WillkommenSeite(QWizardPage):
         aufbau.addWidget(self.banner)
         aufbau.addWidget(rollbar, 1)
 
+    def validatePage(self) -> bool:
+        """Was fehlt, kommt hier zur Sprache – vor allem anderen.
+
+        **Die beste Stelle im ganzen Programm.** Wer MailBurg zum
+        ersten Mal startet, soll nicht auf halbem Weg merken, dass
+        die Hälfte nicht geht – und schon gar nicht erst Wochen
+        später, wenn eine eingescannte Rechnung unauffindbar bleibt.
+
+        Am 2026-11-25 richtete Stephan MailBurg auf einem frischen
+        GuideOS ein und stolperte nacheinander über drei fehlende
+        Pakete, jedes an einer anderen Stelle und jedes mit einem
+        Befehl zum Abtippen. Seine Vorgabe danach: *»Das muss an jeder
+        Stelle, wo was nachinstalliert werden muss, gleich sein.«*
+
+        **Ein »Nein« hält hier niemanden auf.** Wer abbricht, kommt
+        trotzdem weiter: Ohne Texterkennung ist MailBurg benutzbar,
+        nur eingescannte PDF bleiben unauffindbar. Der Dialog hat es
+        gesagt – das ist mehr, als vorher geschah.
+        """
+        from mailburg.ui.nachruesten import fehlendes_nachruesten
+
+        fehlendes_nachruesten(self)
+        return True
+
 
 class ArchivSeite(QWizardPage):
     """Wohin das Archiv kommt und nach welchen Regeln es geführt wird."""

@@ -11,6 +11,27 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Hinzugefügt
 
+- **Fehlende Pakete lassen sich per Knopf nachrüsten.** Bisher nannte
+  MailBurg einen Befehl zum Abtippen, wenn etwas fehlte – für
+  jemanden, der kein Terminal benutzt, war das die Stelle, an der er
+  aufgab. Jetzt gibt es dafür ein Fenster, und zwar **überall
+  dasselbe**: Es nennt in einem Satz, wofür jedes fehlende Teil
+  gebraucht wird, sagt vorher, dass nach dem Passwort gefragt wird,
+  zeigt den Befehl, der laufen wird, und lässt abbrechen.
+
+  **Ein sichtbares Terminal, kein verstecktes Nachinstallieren.** Man
+  sieht, was geholt wird; geht etwas schief, steht die Ursache da.
+  Das Fenster schließt sich von selbst, danach prüft MailBurg am
+  Rechner nach und schaltet *Weiter* frei.
+
+  Gefragt wird an zwei Stellen: beim ersten Start im Assistenten –
+  bevor etwas eingerichtet wird – und vor einem Durchgang der
+  Texterkennung.
+
+  Nicht dabei ist die Oberfläche selbst: Ohne Qt gibt es kein
+  Fenster, in dem ein Knopf stehen könnte. Dafür steht sie seit
+  dieser Fassung im `Depends` des Debian-Pakets.
+
 - **Der Dienst kann den Suchindex morgens vorwärmen.** Bei großen
   Archiven dauert der erste Seitenaufruf an einem Arbeitstag eine
   halbe Minute, jeder weitere antwortet sofort – gemessen an 592.000

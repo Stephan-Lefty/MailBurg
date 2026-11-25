@@ -316,5 +316,71 @@ class BausteineTest(unittest.TestCase):
         self.assertNotIn("pyside", alle.lower())
 
 
+try:
+    from PySide6.QtWidgets import QApplication  # noqa: F401
+
+    HAT_QT = True
+except ImportError:  # pragma: no cover
+    HAT_QT = False
+
+
+@unittest.skipUnless(HAT_QT, "PySide6 fehlt")
+class EingehaengtTest(unittest.TestCase):
+    """**An jeder Stelle derselbe Dialog – und er wird auch gerufen.**
+
+    Ein Dialog, den niemand aufruft, ist dasselbe wie keiner. Genau
+    das war am 2026-10-09 der Fall: ``core/erkennung.py`` sagte seit
+    jeher »nach jedem Abruf«, und der Dienst rief es nie auf. Fünf
+    Wochen lang blieb auf jedem Server jeder Scan stumm, und alle
+    Tests waren grün – sie prüften die Funktion, nicht den Weg zu ihr.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_der_assistent_fragt_vor_der_einrichtung(self) -> None:
+        """**Die beste Stelle im ganzen Programm.** Wer MailBurg zum
+        ersten Mal startet, soll nicht auf halbem Weg merken, dass
+        die Hälfte nicht geht."""
+        from mailburg.ui import assistent
+
+        gerufen = []
+        with mock.patch("mailburg.ui.nachruesten.fehlendes_nachruesten",
+                        side_effect=lambda *a, **k: gerufen.append(True)):
+            assistent.WillkommenSeite().validatePage()
+
+        self.assertTrue(gerufen, "Der Assistent fragt nicht nach.")
+
+    def test_ein_abbruch_haelt_den_assistenten_nicht_auf(self) -> None:
+        """Ohne Texterkennung ist MailBurg benutzbar – nur
+        eingescannte PDF bleiben unauffindbar. Wer ablehnt, hat das
+        gelesen und entschieden; ihn dann nicht weiterzulassen wäre
+        eine Strafe für eine zulässige Wahl."""
+        from mailburg.ui import assistent
+
+        with mock.patch("mailburg.ui.nachruesten.fehlendes_nachruesten",
+                        return_value=False):
+            self.assertTrue(assistent.WillkommenSeite().validatePage())
+
+    def test_die_texterkennung_fragt_vor_dem_lauf(self) -> None:
+        """**Die Stelle, an der der ganze Befund anfing.** Bis zum
+        2026-11-25 lief der Durchgang los, las null Dokumente und
+        schrieb darunter klein, dass tesseract fehle."""
+        import inspect
+
+        from mailburg.ui import texterkennung
+
+        quelle = inspect.getsource(texterkennung.Texterkennungsdialog._starten)
+
+        self.assertIn("fehlendes_nachruesten", quelle)
+        # Vor dem Läufer, nicht danach: Sonst liest er erst null
+        # Dokumente und fragt hinterher.
+        self.assertLess(quelle.index("fehlendes_nachruesten"),
+                        quelle.index("Erkennungslauf"))
+
+
 if __name__ == "__main__":
     unittest.main()
