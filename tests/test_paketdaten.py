@@ -107,6 +107,34 @@ class PaketdatenTest(unittest.TestCase):
         self.assertIn("paketdaten", skript,
                       "install.sh holt sie nicht aus dem Paket")
 
+    def test_das_debian_paket_legt_sie_auch_hin(self):
+        """**Der zweite Installationsweg, und er tat es nicht.**
+
+        ``install.sh`` kopiert die Datei seit jeher nach
+        ``~/.local/share/metainfo``. Das Debian-Paket nahm sie nur als
+        Python-Paketdatei unter ``dist-packages/mailburg/paketdaten/``
+        mit – ein Ort, an dem keine Software-Verwaltung sucht. In
+        GNOME Software, KDE Discover und Cinnamons
+        Anwendungsverwaltung gab es MailBurg damit nicht: weder zum
+        Nachsehen noch zum Entfernen.
+
+        *Zwei Wege, einer nachgezogen, der andere nicht* – zum
+        wiederholten Mal in diesem Projekt.
+
+        Aufgefallen am 2026-11-24, als klar wurde, dass MailBurg
+        Bestandteil von GuideOS wird. Dort ist das Paket der einzige
+        Installationsweg, und die Anwendungsverwaltung die Stelle, an
+        der man ein Programm sucht, das man nicht selbst installiert
+        hat.
+        """
+        quelle = (Path(__file__).resolve().parent.parent
+                  / "werkzeuge" / "deb_bauen.py").read_text(encoding="utf-8")
+
+        self.assertIn("usr/share/metainfo", quelle,
+                      "Das Paket legt die Datei nicht an ihren Ort")
+        self.assertIn("metainfo.xml", quelle,
+                      "Das Paket holt sie nicht aus dem Python-Paket")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,22 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Die Einstellung hängt nicht am Abruf: Sie wirkt auch auf einem
   Server, der seine Post von anderswo bekommt.
 
+### Behoben
+
+- **Das Debian-Paket legte seine AppStream-Datei am falschen Ort ab.**
+  Sie kam nur als Python-Paketdatei mit, unter
+  `dist-packages/mailburg/paketdaten/` – und dort sucht keine
+  Software-Verwaltung. In GNOME Software, KDE Discover und Cinnamons
+  Anwendungsverwaltung gab es MailBurg damit nicht: weder zum
+  Nachsehen, was installiert ist, noch zum Entfernen. Jetzt liegt sie
+  zusätzlich unter `/usr/share/metainfo/`.
+
+  `install.sh` tat das seit jeher richtig – zwei Installationswege,
+  einer nachgezogen, der andere nicht. Aufgefallen, als klar wurde,
+  dass MailBurg Bestandteil von GuideOS wird: Dort ist das Paket der
+  einzige Weg, und die Anwendungsverwaltung die Stelle, an der man
+  ein Programm sucht, das man nicht selbst installiert hat.
+
 ### Geändert
 
 - **Der Dienst sagt jetzt, ob er Anhangstext erzeugt hat.** Bisher

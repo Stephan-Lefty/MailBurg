@@ -300,6 +300,33 @@ def bauen(ziel: Path) -> Path:
         ort.mkdir(parents=True, exist_ok=True)
         shutil.copy2(svg, ort / "mailburg.svg")
 
+    # --- AppStream -----------------------------------------------------
+    # **Ohne diese Zeilen kennt die Software-Verwaltung das Programm
+    # nicht.** Es steht dann im Anwendungsmenü, taucht aber in GNOME
+    # Software, KDE Discover oder Cinnamons Anwendungsverwaltung nicht
+    # auf – weder zum Nachsehen, was installiert ist, noch zum
+    # Entfernen.
+    #
+    # **Die Datei lag im Paket und am falschen Ort.** Sie kommt als
+    # Python-Paketdatei unter ``dist-packages/mailburg/paketdaten/``
+    # mit, und ``install.sh`` kopiert sie von dort nach
+    # ``~/.local/share/metainfo``. Das Debian-Paket tat das nicht –
+    # zwei Wege, einer nachgezogen, der andere nicht, zum
+    # wiederholten Mal in diesem Projekt.
+    #
+    # Aufgefallen am 2026-11-24, als klar wurde, dass MailBurg
+    # Bestandteil von GuideOS wird: Dort ist das Paket der einzige
+    # Installationsweg, und die Anwendungsverwaltung die Stelle, an
+    # der man das Programm sucht.
+    metainfo = (
+        WURZEL / "mailburg" / "paketdaten"
+        / "de.stephanlefty.MailBurg.metainfo.xml"
+    )
+    if metainfo.exists():
+        ort = bau / "usr/share/metainfo"
+        ort.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(metainfo, ort / metainfo.name)
+
     # --- Papiere -------------------------------------------------------
     doku = bau / "usr/share/doc/mailburg"
     doku.mkdir(parents=True)
