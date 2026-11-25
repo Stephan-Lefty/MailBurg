@@ -246,6 +246,114 @@ class ImTerminalTest(unittest.TestCase):
         self.assertEqual(nachruesten.TERMINALS[0][0], "x-terminal-emulator")
 
 
+class TerminalpositionTest(unittest.TestCase):
+    """Wohin das Terminalfenster gelegt wird.
+
+    **Aus einer Meldung aus dem Betrieb.** Stephan am 2026-11-25, beim
+    Durchspielen in einer GuideOS-VM: »Das Terminal landet hinter dem
+    MailBurg Fenster« – und daraufhin: »Können wir das Terminal immer
+    neben das MailBurg Fenster legen?«
+
+    Auf seinem Bild stand die Passwortabfrage sichtbar im Terminal,
+    verdeckt vom Dialog, der zum Eingeben auffordert. Wer das nicht
+    bemerkt, wartet auf eine Installation, die auf ihn wartet.
+    """
+
+    def _baustein(self):
+        return nachruesten.Baustein(
+            name="Texterkennung", wofuer="x" * 40, pruefen="tesseract",
+            pakete={"apt": ("tesseract-ocr",)})
+
+    def _hilfe(self, text: str):
+        """Ein Terminal, dessen ``--help`` genau diesen Text ausgibt."""
+        return mock.patch.object(
+            nachruesten.subprocess, "run",
+            return_value=mock.Mock(stdout=text, stderr=""))
+
+    def test_der_schalter_kommt_aus_der_hilfe_des_programms(self) -> None:
+        """**Nachgesehen statt erinnert, und hier zwingend.**
+
+        ``gnome-terminal`` kennt ``--geometry``, ``konsole`` nur das
+        Qt-eigene ``--qwindowgeometry`` – nachgemessen am 2026-11-25
+        an einer echten Konsole. Hinter ``x-terminal-emulator`` kann
+        beides stecken.
+        """
+        with self._hilfe("  --geometry=GEOMETRY   Fenstergröße"):
+            self.assertEqual(
+                nachruesten.geometrieschalter("/usr/bin/gnome-terminal"),
+                "--geometry")
+
+        with self._hilfe("  --qwindowgeometry <geometry>  Fenstergeometrie"):
+            self.assertEqual(
+                nachruesten.geometrieschalter("/usr/bin/konsole"),
+                "--qwindowgeometry")
+
+    def test_kennt_das_terminal_keinen_bleibt_es_ohne(self) -> None:
+        """Dann legt der Fenstermanager das Fenster hin, wohin er mag –
+        besser als ein Terminal, das wegen eines unverstandenen
+        Arguments gar nicht erst aufgeht."""
+        with self._hilfe("  --help  Diese Hilfe"):
+            self.assertIsNone(
+                nachruesten.geometrieschalter("/usr/bin/schlicht"))
+
+    def test_ein_stummes_programm_wirft_nicht(self) -> None:
+        with mock.patch.object(nachruesten.subprocess, "run",
+                               side_effect=OSError):
+            self.assertIsNone(nachruesten.geometrieschalter("/usr/bin/weg"))
+
+    def test_die_position_steht_vor_dem_befehlsschalter(self) -> None:
+        """Hinter ``-e`` steht der Befehl – alles danach gehört ihm."""
+        with mock.patch.object(nachruesten, "paketverwaltung",
+                               return_value="apt"), \
+                mock.patch.object(nachruesten, "terminal",
+                                  return_value=("/usr/bin/xterm", "-e")), \
+                mock.patch.object(nachruesten, "geometrieschalter",
+                                  return_value="-geometry"), \
+                mock.patch.object(nachruesten.subprocess, "Popen") as popen:
+            nachruesten.im_terminal(
+                [self._baustein()], "/tmp/marke", (1200, 80))
+
+        aufruf = popen.call_args[0][0]
+        self.assertEqual(aufruf[1], "-geometry=+1200+80")
+        self.assertEqual(aufruf[2], "-e")
+
+    def test_nur_die_lage_und_keine_groesse(self) -> None:
+        """**Die Einheitenfalle, und sie ist real.**
+
+        In ``80x24+0+0`` zählen die ersten beiden Zahlen bei
+        ``gnome-terminal`` Zeichen und Zeilen, bei allem über Qt
+        dagegen Bildpunkte. Wer eine Größe mitgibt, trifft in einem
+        der beiden Fälle daneben – ein Terminal von 80 Pixeln Breite
+        oder eines von 1200 Zeilen Höhe.
+        """
+        angabe = nachruesten._position_angeben("--geometry", (300, 40))
+
+        self.assertEqual(angabe, ["--geometry=+300+40"])
+        self.assertNotIn("x", angabe[0])
+
+    def test_eine_linke_lage_behaelt_ihr_vorzeichen(self) -> None:
+        """``-10`` hieße in dieser Schreibweise »vom rechten Rand
+        gemessen«, nicht »zehn Punkte links außerhalb«."""
+        self.assertEqual(
+            nachruesten._position_angeben("--geometry", (-10, 20)),
+            ["--geometry=+-10+20"])
+
+    def test_ohne_wunsch_wird_nicht_einmal_gefragt(self) -> None:
+        """Ein ``--help`` kostet einen Prozessstart; wer keine Lage
+        will, soll ihn nicht bezahlen."""
+        with mock.patch.object(nachruesten, "paketverwaltung",
+                               return_value="apt"), \
+                mock.patch.object(nachruesten, "terminal",
+                                  return_value=("/usr/bin/xterm", "-e")), \
+                mock.patch.object(nachruesten,
+                                  "geometrieschalter") as gefragt, \
+                mock.patch.object(nachruesten.subprocess, "Popen") as popen:
+            nachruesten.im_terminal([self._baustein()], "/tmp/marke")
+
+        gefragt.assert_not_called()
+        self.assertEqual(popen.call_args[0][0][1], "-e")
+
+
 class ErgebnisTest(unittest.TestCase):
     """Ob es geklappt hat – am Rechner nachgesehen."""
 

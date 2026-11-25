@@ -120,40 +120,107 @@ class Nachruestdialog(QDialog):
             self.weiter.setEnabled(True)
 
     def _erklaerung(self) -> str:
-        zeilen = [
-            "MailBurg kann noch nicht alles, was es soll. Dafür fehlen "
-            "Programme, die nicht mitgeliefert werden – sie kommen aus "
-            "der Paketverwaltung Ihres Systems und bekommen von dort "
-            "auch ihre Sicherheitsupdates.\n",
+        """Der Text des Dialogs – als HTML, und das ist kein Zierrat.
+
+        **``Fliesstext`` setzt ``Qt.RichText``**, und damit werden
+        Zeilenumbrüche zu Leerzeichen. Am 2026-11-25 stand die
+        Aufzählung der fehlenden Teile deshalb als ein einziger
+        Absatz im Fenster: »… ihre Sicherheitsupdates. • PDF lesen:
+        Ohne das ist …«. Lesbar war das nicht mehr.
+
+        Ich hatte das Gegenteil angenommen und in einem Kommentar
+        festgehalten – ein Screenshot aus der Erprobung hat es
+        widerlegt. *Eine Annahme über die Oberfläche prüft man am
+        Bild, nicht am Quelltext.*
+        """
+        import html as _html
+
+        stuecke = [
+            "<p>MailBurg kann noch nicht alles, was es soll. Dafür "
+            "fehlen Programme, die nicht mitgeliefert werden – sie "
+            "kommen aus der Paketverwaltung Ihres Systems und "
+            "bekommen von dort auch ihre Sicherheitsupdates.</p>",
+            "<ul>",
         ]
         for baustein in self.fehlende:
-            zeilen.append(f"• {baustein.name}: {baustein.wofuer}")
-        # **Keine Sternchen.** Ein QLabel kennt kein Markdown; sie
-        # stünden wörtlich da. Und HTML wäre hier schlimmer: Qt hielte
-        # dann den ganzen Text für HTML und verschluckte die
-        # Zeilenumbrüche der Aufzählung darüber.
-        zeilen.append(
-            "\nEin Klick auf »Pakete installieren« öffnet ein Fenster, "
-            "in dem Sie nach Ihrem Passwort gefragt werden – dem Ihres "
-            "Benutzerkontos. Ohne das darf kein Programm etwas "
-            "installieren.\n\n"
-            "Das Fenster schließt sich von selbst, sobald es fertig "
-            "ist. Danach geht es hier weiter."
+            # Maskiert, obwohl die Texte aus diesem Repo stammen: Was
+            # einmal als HTML gilt, gilt es für jeden späteren Eintrag
+            # auch – und der kommt vielleicht aus einer Paketliste.
+            stuecke.append(
+                f"<li><b>{_html.escape(baustein.name)}</b> – "
+                f"{_html.escape(baustein.wofuer)}</li>"
+            )
+        stuecke.append("</ul>")
+        stuecke.append(
+            "<p>Ein Klick auf <b>Pakete installieren</b> öffnet ein "
+            "Fenster, in dem Sie <b>nach Ihrem Passwort gefragt "
+            "werden</b> – dem Ihres Benutzerkontos. Ohne das darf kein "
+            "Programm etwas installieren.</p>"
+            "<p>Das Fenster schließt sich von selbst, sobald es fertig "
+            "ist. Danach geht es hier weiter.</p>"
         )
-        return "\n".join(zeilen)
+        return "".join(stuecke)
+
+    def _terminalplatz(self) -> tuple[int, int]:
+        """Wohin das Terminal gelegt werden soll – neben dieses Fenster.
+
+        **Gemessen wird gegen den Dialog, nicht gegen das
+        Hauptfenster.** Stephan am 2026-11-25: »Das Terminal landet
+        hinter dem MailBurg Fenster«, und auf dem Bild lag es
+        tatsächlich *über* dem Assistenten und nur unter diesem
+        Dialog. Der Dialog ist das, was im Weg steht – und er steht
+        in der Mitte, während das Hauptfenster oft den ganzen
+        Bildschirm füllt. »Neben das Hauptfenster« hieße dann
+        irgendwo außerhalb.
+
+        Die Breite eines Terminals kennen wir nicht; geschätzt wird
+        sie aus achtzig Zeichen der festen Systemschrift. **Keine
+        geratene Pixelzahl** – die säße bei vergrößerter Schrift
+        falsch, und wer eine Bildschirmtastatur oder große Schrift
+        braucht, ist genau der, der die Passwortabfrage nicht suchen
+        sollte.
+        """
+        from PySide6.QtGui import QFontDatabase, QFontMetrics
+
+        fest = QFontDatabase.systemFont(QFontDatabase.FixedFont)
+        breite = QFontMetrics(fest).horizontalAdvance("0") * 80
+        abstand = QFontMetrics(fest).height()
+
+        meiner = self.frameGeometry()
+        schirm = self.screen().availableGeometry()
+
+        rechts = meiner.right() + abstand
+        if rechts + breite <= schirm.right():
+            return rechts, meiner.top()
+
+        links = meiner.left() - abstand - breite
+        if links >= schirm.left():
+            return links, meiner.top()
+
+        # Kein Platz daneben: dann wenigstens nicht darunter. Oben
+        # links bleibt von einem mittigen Dialog fast immer frei.
+        return schirm.left() + abstand, schirm.top() + abstand
 
     def _starten(self) -> None:
         self.installieren.setEnabled(False)
+        # **»Alt+Tab« steht dabei, und das ist kein Eingeständnis.**
+        # Die Position ist ein Wunsch an den Fenstermanager; unter
+        # Wayland verfällt er. Ein Hinweis, der nur im Normalfall
+        # stimmt, hilft gerade dem nicht, bei dem es schiefging.
         self.stand.setText(
-            "Das Terminal ist offen. Bitte dort das Passwort eingeben – "
-            "danach geht es hier weiter."
+            "Das Terminal ist offen – es sollte neben diesem Fenster "
+            "liegen. Bitte dort das Passwort eingeben; danach geht es "
+            "hier weiter. Ist es verdeckt, holen Sie es mit Alt+Tab "
+            "nach vorn."
         )
 
         ordner = Path(tempfile.gettempdir())
         self._marke = ordner / f"mailburg-nachruesten-{os_pid()}.fertig"
         self._marke.unlink(missing_ok=True)
 
-        if kern.im_terminal(self.fehlende, self._marke) is None:
+        if kern.im_terminal(
+            self.fehlende, self._marke, self._terminalplatz()
+        ) is None:
             self.stand.setText(
                 "Es ließ sich kein Terminal öffnen. Der Befehl oben "
                 "hilft weiter."

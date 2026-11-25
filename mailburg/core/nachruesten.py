@@ -322,7 +322,65 @@ def terminal() -> tuple[str, str] | None:
     return None
 
 
-def im_terminal(fehlende, fertigmarke) -> subprocess.Popen | None:
+#: Wie die Terminals nach einer Fensterposition fragen lassen. Der
+#: Reihe nach probiert; genommen wird der erste, den die eigene Hilfe
+#: des Programms nennt.
+GEOMETRIESCHALTER = ("--geometry", "--qwindowgeometry", "-geometry")
+
+
+def geometrieschalter(programm: str) -> str | None:
+    """Fragt das Terminal selbst, wie es nach einer Position fragt.
+
+    **Nachgesehen statt erinnert, und hier zwingend.** Dieselbe Sache
+    heißt bei jedem Terminal anders: ``gnome-terminal`` kennt
+    ``--geometry``, ``konsole`` nur das Qt-eigene
+    ``--qwindowgeometry``, ``xterm`` schreibt es mit einem Strich.
+    Und hinter ``x-terminal-emulator`` kann jedes davon stecken – der
+    Name sagt nichts darüber, worauf die Alternative zeigt.
+
+    Ein geratener Schalter wäre hier teuer: Ein Terminal, das sein
+    erstes Argument nicht versteht, startet gar nicht, und dann steht
+    der Anwender vor einem Dialog, der auf ein Fenster wartet, das
+    nie aufgeht.
+
+    Gibt ``None`` zurück, wenn sich nichts finden lässt – dann geht
+    das Terminal eben dorthin, wohin der Fenstermanager es legt.
+    """
+    try:
+        lauf = subprocess.run(
+            [programm, "--help"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    # xterm kennt kein --help und listet seine Optionen daraufhin auf
+    # der Fehlerausgabe auf. Beides zählt.
+    hilfe = f"{lauf.stdout}\n{lauf.stderr}"
+    for schalter in GEOMETRIESCHALTER:
+        if schalter in hilfe:
+            return schalter
+    return None
+
+
+def _position_angeben(schalter: str, position) -> list[str]:
+    """Die Positionsangabe, wie X11 sie seit jeher schreibt.
+
+    **Nur die Position, keine Größe.** ``+X+Y`` ist für sich
+    genommen eine gültige Geometrieangabe – und das ist kein Geiz,
+    sondern der Ausweg aus einer Falle: In ``80x24+0+0`` zählen die
+    ersten beiden Zahlen bei ``gnome-terminal`` Zeichen und Zeilen,
+    bei allem, was über Qt läuft, dagegen Bildpunkte. Wer eine Größe
+    mitgibt, trifft in einem der beiden Fälle daneben.
+    """
+    x, y = position
+    # **Das Pluszeichen steht immer davor, auch vor einer negativen
+    # Zahl.** In dieser Schreibweise misst »-10« vom *rechten* Rand;
+    # zehn Punkte links außerhalb heißen »+-10«. Ein ``{:+d}`` – der
+    # naheliegende Griff – schriebe genau das Falsche.
+    return [f"{schalter}=+{x}+{y}"]
+
+
+def im_terminal(fehlende, fertigmarke, position=None) -> subprocess.Popen | None:
     """Öffnet ein Terminal, das die Pakete holt und sich dann schließt.
 
     ``fertigmarke`` ist ein Pfad, in den das Terminal am Ende den
@@ -332,6 +390,12 @@ def im_terminal(fehlende, fertigmarke) -> subprocess.Popen | None:
     an einen laufenden Server weiterreicht. Wer auf diesen Prozess
     wartet, wartet nicht. Eine Datei, die am Ende entsteht, verhält
     sich bei jedem Terminal gleich.
+
+    ``position`` ist ein Paar aus Bildpunkten, an das das Fenster
+    gelegt werden soll. **Es ist ein Wunsch, keine Zusage.** Unter
+    Wayland darf ein Fenster seine Lage nicht selbst bestimmen; dort
+    verfällt die Angabe stillschweigend, und das ist in Ordnung – die
+    Anzeige im Dialog verlässt sich nicht darauf.
 
     Das Terminal **schließt sich von selbst**, sobald es fertig ist;
     Stephans Vorgabe vom 2026-11-25. Was dabei herauskam, sagt danach
@@ -343,6 +407,12 @@ def im_terminal(fehlende, fertigmarke) -> subprocess.Popen | None:
         return None
     programm, schalter = gefunden
 
+    lage: list[str] = []
+    if position is not None:
+        gefragt = geometrieschalter(programm)
+        if gefragt:
+            lage = _position_angeben(gefragt, position)
+
     # **``sudo`` und nicht ``pkexec``:** Im Terminal gibt es eine
     # Passwortabfrage, die jeder kennt. Der Dialog sagt vorher, dass
     # sie kommt.
@@ -351,7 +421,9 @@ def im_terminal(fehlende, fertigmarke) -> subprocess.Popen | None:
         + f"; echo $? > {_geschuetzt(str(fertigmarke))}"
     )
     try:
-        return subprocess.Popen([programm, schalter, "bash", "-c", innen])
+        return subprocess.Popen(
+            [programm, *lage, schalter, "bash", "-c", innen]
+        )
     except OSError:
         return None
 
