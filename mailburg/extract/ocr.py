@@ -168,8 +168,11 @@ def bereit() -> tuple[bool, str]:
                 "mit: winget install oschwartz10612.Poppler"
             )
         return False, (
-            "poppler fehlt (pdftoppm). Unter Debian: sudo apt install poppler-utils, "
-            "unter Arch: sudo pacman -S poppler"
+            "poppler fehlt (pdftoppm).\n\n"
+            "Unter Debian und GuideOS:\n"
+            "sudo apt install poppler-utils\n\n"
+            "Unter Arch und Manjaro:\n"
+            "sudo pacman -S poppler"
         )
     if not shutil.which("tesseract"):
         if _windows():
@@ -181,8 +184,11 @@ def bereit() -> tuple[bool, str]:
                 "winget install UB-Mannheim.TesseractOCR"
             )
         return False, (
-            "tesseract fehlt. Unter Debian: sudo apt install tesseract-ocr "
-            "tesseract-ocr-deu, unter Arch: sudo pacman -S tesseract tesseract-data-deu"
+            "tesseract fehlt.\n\n"
+            "Unter Debian und GuideOS:\n"
+            "sudo apt install tesseract-ocr tesseract-ocr-deu\n\n"
+            "Unter Arch und Manjaro:\n"
+            "sudo pacman -S tesseract tesseract-data-deu"
         )
     if not sprachwahl():
         vorhanden = ", ".join(sorted(sprachen_vorhanden())) or "keine"
@@ -196,10 +202,12 @@ def bereit() -> tuple[bool, str]:
                 f"»German« im tesseract-Setup."
             )
         return False, (
-            f"tesseract ist da, aber ohne brauchbare Sprachdaten. Vorhanden: "
-            f"{vorhanden}. Gebraucht wird "
-            f"mindestens 'deu'. Unter Debian: sudo apt install tesseract-ocr-deu, "
-            f"unter Arch: sudo pacman -S tesseract-data-deu"
+            f"tesseract ist da, aber ohne brauchbare Sprachdaten. "
+            f"Vorhanden: {vorhanden}. Gebraucht wird mindestens 'deu'.\n\n"
+            f"Unter Debian und GuideOS:\n"
+            f"sudo apt install tesseract-ocr-deu\n\n"
+            f"Unter Arch und Manjaro:\n"
+            f"sudo pacman -S tesseract-data-deu"
         )
     return True, ""
 

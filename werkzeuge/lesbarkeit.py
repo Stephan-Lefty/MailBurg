@@ -404,6 +404,18 @@ def _berichtslage():
     )
 
 
+def _alle_bausteine():
+    """Alle nachrüstbaren Teile – der ungünstigste Fall für den Dialog.
+
+    Im Betrieb fehlt selten alles auf einmal; gemessen wird trotzdem
+    damit. Was bei vier Aufzählungspunkten noch hineinpasst, passt
+    auch bei einem.
+    """
+    from mailburg.core import nachruesten
+
+    return list(nachruesten.BAUSTEINE)
+
+
 BAUPLAENE: list[tuple[str, str, object]] = [
     ("mailburg.ui.zeitplan.Zeitplandialog",
      "Zeitplan »Was von selbst laufen soll«",
@@ -434,6 +446,12 @@ BAUPLAENE: list[tuple[str, str, object]] = [
     ("mailburg.ui.einlesen.Einlesedialog",
      "Lokale Mailordner einlesen",
      lambda K, w: K(w.archiv)),
+    # **Mit allen Bausteinen, nicht mit einem.** Die Aufzählung der
+    # fehlenden Teile ist die Stelle, an der dieser Dialog zu hoch
+    # wird – gemessen wird deshalb der ungünstigste Fall.
+    ("mailburg.ui.nachruesten.Nachruestdialog",
+     "Fehlende Pakete nachrüsten",
+     lambda K, w: K(_alle_bausteine())),
     ("mailburg.ui.zurueckspielen.Rueckspieldialog",
      "Ins Dateisystem zurückspielen",
      lambda K, w: K(w.archiv)),

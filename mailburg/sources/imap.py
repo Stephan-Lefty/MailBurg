@@ -118,6 +118,30 @@ _UEBERSETZUNG = (
      "Der Server antwortet nicht. Das kann an einer Firewall liegen, an "
      "einer falschen Portnummer – oder der Server ist gerade nicht da."),
 
+    # **Vor der allgemeinen Abweisung**, weil Google beides zugleich
+    # sagt: Die Antwort enthält »AUTHENTICATIONFAILED« und den Grund
+    # dazu. Ohne diesen Eintrag gewinnt der allgemeine Satz, und der
+    # ist hier falsch – das Passwort *stimmt* ja, es ist nur die
+    # falsche Sorte.
+    #
+    # **Der häufigste Grund für eine gescheiterte Einrichtung.** Bis
+    # zum 2026-11-25 stand im Dialog Googles englischer Rohtext samt
+    # ``b'...'`` davor, und darunter ein allgemeiner Hinweis, dass es
+    # bei manchen Anbietern App-Passwörter gebe. Wo man eines
+    # bekommt, stand nur in der Anleitung – also dort, wo in diesem
+    # Augenblick niemand nachsieht.
+    (("application-specific password", "application specific password"),
+     "Google verlangt für den Abruf von außen ein App-Passwort; das "
+     "Kennwort Ihres Google-Kontos genügt dafür nicht.\n\n"
+     "Eines erstellen Sie unter:\n"
+     "https://myaccount.google.com/apppasswords\n\n"
+     "Die Zwei-Faktor-Anmeldung muss dafür eingeschaltet sein – sonst "
+     "bietet Google die Seite nicht an. Im Menü ist sie nicht mehr zu "
+     "finden, nur über diese Adresse.\n\n"
+     "Google zeigt dann 16 Buchstaben in vier Gruppen. Die "
+     "Leerzeichen gehören nicht dazu: Es kommen die 16 Zeichen am "
+     "Stück ins Passwortfeld."),
+
     (("authenticationfailed", "invalid credentials", "login failed",
       "authentication failed"),
      "Benutzername oder Passwort stimmt nicht."),
@@ -125,6 +149,25 @@ _UEBERSETZUNG = (
     (("no route to host", "network is unreachable"),
      "Der Rechner ist nicht erreichbar. Besteht die Netzwerkverbindung?"),
 )
+
+
+def _ohne_bytefassung(text: str) -> str:
+    """Schält ``b'…'`` ab, das ``imaplib`` in seine Fehler schreibt.
+
+    **Pythons Darstellung von Bytes gehört nicht in ein Fenster.**
+    ``imaplib`` reicht die Antwort des Servers unverändert durch, und
+    die ist ein ``bytes``-Objekt; ``str()`` darauf ergibt
+    ``b'[ALERT] …'``. Im Dialog stand das am 2026-11-25 so vor einem
+    Anwender – zwei Zeichen, die nichts bedeuten und alles
+    technischer aussehen lassen, als es ist.
+
+    Was nicht nach dieser Fassung aussieht, bleibt unangetastet.
+    """
+    text = text.strip()
+    for anfang in ("b'", 'b"'):
+        if text.startswith(anfang) and text.endswith(anfang[1]):
+            return text[2:-1]
+    return text
 
 
 def _verstaendlich(fehler: Exception, server: str = "") -> str:
@@ -138,7 +181,7 @@ def _verstaendlich(fehler: Exception, server: str = "") -> str:
     »Passwort stimmt nicht« schlicht falsch – dort ist die
     Anmeldeart abgeschaltet.
     """
-    roh = str(fehler)
+    roh = _ohne_bytefassung(str(fehler))
     klein = roh.lower()
     for muster, klartext in _UEBERSETZUNG:
         if any(m in klein for m in muster):
@@ -423,16 +466,26 @@ class ImapSource(Source):
             self._verbindung.login(self.konto.benutzer, passwort)
         except imaplib.IMAP4.error as exc:
             self._verbindung_wegwerfen()
+            erklaerung = _verstaendlich(exc, self.konto.server)
             # Bei Microsoft steht in der Übersetzung bereits alles
             # Nötige; der Rat mit dem App-Passwort wäre dort falsch.
-            nachsatz = "" if _ist_microsoft(self.konto.server) else (
+            #
+            # Und wo der Server selbst schon nach einem App-Passwort
+            # verlangt hat, steht der genaue Weg dorthin ebenfalls
+            # oben – ein zweiter, vager Hinweis darunter machte die
+            # Meldung nur länger.
+            braucht_nachsatz = not (
+                _ist_microsoft(self.konto.server)
+                or "App-Passwort" in erklaerung
+            )
+            nachsatz = (
                 "\nBei Gmail, GMX und Web.de verlangt der Zugriff von außen "
                 "ein eigenes App-Passwort; das Kennwort der Weboberfläche "
                 "genügt dort nicht."
-            )
+            ) if braucht_nachsatz else ""
             raise ImapFehler(
                 f"Anmeldung als {self.konto.benutzer} abgelehnt – "
-                f"{_verstaendlich(exc, self.konto.server)}{nachsatz}"
+                f"{erklaerung}{nachsatz}"
             ) from exc
 
     def _per_oauth2_anmelden(self) -> None:

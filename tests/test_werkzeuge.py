@@ -191,6 +191,51 @@ class RatschlagTest(unittest.TestCase):
 
         self.assertIn("apt install", grund)
 
+    def test_hinter_einem_befehl_klebt_kein_satzzeichen(self) -> None:
+        """**Wer einen Befehl anbietet, muss ihn kopierbar lassen.**
+
+        Am 2026-11-25 stand in der Meldung: »…sudo apt install
+        tesseract-ocr tesseract-ocr-deu, unter Arch: …«. Stephan
+        markierte den Befehl, kopierte das Komma mit und bekam
+        »Paket tesseract-ocr-deu, kann nicht gefunden werden«.
+
+        **Wenn derjenige, der das Programm gebaut hat, beim Kopieren
+        danebengreift, ist es keine Unachtsamkeit, sondern eine
+        Falle.** Ein Befehl gehört auf eine eigene Zeile, ohne
+        Satzzeichen dahinter – dieselbe Regel, die für jeden Text zum
+        Kopieren gilt.
+
+        Geprüft wird die **erzeugte Meldung**, nicht der Quelltext:
+        Die Sätze sind über mehrere Zeichenketten verteilt, und ein
+        Blick in die Datei übersieht genau die Stelle, an der sie
+        zusammenstoßen.
+        """
+        import re
+
+        from mailburg.extract import ocr
+
+        klebt = re.compile(
+            r"(apt install|apt-get install|pacman -S|winget install)"
+            r"[-\w. ]*[,;](\s|$)"
+        )
+
+        def ohne(fehlt: str):
+            with mock.patch.object(ocr, "_windows", return_value=False), \
+                    mock.patch.object(
+                        ocr.shutil, "which",
+                        side_effect=lambda w: None if w == fehlt else f"/x/{w}"):
+                return ocr.bereit()[1]
+
+        for fehlt in ("pdftoppm", "tesseract"):
+            with self.subTest(fehlt=fehlt):
+                grund = ohne(fehlt)
+                treffer = klebt.search(grund)
+                self.assertIsNone(
+                    treffer,
+                    f"Satzzeichen hinter dem Befehl: "
+                    f"»{treffer.group() if treffer else ''}«\n{grund}",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

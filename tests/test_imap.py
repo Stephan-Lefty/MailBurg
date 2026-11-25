@@ -400,6 +400,80 @@ class FehlermeldungTest(unittest.TestCase):
                     self.assertNotIn(wort, klartext)
 
 
+class GmailAppPasswortTest(unittest.TestCase):
+    """**Der häufigste Grund für eine gescheiterte Einrichtung.**
+
+    Google lässt das Kontopasswort für IMAP nicht zu und verlangt ein
+    App-Passwort. Bis zum 2026-11-25 stand im Einrichtungsdialog dazu
+    Googles englischer Rohtext, mit Pythons ``b'…'`` davor – und
+    darunter ein allgemeiner Hinweis, dass manche Anbieter
+    App-Passwörter verlangten. *Wo* man eines bekommt, stand nur in
+    der Anleitung, also dort, wo in diesem Augenblick niemand
+    nachsieht.
+
+    Aufgefallen, als Stephan auf einem frisch installierten GuideOS
+    ein Gmail-Konto eintragen wollte.
+    """
+
+    #: Wortgleich die Antwort, die am 2026-11-25 im Dialog stand.
+    ECHT = (b"[ALERT] Application-specific password required: "
+            b"https://support.google.com/accounts/answer/185833 (Failure)")
+
+    def _uebersetzt(self, roh: bytes) -> str:
+        import imaplib
+
+        from mailburg.sources.imap import _verstaendlich
+
+        return _verstaendlich(imaplib.IMAP4.error(roh), "imap.gmail.com")
+
+    def test_der_weg_zum_app_passwort_steht_in_der_meldung(self) -> None:
+        text = self._uebersetzt(self.ECHT)
+
+        self.assertIn("App-Passwort", text)
+        self.assertIn("myaccount.google.com/apppasswords", text)
+
+    def test_die_voraussetzung_steht_dabei(self) -> None:
+        """Ohne Zwei-Faktor-Anmeldung bietet Google die Seite nicht an –
+        wer das nicht weiß, sucht sie vergeblich."""
+        self.assertIn("Zwei-Faktor", self._uebersetzt(self.ECHT))
+
+    def test_und_die_falle_mit_den_leerzeichen(self) -> None:
+        """Google zeigt die 16 Zeichen in vier Gruppen. Wer sie mit
+        Leerzeichen einträgt, bekommt dieselbe Abweisung noch einmal."""
+        self.assertIn("Leerzeichen", self._uebersetzt(self.ECHT))
+
+    def test_kein_b_davor(self) -> None:
+        """**Pythons Bytes-Schreibweise gehört nicht in ein Fenster.**
+
+        ``imaplib`` reicht die Antwort des Servers als ``bytes``
+        durch; ``str()`` darauf ergibt ``b'[ALERT] …'``. Genau so
+        stand es im Dialog.
+        """
+        from mailburg.sources.imap import _ohne_bytefassung
+
+        self.assertEqual(_ohne_bytefassung("b'[ALERT] Etwas'"),
+                         "[ALERT] Etwas")
+        self.assertEqual(_ohne_bytefassung('b"[ALERT] Etwas"'),
+                         "[ALERT] Etwas")
+        # Was nicht so aussieht, bleibt unangetastet – auch ein Text,
+        # der zufällig mit b beginnt.
+        self.assertEqual(_ohne_bytefassung("bereits verbunden"),
+                         "bereits verbunden")
+
+    def test_eine_fremde_abweisung_bleibt_beim_alten_rat(self) -> None:
+        """Die Gegenprobe: Wo der Server *nicht* nach einem
+        App-Passwort verlangt, bleibt der allgemeine Hinweis stehen –
+        bei GMX und Web.de ist er richtig und das Einzige, was wir
+        sagen können."""
+        from mailburg.sources.imap import _verstaendlich
+
+        text = _verstaendlich(
+            Exception("AUTHENTICATIONFAILED"), "imap.gmx.net")
+
+        self.assertIn("Passwort stimmt nicht", text)
+        self.assertNotIn("apppasswords", text)
+
+
 class MicrosoftTest(unittest.TestCase):
     """»Passwort stimmt nicht« ist bei Microsoft schlicht falsch.
 
