@@ -3,6 +3,158 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-11-25, Dienstag) – ein fremder Rechner, sieben Befunde
+
+**MailBurg wird Bestandteil von GuideOS.** Stephans Ankündigung vom
+24.11., und sie ändert mehr als die Zahl der Anwender: Bisher hat
+jeder MailBurg gesucht, gefunden und sich durch die Installation
+gearbeitet. Künftig finden Leute es vor, ohne danach gesucht zu
+haben.
+
+Zur Probe hat Stephan es in einer frischen GuideOS-VM aus dem `.deb`
+installiert, eingerichtet, benutzt und am Ende wieder entfernt.
+**Sieben Befunde, und keiner kam aus einem Test.**
+
+### Was das Debian-Paket nicht tat
+
+**MailBurg ließ sich gar nicht starten.** PySide6 stand unter
+`Recommends`, und ein grafischer Paketinstaller zieht Empfehlungen
+nicht mit – derselbe Fehler, an dem am 25.09. schon zwei
+Michaela-Meldungen hingen. Die Regel stand seitdem in dieser Datei
+(»Was MailBurg zum Laufen braucht, gehört unter `Depends`«), mit Qt
+als ausdrücklicher Ausnahme. **Die Ausnahme hatte einen Grund, der
+für GuideOS nicht mehr gilt:** Dort ist das Paket der einzige Weg,
+und `python3-pyside6.qtwidgets` liegt in Debian trixie bereit
+(`6.8.2.1-4`, nachgesehen, nicht angenommen).
+
+**Und MailBurg erschien in keiner Software-Verwaltung.** Die
+AppStream-Datei lag im Paket, nur an der falschen Stelle
+(`dist-packages/…/paketdaten/` statt `/usr/share/metainfo/`), und ihr
+fehlte `<pkgname>`. Ohne den weiß GNOME Software nicht, welches Paket
+zu der Anwendung gehört – also zeigt es sie gar nicht erst unter den
+installierten Programmen. Bei Paketen aus einer Distributionsquelle
+ergänzt das der AppStream-Generator; bei einem von Hand
+installierten `.deb` tut es niemand.
+
+Beides ist dieselbe Klasse wie das Wappen am 02.10.: **Was
+ausgeliefert werden soll, gehört ins Paket – und an die Stelle, an
+der jemand danach sucht.**
+
+### Der Nachrüstdialog, und die Vorgabe dahinter
+
+Nachdem Stephan nacheinander PySide6, tesseract und die deutschen
+Sprachdaten von Hand installiert hatte, kam die Ansage:
+
+> Egal wo man MailBurg installiert, wir müssen dem User immer die
+> Chance geben, dass er per Klick die Pakete nachinstallieren kann
+> […] Alles andere macht kein Sinn und das muss an jeder Stelle, wo
+> was nachinstalliert werden muss, gleich sein.
+
+Daraus `core/nachruesten.py` und `ui/nachruesten.py` – **ein**
+Fenster, kein Baukasten. Vier Festlegungen stehen im Modulkopf und
+sollten nicht ohne ihren Grund aufgemacht werden: Der Befehl wird
+gezeigt, bevor er läuft. Ein sichtbares Terminal statt `pkexec`.
+Niemals von selbst. Und was sich nicht automatisch machen lässt,
+wird gesagt statt verschwiegen.
+
+**Gewartet wird auf eine Datei, nicht auf den Prozess.**
+`gnome-terminal` kehrt sofort zurück, weil es die Arbeit an einen
+Server weiterreicht – wer auf diesen Prozess wartet, wartet nicht.
+
+**Und »erledigt« heißt nachgesehen, nicht geglaubt.** `apt-get`
+meldet auch dann Erfolg, wenn es nichts zu tun fand, und ein Anwender
+kann die Passwortabfrage weggeklickt haben. Gezählt wird allein, ob
+der Baustein jetzt da ist.
+
+### Die Falle, die ich zuerst Stephan zugeschrieben hätte
+
+Die Installation scheiterte an einem Paket namens
+`tesseract-ocr-deu,`. Stephan: *»ok mein Fehler ich habe das Komma
+mit kopiert!«* – in der Meldung stand »… tesseract-ocr-deu, unter
+Arch: …«.
+
+**Das ist keine Unachtsamkeit, sondern eine Falle.** Wenn derjenige,
+der das Programm gebaut hat, beim Kopieren danebengreift, greift
+jeder Anwender daneben. Befehle stehen seitdem auf einer eigenen
+Zeile ohne Satzzeichen dahinter, und ein Test wacht darüber.
+
+### Zwei Prüfungen über dieselbe Sache, die sich widersprachen
+
+Stephan entfernte zum Testen `tesseract-ocr-deu` – und MailBurg bot
+nichts zum Nachrüsten an. `tesseract` war ja noch da. Gleichzeitig
+sagte `ocr.bereit()` »nicht bereit«.
+
+**Zwei Prüfungen, die dasselbe beurteilen sollen und zu
+verschiedenen Ergebnissen kommen, sind in diesem Projekt die
+häufigste Fehlerklasse überhaupt.** Daher die dritte Prüfart
+`sprachdaten` im `Baustein`: Sie fragt tesseract nach seinen
+Sprachen, statt nach dem Programm zu suchen.
+
+### Was die Erprobung am fertigen Dialog fand
+
+Beide Befunde kamen aus Bildschirmfotos, keiner aus einem Test.
+
+**Die Aufzählung floss zu einem Absatz zusammen** – »… ihre
+Sicherheitsupdates. • PDF lesen: Ohne das ist …«. `Fliesstext` setzt
+`Qt.RichText`, damit werden Zeilenumbrüche zu Leerzeichen. Ich hatte
+in einem Kommentar an genau dieser Stelle das Gegenteil behauptet
+(»HTML wäre hier schlimmer«) und damit den Fehler begründet, den ich
+baute. *Eine Annahme über die Oberfläche prüft man am Bild, nicht am
+Quelltext.*
+
+**Das Terminal landete hinter dem Dialog.** Die Passwortabfrage stand
+sichtbar da – verdeckt von dem Fenster, das zum Eingeben auffordert.
+Das Terminal bekommt jetzt eine Position neben dem Dialog
+mitgegeben; gemessen wird gegen den Dialog und nicht gegen das
+Hauptfenster, denn der Dialog steht im Weg und das Hauptfenster
+füllt oft den Bildschirm.
+
+Dabei zwei Dinge, die man leicht rät statt nachzusehen: Der Schalter
+heißt bei jedem Terminal anders (`--geometry`, `--qwindowgeometry`,
+`-geometry`), und hinter `x-terminal-emulator` kann jedes davon
+stecken – MailBurg fragt deshalb das Programm nach seiner eigenen
+Hilfe. Und mitgegeben wird **nur die Lage, keine Größe**: In
+`80x24+0+0` zählen die ersten beiden Zahlen bei `gnome-terminal`
+Zeichen und Zeilen, bei allem über Qt dagegen Bildpunkte.
+
+### Die zwei, die beim Aufräumen auffielen
+
+**Das ist der eigentliche Ertrag des Tages.** Stephan hat MailBurg am
+Ende wieder entfernt – ein Weg, den in diesem Projekt noch nie
+jemand gegangen ist.
+
+**»Ein Konto namens X gibt es nicht« nennt nicht, welche es gibt.**
+Die Liste schreibt »Name (Adresse auf Server:Port)«; welcher Teil der
+Name ist, sieht man der Zeile nicht an. Stephan griff dreimal daneben,
+einmal mit der vollständigen Zeile aus der eigenen Ausgabe des
+Programms. Dieselbe Klasse wie die Komma-Falle.
+
+**Die Kommandozeile kann die bekannten Archive nicht nennen.**
+`mailburg info` verlangt genau den Pfad, den man sucht. Das Fenster
+kennt die Liste, die Kommandozeile hat keinen Befehl dafür. Auf
+einem Server ist das der einzige Weg überhaupt. **Ich habe den
+Befehl aus dem Gedächtnis geraten statt nachzusehen** – die Regel
+dagegen steht seit dem 25.09. hier.
+
+Dazu ein dritter Befund aus dem Betrieb: **Ein ausgegrauter
+Menüeintrag nennt seinen Grund nicht.** Drei graue Zeilen
+untereinander im Menü *Post*, zwei völlig verschiedene Ursachen
+(leere Warteschlange / Privatarchiv), und der Grund steht nur im
+Statustipp. Stephans Urteil: *»Denn es funktioniert nicht.«*
+
+### Was daraus für künftige Durchläufe folgt
+
+**Deinstallieren gehört zum Test.** Der Rückweg wird gebaut und nie
+benutzt, bis ihn jemand braucht – dasselbe Muster wie beim Restore am
+02.10.
+
+**Verabredet: Anfang Dezember erneut**, nachdem die Dezemberfassung
+draußen ist. Die Reihenfolge ist nicht beliebig – geprüft wird das
+`.deb` des Releases, nicht der Quelltext. Die VM ist inzwischen
+leer; wer dort prüfen will, installiert neu.
+
+2524 Tests, `lesbarkeit.py` ohne Befund, CI grün (`90f43ae`).
+
 ## Hier war Schluss (Stand 2026-11-04, Mittwoch) – die Vorschau, und fünf widerlegte Vermutungen
 
 **Aus einem Wunsch wurde ein Umbau in beiden Oberflächen.** Ein
