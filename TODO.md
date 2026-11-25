@@ -169,6 +169,59 @@ etwas stillschweigend. Keiner wäre von selbst aufgefallen.
   gh workflow run Tests --ref main -f breit=true
   ```
 
+### Aus dem Durchlauf unter GuideOS (2026-11-25)
+
+MailBurg wird in den nächsten Wochen Bestandteil von GuideOS. Zur
+Probe hat Stephan es in einer frischen VM aus dem `.deb` installiert,
+eingerichtet und am Ende wieder entfernt – **also einmal den ganzen
+Weg eines Anwenders, der das Programm nicht kennt.**
+
+Sieben Befunde sind dabei herausgekommen, vier davon sind behoben
+(fehlender `pkgname`, ohne den MailBurg in keiner Software-Verwaltung
+auftauchte; der Nachrüstdialog für fehlende Pakete; seine zu einem
+Absatz zusammengeflossene Aufzählung; das Terminal hinter dem
+Fenster). **Die beiden letzten fielen erst beim Aufräumen auf** – auf
+einem Weg, den in diesem Projekt noch nie jemand gegangen ist.
+
+- [ ] **Ein ausgegrauter Menüeintrag nennt seinen Grund nicht.** Im
+  Menü *Post* stehen drei graue Einträge untereinander: »Eingescannte
+  PDF lesen …« ist grau, weil die Warteschlange leer ist,
+  »Aufbewahrung festlegen …« und »Beim Aufnehmen einstufen …« dagegen,
+  weil das Archiv privat betrieben wird. Zwei ganz verschiedene
+  Gründe, dieselbe Darstellung – zusammen lesen sie sich wie ein
+  halbfertiges Programm. Stephans Urteil: »Denn es funktioniert
+  nicht.«
+
+  Der Grund steht jeweils nur im Statustipp, sichtbar solange die Maus
+  darüber steht. **Eine Auskunft ist erst dann eine, wenn sie dort
+  landet, wo jemand hinsieht** – hier gehört sie in den Text des
+  Eintrags selbst, so wie es die Zahl der wartenden Scans schon tut.
+
+- [ ] **»Ein Konto namens X gibt es nicht« nennt nicht, welche es
+  gibt.** `mailburg konten liste` schreibt »Name (Adresse auf
+  Server:Port)«; welcher Teil davon der Name ist, sieht man der Zeile
+  nicht an. Stephan hat dreimal danebengegriffen, einmal mit der
+  vollständigen Zeile aus der eigenen Ausgabe des Programms.
+
+  Die Kontenliste ist in diesem Augenblick geladen – die vorhandenen
+  Namen aufzuzählen kostet nichts. Gilt für jede Stelle, an der
+  `liste.finden()` leer ausgeht, nicht nur für `entfernen`.
+
+  Dieselbe Klasse wie die Komma-Falle vom selben Tag: **Wenn
+  derjenige, der das Programm gebaut hat, beim Abtippen danebengreift,
+  ist es eine Falle und keine Unachtsamkeit.**
+
+- [ ] **Die Kommandozeile kann die bekannten Archive nicht nennen.**
+  `mailburg info` verlangt genau den Pfad, den man sucht. Das Fenster
+  kennt die Liste (Menü »Zuletzt benutzt«), die Kommandozeile hat
+  keinen Befehl dafür – wer kein Fenster hat, muss die JSON-Datei
+  lesen oder mit `find` nach `archive.json` suchen.
+
+  Auf einem Server ist das der einzige Weg überhaupt. Gegenstück zu
+  »`mailburg abgleich` gab es einen Monat lang nur auf der
+  Kommandozeile« vom 22.09.2026: **Etwas ist in einer Oberfläche
+  vorhanden und in der anderen nicht.**
+
 ### Älteres
 
 - [ ] **Der Import nutzt die Kerne nicht aus – gemessen 1,5 von 12.**

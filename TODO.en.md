@@ -166,6 +166,57 @@ something quietly. Not one would have surfaced on its own.
   gh workflow run Tests --ref main -f breit=true
   ```
 
+### From the GuideOS run-through (2026-11-25)
+
+MailBurg will become part of GuideOS over the next few weeks. As a
+trial, Stephan installed it in a fresh VM from the `.deb`, set it up
+and removed it again at the end – **the whole path of someone who
+does not know the program.**
+
+Seven findings came out of it, four of them fixed (the missing
+`pkgname`, without which MailBurg appeared in no software manager;
+the dialog that installs missing packages; its bullet list that ran
+together into one paragraph; the terminal hidden behind the window).
+**The last two only showed up while cleaning out** – on a path nobody
+in this project had ever walked.
+
+- [ ] **A greyed-out menu entry does not state its reason.** The
+  *Mail* menu has three greyed-out entries in a row: »Read scanned
+  PDFs …« is grey because the queue is empty, while »Set retention …«
+  and »Classify on import …« are grey because the archive is run
+  privately. Two entirely different reasons, one appearance –
+  together they read like an unfinished program. Stephan's verdict:
+  »It just doesn't work.«
+
+  The reason only lives in the status tip, visible while the mouse
+  hovers. **A piece of information only counts once it lands where
+  someone is looking** – here it belongs in the entry's own text, the
+  way the count of waiting scans already does.
+
+- [ ] **»No account named X« does not say which ones exist.**
+  `mailburg konten liste` prints »Name (address on server:port)«;
+  which part is the name cannot be seen from the line. Stephan got it
+  wrong three times, once using the full line from the program's own
+  output.
+
+  The account list is loaded at that very moment – listing the
+  existing names costs nothing. This applies wherever
+  `liste.finden()` comes up empty, not just to `entfernen`.
+
+  Same class as the comma trap from the same day: **when the person
+  who built the program mistypes, it is a trap and not carelessness.**
+
+- [ ] **The command line cannot name the known archives.** `mailburg
+  info` demands exactly the path one is looking for. The window knows
+  the list (menu »Recently used«), the command line has no command for
+  it – without a window you have to read the JSON file or hunt for
+  `archive.json` with `find`.
+
+  On a server that is the only way at all. The counterpart to
+  »`mailburg abgleich` existed only on the command line for a month«
+  from 2026-09-22: **something exists in one interface and not in the
+  other.**
+
 ### Older
 
 - [ ] **The import does not use the available cores – measured 1.5 out
