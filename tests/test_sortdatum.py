@@ -211,13 +211,61 @@ class NachruestenTest(unittest.TestCase):
     """
 
     def test_der_altbestand_bekommt_sein_sortdatum(self):
+        """**Der Altbestand wird über ein gekürztes Schema erzeugt**,
+        nicht über ``ALTER TABLE … DROP COLUMN``.
+
+        Der erste Anlauf tat genau das – und war lokal grün, in der
+        CI rot:
+
+            sqlite3.OperationalError: error in table messages after
+            drop column: incomplete input
+
+        SQLite liest beim Entfernen einer Spalte die gespeicherte
+        ``CREATE TABLE``-Anweisung neu ein, und das Schema dieses
+        Projekts ist voller ``--``-Kommentare. Ältere Fassungen
+        kommen damit nicht zurecht. *Nebenbefund, der hier
+        festgehalten gehört: In diesem Index lässt sich keine Spalte
+        entfernen, solange die Kommentare dort stehen.*
+        """
+        import sqlite3
+
         from mailburg.core.archive import Archive
-        from mailburg.core.index import Index
+        from mailburg.core import index as index_modul
 
         ordner = tempfile.TemporaryDirectory()
         self.addCleanup(ordner.cleanup)
         pfad = pathlib.Path(ordner.name) / "Probe"
         Archive.create(pfad).close()
+
+        # Ein Index, wie ihn die Fassung vor dieser gebaut hätte: ohne
+        # die Spalte und ohne ihren Index.
+        #
+        # **Mitsamt dem Kommentarblock davor und dem Komma dahinter.**
+        # Ein schlichtes Suchmuster traf daneben, weil zwischen der
+        # vorigen Spalte und dieser zwanzig Zeilen Begründung stehen –
+        # und ein zeilenweiser Filter ließ ein Komma vor der
+        # schließenden Klammer zurück. Beide Male meldete nicht der
+        # Test den Fehler, sondern SQLite.
+        import re
+
+        ohne = re.sub(
+            r",\n(?:[ \t]*--.*\n)*[ \t]*sortdatum\s+TEXT\n\);",
+            "\n);", index_modul._SCHEMA)
+        ohne = "\n".join(z for z in ohne.splitlines()
+                         if "sortdatum" not in z)
+        self.assertNotIn("sortdatum", ohne,
+                         "Das Schema sieht anders aus als angenommen")
+
+        with Archive.open(pfad) as archiv:
+            ort = archiv.index.path
+        sqlite3.connect(ort).close()
+        import os
+
+        os.remove(ort)
+        db = sqlite3.connect(ort)
+        db.executescript(ohne)
+        db.commit()
+        db.close()
 
         with Archive.open(pfad) as archiv:
             _aufnehmen(archiv.index, "Alt",
@@ -227,17 +275,6 @@ class NachruestenTest(unittest.TestCase):
             _aufnehmen(archiv.index, "Neu",
                        "Wed, 04 Nov 2026 08:00:00 +0100", "n", SPAETER)
             archiv.index.commit()
-            ort = archiv.index.path
-
-        # Den Zustand vor der Änderung nachstellen: Spalte und Index
-        # weg, als käme der Index aus einer älteren Fassung.
-        import sqlite3
-
-        db = sqlite3.connect(ort)
-        db.execute("DROP INDEX IF EXISTS idx_messages_sortdatum")
-        db.execute("ALTER TABLE messages DROP COLUMN sortdatum")
-        db.commit()
-        db.close()
 
         # Und jetzt öffnen – dabei muss das Nachrüsten greifen.
         with Archive.open(pfad) as archiv:
