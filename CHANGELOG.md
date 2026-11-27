@@ -9,7 +9,7 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
-## [1.9.0] – 2026-12-01
+## [1.9.0] – 2026-11-27
 
 **Die Fassung, die aus einem fremden Rechner entstanden ist.** MailBurg
 wird Bestandteil von GuideOS. Zur Probe wurde es in einer frischen
@@ -22,6 +22,28 @@ Deinstallieren auf, also auf einem Weg, den in diesem Projekt noch nie
 jemand gegangen ist. Ein weiterer kam aus einer Frage des GuideOS-
 Admins – er wollte wissen, wofür die empfohlenen Pakete eigentlich da
 seien.
+
+**Sie kommt vier Tage vor dem Sammeltermin, und dafür gibt es einen
+Grund.** Seit dem 19.10.2026 gilt: Sofort heraus geht nur, was die
+Funktion mit der letzten Fassung nicht mehr gewährleistet; alles
+andere wartet auf den Ersten des Monats.
+
+Daran gemessen gehört diese Fassung sofort heraus. Wer MailBurg aus
+dem `.deb` der 1.8.5 installiert, bekommt unter Umständen ein
+Programm **ohne Fenster** – PySide6 stand unter *Recommends*, und
+grafische Paketinstaller übergehen Empfehlungen. Genau das ist am
+25.11. auf einem frischen System passiert. Dasselbe gilt für die
+Suche in PDF-Anhängen, die die Paketbeschreibung zusagt: Ohne
+`poppler-utils` gibt es sie nicht, und das Fehlen sieht nicht nach
+einem Fehler aus, sondern nach einem Anhang, in dem eben nichts
+steht.
+
+**Dazu kommt der Anlass von außen:** GuideOS nimmt MailBurg in den
+nächsten Wochen auf. Was dabei ins System wandert, ist das
+veröffentlichte Paket – nicht der Stand im Quelltext. Eine Fassung
+mit falschen Abhängigkeiten vier Tage länger stehen zu lassen hieße,
+sie genau in dem Augenblick auszuliefern, in dem die ersten Anwender
+sie vorfinden, ohne sie gesucht zu haben.
 
 ### Hinzugefügt
 
