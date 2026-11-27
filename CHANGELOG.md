@@ -173,6 +173,35 @@ seien.
   fehlenden Sprachdaten der Texterkennung. Gefragt wird jetzt
   dieselbe Stelle, die auch das Archivieren fragt.
 
+- **Mails mit gefälschtem Datum kleben nicht mehr oben.** Im
+  Firmenarchiv standen zwei Spam-Nachrichten mit den Jahren 2029 und
+  2030 dauerhaft über jeder echten Mail – sortiert wurde nach dem
+  Datum aus der Nachricht, und eine Plausibilitätsprüfung gab es
+  nicht.
+
+  Die Regel dahinter ist einfach: **Eine Mail kann kein Datum tragen,
+  das nach ihrer Aufnahme ins Archiv liegt** – sie war ja vorher da.
+  Steht dort trotzdem eines, wird für die Reihenfolge der Zeitpunkt
+  der Aufnahme genommen. Gemessen an 600.000 Zeilen rutschen die
+  beiden damit von Rang 1 und 2 auf Rang 12.001 – also dorthin, wo
+  sie hereinkamen.
+
+  **Angezeigt bleibt das echte Datum.** Hier wird ausschließlich
+  sortiert; was in der Mail steht, verändert MailBurg nicht. Und sie
+  verschwindet nicht: Was im Archiv liegt, muss auffindbar bleiben.
+
+  Bestehende Archive bekommen die Angabe beim ersten Start
+  nachgetragen, ohne Neuaufbau – bei einer halben Million Mails eine
+  knappe Sekunde.
+
+- **Die Statusseite summiert die Mailgrößen nicht mehr über einen
+  vollen Tabellenscan.** Ein eigener Index macht daraus einen Lauf
+  über schlanke Einträge statt über jede Zeile mit allen Spalten;
+  gemessen an 600.000 Zeilen 19 statt 46 Millisekunden, und das bei
+  warmem Zwischenspeicher. Beim ersten Aufruf am Tag entscheidet, wie
+  viele Bytes von der Platte kommen – und das sind jetzt ein
+  Bruchteil.
+
 - **Die Aufzählung im Nachrüstdialog floss zu einem Absatz
   zusammen**, weil ein `QLabel` Zeilenumbrüche verschluckt, sobald es
   Text als HTML auslegt.

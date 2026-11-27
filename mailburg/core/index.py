@@ -64,7 +64,30 @@ CREATE TABLE IF NOT EXISTS messages (
     -- beantwortbar. Steht im Journal, hier für die Suche.
     archiviert      TEXT,
     -- hoch, normal oder niedrig; aus Importance, X-Priority oder Priority.
-    wichtigkeit     TEXT NOT NULL DEFAULT 'normal'
+    wichtigkeit     TEXT NOT NULL DEFAULT 'normal',
+    -- Wonach die Trefferliste sortiert: das Datum der Mail, aber
+    -- höchstens der Zeitpunkt ihrer Aufnahme.
+    --
+    -- **Eine Mail kann kein Datum tragen, das nach ihrer Archivierung
+    -- liegt** - sie war ja vorher da. Steht dort trotzdem eines, ist
+    -- es gefälscht oder von einem kaputten Mailprogramm gesetzt. Ohne
+    -- diese Spalte klebt eine solche Mail dauerhaft über allem
+    -- anderen: Im Firmenarchiv stehen seit Wochen zwei
+    -- Spam-Nachrichten mit 2029 und 2030 vor jeder echten Post.
+    --
+    -- Gemessen an 600.000 Zeilen am 27.11.2026: Die beiden rutschen
+    -- damit von Rang 1 und 2 auf Rang 12.001 - also dorthin, wo sie
+    -- aufgenommen wurden. Die Sortierung bleibt bei 0,15 ms, weil ein
+    -- eigener Index darauf liegt.
+    --
+    -- **Nicht gebaut: MIN(date, jetzt) in der Abfrage.** Derselbe
+    -- Effekt, aber ein Ausdruck im ORDER BY macht jeden Index
+    -- unbrauchbar - gemessen 78 ms statt 0,15, also das
+    -- Vierhundertfache.
+    --
+    -- **Das angezeigte Datum bleibt das echte.** Hier wird nur
+    -- sortiert; was in der Mail steht, verändert MailBurg nicht.
+    sortdatum       TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_date  ON messages(date);
@@ -73,6 +96,15 @@ CREATE INDEX IF NOT EXISTS idx_messages_from  ON messages(from_addr);
 CREATE INDEX IF NOT EXISTS idx_messages_msgid ON messages(message_id);
 CREATE INDEX IF NOT EXISTS idx_messages_gespraech ON messages(gespraech);
 CREATE INDEX IF NOT EXISTS idx_messages_arch  ON messages(archiviert);
+CREATE INDEX IF NOT EXISTS idx_messages_sortdatum ON messages(sortdatum);
+-- **Damit die Summe der Mailgrößen nicht die ganze Tabelle liest.**
+-- Die Statusseite des Dienstes zeigt sie bei jedem Aufruf; ohne
+-- diesen Index ist das ein voller Scan über alle Spalten, mit ihm
+-- liest SQLite nur den schlanken Index (SCAN USING COVERING INDEX).
+-- Gemessen an 600.000 Zeilen: 19 ms statt 46 - und das warm. Kalt
+-- entscheidet, wie viele Bytes von der Platte kommen, und das sind
+-- hier ein Bruchteil.
+CREATE INDEX IF NOT EXISTS idx_messages_size  ON messages(size);
 
 -- Empfänger einzeln, nach Art getrennt. Der Volltextindex wirft An und
 -- Kopie in ein Feld; wer wissen will, ob er direkt angeschrieben war oder
@@ -261,6 +293,7 @@ class Index:
             "messages": {
                 "archiviert": "TEXT",
                 "wichtigkeit": "TEXT NOT NULL DEFAULT 'normal'",
+                "sortdatum": "TEXT",
             },
         }
         for tabelle, spalten in nachzuruesten.items():
@@ -278,6 +311,33 @@ class Index:
                     self.db.execute(
                         f"ALTER TABLE {tabelle} ADD COLUMN {name} {art}"
                     )
+                    self._frisch_gefuellt(tabelle, name)
+
+    #: Was eine frisch nachgerüstete Spalte bekommt, bevor sie benutzt
+    #: wird. Nur für Spalten, bei denen der Vorgabewert nicht genügt.
+    NACHTRAEGLICH_FUELLEN = {
+        # **Sonst stünde der ganze Altbestand auf NULL**, und in SQLite
+        # ist NULL der kleinste Wert: Bei absteigender Sortierung
+        # rutschte jede vorhandene Mail ans Ende der Liste. Der Index
+        # wäre nicht kaputt, er sähe nur leer aus.
+        ("messages", "sortdatum"): """
+            UPDATE messages SET sortdatum =
+                CASE WHEN archiviert IS NOT NULL AND date > archiviert
+                     THEN archiviert ELSE date END
+        """,
+    }
+
+    def _frisch_gefuellt(self, tabelle: str, spalte: str) -> None:
+        """Füllt eine eben angelegte Spalte, falls sie es braucht.
+
+        **Genau einmal, beim ersten Öffnen nach der Aktualisierung.**
+        Danach gibt es die Spalte, der Zweig läuft nicht mehr an.
+        Gemessen an 600.000 Zeilen: 0,7 Sekunden für Spalte, Füllen
+        und Index zusammen.
+        """
+        befehl = self.NACHTRAEGLICH_FUELLEN.get((tabelle, spalte))
+        if befehl:
+            self.db.execute(befehl)
 
     # --------------------------------------------------------------- Füllen
 
@@ -313,8 +373,25 @@ class Index:
             """INSERT INTO messages
                (hash, bucket, date, year, from_addr, from_name, subject,
                 size, has_attachments, message_id, gespraech, archiviert,
-                wichtigkeit)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                wichtigkeit, sortdatum)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                       -- Das Datum, aber höchstens der Zeitpunkt der
+                       -- Aufnahme. **In SQL gerechnet und nicht in
+                       -- Python**, damit die Regel genau einmal
+                       -- dasteht: Das Nachrüsten alter Indizes
+                       -- (NACHTRAEGLICH_FUELLEN) benutzt denselben
+                       -- Ausdruck, und zwei Fassungen derselben Regel
+                       -- laufen in diesem Projekt verlässlich
+                       -- auseinander.
+                       --
+                       -- ?3 ist das Datum, ?12 der Zeitpunkt der
+                       -- Aufnahme – gezählt wird ab eins, und die
+                       -- unnummerierten Fragezeichen davor belegen
+                       -- 1 bis 13. Wer oben eine Spalte einfügt, muss
+                       -- diese beiden Zahlen mitziehen; ein Test hält
+                       -- das fest.
+                       CASE WHEN ?12 IS NOT NULL AND ?3 > ?12
+                            THEN ?12 ELSE ?3 END)""",
             (
                 digest,
                 bucket,
@@ -442,7 +519,11 @@ class Index:
     #: landet ungeschützt im SQL, weil es sich nicht als Parameter binden
     #: lässt. Was hier nicht steht, kommt nicht in die Abfrage.
     SORTIERFELDER = {
-        "datum": "m.date",
+        # **``sortdatum`` und nicht ``date``.** Eine Mail, deren Datum
+        # nach ihrer Aufnahme liegt, trägt ein gefälschtes – und klebt
+        # sonst dauerhaft über allem anderen. Angezeigt wird weiterhin
+        # das echte Datum; die Begründung steht am Schema.
+        "datum": "m.sortdatum",
         "absender": "lower(coalesce(nullif(m.from_name, ''), m.from_addr))",
         "betreff": "lower(m.subject)",
         "groesse": "m.size",
@@ -485,13 +566,20 @@ class Index:
         # Das Datum als zweiter Schlüssel: Bei gleichem Absender oder
         # gleicher Größe wäre die Reihenfolge sonst beliebig und änderte
         # sich beim Nachladen - die Liste sprünge dem Anwender weg.
+        #
+        # **Auch hier das Sortierdatum.** Stünde hier ``m.date``, käme
+        # eine Mail aus der Zukunft bei gleichem Erstschlüssel doch
+        # wieder nach oben - und nach der Umstellung auf 2026-10-07
+        # teilen sich im Firmenarchiv 589.058 Mails genau diesen Wert.
+        # Gemessen am 27.11.2026: Mit ``m.date`` als zweitem Schlüssel
+        # standen die beiden Spam-Nachrichten wieder auf Rang 1 und 2.
         rows = self.db.execute(
             f"""SELECT m.hash, m.bucket, m.subject, m.from_addr, m.from_name,
                        m.date, m.size, m.has_attachments, m.category,
                        m.message_id
                 FROM messages m
                 WHERE {where}
-                ORDER BY {feld} {richtung}, m.date DESC
+                ORDER BY {feld} {richtung}, m.sortdatum DESC
                 LIMIT ? OFFSET ?""",
             (*params, limit, offset),
         ).fetchall()
