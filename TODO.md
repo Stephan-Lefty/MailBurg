@@ -72,22 +72,26 @@ etwas stillschweigend. Keiner wäre von selbst aufgefallen.
   dann den Browser starten. Beide benutzen denselben Index – der
   Vergleich sagt, ob es an den Daten liegt oder am Dienst.
 
-- [ ] **Mails mit Datum in der Zukunft kleben oben in der
-  Trefferliste.** Spam mit gefälschtem `Date`-Kopf (2029, 2030) steht
-  in beiden Oberflächen dauerhaft vor jeder echten Mail; eine
-  Plausibilitätsprüfung gibt es nirgends. Finden lassen sie sich mit
-  `seit:TT.MM.JJJJ`.
+- [x] **Mails mit Datum in der Zukunft kleben oben in der
+  Trefferliste.** Behoben in der 1.9.0 über eine eigene Spalte
+  `sortdatum`: das Datum der Mail, höchstens aber der Zeitpunkt ihrer
+  Aufnahme. Eine Mail kann kein Datum tragen, das nach ihrer
+  Archivierung liegt.
 
-  **Nicht die Lösung:** global auf die Spalte `archiviert` sortieren –
-  589.058 Mails sind am 07.10. in einem Zug aufgenommen worden und
-  tragen alle denselben Zeitpunkt. Richtig ist, nur bei einem Datum in
-  der Zukunft darauf auszuweichen.
+  **Gemessen statt gebaut**, und das hat den naheliegenden Weg
+  verworfen: `ORDER BY MIN(date, jetzt)` braucht keine Spalte, macht
+  aber jeden Index unbrauchbar – an 600.000 Zeilen 78 ms statt 0,15.
+  Mit eigener Spalte und eigenem Index bleibt es bei 0,15 ms, und die
+  beiden Spam-Nachrichten rutschen von Rang 1 und 2 auf Rang 12.001.
 
-- [ ] **Die Statusseite summiert die Mailgrößen über einen vollen
-  Tabellenscan.** Drei der vier Zahlen in `Index.statistics()` laufen
-  über schmale Indizes, `SUM(size)` nicht. Bei einer Indexdatei von
-  7,26 GB heißt das, den Großteil davon zu lesen – für eine Zeile
-  Anzeige. Betrifft auch den täglichen Zustandsbericht.
+  Angezeigt bleibt das echte Datum; auffindbar bleiben die Mails auch.
+
+- [x] **Die Statusseite summiert die Mailgrößen über einen vollen
+  Tabellenscan.** Behoben in der 1.9.0 durch einen Index auf `size`:
+  SQLite liest dann nur noch den schlanken Index statt jeder Zeile mit
+  allen Spalten. An 600.000 Zeilen gemessen 19 statt 46 ms – und das
+  warm; beim ersten Aufruf am Tag entscheidet, wie viele Bytes von der
+  Platte kommen.
 
 - [ ] **`info` rechnet die Plattenbelegung über 590.000
   stat-Aufrufe.** Deshalb braucht der Befehl Minuten, während `pruefen`

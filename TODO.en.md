@@ -71,21 +71,27 @@ something quietly. Not one would have surfaced on its own.
   first and the browser second. Both use the same index – the
   comparison says whether it is the data or the service.
 
-- [ ] **Messages dated in the future stick to the top of the hit
-  list.** Spam with a forged `Date` header (2029, 2030) sits ahead of
-  every real message in both interfaces; there is no plausibility
-  check anywhere. They can be found with `seit:DD.MM.YYYY`.
+- [x] **Messages dated in the future stick to the top of the hit
+  list.** Fixed in 1.9.0 with a dedicated `sortdatum` column: the
+  message date, but no later than the moment it was taken into the
+  archive. A message cannot carry a date that lies after its own
+  archiving.
 
-  **Not the fix:** sorting by the `archiviert` column globally –
-  589,058 messages were taken in on 2026-10-07 in a single run and all
-  carry the same timestamp. The right move is to fall back to it only
-  when the message date lies in the future.
+  **Measured instead of built**, and that ruled out the obvious
+  route: `ORDER BY MIN(date, now)` needs no column but renders every
+  index useless – 78 ms instead of 0.15 across 600,000 rows. With a
+  column and an index of its own it stays at 0.15 ms, and the two
+  spam messages drop from ranks 1 and 2 to rank 12,001.
 
-- [ ] **The status page sums message sizes with a full table scan.**
-  Three of the four numbers in `Index.statistics()` run over narrow
-  indexes, `SUM(size)` does not. With an index file of 7.26 GB that
-  means reading most of it – for one line of display. This also
-  affects the daily status report.
+  The date on display stays the real one, and the messages stay
+  findable.
+
+- [x] **The status page sums message sizes with a full table scan.**
+  Fixed in 1.9.0 with an index on `size`: SQLite then reads only the
+  narrow index instead of every row with all its columns. Measured
+  across 600,000 rows: 19 ms instead of 46 – and that is warm; on the
+  first call of the day what counts is how many bytes come off the
+  disk.
 
 - [ ] **`info` computes disk usage with 590,000 stat calls.** That is
   why the command takes minutes while `pruefen` is done in seconds.
