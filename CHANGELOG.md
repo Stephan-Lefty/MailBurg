@@ -9,6 +9,20 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+## [1.9.0] – 2026-12-01
+
+**Die Fassung, die aus einem fremden Rechner entstanden ist.** MailBurg
+wird Bestandteil von GuideOS. Zur Probe wurde es in einer frischen
+virtuellen Maschine aus dem `.deb` installiert, eingerichtet, benutzt
+und am Ende wieder entfernt – einmal der ganze Weg eines Anwenders,
+der das Programm nicht kennt und nicht danach gesucht hat.
+
+**Keiner der Punkte unten kam aus einem Test.** Zwei fielen erst beim
+Deinstallieren auf, also auf einem Weg, den in diesem Projekt noch nie
+jemand gegangen ist. Ein weiterer kam aus einer Frage des GuideOS-
+Admins – er wollte wissen, wofür die empfohlenen Pakete eigentlich da
+seien.
+
 ### Hinzugefügt
 
 - **Fehlende Pakete lassen sich per Knopf nachrüsten.** Bisher nannte
@@ -48,6 +62,16 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Die Einstellung hängt nicht am Abruf: Sie wirkt auch auf einem
   Server, der seine Post von anderswo bekommt.
 
+- **`mailburg archive` zählt auf, welche Archive MailBurg kennt** –
+  mit Namen, Ort und der Angabe, ob sie gerade erreichbar sind. Das
+  Fenster führt diese Liste seit jeher im Menü *Zuletzt benutzt*; auf
+  der Kommandozeile gab es sie nicht. `mailburg info` verlangt genau
+  den Pfad, den man sucht.
+
+  Aufgefallen beim Aufräumen einer Installation. **Auf einem Server
+  ist das der einzige Weg überhaupt** – dort gibt es kein Menü.
+  Geöffnet wird dabei nichts: Eine Liste darf kein Archiv sperren.
+
 ### Geändert
 
 - **Die Oberfläche steht im Debian-Paket jetzt unter `Depends`.** Qt
@@ -69,6 +93,40 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   jetzt fehl – vorher blieb sie leise unvollständig. Lieber ein
   lauter Abbruch als ein Programm, das sich nicht öffnen lässt.
 
+- **`poppler-utils` steht jetzt ebenfalls unter `Depends`.** Es
+  liefert `pdftotext`, den Weg, auf dem MailBurg den Text aus
+  PDF-Anhängen holt – und `pdftoppm` für die Seitenbilder der
+  Texterkennung. Die Paketbeschreibung sagt zu, dass die
+  Volltextsuche auch Anhänge erfasst; ohne dieses Paket stimmt das
+  nicht.
+
+  **Entscheidend ist, wie das Fehlen aussieht:** Die Mail wird
+  archiviert, der Anhang lässt sich öffnen, nur findet ihn keine
+  Suche. Das sieht nicht nach einem Fehler aus – und es heilt sich
+  nicht von selbst: Wer das Paket später nachinstalliert, muss
+  `mailburg neuaufbau` laufen lassen, sonst bleibt der Text aller
+  bereits aufgenommenen Mails fehlend.
+
+  Angestoßen von der Frage des GuideOS-Admins, wofür die empfohlenen
+  Pakete da seien. Dabei zeigte sich, dass poppler in der Liste
+  neben tesseract stand – beide als »Texterkennung« einsortiert,
+  obwohl poppler den Text aus ganz gewöhnlichen PDF-Anhängen holt,
+  lange bevor jemand an einen Scan denkt. `python3-cryptography` und
+  `python3-pypdf` bleiben Empfehlungen, und im Paket steht jetzt
+  daneben, warum.
+
+- **Ein gesperrter Menüeintrag nennt seinen Grund im Text.** Bisher
+  stand er nur im Statustipp – sichtbar, solange die Maus darüber
+  verharrt. Im Menü *Post* ergab das drei graue Zeilen
+  untereinander: zwei gesperrt, weil das Archiv privat betrieben
+  wird, eine, weil es gerade nichts zu tun gab. Zwei Gründe, eine
+  Darstellung, keiner sichtbar – zusammen las sich das wie ein
+  halbfertiges Programm.
+
+  Jetzt steht hinter dem Namen, woran es liegt: *(nur im
+  Geschäftsarchiv)* oder *(keine offen)*. Wird der Eintrag wieder
+  nutzbar, verschwindet der Zusatz.
+
 ### Behoben
 
 - **Das Debian-Paket legte seine AppStream-Datei am falschen Ort ab.**
@@ -84,6 +142,48 @@ die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   dass MailBurg Bestandteil von GuideOS wird: Dort ist das Paket der
   einzige Weg, und die Anwendungsverwaltung die Stelle, an der man
   ein Programm sucht, das man nicht selbst installiert hat.
+
+  Dazu fehlte in der Datei die Angabe, **welches Paket** zu der
+  Anwendung gehört (`<pkgname>`). Ohne sie zeigt die
+  Software-Verwaltung MailBurg gar nicht erst unter den
+  installierten Programmen an – auch nicht zum Entfernen.
+
+- **»Ein Konto namens X gibt es nicht« nennt jetzt, welche es
+  gibt.** Die Kontenliste ist in diesem Augenblick geladen; sie zu
+  verschweigen kostete einen zweiten Befehl, den man kennen muss.
+  Dazu schreibt `mailburg konten liste` den Namen und seine
+  Beschreibung in einer Zeile – welcher Teil der Name ist, sieht man
+  ihr nicht an.
+
+  Beim Aufräumen einer Installation führte das zu drei
+  Fehlversuchen, einer davon mit der vollständigen Zeile aus der
+  Ausgabe des Programms selbst. Stimmt der Name bis auf Groß- und
+  Kleinschreibung, wird jetzt genau das gesagt; sonst stehen die
+  vorhandenen Namen einzeln untereinander. Gilt an allen Stellen,
+  nicht nur beim Entfernen.
+
+- **Der Nachrüstdialog verlangte `pypdf`, obwohl poppler denselben
+  Zweck erfüllt.** Zum Text einer PDF gibt es zwei Wege, und
+  `pdftotext` ist der bevorzugte. Auf einem Rechner mit poppler und
+  ohne pypdf meldete MailBurg trotzdem »Ohne das ist der Text in
+  PDF-Anhängen nicht durchsuchbar« – während er es war.
+
+  **Zwei Prüfungen über dieselbe Sache, die sich widersprechen**, zum
+  zweiten Mal binnen drei Tagen: Dieselbe Klasse wie bei den
+  fehlenden Sprachdaten der Texterkennung. Gefragt wird jetzt
+  dieselbe Stelle, die auch das Archivieren fragt.
+
+- **Die Aufzählung im Nachrüstdialog floss zu einem Absatz
+  zusammen**, weil ein `QLabel` Zeilenumbrüche verschluckt, sobald es
+  Text als HTML auslegt.
+
+- **Das Terminal des Nachrüstdialogs landete hinter dem Fenster.**
+  Die Passwortabfrage stand sichtbar darin – verdeckt von dem
+  Fenster, das zum Eingeben auffordert. Wer das nicht bemerkt,
+  wartet auf eine Installation, die auf ihn wartet. Es bekommt jetzt
+  eine Position daneben mitgegeben; unter Wayland, wo sich kein
+  Fenster selbst platzieren darf, nennt der Dialog zusätzlich
+  Alt+Tab.
 
 ### Geändert
 
@@ -4008,6 +4108,7 @@ Erste Fassung. Der Unterbau steht; Oberfläche und IMAP fehlen noch.
 - [RECHTLICHES.md](RECHTLICHES.md) zur Rechtslage in Deutschland, Österreich und
   der Schweiz.
 
+[1.9.0]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.5...v1.9.0
 [1.8.5]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.4...v1.8.5
 [1.8.4]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/Stephan-Lefty/MailBurg/compare/v1.8.2...v1.8.3

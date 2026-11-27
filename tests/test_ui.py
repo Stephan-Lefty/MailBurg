@@ -2285,16 +2285,23 @@ class HandbuchTest(OberflaechenTest):
         from PySide6.QtGui import QAction
 
         from mailburg.core.archive import Archive
-        from mailburg.ui.hauptfenster import Hauptfenster
+        from mailburg.ui.hauptfenster import Hauptfenster, ohne_zusatz
         from mailburg.ui.hilfe import kapitel
 
+        # **Der Klammerzusatz gehört nicht zum Namen.** Seit dem
+        # 2026-11-27 tragen gesperrte Einträge ihren Grund mit sich
+        # (»… (nur im Geschäftsarchiv)«), und der Eintrag für die
+        # Texterkennung die Zahl der wartenden Scans. Abgestreift wird
+        # mit derselben Funktion, die ihn anhängt – zwei Schreibweisen
+        # derselben Trennung liefen irgendwann auseinander.
         with tempfile.TemporaryDirectory() as ordner:
             ort = pathlib.Path(ordner) / "Archiv"
             Archive.create(ort).close()
             fenster = Hauptfenster(ort)
             self.addCleanup(fenster.close)
             punkte = [
-                a.text().replace("&", "").removesuffix(" …").strip()
+                ohne_zusatz(a.text()).replace("&", "")
+                .removesuffix(" …").strip()
                 for menue in fenster.menuBar().actions()
                 for a in menue.menu().actions()
                 if isinstance(a, QAction) and a.text() and not a.isSeparator()
@@ -2305,6 +2312,65 @@ class HandbuchTest(OberflaechenTest):
             with self.subTest(menuepunkt=punkt):
                 self.assertIn(punkt, alles,
                               f"»{punkt}« steht im Menü, aber nicht im Handbuch")
+
+    def test_ein_gesperrter_eintrag_nennt_seinen_grund(self):
+        """**Ein grauer Eintrag ohne Grund sieht aus wie ein Fehler.**
+
+        Gemeldet von Stephan am 2026-11-27 aus einer frischen
+        Installation: Im Menü *Post* standen drei graue Zeilen
+        untereinander – zwei gesperrt, weil das Archiv privat
+        betrieben wird, eine, weil es gerade nichts zu tun gab. Zwei
+        Gründe, eine Darstellung, keiner sichtbar. Sein Urteil:
+        *»Denn es funktioniert nicht.«*
+
+        Der Grund stand im Statustext, also dort, wo ihn nur sieht,
+        wer mit der Maus verharrt. Wer einen Eintrag für kaputt hält,
+        fährt nicht darüber.
+        """
+        import tempfile
+
+        from mailburg.core.archive import Archive
+        from mailburg.ui.hauptfenster import Hauptfenster
+
+        with tempfile.TemporaryDirectory() as ordner:
+            ort = pathlib.Path(ordner) / "Archiv"
+            # Vorgabe ist das Privatarchiv – genau Stephans Lage.
+            Archive.create(ort).close()
+            fenster = Hauptfenster(ort)
+            self.addCleanup(fenster.close)
+
+            for name in ("einstufen_aktion", "doku_aktion"):
+                with self.subTest(eintrag=name):
+                    aktion = getattr(fenster, name)
+                    self.assertFalse(aktion.isEnabled())
+                    self.assertIn("nur im Geschäftsarchiv", aktion.text())
+
+            # Und die Texterkennung aus demselben Menü, aber aus einem
+            # ganz anderen Grund – der jetzt ebenfalls dasteht.
+            self.assertFalse(fenster.ocr_aktion.isEnabled())
+            self.assertIn("keine offen", fenster.ocr_aktion.text())
+
+    def test_der_grund_verschwindet_wieder(self):
+        """Sonst trüge ein nutzbarer Eintrag die Begründung, warum er
+        es nicht sei – und das wäre schlimmer als gar kein Hinweis."""
+        from PySide6.QtGui import QAction
+
+        from mailburg.ui.hauptfenster import Hauptfenster, ohne_zusatz
+
+        aktion = QAction("Aufbewahrung festlegen …")
+
+        Hauptfenster._mit_grund(aktion, "nur im Geschäftsarchiv")
+        self.assertIn("(nur im Geschäftsarchiv)", aktion.text())
+
+        Hauptfenster._mit_grund(aktion, "")
+        self.assertEqual(aktion.text(), "Aufbewahrung festlegen …")
+
+        # Auch zweimal hintereinander gesetzt bleibt nur einer stehen.
+        Hauptfenster._mit_grund(aktion, "erster")
+        Hauptfenster._mit_grund(aktion, "zweiter")
+        self.assertEqual(ohne_zusatz(aktion.text()),
+                         "Aufbewahrung festlegen …")
+        self.assertNotIn("erster", aktion.text())
 
     def test_journalkapitel_ohne_fachwoerter(self):
         text = self._text("journal")

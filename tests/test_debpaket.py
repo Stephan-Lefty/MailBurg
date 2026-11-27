@@ -68,10 +68,36 @@ class SteuerdatenTest(unittest.TestCase):
     def test_die_texterkennung_bleibt_draussen(self):
         """**tesseract nicht**, und das bleibt so: Es wiegt schwer und
         wird selten gebraucht. Ohne Texterkennung ist MailBurg
-        benutzbar, nur ein eingescanntes PDF bleibt unauffindbar."""
-        for unerwuenscht in ("tesseract", "poppler"):
-            with self.subTest(paket=unerwuenscht):
-                self.assertNotIn(unerwuenscht, self.werkzeug.DEPENDS.lower())
+        benutzbar, nur ein eingescanntes PDF bleibt unauffindbar.
+
+        **Hier stand bis zum 2026-11-27 auch poppler**, und das war
+        ein Denkfehler, kein Versehen: Die beiden Pakete wurden in
+        einen Topf geworfen, weil sie in derselben Zeile der
+        Anleitung stehen. Tatsächlich hat poppler zwei Aufgaben, und
+        nur eine davon ist die Texterkennung – ``pdftotext`` holt den
+        Text aus ganz gewöhnlichen PDF-Anhängen, lange bevor
+        irgendjemand an einen Scan denkt.
+
+        Aufgefallen durch die Frage des GuideOS-Admins, wofür die
+        Empfehlungen da seien. *Eine Frage von außen trifft die
+        Stelle, an der man selbst nicht mehr hinsieht.*
+        """
+        self.assertNotIn("tesseract", self.werkzeug.DEPENDS.lower())
+
+    def test_der_pdf_text_dagegen_ist_erforderlich(self):
+        """**poppler liefert pdftotext, und darauf beruht eine
+        Zusage.** Die Paketbeschreibung sagt, die Volltextsuche
+        erfasse auch Anhänge.
+
+        Das Fehlen sieht dabei nicht nach einem Fehler aus: Die Mail
+        ist archiviert, der Anhang lässt sich öffnen, nur findet ihn
+        keine Suche. Und es heilt sich nicht von selbst – wer das
+        Paket nachinstalliert, muss ``mailburg neuaufbau`` laufen
+        lassen, sonst bleibt der Text aller bereits aufgenommenen
+        Mails fehlend.
+        """
+        self.assertIn("poppler", self.werkzeug.DEPENDS.lower())
+        self.assertNotIn("poppler", self.werkzeug.RECOMMENDS.lower())
 
     def test_die_texterkennung_ist_nur_ein_vorschlag(self):
         """tesseract wiegt schwer und wird selten gebraucht."""
@@ -249,7 +275,7 @@ class BeideSteuerdatenTest(unittest.TestCase):
     #: Was in beiden Listen auftauchen muss. Nicht die vollständige
     #: Liste: ``debian/control`` hat mit ``${python3:Depends}`` eine
     #: Schreibweise, die es im eigenen Bauskript nicht gibt.
-    ERFORDERLICH = ("keyring", "zstandard", "pyside6")
+    ERFORDERLICH = ("keyring", "zstandard", "pyside6", "poppler")
 
     def test_dieselben_pakete_sind_erforderlich(self):
         eigenes = _werkzeug().DEPENDS.lower()

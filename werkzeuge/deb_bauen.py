@@ -119,14 +119,38 @@ DEPENDS = ", ".join((
     # ``apt-cache policy python3-pyside6.qtwidgets`` liefert auf
     # GuideOS 6.8.2.1-4 aus debian trixie/main.
     "python3-pyside6.qtwidgets",
+    # **Seit dem 2026-11-27, und der Anstoß war eine Frage.** Der
+    # Admin der GuideOS-Distribution wollte wissen, wofür die
+    # Empfehlungen eigentlich da seien. Beim Nachsehen zeigte sich:
+    # ``pdftotext`` aus diesem Paket ist der Weg, auf dem MailBurg den
+    # Text aus PDF-Anhängen holt – ``extract/pdf.py`` fragt ihn *vor*
+    # pypdf. Dieselbe Quelle liefert ``pdftoppm`` für die Seitenbilder
+    # der Texterkennung.
+    #
+    # Die Paketbeschreibung sagt zu, dass die Volltextsuche auch
+    # Anhänge erfasst. Ohne dieses Paket stimmt das nicht – und das
+    # Fehlen sieht nicht nach einem Fehler aus: Die Mail ist da, der
+    # Anhang lässt sich öffnen, nur findet ihn keine Suche.
+    #
+    # **Es heilt sich auch nicht von selbst.** Wer es nachinstalliert,
+    # muss ``mailburg neuaufbau`` laufen lassen; sonst bleibt der Text
+    # aller bereits aufgenommenen Mails fehlend. Genau diese
+    # Eigenschaft unterscheidet es von cryptography und pypdf, die
+    # beide unter Recommends bleiben.
+    "poppler-utils",
 ))
 
 #: Was den Alltag abrundet, aber nicht darüber entscheidet, ob MailBurg
 #: überhaupt benutzbar ist.
 RECOMMENDS = ", ".join((
-    "python3-cryptography",        # verschlüsselte Archive und Tresor
-    "python3-pypdf",               # PDF-Anhänge durchsuchbar
-    "poppler-utils",               # pdftotext, der schnellere Weg
+    # Nur für verschlüsselte Archive und den Tresor. Wer beides nicht
+    # benutzt, merkt nie, dass es fehlt – und wer es benutzen will,
+    # bekommt beim Anlegen den Nachrüstdialog.
+    "python3-cryptography",
+    # Der zweite Weg zum PDF-Text, in reinem Python. Seit poppler
+    # unter Depends steht, ist er der Rückfall und keine
+    # Voraussetzung mehr.
+    "python3-pypdf",
 ))
 
 #: **Was nach dem Auspacken gesagt wird, wenn die Oberfläche fehlt.**

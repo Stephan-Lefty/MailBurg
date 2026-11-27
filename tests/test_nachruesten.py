@@ -354,6 +354,74 @@ class TerminalpositionTest(unittest.TestCase):
         self.assertEqual(popen.call_args[0][0][1], "-e")
 
 
+class PdfWegTest(unittest.TestCase):
+    """**Zwei Wege zum Text einer PDF, und einer genügt.**
+
+    ``extract/pdf.py`` fragt zuerst ``pdftotext`` aus poppler und
+    erst dann ``pypdf``. Der Baustein »PDF lesen« suchte aber nach
+    ``pypdf`` – auf einem Rechner mit poppler und ohne pypdf meldete
+    MailBurg deshalb »Ohne das ist der Text in PDF-Anhängen nicht
+    durchsuchbar«, während er es war.
+
+    Angestoßen am 2026-11-27 von der Frage des GuideOS-Admins, wofür
+    die *Recommends* des Debian-Pakets eigentlich da seien. Die
+    Antwort darauf nachzusehen hat den Widerspruch aufgedeckt –
+    **dritter Fall derselben Klasse binnen drei Tagen.**
+    """
+
+    def _lage(self, weg):
+        from mailburg.extract import pdf
+
+        return mock.patch.object(pdf, "verfuegbar", return_value=weg)
+
+    def _vermisst(self, weg, poppler: bool):
+        echt = nachruesten.shutil.which
+
+        def which(name, *a, **k):
+            if not poppler and name in ("pdftotext", "pdftoppm"):
+                return None
+            return echt(name, *a, **k)
+
+        with self._lage(weg), mock.patch.object(
+                nachruesten.shutil, "which", side_effect=which):
+            return [b.name for b in nachruesten.fehlendes()]
+
+    def test_mit_poppler_fehlt_nichts_zum_lesen(self) -> None:
+        self.assertNotIn("PDF lesen", self._vermisst("poppler", True))
+
+    def test_mit_pypdf_allein_auch_nicht(self) -> None:
+        """Dann fehlen nur die Seitenbilder – die braucht aber erst
+        die Texterkennung, nicht die Suche."""
+        vermisst = self._vermisst("pypdf", False)
+
+        self.assertNotIn("PDF lesen", vermisst)
+        self.assertIn("Seitenbilder aus PDF", vermisst)
+
+    def test_ohne_beides_wird_es_gemeldet(self) -> None:
+        self.assertIn("PDF lesen", self._vermisst(None, False))
+
+    def test_und_dann_steht_da_ein_befehl_und_nicht_zwei(self) -> None:
+        """**Beide Bausteine zeigen auf poppler.** Zweimal dasselbe
+        Paket zu installieren wäre nicht falsch, sähe aber nach einem
+        Fehler aus – und ein Befehl, in dem ein Name doppelt steht,
+        lädt zum Kürzen von Hand ein."""
+        with self._lage(None), mock.patch.object(
+                nachruesten, "paketverwaltung", return_value="apt"):
+            fehlende = [b for b in nachruesten.BAUSTEINE
+                        if b.name in ("PDF lesen", "Seitenbilder aus PDF")]
+            namen = nachruesten.paketnamen(fehlende)
+
+        self.assertEqual(namen, ["poppler-utils"])
+
+    def test_poppler_und_nicht_pypdf_wird_angeboten(self) -> None:
+        """Es ist schneller, kommt mit fehlerhaften Dateien besser
+        zurecht – und liefert die Seitenbilder gleich mit."""
+        baustein = next(b for b in nachruesten.BAUSTEINE
+                        if b.name == "PDF lesen")
+
+        self.assertEqual(baustein.pakete["apt"], ("poppler-utils",))
+
+
 class ErgebnisTest(unittest.TestCase):
     """Ob es geklappt hat – am Rechner nachgesehen."""
 

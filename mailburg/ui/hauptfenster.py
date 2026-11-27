@@ -79,6 +79,31 @@ from mailburg.ui.vorschau import Mailvorschau
 #: großen Archiv wäre das Tippen dann zäh.
 TIPPAUSE = 250
 
+#: Was den Namen eines Menüeintrags von seinem Zustand trennt.
+#:
+#: Zwei Leerzeichen, damit es im Menü nicht wie ein Teil des Namens
+#: aussieht – und als Konstante, damit ``ohne_zusatz()`` genau das
+#: wieder abschneidet, was ``_mit_grund()`` angehängt hat. Zwei
+#: Schreibweisen derselben Trennung liefen irgendwann auseinander.
+TRENNER = "  "
+
+
+def ohne_zusatz(text: str) -> str:
+    """Der blanke Name eines Menüeintrags, ohne Klammerzusatz.
+
+    Seit dem 2026-11-27 tragen gesperrte Einträge ihren Grund in
+    Klammern (»Aufbewahrung festlegen …  (nur im Geschäftsarchiv)«),
+    und der Eintrag für die Texterkennung die Zahl der wartenden
+    Scans. **Wer den Namen braucht, muss den Zustand abstreifen** –
+    etwa der Wächtertest, der prüft, ob jedes Menü im Handbuch
+    erklärt ist.
+
+    Steht hier und nicht im Test: Eine Regel, die an zwei Stellen
+    geschrieben ist, gilt irgendwann an einer davon nicht mehr.
+    """
+    return text.split(f"{TRENNER}(")[0]
+
+
 #: Woran ein Eintrag des Baums als Suchordner zu erkennen ist.
 #:
 #: Drei Werte, und die Unterscheidung ist nötig: ``None`` bei allem, was
@@ -2468,15 +2493,50 @@ class Hauptfenster(QMainWindow):
                             "einem – und der sitzt davor."),
     )
 
+    #: Was in Klammern hinter einem gesperrten Eintrag steht.
+    #:
+    #: **Kurz genug für eine Menüzeile.** Die ausführliche Begründung
+    #: bleibt im Statustext; hier steht nur, woran es liegt.
+    NUR_GESCHAEFTLICH_KURZ = "nur im Geschäftsarchiv"
+
+    @staticmethod
+    def _mit_grund(aktion, grund: str = "") -> None:
+        """Hängt den Grund an den Text des Eintrags – oder nimmt ihn weg.
+
+        **Ein grauer Eintrag ohne Grund sieht aus wie ein Fehler.**
+        Gemeldet von Stephan am 2026-11-27 aus einer frischen
+        Installation: Im Menü *Post* standen drei graue Zeilen
+        untereinander, und sein Urteil war »Denn es funktioniert
+        nicht«. Zwei davon waren grau, weil das Archiv privat
+        betrieben wird, die dritte, weil es gerade nichts zu tun gab –
+        drei Zeilen, zwei Gründe, keiner sichtbar.
+
+        Der Grund stand jeweils im Statustext. Den sieht nur, wer mit
+        der Maus darüber verharrt, und wer einen Eintrag für kaputt
+        hält, fährt nicht darüber, sondern klickt weg.
+
+        *Eine Auskunft ist erst dann eine, wenn sie dort landet, wo
+        jemand hinsieht.* Dieselbe Lehre wie bei den wartenden Scans
+        am 2026-09-22 – deren Zahl steht aus genau diesem Grund im
+        Text des Eintrags und nicht daneben.
+
+        Der Zusatz wird **angehängt und wieder entfernt**, nicht beim
+        Anlegen einkalkuliert: Sonst bliebe die Klammer stehen,
+        sobald die Sperre fällt, und ein nutzbarer Eintrag trüge die
+        Begründung, warum er es nicht sei.
+        """
+        blank = ohne_zusatz(aktion.text())
+        aktion.setText(f"{blank}{TRENNER}({grund})" if grund else blank)
+
     def _betriebsart_anwenden(self) -> None:
         """Schaltet die Menüpunkte, die nur zu einer Archivart passen.
 
         **Ausgegraut, nicht ausgeblendet.** Ein verschwundener Eintrag
         lässt niemanden wissen, dass es die Funktion gibt – wer sie
         einmal braucht, sucht sie im falschen Programm. Ein grauer
-        Eintrag zeigt sie und sagt im Statustext, warum er hier nicht
-        gilt. So lernt man das Programm nebenbei kennen, statt vor einer
-        Lücke zu stehen.
+        Eintrag zeigt sie und sagt, warum er hier nicht gilt. So lernt
+        man das Programm nebenbei kennen, statt vor einer Lücke zu
+        stehen.
         """
         geschaeftlich = (
             self.archiv is not None and self.archiv.mode.is_business
@@ -2486,6 +2546,9 @@ class Hauptfenster(QMainWindow):
             if aktion is None:
                 continue
             aktion.setEnabled(geschaeftlich)
+            self._mit_grund(
+                aktion, "" if geschaeftlich else self.NUR_GESCHAEFTLICH_KURZ
+            )
             if not geschaeftlich:
                 aktion.setStatusTip(grund)
                 aktion.setToolTip(grund)
@@ -2758,7 +2821,14 @@ class Hauptfenster(QMainWindow):
         self.stand.setText("Die eingescannten PDF sind gelesen.")
 
     def _offene_pdf_zeigen(self) -> None:
-        """Schreibt die Zahl wartender PDF in den Menüeintrag."""
+        """Schreibt die Zahl wartender PDF in den Menüeintrag.
+
+        **Und wenn keines wartet, steht das auch da.** Bis zum
+        2026-11-27 wurde der Eintrag dann nur grau – ohne Zahl und
+        ohne Grund, also ununterscheidbar von einem, der aus einem
+        ganz anderen Grund gesperrt ist. Genau so stand er neben zwei
+        Einträgen, die das Privatarchiv sperrt.
+        """
         if self.archiv is None or not hasattr(self, "ocr_aktion"):
             return
         from mailburg.core.erkennung import Warteschlange
@@ -2767,14 +2837,12 @@ class Hauptfenster(QMainWindow):
             offen = Warteschlange(self.archiv.index).anzahl()
         except Exception:  # noqa: BLE001 – eine Zahl im Menü ist kein Grund zu scheitern
             return
-        self.ocr_aktion.setText(
-            f"Eingescannte PDF lesen … ({offen})" if offen
-            else "Eingescannte PDF lesen …"
-        )
+        self._mit_grund(self.ocr_aktion, str(offen) if offen else "keine offen")
         self.ocr_aktion.setEnabled(offen > 0)
         self.ocr_aktion.setStatusTip(
             f"{offen} eingescannte PDF sind noch nicht durchsuchbar."
-            if offen else "Alle lesbaren PDF sind durchsuchbar."
+            if offen else
+            "Alle lesbaren PDF sind durchsuchbar – es wartet keiner."
         )
 
     def _zeitplan(self) -> None:

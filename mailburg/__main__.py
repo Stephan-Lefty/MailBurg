@@ -874,12 +874,65 @@ def cmd_konten_uebernehmen(args: argparse.Namespace) -> int:
     return 0
 
 
+def kein_konto(name: str, liste) -> str:
+    """Die Meldung für ein Postfach, das es nicht gibt – mit denen, die
+    es gibt.
+
+    **Die Liste ist in diesem Augenblick geladen.** Sie nicht zu
+    nennen, kostet einen zweiten Befehl – und wer ihn nicht kennt,
+    rät weiter.
+
+    Aufgefallen am 2026-11-27, als Stephan ein Postfach entfernen
+    wollte und dreimal danebengriff. Einer der Versuche war die
+    **vollständige Zeile aus der Ausgabe des Programms selbst**:
+    ``Google (adresse@example.org auf imap.example.org:993)``. Dass
+    davon nur das erste Wort der Name ist, sieht man ihr nicht an.
+
+    *Wenn derjenige, der das Programm gebaut hat, beim Abtippen
+    danebengreift, ist es eine Falle und keine Unachtsamkeit* –
+    derselbe Satz wie beim mitkopierten Komma zwei Tage zuvor.
+
+    Drei Fälle, und der mittlere ist der ärgerlichste:
+
+    1. Es ist überhaupt kein Postfach eingerichtet. Dann hilft keine
+       Liste, sondern der Weg dorthin.
+    2. Der Name stimmt bis auf Groß- und Kleinschreibung. Das wird
+       gesagt, statt den Anwender raten zu lassen.
+    3. Sonst die vorhandenen Namen, einer je Zeile – eingerückt und
+       ohne Anführungszeichen, damit sich einer herauskopieren lässt,
+       ohne dass etwas mitkommt.
+    """
+    vorhanden = [k.name for k in liste.konten]
+
+    if not vorhanden:
+        return (
+            f"Ein Konto namens '{name}' gibt es nicht – es ist bisher "
+            f"überhaupt keines eingerichtet.\n\n"
+            f"Einrichten mit:\n\n"
+            f"    mailburg konten hinzufuegen"
+        )
+
+    gemeint = [n for n in vorhanden if n.casefold() == name.casefold()]
+    if gemeint:
+        return (
+            f"Ein Konto namens '{name}' gibt es nicht. Groß- und "
+            f"Kleinschreibung zählen – gemeint ist vermutlich:\n\n"
+            f"    {gemeint[0]}"
+        )
+
+    namen = "\n".join(f"    {n}" for n in vorhanden)
+    return (
+        f"Ein Konto namens '{name}' gibt es nicht. Eingerichtet "
+        f"{'ist' if len(vorhanden) == 1 else 'sind'}:\n\n{namen}"
+    )
+
+
 def cmd_konten_entfernen(args: argparse.Namespace) -> int:
     """Nimmt ein Postfach aus der Liste."""
     liste = Kontenliste()
     konto = liste.finden(args.name)
     if konto is None:
-        print(f"Ein Konto namens '{args.name}' gibt es nicht.", file=sys.stderr)
+        print(kein_konto(args.name, liste), file=sys.stderr)
         return 2
 
     accounts.passwort_loeschen(konto)
@@ -905,7 +958,7 @@ def cmd_konten_passwort(args: argparse.Namespace) -> int:
     liste = Kontenliste()
     konto = liste.finden(args.name)
     if konto is None:
-        print(f"Ein Konto namens '{args.name}' gibt es nicht.", file=sys.stderr)
+        print(kein_konto(args.name, liste), file=sys.stderr)
         return 2
 
     if konto.oauth_anbieter:
@@ -1121,7 +1174,7 @@ def cmd_konten_spamfilter(args: argparse.Namespace) -> int:
     liste = Kontenliste()
     konto = liste.finden(args.konto)
     if konto is None:
-        print(f"Ein Konto namens '{args.konto}' gibt es nicht.", file=sys.stderr)
+        print(kein_konto(args.konto, liste), file=sys.stderr)
         return 2
 
     if args.aus:
@@ -1185,7 +1238,7 @@ def cmd_konten_zuordnen(args: argparse.Namespace) -> int:
         return 0
 
     if not liste.zuordnen(args.konto, kennung):
-        print(f"Ein Konto namens '{args.konto}' gibt es nicht.", file=sys.stderr)
+        print(kein_konto(args.konto, liste), file=sys.stderr)
         return 2
     print(f"'{args.konto}' gehört jetzt zu '{name}'.")
     return 0
@@ -1264,7 +1317,7 @@ def _konten_waehlen(liste, archive, gewuenscht: str | None, *, laut: bool = True
     if gewuenscht:
         konto = liste.finden(gewuenscht)
         if konto is None:
-            return [], f"Ein Konto namens '{gewuenscht}' gibt es nicht."
+            return [], kein_konto(gewuenscht, liste)
         if archive.uuid not in konto.archive and laut:
             print(
                 f"Hinweis: '{konto.name}' ist diesem Archiv nicht zugeordnet. "
@@ -2312,6 +2365,64 @@ def cmd_siegel_ausgeben(args: argparse.Namespace) -> int:
     print()
     print("Das Wurzelzertifikat gibt es beim Dienst selbst – bei FreeTSA")
     print("etwa als »cacert.pem«.")
+    return 0
+
+
+def cmd_archive(args: argparse.Namespace) -> int:
+    """Zählt die Archive auf, die MailBurg kennt.
+
+    **Es gab keinen Weg, danach zu fragen.** Das Fenster führt die
+    Liste seit jeher im Menü »Zuletzt benutzt«; die Kommandozeile
+    hatte nichts dergleichen. ``mailburg info`` verlangt genau den
+    Pfad, den man sucht::
+
+        usage: mailburg info [-h] archiv
+        mailburg info: error: the following arguments are required: archiv
+
+    Aufgefallen am 2026-11-27, als Stephan eine Installation
+    aufräumen wollte und dafür den Ort seines Archivs brauchte. Übrig
+    blieben das Lesen einer JSON-Datei und ein ``find`` über das
+    Benutzerverzeichnis.
+
+    **Auf einem Server ist das der einzige Weg überhaupt** – dort
+    gibt es kein Menü. Gegenstück zu ``mailburg abgleich``, das einen
+    Monat lang nur auf der Kommandozeile stand: *Etwas ist in einer
+    Oberfläche vorhanden und in der anderen nicht.*
+
+    Geöffnet wird dabei nichts. Ein Archiv zu öffnen setzt eine
+    Sperrdatei und baut den Index auf; für eine Liste genügt der
+    Blick in ``archive.json``, den ``archivname()`` ohnehin tut.
+    """
+    from mailburg.core import einstellungen
+    from mailburg.core.archive import archivname
+
+    pfade = einstellungen.zuletzt_benutzte_pfade()
+    if not pfade:
+        print(
+            "MailBurg kennt noch kein Archiv.\n\n"
+            "Anlegen mit:\n\n"
+            "    mailburg anlegen PFAD"
+        )
+        return 0
+
+    zuletzt = einstellungen.gemerktes().get("archiv")
+    fehlt = False
+    for pfad in pfade:
+        ort = Path(pfad)
+        da = (ort / "archive.json").exists()
+        fehlt = fehlt or not da
+        # **Der Zustand steht dabei, nicht nur der Pfad.** Eine
+        # externe Platte kann abgezogen sein; ein Eintrag ohne
+        # Hinweis darauf liest sich wie ein vorhandenes Archiv.
+        merkmal = "   ← zuletzt benutzt" if pfad == zuletzt else ""
+        print(f"{archivname(ort)}{merkmal}")
+        print(f"    {ort}{'' if da else '   (nicht erreichbar)'}")
+
+    if fehlt:
+        print(
+            "\nNicht erreichbar heißt nicht verloren: Eine externe "
+            "Platte kann abgezogen\noder ein Ordner umgehängt sein."
+        )
     return 0
 
 
@@ -4347,6 +4458,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="wer die Änderung veranlasst hat (fürs Journal)",
     )
     p.set_defaults(func=cmd_betriebsart)
+
+    # **Vor »info«, und das ist Absicht.** Wer die Liste der Befehle
+    # überfliegt, sucht erst das Archiv und dann seine Kennzahlen.
+    p = subparsers.add_parser(
+        "archive", help="welche Archive MailBurg kennt, und wo sie liegen"
+    )
+    p.set_defaults(func=cmd_archive)
 
     p = subparsers.add_parser("info", help="Kennzahlen des Archivs zeigen")
     p.add_argument("archiv")

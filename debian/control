@@ -35,14 +35,36 @@ Architecture: all
 # 6.8.2.1-4 aus trixie/main. Distributionen, die es nicht führen
 # (Ubuntu, Linux Mint), können dieses .deb ohnehin nicht benutzen -
 # für sie ist install.sh der Weg, und das postinst sagt es.
+# poppler-utils steht seit dem 27.11.2026 hier. Es liefert pdftotext -
+# den Weg, auf dem MailBurg den Text aus PDF-Anhängen holt - und
+# pdftoppm für die Seitenbilder der Texterkennung. Die Paketbeschreibung
+# unten sagt zu, dass die Volltextsuche auch Anhänge erfasst; ohne
+# dieses Paket stimmt das nicht.
+#
+# Entscheidend ist, wie das Fehlen aussieht: Die Mail wird archiviert,
+# der Anhang lässt sich öffnen, nur findet ihn keine Suche. Das sieht
+# nicht nach einem Fehler aus. Und es heilt sich nicht von selbst -
+# wer das Paket später nachinstalliert, muss "mailburg neuaufbau"
+# laufen lassen, sonst bleibt der Text aller bereits aufgenommenen
+# Mails fehlend.
 Depends: ${python3:Depends},
          ${misc:Depends},
          python3-keyring,
          python3-zstandard,
-         python3-pyside6.qtwidgets
+         python3-pyside6.qtwidgets,
+         poppler-utils
+# Was übrig bleibt, und wofür:
+#
+# python3-cryptography braucht nur, wer sein Archiv verschlüsselt oder
+# den Tresor für den Serverbetrieb benutzt. Wer das nicht tut, merkt
+# nie, dass es fehlt - und wer es tut, bekommt beim Anlegen einen
+# Dialog, der es auf Knopfdruck nachinstalliert.
+#
+# python3-pypdf ist der zweite Weg zum PDF-Text, in reinem Python und
+# ohne Fremdprogramm. Mit poppler unter Depends ist er der Rückfall
+# und keine Voraussetzung mehr; extract/pdf.py fragt poppler zuerst.
 Recommends: python3-cryptography,
-            python3-pypdf,
-            poppler-utils
+            python3-pypdf
 Description: Archiv für E-Mail, an einem Ort Ihrer Wahl
  MailBurg holt E-Mails aus beliebig vielen Postfächern und legt sie
  unveränderlich ab - auf der eigenen Platte, einer externen Platte oder

@@ -72,7 +72,8 @@ class Baustein:
     """Wie geprüft wird.
 
     ``programm`` sucht im Suchpfad, ``modul`` versucht einen Import,
-    ``sprachdaten`` fragt tesseract nach seinen Sprachen.
+    ``sprachdaten`` fragt tesseract nach seinen Sprachen, ``pdftext``
+    fragt ``extract/pdf.py``, ob überhaupt ein Weg zum Text da ist.
 
     **Die dritte Art gibt es, weil die zweite nicht reichte.** Am
     2026-11-25 entfernte Stephan zum Prüfen ``tesseract-ocr-deu`` –
@@ -81,6 +82,16 @@ class Baustein:
     Prüfungen, die dasselbe beurteilen sollen und sich widersprechen,
     und das ist in diesem Projekt die häufigste Fehlerklasse
     überhaupt.
+
+    **Die vierte aus demselben Grund, zwei Tage später.** Der
+    Baustein »PDF lesen« suchte nach ``pypdf``. Zum Text einer PDF
+    gibt es aber zwei Wege, und ``pdftotext`` aus poppler ist der
+    bevorzugte – ``extract/pdf.py`` fragt ihn zuerst. Auf einem
+    Rechner mit poppler und ohne pypdf meldete MailBurg deshalb »Ohne
+    das ist der Text in PDF-Anhängen nicht durchsuchbar«, während er
+    es tatsächlich war. Nachgemessen am 2026-11-27, angestoßen durch
+    die Frage des GuideOS-Admins, wofür die *Recommends* eigentlich
+    da seien.
     """
 
     pakete: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -101,6 +112,14 @@ class Baustein:
             if not shutil.which("tesseract"):
                 return True
             return bool(ocr.sprachwahl())
+        if self.art == "pdftext":
+            from mailburg.extract import pdf
+
+            # **Dieselbe Quelle wie der Rest des Programms.** Es gibt
+            # zwei Wege zum Text einer PDF – pdftotext aus poppler und
+            # pypdf –, und einer genügt. Wer hier nach einem von
+            # beiden sucht, meldet etwas als fehlend, das nicht fehlt.
+            return pdf.verfuegbar() is not None
         return shutil.which(self.pruefen) is not None
 
 
@@ -150,13 +169,19 @@ BAUSTEINE = (
         name="PDF lesen",
         wofuer="Ohne das ist der Text in PDF-Anhängen nicht durchsuchbar – "
                "auch nicht in solchen, die gar nicht eingescannt sind.",
-        pruefen="pypdf",
-        art="modul",
+        pruefen="pdftotext",
+        art="pdftext",
+        # **Angeboten wird poppler, nicht pypdf**, obwohl beide den
+        # Zweck erfüllen: poppler ist schneller, kommt mit
+        # fehlerhaften Dateien besser zurecht, und dasselbe Paket
+        # liefert die Seitenbilder für die Texterkennung gleich mit.
+        # Wer beide Bausteine vermisst, bekommt deshalb einen Befehl
+        # statt zweier – ``paketnamen()`` wirft die Dublette weg.
         pakete={
-            "apt": ("python3-pypdf",),
-            "pacman": ("python-pypdf",),
-            "dnf": ("python3-pypdf",),
-            "zypper": ("python3-pypdf",),
+            "apt": ("poppler-utils",),
+            "pacman": ("poppler",),
+            "dnf": ("poppler-utils",),
+            "zypper": ("poppler-tools",),
         },
     ),
     Baustein(

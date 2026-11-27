@@ -1,3 +1,22 @@
+mailburg (1.9.0) unstable; urgency=medium
+
+  * python3-pyside6.qtwidgets und poppler-utils stehen jetzt unter
+    Depends statt unter Recommends. Beide entscheiden darüber, ob
+    MailBurg das tut, was die Paketbeschreibung zusagt: das erste über
+    die grafische Oberfläche, das zweite über die Volltextsuche in
+    PDF-Anhängen. Eine übergangene Empfehlung fiel dabei nicht auf -
+    das Programm startete ohne Fenster beziehungsweise fand den
+    Anhangstext nicht.
+  * Fehlende Pakete lassen sich aus dem Programm heraus per Knopf
+    nachinstallieren, statt dass ein Befehl zum Abtippen dasteht.
+  * Neuer Befehl "mailburg archive": welche Archive bekannt sind und wo
+    sie liegen. Auf einem Server war das bisher nicht zu erfahren.
+  * Die AppStream-Angaben nennen jetzt ihr Paket (pkgname). Ohne diese
+    Zeile zeigte keine Software-Verwaltung MailBurg unter den
+    installierten Programmen an - auch nicht zum Entfernen.
+
+ -- Stephan Roesner <noreply@github.com>  Tue, 01 Dec 2026 09:00:00 +0100
+
 mailburg (1.8.5) unstable; urgency=medium
 
   * Erstes Paket, das mit dpkg-buildpackage gebaut wird. Damit kann eine

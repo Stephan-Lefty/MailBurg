@@ -42,6 +42,19 @@ Anführungszeichen.
 
 ## 1. Nachsehen und prüfen
 
+### Welche Archive es gibt
+
+```bash
+mailburg archive
+```
+
+Nennt Name und Ort jedes Archivs, das MailBurg schon einmal geöffnet
+hat, und sagt dazu, ob es gerade erreichbar ist. Als einziger Befehl
+hier braucht er keinen Pfad – er ist dazu da, ihn zu finden.
+
+Nicht erreichbar heißt nicht verloren: Eine externe Platte kann
+abgezogen oder ein Ordner umgehängt sein.
+
 ### Was im Archiv steckt
 
 ```bash
