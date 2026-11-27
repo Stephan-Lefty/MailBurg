@@ -102,6 +102,17 @@ class PaketdatenTest(unittest.TestCase):
         ``appstreamcli`` kennt die Spezifikation; ich kenne sie
         ungefähr. Wo es fehlt – etwa auf dem Bauserver –, wird der
         Test übersprungen statt grün zu melden.
+
+        **Mit ``--no-net``, und das ist kein Nachlassen.** Ohne den
+        Schalter ruft das Werkzeug jede ``<url>`` in der Datei ab und
+        wertet einen Fehler als Beanstandung. Am 2026-11-27 war der
+        Test deshalb rot, weil GitHub für die README-Adresse ein 503
+        lieferte – eine Minute später wäre er grün gewesen.
+
+        Geprüft werden soll die Datei, nicht die Erreichbarkeit eines
+        fremden Servers. *Ein Test, der ohne eigenes Zutun rot wird,
+        gewöhnt einem das Hinsehen ab* – und dann übersieht man den
+        Lauf, der zu Recht rot ist.
         """
         import shutil
         import subprocess
@@ -112,7 +123,7 @@ class PaketdatenTest(unittest.TestCase):
 
         datei = _paketdaten() / "de.stephanlefty.MailBurg.metainfo.xml"
         lauf = subprocess.run(
-            [werkzeug, "validate", str(datei)],
+            [werkzeug, "validate", "--no-net", str(datei)],
             capture_output=True, text=True, check=False,
         )
 
@@ -171,13 +182,24 @@ class PaketdatenTest(unittest.TestCase):
         Installationsweg, und die Anwendungsverwaltung die Stelle, an
         der man ein Programm sucht, das man nicht selbst installiert
         hat.
-        """
-        quelle = (Path(__file__).resolve().parent.parent
-                  / "werkzeuge" / "deb_bauen.py").read_text(encoding="utf-8")
 
-        self.assertIn("usr/share/metainfo", quelle,
+        **Geprüft wird ``debian/rules``, und das war es hier bis zum
+        2026-11-27 nicht.** Der Test las ``werkzeuge/deb_bauen.py`` –
+        aus dieser Datei wird seit dem 06.11. kein ausgeliefertes
+        Paket mehr gebaut, die CI nimmt ``dpkg-buildpackage``. Er war
+        grün und sagte nichts über das Paket, das beim Anwender
+        ankommt.
+
+        *Eine Prüfung, die die fragliche Umgebung nicht nachstellt,
+        misst etwas anderes* – hier zum wiederholten Mal, und diesmal
+        an einer Datei, die es noch gibt und die nur nichts mehr tut.
+        """
+        rules = (Path(__file__).resolve().parent.parent
+                 / "debian" / "rules").read_text(encoding="utf-8")
+
+        self.assertIn("usr/share/metainfo", rules,
                       "Das Paket legt die Datei nicht an ihren Ort")
-        self.assertIn("metainfo.xml", quelle,
+        self.assertIn("metainfo.xml", rules,
                       "Das Paket holt sie nicht aus dem Python-Paket")
 
 

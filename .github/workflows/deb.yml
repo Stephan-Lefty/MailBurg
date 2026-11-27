@@ -74,11 +74,17 @@ jobs:
 
       - name: Wie heißt Qt hier?
         # **Die Paketnamen sind das einzig Wackelige an einem .deb.**
-        # Sie stehen in werkzeuge/deb_bauen.py als Text, und ob sie in
-        # der Distribution wirklich so heißen, weiß nur die
-        # Distribution. Ein falscher Name unter Recommends fällt nicht
-        # einmal auf: apt übergeht ihn wortlos, und der Anwender hat ein
-        # MailBurg ohne Fenster.
+        # Sie stehen in debian/control als Text, und ob sie in der
+        # Distribution wirklich so heißen, weiß nur die Distribution.
+        #
+        # Hier stand bis zum 27.11.2026 »werkzeuge/deb_bauen.py« – die
+        # Datei, aus der seit dem 06.11. gar nicht mehr gebaut wird.
+        # Genau dieser Kommentar hat die Depends-Korrektur vom 25.11.
+        # in die falsche Datei gelenkt.
+        #
+        # Ein falscher Name unter Recommends fällt nicht einmal auf:
+        # apt übergeht ihn wortlos, und der Anwender hat ein MailBurg
+        # ohne Fenster.
         run: |
           apt-get update -qq
           echo "--- was es an PySide6 gibt ---"

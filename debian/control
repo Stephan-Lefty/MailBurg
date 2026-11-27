@@ -13,23 +13,34 @@ Rules-Requires-Root: no
 
 Package: mailburg
 Architecture: all
+# python3-zstandard gehört zu Depends: Ohne es lässt sich ein Archiv
+# mit gepackten Nachrichten gar nicht lesen. Das stand bis zum
+# 22.09.2026 unter Suggests, dann unter Recommends - beide Male zu
+# wenig, eine Anwenderin konnte keine einzige Mail öffnen.
+#
+# python3-pyside6.qtwidgets steht seit dem 27.11.2026 hier und nicht
+# mehr unter Recommends. Die alte Begründung - ein Server braucht
+# keine Oberfläche - stand an dieser Stelle zwei Fassungen lang und
+# wiegt leichter als der Fall, der dadurch eintritt: Wer MailBurg in
+# einer Distribution vorfindet, hat es nicht gesucht und bekommt
+# bei einer übergangenen Empfehlung ein Programm ohne Fenster.
+#
+# Gemeldet vom Admin der GuideOS-Distribution, nachdem MailBurg dort
+# nach der Installation meldete, die grafische Oberfläche fehle.
+# Derselbe Satz kam am 14.09.2026 schon von einem Anwender auf Linux
+# Mint: "Wenn ich das Tool starte, passiert gar nichts."
+#
+# Dass das Paket in Debian 13 existiert, ist nachgesehen und nicht
+# angenommen: apt-cache policy python3-pyside6.qtwidgets liefert dort
+# 6.8.2.1-4 aus trixie/main. Distributionen, die es nicht führen
+# (Ubuntu, Linux Mint), können dieses .deb ohnehin nicht benutzen -
+# für sie ist install.sh der Weg, und das postinst sagt es.
 Depends: ${python3:Depends},
          ${misc:Depends},
          python3-keyring,
-         python3-zstandard
-# PySide6 steht hier und nicht unter Depends, damit das Paket auch auf
-# einen Server passt, der keine Oberfläche braucht - die Server-Variante
-# kommt ohne Qt aus. Der Preis ist bekannt und wird in Kauf genommen:
-# Führt eine Distribution python3-pyside6 gar nicht (Ubuntu und Linux
-# Mint tun das nicht), installiert apt es schweigend nicht. Dagegen
-# steht das postinst, das es sagt, bevor jemand vergeblich klickt.
-#
-# python3-zstandard dagegen gehört zu Depends: Ohne es lässt sich ein
-# Archiv mit gepackten Nachrichten gar nicht lesen. Das stand bis zum
-# 22.09.2026 unter Suggests, dann unter Recommends - beide Male zu
-# wenig, eine Anwenderin konnte keine einzige Mail öffnen.
-Recommends: python3-pyside6.qtwidgets,
-            python3-cryptography,
+         python3-zstandard,
+         python3-pyside6.qtwidgets
+Recommends: python3-cryptography,
             python3-pypdf,
             poppler-utils
 Description: Archiv für E-Mail, an einem Ort Ihrer Wahl

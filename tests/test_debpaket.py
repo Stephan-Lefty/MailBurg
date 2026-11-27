@@ -86,6 +86,190 @@ class SteuerdatenTest(unittest.TestCase):
         self.assertIn("from mailburg.__main__ import main", skript)
 
 
+def _steuerdatei() -> str:
+    """``debian/control`` – die Datei, aus der wirklich gebaut wird."""
+    return (WURZEL / "debian" / "control").read_text(encoding="utf-8")
+
+
+def _feld(name: str, text: str | None = None) -> str:
+    """Ein Feld aus ``debian/control``, über Zeilen hinweg.
+
+    Fortsetzungszeilen beginnen in diesem Format mit einem
+    Leerzeichen; Kommentarzeilen mit ``#`` gehören nicht dazu.
+
+    ``text`` gibt es, damit die Leselogik selbst prüfbar ist, ohne
+    die echte Datei anzufassen – eine Gegenprobe in der Arbeitskopie
+    wäre genau der Fehler, den dieser Test verhindern soll.
+    """
+    zeilen: list[str] = []
+    sammeln = False
+    for zeile in (text if text is not None else _steuerdatei()).splitlines():
+        if zeile.startswith("#"):
+            continue
+        if zeile.startswith(f"{name}:"):
+            sammeln = True
+            zeilen.append(zeile.split(":", 1)[1])
+            continue
+        if sammeln:
+            if zeile.startswith((" ", "\t")):
+                zeilen.append(zeile)
+                continue
+            break
+    return " ".join(t.strip() for t in zeilen)
+
+
+class EchteSteuerdatenTest(unittest.TestCase):
+    """**Die Datei, die zählt – und zwei Wochen lang die falsche war.**
+
+    Seit dem 06.11.2026 baut die CI mit ``dpkg-buildpackage`` aus
+    ``debian/``; ``werkzeuge/deb_bauen.py`` erzeugt kein ausgeliefertes
+    Paket mehr. Am 25.11. wurde PySide6 von *Recommends* nach
+    *Depends* verschoben – **in der Datei, die nicht mehr gebaut
+    wird.** Vier Testdateien prüften sie und waren grün.
+
+    Aufgefallen am 27.11.2026, als der Admin der GuideOS-Distribution
+    meldete, MailBurg sei installiert, »die grafische Oberflaeche
+    fehlt aber noch« – und schrieb, das Paket gehöre in
+    ``debian/control``. Er hatte recht, und das Repository sagte seit
+    zwei Tagen das Gegenteil.
+
+    *Eine Prüfung, die die fragliche Umgebung nicht nachstellt, misst
+    etwas anderes* – hier in ihrer teuersten Form: Sie hat eine
+    Korrektur bestätigt, die nirgends ankam.
+    """
+
+    def test_die_oberflaeche_ist_erforderlich(self):
+        """Wer MailBurg vorfindet, bekommt sonst ein Programm ohne
+        Fenster – eine übergangene Empfehlung merkt niemand."""
+        self.assertIn("pyside6", _feld("Depends").lower())
+
+    def test_und_steht_nicht_mehr_unter_recommends(self):
+        """An beiden Stellen stünde es doppelt – und wer den einen
+        Eintrag später streicht, hielte den anderen für die
+        Entscheidung."""
+        self.assertNotIn("pyside6", _feld("Recommends").lower())
+
+    def test_der_schluesselbund_und_das_auspacken_sind_erforderlich(self):
+        """Beide waren einmal nur empfohlen, beide haben einer
+        Anwenderin den Betrieb unmöglich gemacht – siehe die
+        Begründungen in ``debian/control``."""
+        erforderlich = _feld("Depends").lower()
+
+        for paket in ("python3-keyring", "python3-zstandard"):
+            with self.subTest(paket=paket):
+                self.assertIn(paket, erforderlich)
+
+    def test_die_texterkennung_bleibt_draussen(self):
+        """Ohne sie ist MailBurg benutzbar; nur ein eingescanntes PDF
+        bleibt unauffindbar. Dafür gibt es den Nachrüstdialog."""
+        self.assertNotIn("tesseract", _feld("Depends").lower())
+
+    def test_der_alte_stand_wuerde_auffallen(self):
+        """**Die Gegenprobe, und sie gehört hierher.**
+
+        Ein Test, der nicht rot werden kann, ist keiner – und dieser
+        hier wacht über einen Fehler, der zwei Tage lang unbemerkt
+        blieb. Geprüft wird deshalb an einer nachgestellten Datei im
+        alten Zustand, nicht durch Ändern der echten: Eine
+        Gegenprobe in der Arbeitskopie hinterlässt einen Stand, den
+        jemand versehentlich einchecken kann.
+        """
+        vorher = (
+            "Package: mailburg\n"
+            "Depends: ${python3:Depends},\n"
+            "         python3-keyring,\n"
+            "         python3-zstandard\n"
+            "Recommends: python3-pyside6.qtwidgets,\n"
+            "            poppler-utils\n"
+        )
+
+        self.assertNotIn("pyside6", _feld("Depends", vorher).lower())
+        self.assertIn("pyside6", _feld("Recommends", vorher).lower())
+
+    def test_die_paketfassung_ist_die_des_programms(self):
+        """**Sonst käme die Dezemberfassung als 1.8.5 heraus.**
+
+        ``dpkg-buildpackage`` nimmt die Versionsnummer aus
+        ``debian/changelog`` und nirgends sonst – ``__version__`` im
+        Python-Paket interessiert es nicht. Wer die Fassung erhöht
+        und diese Datei vergisst, baut ein Paket mit neuem Inhalt und
+        alter Nummer.
+
+        **Der Schaden sieht nicht nach einem Fehler aus:** ``apt``
+        vergleicht Nummern. Ein Paket, das dieselbe trägt wie das
+        installierte, gilt als schon vorhanden – die neue Fassung
+        wird niemandem angeboten, und niemand bekommt eine Meldung
+        darüber. Dieselbe Klasse wie der Zeitplan, der auf ein
+        verschobenes Programm zeigt: *Was eingerichtet aussieht, ist
+        damit nicht eingerichtet.*
+
+        Geprüft wird die erste Zeile, denn dort steht die Fassung,
+        die gebaut wird – ältere Einträge darunter sind Geschichte.
+        """
+        from mailburg import __version__
+
+        erste = (WURZEL / "debian" / "changelog").read_text(
+            encoding="utf-8").splitlines()[0]
+
+        self.assertIn(
+            f"({__version__})", erste,
+            f"debian/changelog beginnt mit »{erste}«, das Programm "
+            f"steht auf {__version__} – das Paket bekäme die alte Nummer",
+        )
+
+    def test_ein_kommentar_zaehlt_nicht_zum_feld(self):
+        """In ``debian/control`` steht die Begründung als
+        Kommentarblock über dem Feld – und sie nennt beide
+        Paketnamen. Läse die Hilfsfunktion sie mit, wäre jeder Test
+        darüber wertlos: Er fände »pyside6« im Kommentar und wäre
+        grün, egal wo das Paket wirklich steht."""
+        mit_kommentar = (
+            "# python3-pyside6.qtwidgets steht seit dem 27.11. unter\n"
+            "# Depends und nicht mehr unter Recommends.\n"
+            "Recommends: poppler-utils\n"
+        )
+
+        self.assertNotIn("pyside6", _feld("Recommends", mit_kommentar).lower())
+
+
+class BeideSteuerdatenTest(unittest.TestCase):
+    """**Zwei Dateien über dieselbe Sache, und keine wusste von der
+    anderen.**
+
+    ``werkzeuge/deb_bauen.py`` baut seit dem 06.11.2026 nichts
+    Ausgeliefertes mehr, wird aber weiter gepflegt und von vier
+    Testdateien gelesen. Solange das so ist, müssen beide dasselbe
+    sagen – sonst steht in der einen eine Entscheidung, die nirgends
+    gilt, und die nächste Änderung landet wieder in der falschen.
+
+    *Zwei Prüfungen über dieselbe Sache, die sich widersprechen, sind
+    in diesem Projekt die häufigste Fehlerklasse überhaupt.*
+    """
+
+    #: Was in beiden Listen auftauchen muss. Nicht die vollständige
+    #: Liste: ``debian/control`` hat mit ``${python3:Depends}`` eine
+    #: Schreibweise, die es im eigenen Bauskript nicht gibt.
+    ERFORDERLICH = ("keyring", "zstandard", "pyside6")
+
+    def test_dieselben_pakete_sind_erforderlich(self):
+        eigenes = _werkzeug().DEPENDS.lower()
+        debian = _feld("Depends").lower()
+
+        for paket in self.ERFORDERLICH:
+            with self.subTest(paket=paket):
+                self.assertIn(paket, eigenes, "fehlt in deb_bauen.py")
+                self.assertIn(paket, debian, "fehlt in debian/control")
+
+    def test_und_keines_steht_hier_erforderlich_und_dort_empfohlen(self):
+        """Der Fall, der am 25.11. eintrat – und zwei Tage unbemerkt
+        blieb, weil ihn niemand prüfte."""
+        empfohlen = f"{_werkzeug().RECOMMENDS} {_feld('Recommends')}".lower()
+
+        for paket in self.ERFORDERLICH:
+            with self.subTest(paket=paket):
+                self.assertNotIn(paket, empfohlen)
+
+
 @unittest.skipUnless(HAT_DPKG, "dpkg-deb fehlt")
 class GebautesPaketTest(unittest.TestCase):
     """Einmal wirklich bauen und hineinsehen."""
