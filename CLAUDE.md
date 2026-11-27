@@ -3,6 +3,120 @@
 Landkarte des Repositorys. Ergänzt [README.md](README.md) und
 [TODO.md](TODO.md), wiederholt sie nicht.
 
+## Hier war Schluss (Stand 2026-11-27, Freitag) – die 1.9.0, und zwei Fragen von außen
+
+**Die Fassung ist draußen**, vier Tage vor dem Sammeltermin.
+Begründung im CHANGELOG und im Release-Text: Wer das `.deb` der
+1.8.5 installiert, bekommt unter Umständen ein Programm ohne
+Fenster – und GuideOS nimmt MailBurg in den nächsten Wochen auf.
+Was dabei ins System wandert, ist das veröffentlichte Paket, nicht
+der Stand im Quelltext.
+
+### Der teuerste Befund: eine Korrektur in der falschen Datei
+
+Der GuideOS-Admin meldete, MailBurg sei installiert, »die grafische
+Oberflaeche fehlt aber noch« – und schrieb, das Paket gehöre in
+`debian/control`. Er hatte recht, und das Repository sagte seit zwei
+Tagen das Gegenteil.
+
+**Die Korrektur gab es schon, nur an einer Stelle, die nichts mehr
+tut.** Seit dem 06.11. baut die CI mit `dpkg-buildpackage` aus
+`debian/`; `werkzeuge/deb_bauen.py` erzeugt kein ausgeliefertes Paket
+mehr. Genau dort hatte ich am 25.11. PySide6 von *Recommends* nach
+*Depends* verschoben. **Vier Testdateien prüfen dieses Skript, keine
+prüfte `debian/control`** – sie waren grün und sagten nichts über das
+Paket, das beim Anwender ankommt.
+
+*Eine Prüfung, die die fragliche Umgebung nicht nachstellt, misst
+etwas anderes* – hier in ihrer teuersten Form: Sie hat eine Korrektur
+**bestätigt, die nirgends ankam.** Und der Kommentar im Bau-Workflow
+zeigte noch auf `deb_bauen.py`, hat die Änderung also aktiv an den
+falschen Ort gelenkt.
+
+Es gibt jetzt Tests gegen `debian/control` und einen Wächter, der
+beide Dateien gegeneinander hält: Was in der einen erforderlich ist,
+darf in der anderen nicht empfohlen sein.
+
+### Die Frage, die zwei weitere Fehler fand
+
+Derselbe Admin fragte, wofür die *Recommends* eigentlich da seien.
+Eine harmlose Frage, und sie hat zwei Dinge aufgedeckt:
+
+**`poppler-utils` stand in derselben Zeile wie tesseract**, also als
+»Texterkennung« einsortiert. Das war ein Denkfehler, kein Versehen:
+`pdftotext` aus diesem Paket ist der Weg, auf dem MailBurg den Text
+aus *gewöhnlichen* PDF-Anhängen holt – `extract/pdf.py` fragt ihn vor
+pypdf. Die Paketbeschreibung sagt zu, dass die Volltextsuche auch
+Anhänge erfasst; ohne poppler stimmt das nicht. Und das Fehlen sieht
+nicht nach einem Fehler aus: Die Mail ist da, der Anhang lässt sich
+öffnen, nur findet ihn keine Suche – **und es heilt sich nicht von
+selbst**, erst `mailburg neuaufbau` holt den Text nach.
+
+**Der Nachrüstdialog verlangte `pypdf`, obwohl poppler reicht.**
+Nachgemessen: Mit poppler und ohne pypdf meldete MailBurg »Ohne das
+ist der Text in PDF-Anhängen nicht durchsuchbar«, während
+`pdf.verfuegbar()` »poppler« lieferte. *Zwei Prüfungen über dieselbe
+Sache, die sich widersprechen* – zum zweiten Mal binnen drei Tagen,
+nach den Sprachdaten der Texterkennung.
+
+**Die Lehre über beide hinaus:** Zwei Fragen von außen haben an einem
+Nachmittag mehr gefunden als der ganze eigene VM-Durchlauf zwei Tage
+zuvor. *Eine Frage von außen trifft die Stelle, an der man selbst
+nicht mehr hinsieht.*
+
+### Gemessen, und der naheliegende Weg war der falsche
+
+Für die Sortierung gegen gefälschte Datumsangaben lag
+`ORDER BY MIN(date, jetzt)` nahe: keine neue Spalte, keine
+Migration. An 600.000 Zeilen gemessen, bevor etwas gebaut wurde:
+
+| | |
+|---|---|
+| `ORDER BY date` (vorher) | 0,15 ms, nutzt den Index |
+| `MIN(date, jetzt)` | **78 ms**, Index verfällt |
+| eigene Spalte + Index | 0,15 ms |
+
+Das Vierhundertfache für dieselbe Wirkung. Gebaut ist deshalb eine
+Spalte `sortdatum`: das Datum der Mail, höchstens aber der Zeitpunkt
+ihrer Aufnahme – eine Mail kann kein Datum tragen, das nach ihrer
+Archivierung liegt. Die beiden Spam-Nachrichten rutschen damit von
+Rang 1 auf Rang 12.001. **Angezeigt bleibt das echte Datum.**
+
+Dasselbe Vorgehen bei der Summe der Mailgrößen: ein Index auf `size`
+macht daraus einen Covering-Index-Scan, 19 statt 46 ms.
+
+### Fünf eigene Fehler, und vier davon fanden andere
+
+1. **Mein Testaufbau nahm alle Mails im selben Augenblick auf.** Damit
+   bekam die gefälschte das heutige Datum als Sortierwert und stand zu
+   Recht oben – der Test war rot an der falschen Stelle. Die
+   Aufnahmezeitpunkte stehen jetzt ausdrücklich da.
+2. **Die CI war rot, wo es lokal grün war.** Der Nachrüst-Test
+   benutzte `ALTER TABLE … DROP COLUMN`, und SQLite stolpert dabei
+   über die `--`-Kommentare im Schema. *Nebenbefund, der festgehalten
+   gehört: In diesem Index lässt sich keine Spalte entfernen, solange
+   die Kommentare dort stehen* – das trifft jedes Reparaturskript, das
+   später jemand schreibt.
+3. **Die Gegenprobe landete in der Arbeitskopie.**
+   `git -C <repo> worktree add gegenprobe` legt den Pfad relativ zum
+   *Repo* an, nicht zum aktuellen Verzeichnis. Entfernt; die
+   Gegenprobe selbst war eindeutig (8 von 11 neuen Tests rot auf dem
+   Stand davor).
+4. **`mailburg info` aus dem Gedächtnis geraten.** Der Befehl verlangt
+   genau den Pfad, den Stephan suchte. Daraus wurde `mailburg
+   archive` – aber die Regel »Befehle nachsehen, nicht erinnern« hat
+   wieder nicht gegriffen.
+5. **Den Release-Text eine Verzeichnisebene zu hoch geschrieben**, und
+   dabei einen zweiten `.mailburg-releasetexte`-Ordner angelegt. Zwei
+   Schreibweisen desselben Ortes, die absolute war falsch.
+
+2561 Tests, `lesbarkeit.py` ohne Befund, CI grün. Alle vier
+Release-Workflows durch, acht Dateien am Release.
+
+**Offen für Anfang Dezember:** der zweite VM-Durchlauf, diesmal mit
+dem veröffentlichten `.deb` statt dem Quelltext – einschließlich
+Deinstallieren.
+
 ## Hier war Schluss (Stand 2026-11-25, Dienstag) – ein fremder Rechner, sieben Befunde
 
 **MailBurg wird Bestandteil von GuideOS.** Stephans Ankündigung vom
