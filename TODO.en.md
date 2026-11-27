@@ -168,54 +168,29 @@ something quietly. Not one would have surfaced on its own.
 
 ### From the GuideOS run-through (2026-11-25)
 
-MailBurg will become part of GuideOS over the next few weeks. As a
-trial, Stephan installed it in a fresh VM from the `.deb`, set it up
-and removed it again at the end – **the whole path of someone who
-does not know the program.**
+MailBurg will become part of GuideOS. As a trial, Stephan installed it
+in a fresh VM from the `.deb`, set it up and removed it again at the
+end – **the whole path of someone who does not know the program.**
 
-Seven findings came out of it, four of them fixed (the missing
-`pkgname`, without which MailBurg appeared in no software manager;
-the dialog that installs missing packages; its bullet list that ran
-together into one paragraph; the terminal hidden behind the window).
-**The last two only showed up while cleaning out** – on a path nobody
-in this project had ever walked.
+**Every finding is fixed in 1.9.0.** Two of them only showed up while
+cleaning out – on a path nobody in this project had ever walked. The
+lesson for future run-throughs: *uninstalling is part of the test.*
 
-- [ ] **A greyed-out menu entry does not state its reason.** The
-  *Mail* menu has three greyed-out entries in a row: »Read scanned
-  PDFs …« is grey because the queue is empty, while »Set retention …«
-  and »Classify on import …« are grey because the archive is run
-  privately. Two entirely different reasons, one appearance –
-  together they read like an unfinished program. Stephan's verdict:
-  »It just doesn't work.«
+- [x] A greyed-out menu entry did not state its reason. Three grey
+  lines in a row in the *Mail* menu, two entirely different causes
+  (empty queue / private archive), and the reason lived only in the
+  status tip. It now sits in the entry's own text.
+- [x] »No account named X« did not say which ones exist.
+- [x] The command line could not name the known archives – that is
+  what `mailburg archive` is for now.
+- [x] The package dialog asked for `pypdf` although poppler serves the
+  same purpose. Found through the GuideOS admin's question about what
+  the *Recommends* were for; `poppler-utils` has been under `Depends`
+  ever since.
 
-  The reason only lives in the status tip, visible while the mouse
-  hovers. **A piece of information only counts once it lands where
-  someone is looking** – here it belongs in the entry's own text, the
-  way the count of waiting scans already does.
-
-- [ ] **»No account named X« does not say which ones exist.**
-  `mailburg konten liste` prints »Name (address on server:port)«;
-  which part is the name cannot be seen from the line. Stephan got it
-  wrong three times, once using the full line from the program's own
-  output.
-
-  The account list is loaded at that very moment – listing the
-  existing names costs nothing. This applies wherever
-  `liste.finden()` comes up empty, not just to `entfernen`.
-
-  Same class as the comma trap from the same day: **when the person
-  who built the program mistypes, it is a trap and not carelessness.**
-
-- [ ] **The command line cannot name the known archives.** `mailburg
-  info` demands exactly the path one is looking for. The window knows
-  the list (menu »Recently used«), the command line has no command for
-  it – without a window you have to read the JSON file or hunt for
-  `archive.json` with `find`.
-
-  On a server that is the only way at all. The counterpart to
-  »`mailburg abgleich` existed only on the command line for a month«
-  from 2026-09-22: **something exists in one interface and not in the
-  other.**
+**Still open is the second run-through:** early December, after the
+release, in a fresh VM – what gets tested is the `.deb`, not the
+source. The VM is empty by now.
 
 ### Older
 

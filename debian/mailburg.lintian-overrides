@@ -1,0 +1,23 @@
+# Lintian prüft die Rechtschreibung auf Englisch. Das
+# Änderungsprotokoll dieses Pakets ist auf Deutsch - wie das ganze
+# Projekt, dessen Oberfläche, Doku und Fehlermeldungen.
+#
+# Dabei hält es deutsche Wörter für vertippte englische:
+#
+#     W: mailburg: spelling-error-in-changelog Programm Program
+#
+# »Programm« ist kein Tippfehler von »program«. Dasselbe träfe jedes
+# weitere Wort, das einem englischen ähnelt - »Information«,
+# »Adresse«, »Kommando«.
+#
+# Deutsche Tippfehler findet diese Prüfung ohnehin nicht; sie kann
+# hier also nichts entdecken, was sie nicht selbst erzeugt hat.
+# Deshalb der ganze Tag und keine Liste einzelner Wörter: Eine Liste
+# müsste bei jedem neuen Eintrag ergänzt werden, und wer das vergisst,
+# bekommt einen roten Paketbau für einen Rechtschreibfehler, der
+# keiner ist.
+#
+# Aufgefallen am 27.11.2026 beim Bau der 1.9.0. Der Schritt läuft seit
+# dem 06.11. mit --fail-on warning, und das soll so bleiben: Eine
+# Prüfung, die nie rot wird, liest niemand.
+mailburg: spelling-error-in-changelog
